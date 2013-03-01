@@ -12,7 +12,15 @@ Running on OpenShift
 
 Create an account at http://openshift.redhat.com/
 
-Create a PHP application. Below, please note that I will name the application b2evo, but you can select any (allowed) name desired.
+I assume that you have installed the rhc command line tools for your operating system, as guided in Getting Started With OpenShift:
+https://openshift.redhat.com/community/get-started
+
+Create a PHP application. Evidently and to make your task ahead easier, create a working directory and change to that location.
+All the rhc commands below are relative to
+
+your working directory location.
+
+Below, please note that I will name the application b2evo, but you can select any (allowed) name desired.
 
 rhc app create -a b2evo -t php-5.3
 
