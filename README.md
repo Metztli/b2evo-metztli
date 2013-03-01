@@ -19,6 +19,7 @@ rhc app create -a b2evo -t php-5.3
 Add mysql support to your application
     
 rhc cartridge add -c mysql-5.1 -a b2evo
+
 Make a note of the username, password, and host name as you will need to use these to complete the b2evolution installation on OpenShift
 
 Now, if you have and want to point a domain name (or subdomain) to your b2evo application (recently created), then use form of command below:
@@ -26,6 +27,7 @@ Now, if you have and want to point a domain name (or subdomain) to your b2evo ap
 rhc alias add b2evo b2evolution.yourDomainName.xyz
 
 Don't forget that you must first modify the CNAME at your domain DNS service provider and it usually takes at least 12hours for it to propagate.
+
 Thus, as an example to guide you in your CNAME settings:
 
 b2evolution.yourDomainName.xyz	  should point to  	b2evo-yourNameSpace.rhcloud.com
@@ -33,8 +35,11 @@ b2evolution.yourDomainName.xyz	  should point to  	b2evo-yourNameSpace.rhcloud.c
 Add this upstream b2evolution quickstart repo
 
 cd b2evo/php
+
 rm -rf *
+
 git remote add upstream -m master git://github.com/Metztli/b2evo-metztli.git
+
 git pull -s recursive -X theirs upstream master
 
 Then push the repo upstream to OpenShift
