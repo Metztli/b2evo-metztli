@@ -28,7 +28,7 @@ Add mysql support to your application
     
 rhc cartridge add -c mysql-5.1 -a b2evo
 
-Make a note of the username, password, and host name as you will need to use these to complete the b2evolution installation on OpenShift.
+Make a note of the username, password, and host name[1] as you will need to use these to complete the b2evolution installation on OpenShift.
 
 Add this upstream b2evolution quickstart repo:
 
@@ -59,7 +59,8 @@ Don't forget that you must first modify the CNAME at your domain DNS service pro
 
 Thus, as an example to guide you in your CNAME settings:
 
-b2evolution.yourDomainName.xyz	  should point to  	b2evo-yourNameSpace.rhcloud.com
+b2evolution.yourDomainName.xyz	  should point to	b2evo-yourNameSpace.rhcloud.com
+
 -----------------------------
 
 
