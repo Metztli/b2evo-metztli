@@ -3,3 +3,28 @@
 # build hook has been run but before the application has been started back
 # up again.  This script gets executed directly, so it could be python, php,
 # ruby, etc.
+#
+# 02-28-2013: Jose R Rodriguez/Metztli IT http://www.metztli-it.com
+# Due diligence has been exercised but no guarantees are conveyed in either
+# explicit or implicit manner or form.
+#
+# b2evolution media directory is to be relocated to $OPENSHIFT_DATA_DIR
+# and a link established; else the bloggers wil lose their uploaded content.
+#
+# Accordingly, upon initial installation of b2evolution the media directory
+# gets moved from its b2evolution default at $OPENSHIFT_REPO_DIR to the
+# persistent $OPENSHIFT_DATA_DIR and a link is created.
+#
+# However in a b2evolution upgrade, git push may overwrite the symbolic link
+# at default media location. Thus, if there two media directories we, again,
+# remove the media directory at its default location and recreate the symlink.
+#
+if [ -d $OPENSHIFT_REPO_DIR/php/media ] && [ -d $OPENSHIFT_DATA_DIR/media ]
+then
+rm -rf $OPENSHIFT_REPO_DIR/php/media
+ln -s $OPENSHIFT_DATA_DIR/media $OPENSHIFT_REPO_DIR/php/media
+else
+mv -f $OPENSHIFT_REPO_DIR/php/media $OPENSHIFT_DATA_DIR/.
+ln -s $OPENSHIFT_DATA_DIR/media $OPENSHIFT_REPO_DIR/php/media
+exit
+fi

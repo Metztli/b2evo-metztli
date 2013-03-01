@@ -1,0 +1,191 @@
+<?php
+/**
+ * Form to edit settings of a plugin.
+ *
+ * This file is part of the evoCore framework - {@link http://evocore.net/}
+ * See also {@link http://sourceforge.net/projects/evocms/}.
+ *
+ * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
+ *
+ * {@internal License choice
+ * - If you have received this file as part of a package, please find the license.txt file in
+ *   the same folder or the closest folder above for complete license terms.
+ * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
+ *   then you must choose one of the following licenses before using the file:
+ *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
+ *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
+ * }}
+ *
+ * {@internal Open Source relicensing agreement:
+ * Daniel HAHLER grants Francois PLANQUE the right to license
+ * Daniel HAHLER's contributions to this file and the b2evolution project
+ * under any OSI approved OSS license (http://www.opensource.org/licenses/).
+ * }}
+ *
+ * @package admin
+ *
+ * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
+ * @author fplanque: Francois PLANQUE
+ * @author blueyed: Daniel HAHLER
+ *
+ * @version $Id: _plugin_settings.form.php 9 2011-10-24 22:32:00Z fplanque $
+ */
+if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
+
+/**
+ * @global Plugin
+ */
+global $edit_Plugin;
+
+/**
+ * @global Plugins_admin
+ */
+global $admin_Plugins;
+
+global $edited_plugin_name, $edited_plugin_shortdesc, $edited_plugin_priority, $edited_plugin_code, $edited_plugin_apply_rendering;
+global $admin_url;
+
+load_funcs('plugins/_plugin.funcs.php');
+
+
+$Form = new Form( NULL, 'pluginsettings_checkchanges' );
+
+// Info button:
+$Form->global_icon( T_('Display info'), 'info', regenerate_url( 'action,plugin_class', 'action=info&amp;plugin_class='.$edit_Plugin->classname ) );
+
+// Close button:
+$Form->global_icon( T_('Cancel edit!'), 'close', regenerate_url() );
+
+$Form->begin_form( 'fform', '',
+	// enable all form elements on submit (so values get sent):
+	array( 'onsubmit'=>'var es=this.elements; for( var i=0; i < es.length; i++ ) { es[i].disabled=false; };' ) );
+
+	$Form->add_crumb( 'plugin' );
+	$Form->hidden_ctrl();
+	$Form->hidden( 'plugin_ID', $edit_Plugin->ID );
+
+
+// --------------------------- INFO ---------------------------
+$Form->begin_fieldset( T_('Plugin info'), array( 'class' => 'clear' ) );
+	// Name:
+	$Form->text_input( 'edited_plugin_name', $edited_plugin_name, 25, T_('Name'), '', array('maxlength' => 255) );
+	// Desc:
+	$Form->text_input( 'edited_plugin_shortdesc', $edited_plugin_shortdesc, 50, T_('Short desc'), '', array('maxlength' => 255) );
+	// Links to external manual (dh> has been removed from form's global_icons before by fp, but is very useful IMHO):
+	if( $edit_Plugin->get_help_link('$help_url') )
+	{
+		$Form->info( T_('Help'), $edit_Plugin->get_help_link('$help_url').' '.$edit_Plugin->get_help_link('$readme') );
+	}
+$Form->end_fieldset();
+
+
+// --------------------------- SETTINGS ---------------------------
+if( $edit_Plugin->Settings ) // NOTE: this triggers PHP5 autoloading through Plugin::__get() and therefor the 'isset($this->Settings)' hack in Plugin::GetDefaultSettings() still works, which is good.
+{
+	load_funcs('plugins/_plugin.funcs.php');
+
+	// We use output buffers here to only display the fieldset if there's content in there
+	// (either from PluginSettings or PluginSettingsEditDisplayAfter).
+	ob_start();
+	foreach( $edit_Plugin->GetDefaultSettings( $tmp_params = array('for_editing'=>true) ) as $l_name => $l_meta )
+	{
+		// Display form field for this setting:
+		autoform_display_field( $l_name, $l_meta, $Form, 'Settings', $edit_Plugin );
+	}
+
+	// This can be used add custom input fields or display custom output (e.g. a test link):
+	$admin_Plugins->call_method( $edit_Plugin->ID, 'PluginSettingsEditDisplayAfter', $tmp_params = array( 'Form' => & $Form ) );
+
+	$setting_contents = ob_get_contents();
+	ob_end_clean();
+
+	if( $setting_contents )
+	{
+		$Form->begin_fieldset( T_('Plugin settings'), array( 'class' => 'clear' ) );
+		echo $setting_contents;
+		$Form->end_fieldset();
+	}
+}
+
+
+// --------------------------- VARIABLES ---------------------------
+$Form->begin_fieldset( T_('Plugin variables').' ('.T_('Advanced').')', array( 'class' => 'clear' ) );
+	$Form->text_input( 'edited_plugin_code', $edited_plugin_code, 15, T_('Code'), T_('The code to call the plugin by code. This is also used to link renderer plugins to items.'), array('maxlength'=>32) );
+	$Form->text_input( 'edited_plugin_priority', $edited_plugin_priority, 4, T_('Priority'), '', array( 'maxlength' => 4 ) );
+	$render_note = get_manual_link('Plugin/apply_rendering');
+	if( empty( $edited_plugin_code ) )
+	{
+		$render_note .= ' '.T_('Note: The plugin code is empty, so this plugin will not work as an "opt-out", "opt-in" or "lazy" renderer.');
+	}
+	$Form->select_input_array( 'edited_plugin_apply_rendering', $edited_plugin_apply_rendering,
+			$admin_Plugins->get_apply_rendering_values(), T_('Apply rendering'), $render_note );
+$Form->end_fieldset();
+
+
+// --------------------------- EVENTS ---------------------------
+$Form->begin_fieldset( T_('Plugin events').' ('.T_('Advanced')
+	.') <img src="'.get_icon('expand', 'url').'" id="clickimg_pluginevents" />', array('legend_params' => array( 'onclick' => 'toggle_clickopen(\'pluginevents\')') ) );
+	?>
+
+	<div id="clickdiv_pluginevents">
+
+	<?php
+
+	if( $edit_Plugin->status != 'enabled' )
+	{
+		echo '<p class="notes">'.T_('Note: the plugin is not enabled.').'</p>';
+	}
+
+	echo '<p>'.T_('Warning: by disabling plugin events you change the behaviour of the plugin! Only change this, if you know what you are doing.').'</p>';
+
+	$enabled_events = $admin_Plugins->get_enabled_events( $edit_Plugin->ID );
+	$supported_events = $admin_Plugins->get_supported_events();
+	$registered_events = $admin_Plugins->get_registered_events( $edit_Plugin );
+	$count = 0;
+	foreach( array_keys($supported_events) as $l_event )
+	{
+		if( ! in_array( $l_event, $registered_events ) )
+		{
+			continue;
+		}
+		$Form->hidden( 'edited_plugin_displayed_events[]', $l_event ); // to consider only displayed ones on update
+		$Form->checkbox_input( 'edited_plugin_events['.$l_event.']', in_array( $l_event, $enabled_events ), $l_event, array( 'note' => $supported_events[$l_event] ) );
+		$count++;
+	}
+	if( ! $count )
+	{
+		echo T_( 'This plugin has no registered events.' );
+	}
+	?>
+
+	</div>
+
+	<?php
+$Form->end_fieldset();
+?>
+
+
+<script type="text/javascript">
+	<!--
+	toggle_clickopen('pluginevents');
+	// -->
+</script>
+
+<?php
+if( $current_User->check_perm( 'options', 'edit', false ) )
+{
+	$Form->buttons_input( array(
+		array( 'type' => 'submit', 'name' => 'actionArray[update_settings]', 'value' => T_('Save !'), 'class' => 'SaveButton' ),
+		array( 'type' => 'submit', 'name' => 'actionArray[update_settings][review]', 'value' => T_('Save (and review)'), 'class' => 'SaveButton' ),
+		array( 'type' => 'reset', 'value' => T_('Reset'), 'class' => 'ResetButton' ),
+		array( 'type' => 'submit', 'name' => 'actionArray[default_settings]', 'value' => T_('Restore defaults'), 'class' => 'SaveButton' ),
+		) );
+}
+$Form->end_form();
+
+
+/*
+ * $Log: _plugin_settings.form.php,v $
+ */
+?>

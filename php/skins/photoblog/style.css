@@ -1,0 +1,208 @@
+/* Designed by François PLANQUE - http://fplanque.net/ */
+
+@import url("../../rsc/css/basic.css");	/* Import basic styles */
+@import url("../../rsc/css/blog_base.css");	/* Default styles for the blog navigation */
+@import url("../../rsc/css/item_base.css");	/* Default styles for the post CONTENT */
+
+body {
+	padding: 0px;
+	margin: 0px;
+	color: #aaa;
+	font: 84% Arial, Helvetica, sans-serif;
+	background-color: #666;
+}
+
+a {
+	color: #eee;
+	text-decoration: none;
+}
+a:visited {
+	color: #eee;
+}
+a:hover {
+	color: #fff;
+	text-decoration: underline;
+}
+
+
+div#pageFooter {
+	padding: 0 0 1ex 0;
+}
+p.baseline {
+	text-align: center;
+	font-size: 84%;
+	padding: 6ex 0 4ex 0;
+	margin: 0;
+}
+
+
+div.pageHeader {
+	padding: 5px;
+	border-bottom: 1px solid #aaa;
+	background: #333;
+	color: #aaa;
+}
+
+h1#pageTitle {
+	font-size: 100%;
+	font-weight: bold;
+	letter-spacing: 2px;
+	margin: 0;
+	padding: 0;
+}
+
+div.PageTop ul {
+	background: #333;
+	border-bottom: 1px solid #aaa;
+	margin: 0 1px;
+	padding: 0;
+	list-style-type:none;
+	padding: 5px 0;
+}
+div.PageTop li {
+	border-right: 1px solid #aaa;
+	display: inline;
+	padding: 5px 1em;
+}
+
+div.PageTop a {
+	font-weight: bold;
+	text-decoration: none;
+}
+div.PageTop a.default {
+	color: #aaa;
+}
+div.PageTop a.selected,
+div.PageTop a.selected:visited {
+	color: #eee;
+}
+div.PageTop a:hover {
+	text-decoration: underline;
+	color: #fff;
+}
+
+
+/* Styles for main area (left) */
+h2 {
+	margin: 0;
+	padding: 1ex 0 0 0;
+}
+
+/* Styles for posts */
+.bPosts {
+	width: 820px;
+	margin: 0 auto;
+}
+div.action_messages {
+	margin: 0 2ex;
+}
+
+.nav_right img
+{
+	vertical-align: top;
+}
+.nav_right a
+{
+	display: block;
+	margin: 1ex 0;
+	float: right;
+	border: 1px solid #666;
+}
+.nav_right a:hover
+{
+	border: 1px solid #fff;
+}
+img.no_nav
+{
+	margin: 1ex 0;
+	float: right;
+	border: 1px solid #666;
+}
+
+.bPost
+{
+	clear: both;
+}
+div.image_block img {
+	background: #fff;
+	padding: 5px;
+	border: 1px solid #555;
+}
+.bDetails {
+	width: 80%;
+	margin: 2em auto;
+	background: #555;
+	border: 1px solid #aaa;
+}
+h3.bTitle {
+	font-size: 100%;
+	display:inline;
+	letter-spacing: 2px;
+}
+.bText {
+	margin: 0;
+	padding: 0 12px;
+}
+.bSmallHead
+{
+	margin: 0;
+	padding: 12px 12px 6px 12px;
+}
+.bSmallPrint
+{
+	margin: 0;
+	font-size: 84%;
+	padding: 6px 12px 12px 12px;
+}
+.action_right
+{
+	font-size: 84%;
+	float: right;
+	margin: 0 0 0 1em;
+}
+.timestamp {
+	margin: 0 0 0 1em;
+	font-size: 84%;
+}
+
+input.bComment,
+textarea.bComment
+{
+	background-color: #eee;
+	border: 1px solid #ccc;
+	width: 97%;
+	padding: 2px;
+	margin: 0ex;
+}
+select.bComment  /* Used by the profile form */
+{
+	background-color: #eee;
+	border: 1px solid #ccc;
+	padding: 1px;
+	margin: 0ex;
+}
+
+.comments_popup {
+	margin: 1em;
+}
+
+table.image_index {
+	margin: 1ex auto;
+}
+table.image_index td {
+	width: 88px;
+	height: 88px;
+	background: #555;
+	text-align: center;
+	vertical-align: middle;
+	border: 1px solid #333;
+	padding: 0;
+}
+table.image_index td:hover {
+	background: #777;
+}
+
+#pageFooter a
+{
+	color: #aaa;
+}

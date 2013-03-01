@@ -1,0 +1,521 @@
+/**
+ * Global / basic CSS styles for the admin.
+ *
+ * This should be included with every skin and overridden when needed.
+ */
+
+table.browse {
+	width: 100%;
+}
+table.browse td {
+	vertical-align:top;
+}
+
+div.dashboard_sidebar {
+	margin: 0 1em;
+}
+
+div.dashboard_sidebar ul {
+	margin: 0;
+	padding: 0 0 0 16px;
+}
+
+div.dashboard_sidebar li {
+	list-style: square;
+	margin: 1ex 0;
+	padding: 0;
+	white-space: nowrap;
+}
+div.dashboard_sidebar li li {
+	margin: 0;
+}
+
+.dashboard_post {
+	clear:left;
+	/* border: 1px solid red; */
+	margin: 1ex 0;
+}
+.dashboard_post_details {
+	font-size: 74%;
+	font-weight: normal;
+	color: #999;
+}
+.dashboard_thumbnails {
+	float:left;
+	margin-right: 2px;
+}
+.dashboard_thumbnails img {
+	border: 1px solid #000;
+	margin-right: 2px;
+}
+h3.dashboard_post_title {
+	font-size: 108%;
+	margin: 0 0 4px 0;
+}
+
+.dashboard_action_area {
+	padding: 1ex 0;
+	font-size: 84%;
+}
+.dashboard_float_actions {
+	font-size: 84%;
+	padding-right: 2px;
+	float: left;
+}
+
+
+.avatar {
+	vertical-align: top;
+}
+
+
+/*
+ * Overlay screen (used for antispam on dashboard):
+ */
+#screen_mask{
+	position:fixed;
+	top: 0;
+	left: 0;
+	background: #000;
+	height: 100%;
+	width: 100%;
+	display:none;
+	z-index:998;
+}
+
+#overlay_page{
+	display:none;
+}
+
+#overlay_page.overlay_page_active{
+	position:fixed;
+	bottom:5%;
+	right:5%;
+	height:90%;
+	width:90%;
+	overflow:auto;
+	z-index:999;
+	background:#f1f6f8;
+	border:1px solid #ccc;
+	display:block;
+}
+
+.overlay_page_active form{
+	padding:1em;
+}
+
+#overlay_postback{
+	position:absolute;
+	top:-1000em;
+	left:-1000em;
+}
+
+
+/*
+ * Compose screen:
+ */
+table.compose_layout {
+	width: 100%;
+}
+table.compose_layout td {
+	white-space: nowrap;
+	padding: 1px;
+}
+table.compose_layout td.label {
+	white-space: nowrap;
+	width: 1%;
+}
+table.compose_layout td.input {
+	padding: 1px 5px;
+	width: 97%;
+}
+table.compose_layout td.select {
+	padding: 1px 0 1px 5px;
+	width: 97%;
+}
+
+
+/*
+ * Attachments / links
+ */
+fieldset#itemform_createlinks {
+	height: 80px;
+	background-color: #F1F6F8;
+	padding: 0;
+}
+fieldset#itemform_createlinks table {
+	width: 100%;
+	height: 100%;
+}
+fieldset#itemform_createlinks td {
+	text-align: center;
+	vertical-align: middle;
+}
+fieldset#itemform_links {
+	padding: 0;
+}
+div#iframe_wrapper {
+	background-color: #F1F6F8;
+	height: 160px;
+}
+
+
+/*
+ * Categories selection table:
+ */
+table.catselect {
+	border-spacing:0;
+	width:90%;
+	border: 1px solid #bbb;
+}
+table.catselect th {
+	padding: .3ex 1ex;
+	background-color: #ddd;
+	border-bottom: 1px solid #bbb;
+}
+table.catselect td {
+	padding: .2ex 1ex;
+}
+table.catselect tr.group td {
+	border-top: 1px solid #bbb;
+	border-bottom: 1px solid #bbb;
+	background-color: #ccc;
+	font-weight: bold;
+}
+table.catselect tr.odd,
+table.catselect tr.odd input {
+	background-color: #eee;
+}
+table.catselect tr.even,
+table.catselect tr.even input {
+	background-color:#ddd;
+}
+table.catselect tr:hover,
+table.catselect tr:hover input {
+	background-color:#ccc;
+}
+table.catselect th.selector,
+table.catselect td.selector {
+	width: 1%;
+	text-align:center;
+	border-right: 1px solid #bbb;
+}
+table.catselect #new_category_name {
+	background-color:white;
+}
+/* Limit height of .catselect container in item admin view */
+#fieldset_wrapper_itemform_categories {
+	overflow:auto;
+	max-height:500px;
+}
+
+
+/*
+ * Special list formattings
+ */
+ul.clicktree {
+	margin:0;
+	padding:0;
+	list-style:none;
+}
+ul.clicktree ul.clicktree {
+	margin-left:2ex;
+}
+
+ul.plain {
+	list-style:none;
+	margin:0;
+	padding:0;
+}
+
+
+.action_icon,
+.widget_actions a,
+.no_icon {
+	margin: 0 2px;
+	font-weight: bold;
+}
+
+th .action_icon {
+	font-size: 84%;
+}
+
+/*
+ * Icon legend
+ */
+#icon_legend {
+	border: 1px solid #666;
+	background-color: #ddd;
+	margin : 1em;
+	padding: 5px;
+}
+span.legend_element {
+	white-space: nowrap;
+}
+
+
+/*
+ * Cron statuses
+ */
+.cron_started {
+	font-weight: bold;
+}
+.cron_finished {
+	color: #009900;
+}
+.cron_error,
+.cron_timeout {
+	font-weight: bold;
+	color: #FF0000;
+}
+
+
+/*
+ * Grouping of plugins:
+ */
+table.grouped tr.PluginsSubGroup {
+	text-align:left;
+}
+
+table.grouped tr.PluginsSubGroup th {
+	border-left:none;
+	border-bottom: 1px solid #9e9286;
+	border-top: 1px solid #9e9286;
+	background-color: #efede0;
+	color:#666666;
+}
+
+table.grouped tr.PluginsSubGroup th,
+table.grouped tr.PluginsSubGroup td.firstcol {
+	padding-left:15px;
+}
+
+/* / Grouping of plugins */
+
+
+/*
+ * Skin selection:
+ */
+div.skinshot {
+	float: left;
+	background-color: #ccc;
+	margin: 1ex;
+	padding: 0;
+}
+
+div.skinshot_placeholder {
+	width: 240px;
+	height: 180px;
+	border: 1px solid #000;
+	margin: 1ex 1ex .5ex 1ex;
+	background: #ddd;
+	text-align: center;
+}
+div.skinshot div.current {
+	border: 1px solid #f00;
+}
+
+div.skinshot_noshot {
+	margin: 36px 0 0 0;
+	color: #999;
+}
+div.skinshot_name {
+	margin: 24px 0 0 0;
+	font-size: 170%;
+}
+
+div.skinshot div.legend {
+	width: 240px;
+	margin: .5ex 1ex 1ex 1ex;
+	padding: 0;
+}
+
+div.skinshot div.actions {
+	float: right;
+	margin: 0;
+	padding: 0;
+}
+
+
+.timestamp {
+	white-space: nowrap;
+	text-align: center;
+}
+.timestamp .time {
+	font-size:84%;
+}
+
+div.tile {
+	display: inline;
+	white-space: nowrap;
+}
+
+
+/*
+ * System checks
+ */
+div.system_check {
+	margin: 1ex 0;
+	border-top: 1px solid #ddd;
+	padding-top: 1ex;
+}
+
+div.system_check_name {
+	font-weight: bold;
+	float:left;
+}
+
+div.system_check_value_note,
+div.system_check_value_ok,
+div.system_check_value_warning,
+div.system_check_value_error {
+	font-weight: bold;
+	margin-left: 50ex;
+}
+
+div.system_check_value_ok {
+	color: #093;
+}
+div.system_check_value_warning {
+	color: #e60;
+}
+div.system_check_value_error {
+	color: #c00;
+}
+
+div.system_check_message_ok,
+div.system_check_message_warning,
+div.system_check_message_error {
+	margin: 1ex;
+}
+div.system_check_message_warning {
+	padding: 3px;
+	background: #feb;
+}
+div.system_check_message_error {
+	padding: 3px;
+	background: #fbb;
+}
+
+table.coll_kind {
+	margin: 0 3ex;
+}
+table.coll_kind td {
+	padding: 2ex;
+	vertical-align: top;
+}
+table.coll_kind td.coll_kind {
+	white-space: nowrap;
+	padding-right: 3ex;
+}
+td.coll_kind h3 {
+	margin: 0;
+}
+
+div.seo_presets {
+	text-align: center;
+	margin: 1ex;
+}
+div.seo_presets a {
+	margin: 1ex;
+}
+div.seo_presets img {
+	border: 1px solid #000;
+}
+div.seo_presets a:hover img,
+div.seo_presets a.current img {
+	border: 1px solid #f00;
+}
+div.seo_message {
+	text-align: center;
+	font-size: 84%;
+	margin: 2ex 1ex;
+	line-height: 150%;
+}
+
+li.collection_select {
+	padding: 0 1ex;
+}
+
+div.menu3 {
+	margin-bottom: 1em;
+}
+div.menu3 .option3,
+div.menu3 .current {
+	margin-left: 1em;
+	font-weight: bold;
+}
+div.menu3 .current a {
+	color: #f00;
+}
+
+
+ul.widget_list {
+	list-style: none;
+	padding-left: 1em;
+	margin-left: 0;
+}
+ul.widget_list li {
+	margin-bottom: 3px;
+}
+
+
+/*
+ * Messaging
+ */
+
+.thread_subject {
+	width: 60%;
+}
+
+#iframe_wrapper .action_messages {
+	margin:0;
+	padding:0.2ex 1ex;
+}
+
+
+/*
+ * Comments
+ */
+
+.tdCommentpublished {
+	color: #0b0;
+}
+
+.tdCommentdraft {
+	color: #f96;
+}
+
+.tdCommentdeprecated {
+	color: #888;
+}
+
+.tdCommenttrash {
+	color: #f66;
+}
+
+/*
+ * Avatar selection:
+ */
+div.avatartag {
+	float: left;
+	margin: 0 0.5em 0.5em 0;
+	padding: 0;
+}
+
+/*  Menu3 with title, used for User editing */
+.user_header {
+	height: 48px;
+}
+.user_header .menu3 {
+	margin: 6px 0 0;
+	font-size: 71%;
+}
+.user_header .cboxElement {
+	float: left;
+	margin: 0 10px 0 0;
+}
+.user_header_content {
+	float: left;
+}
+

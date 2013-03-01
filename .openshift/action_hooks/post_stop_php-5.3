@@ -12,3 +12,35 @@
 # prevent your application from stopping cleanly or starting at all.
 # Application start and stop is subject to different timeouts
 # throughout the system.
+#
+# 02-28-2013: Jose R Rodriguez/Metztli IT http://www.metztli-it.com
+# Due diligence has been exercised but no guarantees are conveyed in either
+# explicit or implicit manner or form.
+#
+# b2evolution install directory should be removed for added security. I accomplish this upon the first stop of the php cartridge.
+#
+if [ -d $OPENSHIFT_REPO_DIR/php/install ]
+then
+rm -rf $OPENSHIFT_REPO_DIR/php/install
+else
+exit
+fi
+#
+# If b2evolution installation or upgrade is successful then _basic_config.php will be created  and moved to a persistent file system location 
+# (backed up if it exists); a symbolic link is created from where b2evolution expects to find it to its new location. However if the symlink
+# exists do nothing and exit.
+#
+if  [ -L $OPENSHIFT_REPO_DIR/php/conf/_basic_config.php ]
+then
+exit
+else
+
+	if [ -f $OPENSHIFT_REPO_DIR/php/conf/_basic_config.php ] &&  [ -d $OPENSHIFT_DATA_DIR/conf ]
+	then
+	mv -bf --suffix=Metztli_IT.bak $OPENSHIFT_REPO_DIR/php/conf/_basic_config.php  $OPENSHIFT_DATA_DIR/conf/.
+	ln -s $OPENSHIFT_DATA_DIR/conf/_basic_config.php $OPENSHIFT_REPO_DIR/php/conf/_basic_config.php
+	else
+	exit
+	fi
+exit
+fi

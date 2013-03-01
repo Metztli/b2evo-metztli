@@ -1,0 +1,451 @@
+<?php
+/**
+ * This file implements the UI controller for additional tools.
+ *
+ * b2evolution - {@link http://b2evolution.net/}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
+ * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ *
+ * @package admin
+ * @author blueyed: Daniel HAHLER
+ *
+ * @version $Id: tools.ctrl.php 9 2011-10-24 22:32:00Z fplanque $
+ */
+if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
+
+
+load_funcs('plugins/_plugin.funcs.php');
+
+// load item class
+load_class( 'items/model/_item.class.php', 'Item' );
+
+param( 'tab', 'string', '', true );
+
+$tab_Plugin = NULL;
+$tab_plugin_ID = false;
+
+if( ! empty($tab) )
+{	// We have requested a tab which is handled by a plugin:
+	if( preg_match( '~^plug_ID_(\d+)$~', $tab, $match ) )
+	{ // Instanciate the invoked plugin:
+		$tab_plugin_ID = $match[1];
+		$tab_Plugin = & $Plugins->get_by_ID( $match[1] );
+		if( ! $tab_Plugin )
+		{ // Plugin does not exist
+			$Messages->add( sprintf( T_( 'The plugin with ID %d could not get instantiated.' ), $tab_plugin_ID ), 'error' );
+			$tab_plugin_ID = false;
+			$tab_Plugin = false;
+			$tab = '';
+		}
+		else
+		{
+			$Plugins->call_method_if_active( $tab_plugin_ID, 'AdminTabAction', $params = array() );
+		}
+	}
+	else
+	{
+		$tab = '';
+		$Messages->add( 'Invalid sub-menu!' ); // Should need no translation, prevented by GUI
+	}
+}
+
+// Highlight the requested tab (if valid):
+$AdminUI->set_path( 'tools', $tab );
+
+
+if( empty($tab) )
+{	// "Main tab" actions:
+	if( param( 'action', 'string', '' ) )
+	{
+		// Check that this action request is not a CSRF hacked request:
+		$Session->assert_received_crumb( 'tools' );
+	
+		// fp> TODO: have an option to only PRUNE files older than for example 30 days
+		$current_User->check_perm('options', 'edit', true);
+	}
+
+	switch( $action )
+	{
+		case 'del_itemprecache':
+			$DB->query('DELETE FROM T_items__prerendering WHERE 1=1');
+
+			$Messages->add( sprintf( T_('Removed %d cached entries.'), $DB->rows_affected ), 'success' );
+			break;
+
+		case 'del_pagecache':
+			// Delete the page cache /blogs/cache
+			global $cache_path;
+
+			// Clear general cache directory
+			if( cleardir_r( $cache_path.'general' ) )
+			{
+				$Messages->add( sprintf( T_('General cache deleted: %s'), $cache_path.'general' ), 'note' );
+			}
+			else
+			{
+				$Messages->add( sprintf( T_('Could not delete general cache: %s'), $cache_path.'general' ), 'error' );
+			}
+
+			$SQL = 'SELECT blog_ID FROM T_blogs
+					INNER JOIN T_coll_settings ON ( blog_ID = cset_coll_ID
+								AND cset_name = "cache_enabled"
+								AND cset_value = "1" )
+					WHERE 1=1';
+
+			if( $blog_array = $DB->get_col( $SQL ) )
+			{
+				foreach( $blog_array as $l_blog )
+				{	// Clear blog cache
+					if( cleardir_r( $cache_path.'c'.$l_blog ) )
+					{
+						$Messages->add( sprintf( T_('Blog %d cache deleted: %s'), $l_blog, $cache_path.'c'.$l_blog ), 'note' );
+					}
+					else
+					{
+						$Messages->add( sprintf( T_('Could not delete blog %d cache: %s'), $l_blog, $cache_path.'c'.$l_blog ), 'error' );
+					}
+				}
+			}
+
+			$Messages->add( T_('Page cache deleted.'), 'success' );
+			break;
+
+		case 'del_filecache':
+			// delete the thumbnail cahces .evocache
+			// TODO> handle custom media directories dh> ??
+			// Delete any ?evocache folders:
+			$deleted_dirs = delete_cachefolders($Messages);
+			$Messages->add( sprintf( T_('Deleted %d directories.'), $deleted_dirs ), 'success' );
+			break;
+
+		case 'repair_cache':
+			load_funcs( 'tools/model/_system.funcs.php' );
+			$result = system_check_caches();
+			if( empty( $result ) )
+			{
+				$Messages->add( T_( 'All cache folders are working properly.' ), 'success' );
+			}
+			else
+			{
+				$error_message = T_( 'Unable to repair all cache folders becaue of file permissions' ).':<br />';
+				$Messages->add( $error_message.implode( '<br />', $result ) );
+			}
+			break;
+
+		case 'optimize_tables':
+			// Optimize MyISAM tables
+			global $tableprefix;
+
+			$db_optimized = false;
+			$tables = $DB->get_results( 'SHOW TABLE STATUS FROM `'.$DB->dbname.'` LIKE \''.$tableprefix.'%\'');
+
+			foreach( $tables as $table )
+			{
+				// Before MySQL 4.1.2, the "Engine" field was labeled as "Type".
+				if( ( ( isset( $table->Engine ) && $table->Engine == 'MyISAM' )
+					  || ( isset( $table->Type ) && $table->Type == 'MyISAM' ) )
+					&& $table->Data_free )
+				{	// Optimization needed
+					if( !$DB->query( 'OPTIMIZE TABLE '.$table->Name ) )
+					{
+						$Messages->add( sprintf( T_('Database table %s could not be optimized.'), '<b>'.$table->Name.'</b>' ), 'note' );
+					}
+					else
+					{
+						$db_optimized = true;
+						$Messages->add( sprintf( T_('Database table %s optimized.'), '<b>'.$table->Name.'</b>' ), 'success' );
+					}
+				}
+			}
+
+			if( !$db_optimized )
+			{
+				$Messages->add( T_('Database tables are already optimized.'), 'success' );
+			}
+			break;
+
+		case 'find_broken_posts':
+			// select broken items
+			$sql = 'SELECT * FROM T_items__item
+						WHERE post_canonical_slug_ID NOT IN (
+							SELECT slug_ID FROM T_slug )';
+			$broken_items = $DB->get_results( $sql, OBJECT, 'Find broken posts' );
+			$num_deleted = 0;
+			foreach( $broken_items as $row )
+			{ // delete broken items
+				$broken_Item = new Item( $row );
+				if( $broken_Item->dbdelete() )
+				{
+					$num_deleted++;
+				}
+			}
+
+			$Messages->add( sprintf( T_('Deleted %d posts.'), $num_deleted ), 'success' );
+			break;
+
+		case 'find_broken_slugs':
+			// delete broken slugs
+			$r = $DB->query( 'DELETE FROM T_slug
+								WHERE slug_type = "item" and slug_itm_ID NOT IN (
+									SELECT post_ID FROM T_items__item )' );
+
+			if( $r !== false )
+			{
+				$Messages->add( sprintf( T_('Deleted %d slugs.'), $r ), 'success' );
+			}
+			break;
+
+		case 'delete_orphan_comment_uploads':
+			// delete orphan comment upload, older than 24 hours
+			$count = remove_orphan_files( NULL, 24 );
+
+			$Messages->add( sprintf( T_('%d files have been deleted'), $count ), 'success' );
+			break;
+
+		case 'create_sample_comments':
+			$blog_ID = param( 'blog_ID', 'string', 0 );
+			$num_comments = param( 'num_comments', 'string', 0 );
+			$num_posts = param( 'num_posts', 'string', 0 );
+
+			if ( ! ( param_check_number( 'blog_ID', T_('Blog ID must be a number'), true ) &&
+				param_check_number( 'num_comments', T_('Comments per post must be a number'), true ) &&
+				param_check_number( 'num_posts', T_('"How many posts" field must be a number'), true ) ) )
+			{ // param errors
+				$action = 'show_create_comments';
+				break;
+			}
+
+			// check blog_ID
+			$BlogCache = & get_BlogCache();
+			$selected_Blog = $BlogCache->get_by_ID( $blog_ID, false, false );
+			if( $selected_Blog == NULL )
+			{
+				$Messages->add( T_( 'Blog ID must be a valid Blog ID!' ), 'error' );
+				$action = 'show_create_comments';
+				break;
+			}
+
+			$curr_orderby = $selected_Blog->get_setting('orderby');
+			if( $curr_orderby == 'RAND' )
+			{
+				$curr_orderby .= '()';
+			}
+			else
+			{
+				$curr_orderby = 'post_'.$curr_orderby;
+			}
+			$curr_orderdir = $selected_Blog->get_setting('orderdir');
+
+			// find the $num_posts latest posts in blog
+			$sql = 'SELECT post_ID 
+						FROM T_items__item INNER JOIN T_categories ON post_main_cat_ID = cat_ID
+					 WHERE cat_blog_ID = '.$blog_ID.' AND post_status = '.$DB->quote( 'published' ).'
+					 ORDER BY '.$curr_orderby.' '.$curr_orderdir.', post_ID '.$curr_orderdir.'
+					 LIMIT '.$num_posts;
+			$items_result = $DB->get_results( $sql, ARRAY_A, 'Find the x latest posts in blog' );
+
+			$count = 1;
+			$fix_content = 'This is an auto generated comment for testing the moderation features.
+							http://www.test.com/test_comment_';
+			// go through on selected items
+			foreach( $items_result as $row )
+			{
+				$item_ID = $row['post_ID'];
+				// create $num_comments comments for each item
+				for( $i = 0; $i < $num_comments; $i++ )
+				{
+					$author = 'Test '.$count;
+					$email = 'test_'.$count.'@test.com';
+					$url = 'http://www.test.com/test_comment_'.$count;
+
+					$content = $fix_content.$count;
+					for( $j = 0; $j < 50; $j++ )
+					{ // create 50 random word
+						$length = rand(1, 15);
+						$word = generate_random_key( $length, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ' );
+						$content = $content.' '.$word;
+					}
+
+					// create and save a new comment
+					$Comment = new Comment();
+					$Comment->set( 'post_ID', $item_ID );
+					$Comment->set( 'status', 'draft' );
+					$Comment->set( 'author', $author );
+					$Comment->set( 'author_email', $email );
+					$Comment->set( 'author_url', $url );
+					$Comment->set( 'content', $content );
+					$Comment->set( 'date', date( 'Y-m-d H:i:s', $localtimenow ) );
+					$Comment->set( 'author_IP', $Hit->IP );
+					$Comment->dbsave();
+					$count++;
+				}
+			}
+
+			$Messages->add( sprintf( T_('Created %d comments.'), $count - 1 ), 'success' );
+			break;
+
+		case 'create_sample_posts':
+			$blog_ID = param( 'blog_ID', 'string', 0 );
+			$num_posts = param( 'num_posts', 'string', 0 );
+
+			if ( ! ( param_check_number( 'blog_ID', T_('Blog ID must be a number'), true ) &&
+				param_check_number( 'num_posts', T_('"How many posts" field must be a number'), true ) ) )
+			{ // param errors
+				$action = 'show_create_posts';
+				break;
+			}
+
+			// check blog_ID
+			$BlogCache = & get_BlogCache();
+			$selected_Blog = $BlogCache->get_by_ID( $blog_ID, false, false );
+			if( $selected_Blog == NULL )
+			{
+				$Messages->add( T_( 'Blog ID must be a valid Blog ID!' ), 'error' );
+				$action = 'show_create_posts';
+				break;
+			}
+
+			$time = ( $localtimenow );
+			$content = T_( 'This is an auto generated post for testing moderation.' );
+			for( $i = 1; $i <= $num_posts; $i++ )
+			{
+				for( $j = 0; $j < 50; $j++ )
+				{ // create 50 random word
+					$length = rand(1, 15);
+					$word = generate_random_key( $length, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ' );
+					$content = $content.' '.$word;
+				}
+				$Item = new Item();
+				$Item->set( 'title', 'Generated post '.$i );
+				$Item->set( 'content', $content );
+				$Item->set( 'status', 'published' );
+				$Item->set( 'dateset', '1' );
+				// set post main cat ID, from selected blog
+				$Item->set( 'main_cat_ID', $selected_Blog->get_default_cat_ID() );
+				$Item->set( 'datestart', date( 'Y-m-d H:i:s', $time ) );
+				$Item->set( 'datecreated', $time );
+				$Item->dbinsert();
+			}
+			$Messages->add( sprintf( T_('Created %d posts.'), $num_posts ), 'success' );
+			break;
+
+		case 'recreate_itemslugs':
+			$ItemCache = get_ItemCache();
+			$ItemCache->load_where( '( post_title != "" ) AND ( post_urltitle = "title" OR post_urltitle LIKE "title-%" )');
+			$items = $ItemCache->get_ID_array();
+			$count_slugs = 0;
+
+			set_max_execution_time(0);
+
+			foreach( $items as $item_ID )
+			{
+				$Item = $ItemCache->get_by_ID($item_ID);
+
+				$prev_urltitle = $Item->get( 'urltitle' );
+				$item_title = $Item->get( 'title' );
+
+				// check if post title is not empty and urltitle was auto generated ( equals title or title-[0-9]+ )
+				// Note: urltitle will be auto generated on this form (title-[0-9]+), if post title wass empty and, urltitle was not set
+				// Note: Even if a post title was set to 'title' on purpose it's possible, that this tool will change the post urltitle
+				if( ( ! empty( $item_title ) ) && ( ( $prev_urltitle == 'title' ) || ( preg_match( '#^title-[0-9]+$#', $prev_urltitle ) ) ) )
+				{
+					// set urltitle empty, so the item update function will regenerate the item slug
+					$Item->set( 'urltitle', '' );
+					$result = $Item->dbupdate(/* do not autotrack modification */ false, /* update slug */ true, /* do not update excerpt */ false); 
+					if( ( $result ) && ( $prev_urltitle != $Item->get( 'urltitle' ) ) )
+					{ // update was successful, and item urltitle was changed
+						$count_slugs++;
+					}
+				}
+			}
+			$Messages->add( sprintf( 'Created %d new URL slugs.', $count_slugs ), 'success' );
+			break;
+
+		case 'del_obsolete_tags':
+			$DB->query('
+				DELETE T_items__tag FROM T_items__tag
+				  LEFT JOIN T_items__itemtag ON tag_ID = itag_tag_ID
+				 WHERE itag_itm_ID IS NULL');
+			$Messages->add( sprintf(T_('Removed %d obsolete tag entries.'), $DB->rows_affected), 'success' );
+			break;
+
+		case 'view_phpinfo':
+			// Display PHP info and exit
+			headers_content_mightcache('text/html');
+			phpinfo();
+			exit();
+			break;
+	}
+}
+
+$AdminUI->breadcrumbpath_init( false );  // fp> I'm playing with the idea of keeping the current blog in the path here...
+$AdminUI->breadcrumbpath_add( T_('Tools'), '?ctrl=crontab' );
+$AdminUI->breadcrumbpath_add( T_('Miscellaneous'), '?ctrl=tools' );
+
+
+// Display <html><head>...</head> section! (Note: should be done early if actions do not redirect)
+$AdminUI->disp_html_head();
+
+// Display title, menu, messages, etc. (Note: messages MUST be displayed AFTER the actions)
+$AdminUI->disp_body_top();
+
+// Begin payload block:
+$AdminUI->disp_payload_begin();
+
+
+if( empty($tab) )
+{
+	switch( $action )
+	{
+		case 'find_broken_posts':
+			$AdminUI->disp_view( 'tools/views/_broken_posts.view.php' );
+			break;
+
+		case 'find_broken_slugs':
+			$AdminUI->disp_view( 'tools/views/_broken_slugs.view.php' );
+			break;
+
+		case 'show_create_comments':
+			$AdminUI->disp_view( 'tools/views/_create_comments.form.php' );
+			break;
+
+		case 'show_create_posts':
+			$AdminUI->disp_view( 'tools/views/_create_posts.form.php' );
+			break;
+
+		default:
+			$AdminUI->disp_view( 'tools/views/_misc_tools.view.php' );
+			break;
+	}
+}
+elseif( $tab_Plugin )
+{ // Plugin tab
+
+	// Icons:
+	?>
+
+	<div class="right_icons">
+
+	<?php
+	echo $tab_Plugin->get_edit_settings_link()
+		.' '.$tab_Plugin->get_help_link('$help_url')
+		.' '.$tab_Plugin->get_help_link('$readme');
+	?>
+
+	</div>
+
+	<?php
+	$Plugins->call_method_if_active( $tab_plugin_ID, 'AdminTabPayload', $params = array() );
+}
+
+
+// End payload block:
+$AdminUI->disp_payload_end();
+
+// Display body bottom, debug info and close </html>:
+$AdminUI->disp_global_footer();
+
+/*
+ * $Log: tools.ctrl.php,v $
+ */
+?>

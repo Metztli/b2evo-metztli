@@ -1,0 +1,251 @@
+/**
+ * These are the generic styles that are common to "all" skins.
+ *
+ * This is for the blog NAVIGATION and global page layout. See item_base.css for the post CONTENT styles.
+ *
+ * Override this with style.css in your skin folder.
+ */
+
+table.prevnext_post {
+	width: 95%;
+	margin: 0 auto;
+}
+table.prevnext_post a {
+	text-decoration: none;
+}
+
+div.featured_post {
+	border: 1px solid #ccc;
+	padding: 14px;
+	margin: 1ex 0;
+}
+div.featured_post h2 {
+	margin-top: 6px;
+}
+
+a.permalink_right
+{
+	float: right;
+	margin: 0 0 0 1em;
+}
+
+p.baseline a.contact_link,
+a.contact_link {
+	text-decoration: underline;
+}
+
+/* Calendar: */
+table.bCalendarTable caption {
+	font-size: 105%;
+	font-weight: bold;
+	margin: auto;
+	padding: 3px 0;
+	white-space: nowrap;
+}
+table.bCalendarTable {
+	margin: 0 auto 1em auto;
+	font-size: 77%;
+	border-collapse: separate;
+	border-spacing: 0px;
+}
+tr.bCalendarRow {
+	text-align: center;
+}
+th.bCalendarHeaderCell {
+	color: #999;
+	font-size: 84%;
+	width: 4ex;
+}
+td.bCalendarCell,
+td.bCalendarLinkPost,
+td.bCalendarEmptyCell {
+	width: 4ex;
+	padding: 2px 0;
+}
+.bCalendarLinkPost {
+	font-weight: bold;
+}
+#bCalendarToday {
+	background-color: #f6eeee;
+	border: 1px solid #900;
+}
+
+/* TODO: not very unique IDs! (prev/next) - used in Calendar at least*/
+td#prev,
+td#next {
+	font-weight: bold;
+	font-size: 105%;
+	padding: .5ex;
+	white-space: nowrap;
+}
+td#prev a,
+td#next a {
+	padding: .5ex;
+}
+td#prev {
+	text-align:left;
+}
+td#next {
+	text-align:right;
+}
+
+
+div.powered_by {
+	margin: 16px 0;
+	text-align: center;
+}
+div.error_404,
+div.error_additional_content {
+	margin: 1em;
+}
+
+
+/* Styles for comments */
+div.bComment, /* Entire comment block */
+form.bComment /* New comment form */
+{
+	margin: 1ex 2ex;
+	padding: 0 1em 1em;
+	border: 1px dotted #999;
+}
+#comment_preview {
+	background-color: #eee;
+}
+div.bCommentTitle {
+	margin: 1ex 0;
+	font-weight: bold;
+}
+div.bCommentSmallPrint {
+	clear: both;
+	font-size: 78%;
+	margin: 1ex 0;
+}
+.bCommentAvatar {
+	margin: 5px 10px 10px 0;
+	padding: 2px;
+	float:left;
+	border:1px solid #ccc;
+}
+
+div.moderation_msg
+{
+	margin: 1ex 2ex;
+	padding: 0 1ex;
+	border: 1px dotted #fa9;
+	color: #e70;
+}
+
+div.feedback_feed_msg {
+	margin: 2em 2ex;
+	text-align: right;
+}
+
+
+/* 18/80% forms: comments and profile */
+form.bComment fieldset
+{	/* one form line */
+	border: none;
+	margin: 1em 0 0 0;
+	padding: 0ex;
+	/* border: 1px solid #00f; */
+}
+form.bComment fieldset label {
+	font-weight: bold;
+}
+form.bComment fieldset div.label
+{ /* label of form line */
+	float: left;
+	width: 100px;
+	text-align: right;
+	font-weight: bold;
+	/* border: 1px solid #f00; */
+}
+form.bComment fieldset div.input
+{ /* input zone of form line */
+	margin: 0 0 0 108px;
+	/* border: 1px solid #f00; */
+}
+form.bComment fieldset.input{
+	margin: 0;
+	/* border: 1px solid #0f0; */
+}
+form.bComment fieldset div.info
+{ /* info zone of form line */
+	margin: 0 0 0 108px;
+	/* border: 1px solid #f00; */
+}
+form.bComment fieldset div.label select {
+	width: 94%;
+}
+
+/* bComment Avatar */
+form.bComment fieldset div.avatartag
+{
+	float: left;
+	margin: 0 0.5em 0.5em 0;
+	padding: 0;
+}
+
+.comment_disabled_msg {
+	text-align: center;
+	color: #e00;
+}
+
+/* Avatar widget */
+div.widget_core_coll_avatar {
+	margin-top: 1em;
+	margin-bottom: 1em;
+	text-align:center;
+}
+
+/* Search widget */
+div.compact_search_form input.search_field {
+	width: 120px;
+	margin-right: 3px;
+}
+div.compact_search_form input.search_submit {
+	width: 69px;
+}
+div.container_menu_top div.widget_core_coll_search_form {
+	float: right;
+}
+div.container_menu_top input.search_field {
+	width: 160px;	/* There is typically more space here */
+}
+
+/* tabs */
+div.tabs {
+	line-height:normal;
+	position: relative;
+	top: 2px;
+	margin: 0 14px 36px; /* pjsnet */
+	list-style: none;
+}
+
+div.tabs div.option,
+div.tabs div.selected {
+	padding: 0 0 0 6px;
+	margin: 5px;
+	float: left;
+}
+
+div.tabs div.selected {
+	font-weight:bold;
+}
+
+div.tabs div.option a:hover {
+	text-decoration: underline;
+}
+
+.action_icon
+{
+	margin: 0 2px;
+	font-weight: bold;
+	vertical-align: top;
+}
+
+/* Ajax form */
+div.section_requires_javascript p.ajax-loader {
+	text-align: center;
+	margin-top: 1em;
+}
