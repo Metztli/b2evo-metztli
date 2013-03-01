@@ -22,6 +22,8 @@ Below, please note that I will name the application b2evo, but you can select an
 
 rhc app create -a b2evo -t php-5.3
 
+A new directory named as your application (i.e. b2evo in this case) will be created at your current location. You may examine its content.
+
 Add mysql support to your application
     
 rhc cartridge add -c mysql-5.1 -a b2evo
