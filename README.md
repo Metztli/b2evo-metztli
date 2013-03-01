@@ -16,9 +16,7 @@ I assume that you have installed the rhc command line tools for your operating s
 https://openshift.redhat.com/community/get-started
 
 Create a PHP application. Evidently and to make your task ahead easier, create a working directory and change to that location.
-All the rhc commands below are relative to
-
-your working directory location.
+All the rhc commands below are relative to your working directory location.
 
 Below, please note that I will name the application b2evo, but you can select any (allowed) name desired.
 
@@ -28,19 +26,9 @@ Add mysql support to your application
     
 rhc cartridge add -c mysql-5.1 -a b2evo
 
-Make a note of the username, password, and host name as you will need to use these to complete the b2evolution installation on OpenShift
+Make a note of the username, password, and host name as you will need to use these to complete the b2evolution installation on OpenShift.
 
-Now, if you have and want to point a domain name (or subdomain) to your b2evo application (recently created), then use form of command below:
-
-rhc alias add b2evo b2evolution.yourDomainName.xyz
-
-Don't forget that you must first modify the CNAME at your domain DNS service provider and it usually takes at least 12hours for it to propagate.
-
-Thus, as an example to guide you in your CNAME settings:
-
-b2evolution.yourDomainName.xyz	  should point to  	b2evo-yourNameSpace.rhcloud.com
-
-Add this upstream b2evolution quickstart repo
+Add this upstream b2evolution quickstart repo:
 
 cd b2evo/php
 
@@ -61,7 +49,22 @@ http://b2evo-yourNameSpace.rhcloud.com
 Note: of course, if you used CNAME to point your (sub)domain name to your OpenShift application then setup your b2evolution
 application by accessing your (sub)domain URL.
 
+Accordingly, if you have and want to point a domain name (or subdomain) to your b2evo application (recently created), then use form of command below:
+
+rhc alias add b2evo b2evolution.yourDomainName.xyz
+
+Don't forget that you must first modify the CNAME at your domain DNS service provider and it usually takes at least 12hours for it to propagate.
+
+Thus, as an example to guide you in your CNAME settings:
+
+b2evolution.yourDomainName.xyz	  should point to  	b2evo-yourNameSpace.rhcloud.com
+-----------------------------
+
 
 Huelmati [enjoy]!
 
+[1] Note: for mysql database in b2evolution, take special note of string similar to Connection URL: mysql://abc.opq.stu.xyz:3306/ provided
+
+to you by Openshift. You will need to input similar as abc.opq.stu.xyz:3306 (not localhost) into install b2evolution MySQL Host/Server: field.
+ 
 
