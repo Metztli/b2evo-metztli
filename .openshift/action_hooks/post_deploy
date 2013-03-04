@@ -3,38 +3,22 @@
 # is deployed and started.  This script gets executed directly, so 
 # it could be python, php, ruby, etc.
 #
-# 02-28-2013: Jose R Rodriguez/Metztli IT http://www.metztli-it.com
+# 03-03-2013: Jose R Rodriguez/Metztli IT http://www.metztli-it.com
 # Due diligence has been exercised but no guarantees are conveyed in either
 # explicit or implicit manner or form.
 #
-# Whenever we do a 'git push', the first condition wil always be [ ! false ] = TRUE because b2evolution 
-# _basic_config.php file will NOT exist after the push UNTIL after we fill in the fields during install.
-#
-# The inner condition will only be executed AFTER the first b2evolution successful installation on OpenShift
-# and AFTER the first successful post_stop_php-5.x instance
-#
-if [ ! -f $OPENSHIFT_REPO_DIR/php/conf/_basic_config.php ] &&  [ ! -d $OPENSHIFT_DATA_DIR/conf ]
+if  [ -L  $OPENSHIFT_REPO_DIR/php/cache ]
 then
-mkdir $OPENSHIFT_DATA_DIR/conf
+exit
 else
-	if [ -f $OPENSHIFT_DATA_DIR/conf/_basic_config.php ] 
+	if [ -d $OPENSHIFT_REPO_DIR/php/cache ] && [ -d $OPENSHIFT_DATA_DIR/cache ]
 	then
-	ln -s $OPENSHIFT_DATA_DIR/conf/_basic_config.php $OPENSHIFT_REPO_DIR/php/conf/_basic_config.php
+	rm -rf $OPENSHIFT_REPO_DIR/php/cache
+	ln -s $OPENSHIFT_DATA_DIR/cache $OPENSHIFT_REPO_DIR/php/cache
 	else
+	mv -f $OPENSHIFT_REPO_DIR/php/cache $OPENSHIFT_DATA_DIR/.
+	ln -s $OPENSHIFT_DATA_DIR/cache $OPENSHIFT_REPO_DIR/php/cache
 	exit
 	fi
-exit
-fi
-#
-# The same logic applies to b2evolution cache directory because in an upgrade
-# a git push may remove the cache directories for the bloggers -- causing errors.
-#
-if [ -d $OPENSHIFT_REPO_DIR/php/cache ] && [ -d $OPENSHIFT_DATA_DIR/cache ]
-then
-rm -rf $OPENSHIFT_REPO_DIR/php/cache
-ln -s $OPENSHIFT_DATA_DIR/cache $OPENSHIFT_REPO_DIR/php/cache
-else
-mv -f $OPENSHIFT_REPO_DIR/php/cache $OPENSHIFT_DATA_DIR/.
-ln -s $OPENSHIFT_DATA_DIR/cache $OPENSHIFT_REPO_DIR/php/cache
 exit
 fi

@@ -28,7 +28,7 @@ Add mysql support to your application
     
 rhc cartridge add -c mysql-5.1 -a b2evo
 
-Make a note of the username, password, and host name[1] as you will need to use these to complete the b2evolution installation on OpenShift.
+Make a note of the username, password, and host name (for reference purposes since your b2evolution instance will be provided with relevant values).
 
 Add this upstream b2evolution quickstart repo:
 
@@ -44,11 +44,41 @@ Then push the repo upstream to OpenShift
 
 git push
 
-That's it, you can now checkout your application at:
+That's it, you can now instanciate your b2evolution application at:
 
 http://b2evo-yourNameSpace.rhcloud.com
 
-Note: of course, if you used CNAME to point your (sub)domain name to your OpenShift application then setup your b2evolution
+Please disregard if you get a message similar to:
+
+"You cannot use the application before you finish configuration and installation.
+
+MySQL error:
+Table 'yourAppNameDB.evo_settings' doesn't exist(Errno=1146)"
+
+It only means that the values where taken directly from your OpenShift environment.
+
+Proceed to click either of the 'here' links to finish the b2evolution install.
+
+Select your language from the upper left cascading menu.
+
+If you are not familiar with blogging in b2evolution, allow the preselected defaults to install three(3) sample blogs.
+
+Then press the 'GO!'-labeled button at your lower left. Wait a couple of seconds and you will be provided with your
+
+default login username: admin
+
+please make a note of your random password and use it for your initial login procedure --you can change it upon logging in.
+
+For security change your default login username and your email address.
+
+
+-----------------------------
+
+
+Huelmati [enjoy]!
+
+
+Note: of course, if you used CNAME to point your (sub)domain name to your OpenShift application, then setup your b2evolution
 application by accessing your (sub)domain URL.
 
 Accordingly, if you have and want to point a domain name (or subdomain) to your b2evo application (recently created), then use form of command below:
@@ -59,15 +89,4 @@ Don't forget that you must first modify the CNAME at your domain DNS service pro
 
 Thus, as an example to guide you in your CNAME settings:
 
-b2evolution.yourDomainName.xyz	  should point to	b2evo-yourNameSpace.rhcloud.com
-
------------------------------
-
-
-Huelmati [enjoy]!
-
-[1] Note: for mysql database in b2evolution, take special note of string similar to Connection URL: mysql://abc.opq.stu.xyz:3306/ provided
-
-to you by Openshift. You will need to input similar as abc.opq.stu.xyz:3306 (not localhost) into install b2evolution MySQL Host/Server: field.
- 
-
+b2evolution.yourDomainName.xyz		 should point to		b2evo-yourNameSpace.rhcloud.com
