@@ -52,9 +52,11 @@ die( 'The site is temporarily down for maintenance. Please reload this page in a
  * MySQL DB settings.
  * Fill in your database details (check carefully or nothing will work!)
  */
+/* Jose R Rodriguez/Metztli IT( http://www.metztli-it.com ) 03-08-2013 */
 define("DB2EVOUSER",$_ENV['OPENSHIFT_MYSQL_DB_USERNAME'] );
 define("DB2EVOPASS",$_ENV['OPENSHIFT_MYSQL_DB_PASSWORD'] );
-define("DB2EVONAME",$_ENV['OPENSHIFT_GEAR_NAME'] );
+/* define("DB2EVONAME",$_ENV['OPENSHIFT_GEAR_NAME'] ); */
+define("DB2EVONAME",$_ENV['OPENSHIFT_APP_NAME'] );
 define("DB2EVOHOST",$_ENV['OPENSHIFT_MYSQL_DB_HOST'] . ':' . $_ENV['OPENSHIFT_MYSQL_DB_PORT']);
 $db_config = array(
 	'user'     => DB2EVOUSER,     // your MySQL username
@@ -99,16 +101,14 @@ $allow_evodb_reset = 0;	// Set to 1 to enable. Do not leave this on 1 on product
  *
  * @global string $baseurl
  */
-$baseurl = 'http://amoxtli.nepohualtzintzin.com/';
+/* Jose R Rodriguez/Metztli IT( http://www.metztli-it.com ) 03-08-2013 */
+/* $baseurl = 'http://AppName-uniqueNameSpace.rhcloud.com/'; */
 // Use the following if you want to use the current domain:
-/*
-if( isset($_SERVER['HTTP_HOST']) )
+if( isset($_SERVER['HTTP_HOST']) 
 {	// This only works if HOSt provided by webserver (i-e DOES NOT WORK IN PHP CLI MODE)
 	$baseurl = ( (isset($_SERVER['HTTPS']) && ( $_SERVER['HTTPS'] != 'off' ) ) ?'https://':'http://')
 							.$_SERVER['HTTP_HOST'].'/';
 }
-*/
-
 /**
  * This is used only to create the Admin account.
  * @todo move to installer.
