@@ -21,7 +21,7 @@
  *
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: _plugins_admin.class.php 57 2011-10-26 08:18:58Z sam2kb $
+ * @version $Id: _plugins_admin.class.php 3450 2013-04-11 07:18:53Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -482,9 +482,11 @@ class Plugins_admin extends Plugins
 	 * @param string Classname of the plugin to install
 	 * @param string Initial DB Status of the plugin ("enabled", "disabled", "needs_config", "broken")
 	 * @param string Optional classfile path, if not default (used for tests).
+	 * @param boolean Must the plugin exist (classfile_path and classname)?
+	 *                This is used internally to be able to unregister a non-existing plugin.
 	 * @return Plugin The installed Plugin (perhaps with $install_dep_notes set) or a string in case of error.
 	 */
-	function & install( $classname, $plug_status = 'enabled', $classfile_path = NULL )
+	function & install( $classname, $plug_status = 'enabled', $classfile_path = NULL, $must_exists = true )
 	{
 		global $DB, $Debuglog;
 
@@ -492,7 +494,7 @@ class Plugins_admin extends Plugins
 		$this->load_plugins_table();
 
 		// Register the plugin:
-		$Plugin = & $this->register( $classname, 0, -1, NULL, $classfile_path ); // Auto-generates negative ID; New ID will be set a few lines below
+		$Plugin = & $this->register( $classname, 0, -1, NULL, $classfile_path, $must_exists ); // Auto-generates negative ID; New ID will be set a few lines below
 
 		if( is_string($Plugin) )
 		{ // return error message from register()

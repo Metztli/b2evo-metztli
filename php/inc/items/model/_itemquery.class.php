@@ -24,7 +24,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _itemquery.class.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _itemquery.class.php 3460 2013-04-11 12:54:22Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -195,6 +195,8 @@ class ItemQuery extends SQL
 
 		if( ! empty($cat_array) )
 		{	// We want to restict to some cats:
+			global $DB;
+
 			if( $cat_modifier == '-' )
 			{
 				$eq = 'NOT IN';
@@ -203,7 +205,7 @@ class ItemQuery extends SQL
 			{
 				$eq = 'IN';
 			}
-			$whichcat = 'postcat_cat_ID '. $eq.' ('.implode(',', $cat_array). ') ';
+			$whichcat = 'postcat_cat_ID '. $eq.' ('.$DB->quote( $cat_array ). ') ';
 
 			// echo $whichcat;
 			$this->WHERE_and( $whichcat );
@@ -257,6 +259,8 @@ class ItemQuery extends SQL
 
 		if( ! empty($cat_array) )
 		{	// We want to restict to some cats:
+			global $DB;
+
 			if( $cat_modifier == '-' )
 			{
 				$eq = 'NOT IN';
@@ -265,7 +269,7 @@ class ItemQuery extends SQL
 			{
 				$eq = 'IN';
 			}
-			$whichcat = $cat_ID_field.' '.$eq.' ('.implode(',', $cat_array). ') ';
+			$whichcat = $cat_ID_field.' '.$eq.' ('.$DB->quote( $cat_array ). ') ';
 
 			// echo $whichcat;
 			$this->WHERE_and( $whichcat );
@@ -521,7 +525,7 @@ class ItemQuery extends SQL
 	 */
 	function where_datestart( $m = '', $w = '', $dstart = '', $dstop = '', $timestamp_min = '', $timestamp_max = 'now' )
 	{
-		global $time_difference;
+		global $time_difference, $DB;
 
 		$this->m = $m;
 		$this->w = $w;
@@ -545,8 +549,8 @@ class ItemQuery extends SQL
 			$dstart_mysql = substr($dstart0,0,4).'-'.substr($dstart0,4,2).'-'.substr($dstart0,6,2).' '
 											.substr($dstart0,8,2).':'.substr($dstart0,10,2);
 
-			$this->WHERE_and( $this->dbprefix.'datestart >= \''.$dstart_mysql.'\'
-													OR ( '.$this->dbprefix.'datedeadline IS NULL AND '.$this->dbprefix.'datestart >= \''.$dstart_mysql.'\' )' );
+			$this->WHERE_and( $this->dbprefix.'datestart >= '.$DB->quote( $dstart_mysql ).'
+													OR ( '.$this->dbprefix.'datedeadline IS NULL AND '.$this->dbprefix.'datestart >= '.$DB->quote( $dstart_mysql ).' )' );
 
 			$start_is_set = true;
 		}
@@ -589,7 +593,7 @@ class ItemQuery extends SQL
 											.substr($dstop,8,2).':'.substr($dstop,10,2);
 			}
 
-			$this->WHERE_and( $this->dbprefix.'datestart < \''.$dstop_mysql.'\'' ); // NOT <= comparator because we compare to the superior stop date
+			$this->WHERE_and( $this->dbprefix.'datestart < '.$DB->quote( $dstop_mysql ) ); // NOT <= comparator because we compare to the superior stop date
 
 			$stop_is_set = true;
 		}
@@ -649,7 +653,7 @@ class ItemQuery extends SQL
 		{ // Hide posts before
 			// echo 'hide before '.$timestamp_min;
 			$date_min = remove_seconds( $timestamp_min + $time_difference );
-			$this->WHERE_and( $this->dbprefix.'datestart >= \''. $date_min.'\'' );
+			$this->WHERE_and( $this->dbprefix.'datestart >= '.$DB->quote( $date_min ) );
 		}
 
 		if( $timestamp_max == 'now' )
@@ -661,7 +665,7 @@ class ItemQuery extends SQL
 		{ // Hide posts after
 			// echo 'after';
 			$date_max = remove_seconds( $timestamp_max + $time_difference );
-			$this->WHERE_and( $this->dbprefix.'datestart <= \''. $date_max.'\'' );
+			$this->WHERE_and( $this->dbprefix.'datestart <= '.$DB->quote( $date_max ) );
 		}
 
 	}
@@ -674,13 +678,13 @@ class ItemQuery extends SQL
 	 */
 	function where_datecreated( $timestamp_created_max = 'now' )
 	{
-		global $time_difference;
+		global $time_difference, $DB;
 
 		if( !empty($timestamp_created_max) )
 		{ // Hide posts after
 			// echo 'after';
 			$date_max = date('Y-m-d H:i:s', $timestamp_created_max + $time_difference );
-			$this->WHERE_and( $this->dbprefix.'datecreated <= \''. $date_max.'\'' );
+			$this->WHERE_and( $this->dbprefix.'datecreated <= '.$DB->quote( $date_max ) );
 		}
 
 	}

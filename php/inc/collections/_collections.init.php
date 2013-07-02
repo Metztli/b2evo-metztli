@@ -343,7 +343,6 @@ class collections_Module extends Module
 		load_class( 'items/model/_itemtype.class.php', 'ItemType' );
 		load_class( 'items/model/_link.class.php', 'Link' );
 		load_funcs( 'comments/model/_comment.funcs.php');
-		load_funcs( 'items/model/_item.funcs.php');
 		load_class( 'comments/model/_commentlist.class.php', 'CommentList2' );
 		load_class( 'items/model/_itemquery.class.php', 'ItemQuery' );
 		load_class( 'comments/model/_commentquery.class.php', 'CommentQuery' );

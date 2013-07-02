@@ -38,7 +38,7 @@ if( empty($c) )
 	$disp_comment_form = 0;			// DO NOT Display the comments form if not requested
 }
 
-if( empty($tb) || (!$Blog->get( 'allowtrackbacks' )) )
+if( empty($tb) || !$Item->can_receive_pings() )
 {	// Trackback not requested or not allowed
 	$disp_trackbacks = 0;				// DO NOT Display the trackbacks if not requested
 	$disp_trackback_url = 0;		// DO NOT Display the trackback URL if not requested

@@ -1,6 +1,6 @@
 <?php
 /**
- * This file sends an email or a private message to the user! 
+ * This file sends an email or a private message to the user!
  * It's used to handle the contact form send message action. Even visitors are able to send emails.
  *
  * It's the form action for {@link _msgform.disp.php}.
@@ -170,6 +170,7 @@ else
 }
 
 
+$allow_msgform = '';
 if( ! empty( $recipient_id ) )
 { // Get the email address for the recipient if a member:
 	$UserCache = & get_UserCache();
@@ -252,8 +253,8 @@ if( $allow_msgform == 'email' )
 		$message_footer .= T_("Click on the following link to not receive e-mails on your comments\nfor this e-mail address anymore:")
 			."\n".$htsrv_url.'message_send.php?optout_cmt_email='.rawurlencode($Comment->author_email);
 	}
-	
-	
+
+
 	// Trigger event: a Plugin could add a $category="error" message here..
 	$Plugins->trigger_event( 'MessageFormSent', array(
 		'recipient_ID' => & $recipient_id,
@@ -266,8 +267,8 @@ if( $allow_msgform == 'email' )
 		'sender_name' => & $sender_name,
 		'sender_email' => & $sender_address,
 		) );
-	
-	
+
+
 	if( $Messages->has_errors() )
 	{ // there were errors: display them and get out of here
 		$Messages->display( T_('Cannot send email, please correct these errors:'),

@@ -29,7 +29,7 @@
  * @author blueyed: Daniel HAHLER
  * @author fplanque: Francois PLANQUE
  *
- * @version $Id: trackback.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: trackback.php 2624 2012-12-04 13:37:04Z yura $
  */
 
 
@@ -102,7 +102,7 @@ if( !( $Blog = & $commented_Item->get_Blog() ) )
 	trackback_response( 1, 'Sorry, could not get the post\'s weblog.' ); // exits
 }
 
-if( ! $Blog->get('allowtrackbacks') )
+if( ! $commented_Item->can_receive_pings() )
 {
 	trackback_response( 1, 'Sorry, this weblog does not allow you to trackback its posts.' ); // exits
 }

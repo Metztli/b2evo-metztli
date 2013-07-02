@@ -31,7 +31,7 @@
  * @author gorgeb: Bertrand GORGE / EPISTEMA
  * @author mbruneau: Marc BRUNEAU / PROGIDISTRI
  *
- * @version $Id: _item.class.php 99 2011-10-27 04:58:47Z fplanque $
+ * @version $Id: _item.class.php 3557 2013-04-26 06:21:26Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -806,6 +806,10 @@ class Item extends ItemLight
 
 		if( ( $this->Blog->get_setting( 'allow_comments' ) != 'never' ) && $display )
 		{
+			if( ( $this->comment_status == 'closed' ) || ( $this->comment_status == 'disabled' ) )
+			{ // Don't display the disabled comment form because we cannot create the comments for this post
+				return false;
+			}
 			echo $section_title;
 			// set item_url for redirect after login, if login required
 			$item_url = $this->get_permanent_url();
@@ -2385,11 +2389,12 @@ class Item extends ItemLight
 	/**
 	 * Return true if trackbacks and pingbacks are allowed
 	 *
-	 * @return boolen
+	 * @return boolean
 	 */
 	function can_receive_pings()
 	{
-		return $this->Blog->get( 'allowtrackbacks' );
+		$this->load_Blog();
+		return $this->Blog->get( 'allowtrackbacks' ) && $this->can_comment( NULL );
 	}
 
 

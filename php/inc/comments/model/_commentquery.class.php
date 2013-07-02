@@ -20,7 +20,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author asimo: Evo Factory / Attila Simo
  *
- * @version $Id: _commentquery.class.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _commentquery.class.php 3460 2013-04-11 12:54:22Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -163,7 +163,16 @@ class CommentQuery extends SQL
 			$post_list = $post;
 		}
 
-		$this->WHERE_and( $this->dbprefix.'post_ID '.$eq.' ('.$post_list.')' );
+		// Validate post ID list
+		$post_ids = array();
+		$post_list = explode( ',', $post_list );
+		foreach( $post_list as $p_id )
+		{
+			$post_ids[] = intval( $p_id );// make sure they're all numbers
+		}
+		$this->post = implode( ',', $post_ids );
+
+		$this->WHERE_and( $this->dbprefix.'post_ID '.$eq.' ('.$this->post.')' );
 	}
 
 
@@ -192,6 +201,11 @@ class CommentQuery extends SQL
 			$author_list = $author;
 		}
 
+		if( preg_match( '/^[0-9]+(,[0-9]+)*$/', $author_list ) === false )
+		{
+			debug_die( 'Invalid comment author filter request' );
+		}
+
 		$this->WHERE_and( $this->dbprefix.'author_ID '.$eq.' ('.$author_list.')' );
 	}
 
@@ -203,6 +217,8 @@ class CommentQuery extends SQL
 	 */
 	function where_author_email( $author_email )
 	{
+		global $DB;
+
 		$this->author_email = $author_email;
 
 		if( empty( $author_email ) )
@@ -213,15 +229,15 @@ class CommentQuery extends SQL
 		if( substr( $author_email, 0, 1 ) == '-' )
 		{	// List starts with MINUS sign:
 			$eq = 'NOT IN';
-			$author_email_list = substr( $author_email, 1 );
+			$author_email_list = explode( ',', substr( $author_email, 1 ) );
 		}
 		else
 		{
 			$eq = 'IN';
-			$author_email_list = $author_email;
+			$author_email_list = explode( ',', $author_email );
 		}
 
-		$this->WHERE_and( $this->dbprefix.'author_email '.$eq.' ('.$author_email_list.')' );
+		$this->WHERE_and( $this->dbprefix.'author_email '.$eq.' ( '.$DB->quote( $author_email_list ).' )' );
 	}
 
 
@@ -356,6 +372,8 @@ class CommentQuery extends SQL
 	 */
 	function where_statuses( $show_statuses )
 	{
+		global $DB;
+
 		if( empty( $show_statuses ) )
 		{ // initialize if emty
 			$show_statuses = array( 'published', 'draft', 'deprecated' );
@@ -366,7 +384,7 @@ class CommentQuery extends SQL
 		$sep = '';
 		foreach( $show_statuses as $status )
 		{
-			$list .= $sep.'\''.$status.'\'';
+			$list .= $sep.$DB->quote( $status );
 			$sep = ',';
 		}
 
@@ -381,6 +399,8 @@ class CommentQuery extends SQL
 	 */
 	function where_types( $types )
 	{
+		global $DB;
+
 		$this->types = $types;
 
 		if( empty( $types ) )
@@ -392,7 +412,7 @@ class CommentQuery extends SQL
 		$sep = '';
 		foreach( $types as $type )
 		{
-			$list .= $sep.'\''.$type.'\'';
+			$list .= $sep.$DB->quote( $type );
 			$sep = ',';
 		}
 

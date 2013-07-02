@@ -32,7 +32,7 @@
  * @author tswicegood: Travis SWICEGOOD.
  * @author vegarg: Vegar BERG GULDAL.
  *
- * @version $Id: _item.funcs.php 1201 2012-04-07 04:03:31Z sam2kb $
+ * @version $Id: _item.funcs.php 3451 2013-04-11 07:37:02Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -430,7 +430,7 @@ function bpost_count_words( $str )
  */
 function statuses_where_clause( $show_statuses = '', $dbprefix = 'post_', $req_blog = NULL )
 {
-	global $current_User, $blog;
+	global $current_User, $blog, $DB;
 
 	if( is_null($req_blog ) )
 	{
@@ -469,7 +469,7 @@ function statuses_where_clause( $show_statuses = '', $dbprefix = 'post_', $req_b
 	$sep = '';
 	foreach( $show_statuses as $other_status )
 	{
-		$other_statuses .= $sep.'\''.$other_status.'\'';
+		$other_statuses .= $sep.$DB->quote( $other_status );
 		$sep = ',';
 	}
 	if( strlen( $other_statuses ) )

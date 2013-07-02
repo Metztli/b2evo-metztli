@@ -29,7 +29,7 @@
  * @author fplanque: Francois PLANQUE
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: _user.class.php 1179 2012-04-05 00:24:39Z sam2kb $
+ * @version $Id: _user.class.php 3468 2013-04-12 06:53:29Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -1739,8 +1739,9 @@ class User extends DataObject
 		// Update existing fields:
 		if( !empty($this->updated_fields) )
 		{
-			foreach( $this->updated_fields as $uf_ID=>$uf_val )
+			foreach( $this->updated_fields as $uf_ID => $uf_val )
 			{
+				// Note the updated_fields key values must be integers, so don't need casting or DB->quote()
 				if( empty( $uf_val ) )
 				{	// Delete field:
 					$DB->query( 'DELETE FROM T_users__fields
@@ -1749,7 +1750,7 @@ class User extends DataObject
 				else
 				{	// Update field:
 					$DB->query( 'UPDATE T_users__fields
-													SET uf_varchar = '.$DB->quote($uf_val).'
+													SET uf_varchar = '.$DB->quote( $uf_val ).'
 												WHERE uf_ID = '.$uf_ID );
 				}
 			}

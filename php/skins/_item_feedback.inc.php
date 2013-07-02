@@ -58,7 +58,7 @@ if( $Item->can_see_comments( true ) )
 		$params['disp_comment_form'] = false;			// DO NOT Display the comments form if not requested
 	}
 
-	if( empty($tb) || !$Blog->get( 'allowtrackbacks' ) )
+	if( empty($tb) || !$Item->can_receive_pings() )
 	{	// Trackback not requested or not allowed
 		$params['disp_trackbacks'] = false;				// DO NOT Display the trackbacks if not requested
 		$params['disp_trackback_url'] = false;		// DO NOT Display the trackback URL if not requested
