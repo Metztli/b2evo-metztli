@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  * Parts of this file are copyright (c)2005 by Jason Edgecombe.
  *
@@ -30,7 +30,7 @@
  *
  * @package evocore
  *
- * @version $Id: _blog.class.php 796 2012-02-09 05:01:09Z sam2kb $
+ * @version $Id: _blog.class.php 4058 2013-06-26 06:23:03Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -97,13 +97,23 @@ class Blog extends DataObject
 	var $allowtrackbacks = 0;
 	var $allowblogcss = 0;
 	var $allowusercss = 0;
-	var $skin_ID;
 	var $in_bloglist = 1;
 	var $UID;
 	var $media_location = 'default';
 	var $media_subdir = '';
 	var $media_fullpath = '';
 	var $media_url = '';
+
+
+	/**
+	 * The URL to the basepath of that blog.
+	 * This is supposed to be the same as $baseurl but localized to the domain of the blog/
+	 *
+	 * Lazy filled by get_basepath_url()
+	 *
+	 * @var string
+	 */
+	var $basepath_url;
 
 	/**
 	 * Additional settings for the collection.  lazy filled.
@@ -124,6 +134,11 @@ class Blog extends DataObject
 	 * @var integer
 	 */
 	var $default_cat_ID;
+
+	/**
+	 * @var string Type of blog ( 'std', 'photo', 'group', 'forum', 'manual' )
+	 */
+	var $type;
 
 
 	/**
@@ -159,7 +174,6 @@ class Blog extends DataObject
 			$this->owner_user_ID = 1; // DB default
 			$this->set( 'locale', $default_locale );
 			$this->set( 'access_type', 'extrapath' );
-			$this->skin_ID = 1;	// TODO: this is the DB default, but it will fail if skin #1 does not exist
 		}
 		else
 		{
@@ -181,13 +195,13 @@ class Blog extends DataObject
 			$this->allowtrackbacks = $db_row->blog_allowtrackbacks;
 			$this->allowblogcss = $db_row->blog_allowblogcss;
 			$this->allowusercss = $db_row->blog_allowusercss;
-			$this->skin_ID = $db_row->blog_skin_ID;
 			$this->in_bloglist = $db_row->blog_in_bloglist;
 			$this->media_location = $db_row->blog_media_location;
 			$this->media_subdir = $db_row->blog_media_subdir;
 			$this->media_fullpath = $db_row->blog_media_fullpath;
 			$this->media_url = $db_row->blog_media_url;
 			$this->UID = $db_row->blog_UID;
+			$this->type = $db_row->blog_type;
 		}
 
 		$Timer->pause( 'Blog constructor' );
@@ -202,6 +216,7 @@ class Blog extends DataObject
 		switch( $kind )
 		{
 			case 'photo':
+				$this->set( 'type', 'photo' );
 				$this->set( 'name', empty($name) ? T_('My photoblog') : $name );
 				$this->set( 'shortname', empty($shortname) ? T_('Photoblog') : $shortname );
 				$this->set( 'urlname', empty($urlname) ? 'photo' : $urlname );
@@ -210,14 +225,43 @@ class Blog extends DataObject
 				break;
 
 			case 'group':
+				$this->set( 'type', 'group' );
 				$this->set( 'name', empty($name) ? T_('Our blog') : $name );
 				$this->set( 'shortname', empty($shortname) ? T_('Group') : $shortname );
 				$this->set( 'urlname', empty($urlname) ? 'group' : $urlname );
 				$this->set_setting( 'use_workflow', 1 );
 				break;
 
+			case 'forum':
+				$this->set( 'type', 'forum' );
+				$this->set( 'name', empty($name) ? T_('My forum') : $name );
+				$this->set( 'shortname', empty($shortname) ? T_('Forum') : $shortname );
+				$this->set( 'urlname', empty($urlname) ? 'forum' : $urlname );
+				$this->set( 'advanced_perms', 1 );
+				$this->set_setting( 'post_navigation', 'same_category' );
+				$this->set_setting( 'allow_comments', 'registered' );
+				$this->set_setting( 'in_skin_editing', '1' );
+				$this->set_setting( 'posts_per_page', 30 );
+				$this->set_setting( 'allow_html_post', 0 );
+				$this->set_setting( 'allow_html_comment', 0 );
+				$this->set_setting( 'orderby', 'last_touched_ts' );
+				$this->set_setting( 'orderdir', 'DESC' );
+				$this->set_setting( 'enable_goto_blog', 'post' );
+				break;
+
+			case 'manual':
+				$this->set( 'type', 'manual' );
+				$this->set( 'name', empty($name) ? T_('Manual') : $name );
+				$this->set( 'shortname', empty($shortname) ? T_('Manual') : $shortname );
+				$this->set( 'urlname', empty($urlname) ? 'manual' : $urlname );
+				$this->set_setting( 'post_navigation', 'same_category' );
+				$this->set_setting( 'single_links', 'chapters' );
+				$this->set_setting( 'enable_goto_blog', 'post' );
+				break;
+
 			case 'std':
 			default:
+				$this->set( 'type', 'std' );
 				$this->set( 'name', empty($name) ? T_('My weblog') : $name );
 				$this->set( 'shortname', empty($shortname) ? T_('Blog') : $shortname );
 				$this->set( 'urlname', empty($urlname) ? 'blog' : $urlname );
@@ -251,6 +295,10 @@ class Blog extends DataObject
 		 * @var User
 		 */
 		global $current_User;
+
+		// Load collection settings and clear update cascade array
+		$this->load_CollectionSettings();
+		$this->CollectionSettings->clear_update_cascade();
 
 		if( param( 'blog_name', 'string', NULL ) !== NULL )
 		{ // General params:
@@ -353,27 +401,27 @@ class Blog extends DataObject
 			$this->set_setting( 'single_links', get_param( 'single_links' ) );
 		}
 
+		if( param( 'slug_limit', 'integer', NULL ) !== NULL )
+		{ // Limit slug length:
+			$this->set_setting( 'slug_limit', get_param( 'slug_limit' ) );
+		}
 
-		if( param( 'blog_skin_ID', 'integer', NULL ) !== NULL )
+		if( param( 'normal_skin_ID', 'integer', NULL ) !== NULL )
 		{	// Default blog:
-			$this->set_from_Request( 'skin_ID' );
+			$this->set_setting( 'normal_skin_ID', get_param( 'normal_skin_ID' ) );
 		}
 
-
-		if( param( 'what_to_show',   'string', NULL ) !== NULL )
-		{ // Show x days or x posts?:
-			$this->set_setting( 'what_to_show', get_param( 'what_to_show' ) );
-
-			param_integer_range( 'posts_per_page', 1, 9999, T_('Items/days per page must be between %d and %d.') );
-			$this->set_setting( 'archive_mode', param( 'archive_mode', 'string', true ) );
-			$this->set_setting( 'posts_per_page', get_param( 'posts_per_page' ) );
-
- 			$this->set_setting( 'orderby', param( 'orderby', 'string', true ) );
- 			$this->set_setting( 'orderdir', param( 'orderdir', 'string', true ) );
+		if( param( 'mobile_skin_ID', 'integer', NULL ) !== NULL )
+		{	// Default blog:
+			$this->set_setting( 'mobile_skin_ID', get_param( 'mobile_skin_ID' ) );
 		}
 
+		if( param( 'tablet_skin_ID', 'integer', NULL ) !== NULL )
+		{	// Default blog:
+			$this->set_setting( 'tablet_skin_ID', get_param( 'tablet_skin_ID' ) );
+		}
 
-		if( param( 'archives_sort_order',   'string', NULL ) !== NULL )
+		if( param( 'archives_sort_order', 'string', NULL ) !== NULL )
 		{
 			$this->set_setting( 'archives_sort_order', param( 'archives_sort_order', 'string', false ) );
 		}
@@ -389,6 +437,9 @@ class Blog extends DataObject
 		if( param( 'comment_feed_content', 'string', NULL ) !== NULL )
 		{ // How much content in comment feeds?
 			$this->set_setting( 'comment_feed_content', get_param( 'comment_feed_content' ) );
+
+			param_integer_range( 'comments_per_feed', 1, 9999, T_('Comments per feed must be between %d and %d.') );
+			$this->set_setting( 'comments_per_feed', get_param( 'comments_per_feed' ) );
 		}
 
 		if( param( 'require_title', 'string', NULL ) !== NULL )
@@ -444,15 +495,9 @@ class Blog extends DataObject
 
 		if( in_array( 'pings', $groups ) )
 		{ // we want to load the ping checkboxes:
-			$blog_ping_plugins = param( 'blog_ping_plugins', 'array', array() );
+			$blog_ping_plugins = param( 'blog_ping_plugins', 'array/string', array() );
 			$blog_ping_plugins = array_unique($blog_ping_plugins);
 			$this->set_setting('ping_plugins', implode(',', $blog_ping_plugins));
-		}
-
-		if( in_array( 'cache', $groups ) )
-		{ // we want to load the cache params:
-			$this->set_setting( 'ajax_form_enabled', param( 'ajax_form_enabled', 'integer', 0 ) );
-			$this->set_setting( 'cache_enabled_widgets', param( 'cache_enabled_widgets', 'integer', 0 ) );
 		}
 
 		if( in_array( 'authors', $groups ) )
@@ -461,92 +506,180 @@ class Blog extends DataObject
 			$this->set_setting( 'use_workflow',  param( 'blog_use_workflow', 'integer', 0 ) );
 		}
 
-		if( in_array( 'login', $groups ) )
-		{ // we want to load the login params:
-			$this->set_setting( 'in_skin_login', param( 'in_skin_login', 'integer', 0 ) );
-		}
-
 		if( in_array( 'features', $groups ) )
 		{ // we want to load the workflow checkboxes:
-			$this->set_setting( 'allow_subscriptions',  param( 'allow_subscriptions', 'integer', 0 ) );
-			$this->set_setting( 'allow_item_subscriptions',  param( 'allow_item_subscriptions', 'integer', 0 ) );
-			$this->set_setting( 'enable_goto_blog',  param( 'enable_goto_blog', 'integer', 0 ) );
+			$this->set_setting( 'allow_html_post', param( 'allow_html_post', 'integer', 0 ) );
 
-			$this->set( 'allowblogcss', param( 'blog_allowblogcss', 'integer', 0 ) );
-			$this->set( 'allowusercss', param( 'blog_allowusercss', 'integer', 0 ) );
+			$this->set_setting( 'enable_goto_blog', param( 'enable_goto_blog', 'string', NULL ) );
 
-			$this->set_setting( 'enable_sitemaps', param( 'enable_sitemaps', 'integer', 0 ) );
+			$this->set_setting( 'editing_goto_blog', param( 'editing_goto_blog', 'string', NULL ) );
+
+			$this->set_setting( 'default_post_status', param( 'default_post_status', 'string', NULL ) );
 
 			$this->set_setting( 'post_categories', param( 'post_categories', 'string', NULL ) );
+
+			$this->set_setting( 'post_navigation', param( 'post_navigation', 'string', NULL ) );
+
+			// Show x days or x posts?:
+			$this->set_setting( 'what_to_show', param( 'what_to_show', 'string', '' ) );
+
+			param_integer_range( 'posts_per_page', 1, 9999, T_('Items/days per page must be between %d and %d.') );
+			$this->set_setting( 'posts_per_page', get_param( 'posts_per_page' ) );
+
+			$this->set_setting( 'orderby', param( 'orderby', 'string', true ) );
+			$this->set_setting( 'orderdir', param( 'orderdir', 'string', true ) );
+
+			// Time frame
+			$this->set_setting( 'timestamp_min', param( 'timestamp_min', 'string', '' ) );
+			$this->set_setting( 'timestamp_min_duration', param_duration( 'timestamp_min_duration' ) );
+			$this->set_setting( 'timestamp_max', param( 'timestamp_max', 'string', '' ) );
+			$this->set_setting( 'timestamp_max_duration', param_duration( 'timestamp_max_duration' ) );
+
+			// Location
+			$location_country = param( 'location_country', 'string', 'hidden' );
+			$location_region = param( 'location_region', 'string', 'hidden' );
+			$location_subregion = param( 'location_subregion', 'string', 'hidden' );
+			$location_city = param( 'location_city', 'string', 'hidden' );
+
+			if( $location_city == 'required' )
+			{	// If city is required - all location fields also are required
+				$location_country = $location_region = $location_subregion = 'required';
+			}
+			else if( $location_subregion == 'required' )
+			{	// If subregion is required - country & region fields also are required
+				$location_country = $location_region = 'required';
+			}
+			else if( $location_region == 'required' )
+			{	// If region is required - country field also is required
+				$location_country = 'required';
+			}
+
+			$this->set_setting( 'location_country', $location_country );
+			$this->set_setting( 'location_region', $location_region );
+			$this->set_setting( 'location_subregion', $location_subregion );
+			$this->set_setting( 'location_city', $location_city );
+
+			// Set to show Latitude & Longitude params for this blog items
+			$this->set_setting( 'show_location_coordinates', param( 'show_location_coordinates', 'integer', 0 ) );
+
+			// call modules update_collection_features on this blog
+			modules_call_method( 'update_collection_features', array( 'edited_Blog' => & $this ) );
+		}
+
+		if( in_array( 'comments', $groups ) )
+		{ // we want to load the workflow checkboxes:
+			// load moderation statuses
+			$moderation_statuses = get_visibility_statuses( 'moderation' );
+			$blog_moderation_statuses = array();
+			foreach( $moderation_statuses as $status )
+			{
+				if( param( 'notif_'.$status, 'integer', 0 ) )
+				{
+					$blog_moderation_statuses[] = $status;
+				}
+			}
+			$this->set_setting( 'moderation_statuses', implode( ',', $blog_moderation_statuses ) );
+
+			$this->set_setting( 'comment_quick_moderation',  param( 'comment_quick_moderation', 'string', 'expire' ) );
+			$this->set_setting( 'allow_item_subscriptions', param( 'allow_item_subscriptions', 'integer', 0 ) );
+			$this->set_setting( 'comments_detect_email', param( 'comments_detect_email', 'integer', 0 ) );
+			$this->set_setting( 'comments_register', param( 'comments_register', 'integer', 0 ) );
+		}
+
+		if( in_array( 'other', $groups ) )
+		{ // we want to load the workflow checkboxes:
+			$this->set_setting( 'enable_sitemaps', param( 'enable_sitemaps', 'integer', 0 ) );
+
+			$this->set_setting( 'allow_subscriptions', param( 'allow_subscriptions', 'integer', 0 ) );
+			$this->set_setting( 'allow_item_subscriptions', param( 'allow_item_subscriptions', 'integer', 0 ) );
+
+			// Public blog list
+			$this->set( 'in_bloglist', param( 'blog_in_bloglist',   'integer', 0 ) );
+
+			$this->set_setting( 'image_size_user_list', param( 'image_size_user_list', 'string' ) );
+			$this->set_setting( 'image_size_messaging', param( 'image_size_messaging', 'string' ) );
+
+			$this->set_setting( 'archive_mode', param( 'archive_mode', 'string', true ) );
 		}
 
 		if( param( 'allow_comments', 'string', NULL ) !== NULL )
 		{ // Feedback options:
 			$this->set_setting( 'allow_comments', param( 'allow_comments', 'string', 'any' ) );
 			$this->set_setting( 'allow_view_comments', param( 'allow_view_comments', 'string', 'any' ) );
-			$this->set_setting( 'new_feedback_status', param( 'new_feedback_status', 'string', 'draft' ) );
+			$new_feedback_status = param( 'new_feedback_status', 'string', 'draft' );
+			if( $new_feedback_status != $this->get_setting( 'new_feedback_status' ) && ( $new_feedback_status != 'published' || $current_User->check_perm( 'blog_admin', 'edit', false, $this->ID ) ) )
+			{ // Only admin can set this setting to 'Public'
+				$this->set_setting( 'new_feedback_status', $new_feedback_status );
+			}
 			$this->set_setting( 'disable_comments_bypost', param( 'disable_comments_bypost', 'string', '0' ) );
 			$this->set_setting( 'allow_anon_url', param( 'allow_anon_url', 'string', '0' ) );
+			$this->set_setting( 'allow_html_comment', param( 'allow_html_comment', 'string', '0' ) );
 			$this->set_setting( 'allow_attachments', param( 'allow_attachments', 'string', 'registered' ) );
-			$this->set_setting( 'allow_rating', param( 'allow_rating', 'string', 'never' ) );
-			$this->set( 'allowtrackbacks', param( 'blog_allowtrackbacks', 'integer', 0 ) );
+			$this->set_setting( 'max_attachments', param( 'max_attachments', 'integer', '' ) );
+			$this->set_setting( 'allow_rating_items', param( 'allow_rating_items', 'string', 'never' ) );
+			$this->set_setting( 'rating_question', param( 'rating_question', 'text' ) );
+			$this->set_setting( 'allow_rating_comment_helpfulness', param( 'allow_rating_comment_helpfulness', 'string', '0' ) );
+			$blog_allowtrackbacks = param( 'blog_allowtrackbacks', 'integer', 0 );
+			if( $blog_allowtrackbacks != $this->get( 'allowtrackbacks' ) && ( $blog_allowtrackbacks == 0 || $current_User->check_perm( 'blog_admin', 'edit', false, $this->ID ) ) )
+			{ // Only admin can turn ON this setting
+				$this->set( 'allowtrackbacks', $blog_allowtrackbacks );
+			}
 			$this->set_setting( 'comments_orderdir', param( 'comments_orderdir', '/^(?:ASC|DESC)$/', 'ASC' ) );
 
-			$this->set_setting( 'paged_comments', param( 'paged_comments', 'integer', 0 ) );
+			// call modules update_collection_comments on this blog
+			modules_call_method( 'update_collection_comments', array( 'edited_Blog' => & $this ) );
+
+			$threaded_comments = param( 'threaded_comments', 'integer', 0 );
+			$this->set_setting( 'threaded_comments', $threaded_comments );
+			$this->set_setting( 'paged_comments', $threaded_comments ? 0 : param( 'paged_comments', 'integer', 0 ) );
 			param_integer_range( 'comments_per_page', 1, 9999, T_('Comments per page must be between %d and %d.') );
 			$this->set_setting( 'comments_per_page', get_param( 'comments_per_page' ) );
-			$this->set_setting( 'default_gravatar',  param( 'default_gravatar', 'string', 'b2evo' ) );
-
-			// Public blog list
-			$this->set( 'in_bloglist',   param( 'blog_in_bloglist',   'integer', 0 ) );
+			$this->set_setting( 'comments_avatars', param( 'comments_avatars', 'integer', 0 ) );
+			$this->set_setting( 'comments_latest', param( 'comments_latest', 'integer', 0 ) );
 		}
 
 
 		if( in_array( 'seo', $groups ) )
 		{ // we want to load the workflow checkboxes:
-			$this->set_setting( 'canonical_homepage',  param( 'canonical_homepage', 'integer', 0 ) );
-			$this->set_setting( 'relcanonical_homepage',  param( 'relcanonical_homepage', 'integer', 0 ) );
-			$this->set_setting( 'canonical_item_urls',  param( 'canonical_item_urls', 'integer', 0 ) );
-			$this->set_setting( 'relcanonical_item_urls',  param( 'relcanonical_item_urls', 'integer', 0 ) );
-			$this->set_setting( 'canonical_archive_urls',  param( 'canonical_archive_urls', 'integer', 0 ) );
-			$this->set_setting( 'relcanonical_archive_urls',  param( 'relcanonical_archive_urls', 'integer', 0 ) );
-			$this->set_setting( 'canonical_cat_urls',  param( 'canonical_cat_urls', 'integer', 0 ) );
-			$this->set_setting( 'relcanonical_cat_urls',  param( 'relcanonical_cat_urls', 'integer', 0 ) );
-			$this->set_setting( 'canonical_tag_urls',  param( 'canonical_tag_urls', 'integer', 0 ) );
-			$this->set_setting( 'relcanonical_tag_urls',  param( 'relcanonical_tag_urls', 'integer', 0 ) );
-			$this->set_setting( 'default_noindex',  param( 'default_noindex', 'integer', 0 ) );
-			$this->set_setting( 'paged_noindex',  param( 'paged_noindex', 'integer', 0 ) );
-			$this->set_setting( 'paged_nofollowto',  param( 'paged_nofollowto', 'integer', 0 ) );
-			$this->set_setting( 'archive_noindex',  param( 'archive_noindex', 'integer', 0 ) );
-			$this->set_setting( 'archive_nofollowto',  param( 'archive_nofollowto', 'integer', 0 ) );
-			$this->set_setting( 'chapter_noindex',  param( 'chapter_noindex', 'integer', 0 ) );
-			$this->set_setting( 'tag_noindex',  param( 'tag_noindex', 'integer', 0 ) );
-			$this->set_setting( 'filtered_noindex',  param( 'filtered_noindex', 'integer', 0 ) );
-			$this->set_setting( 'arcdir_noindex',  param( 'arcdir_noindex', 'integer', 0 ) );
-			$this->set_setting( 'catdir_noindex',  param( 'catdir_noindex', 'integer', 0 ) );
-			$this->set_setting( 'feedback-popup_noindex',  param( 'feedback-popup_noindex', 'integer', 0 ) );
-			$this->set_setting( 'msgform_noindex',  param( 'msgform_noindex', 'integer', 0 ) );
-			$this->set_setting( 'special_noindex',  param( 'special_noindex', 'integer', 0 ) );
-			$this->set_setting( 'title_link_type',  param( 'title_link_type', 'string', '' ) );
-			$this->set_setting( 'permalinks',  param( 'permalinks', 'string', '' ) );
-			$this->set_setting( '404_response',  param( '404_response', 'string', '' ) );
-			$this->set_setting( 'help_link',  param( 'help_link', 'string', '' ) );
+			$this->set_setting( 'canonical_homepage', param( 'canonical_homepage', 'integer', 0 ) );
+			$this->set_setting( 'relcanonical_homepage', param( 'relcanonical_homepage', 'integer', 0 ) );
+			$this->set_setting( 'canonical_item_urls', param( 'canonical_item_urls', 'integer', 0 ) );
+			$this->set_setting( 'relcanonical_item_urls', param( 'relcanonical_item_urls', 'integer', 0 ) );
+			$this->set_setting( 'canonical_archive_urls', param( 'canonical_archive_urls', 'integer', 0 ) );
+			$this->set_setting( 'relcanonical_archive_urls', param( 'relcanonical_archive_urls', 'integer', 0 ) );
+			$this->set_setting( 'canonical_cat_urls', param( 'canonical_cat_urls', 'integer', 0 ) );
+			$this->set_setting( 'relcanonical_cat_urls', param( 'relcanonical_cat_urls', 'integer', 0 ) );
+			$this->set_setting( 'canonical_tag_urls', param( 'canonical_tag_urls', 'integer', 0 ) );
+			$this->set_setting( 'relcanonical_tag_urls', param( 'relcanonical_tag_urls', 'integer', 0 ) );
+			$this->set_setting( 'default_noindex', param( 'default_noindex', 'integer', 0 ) );
+			$this->set_setting( 'paged_noindex', param( 'paged_noindex', 'integer', 0 ) );
+			$this->set_setting( 'paged_nofollowto', param( 'paged_nofollowto', 'integer', 0 ) );
+			$this->set_setting( 'archive_noindex', param( 'archive_noindex', 'integer', 0 ) );
+			$this->set_setting( 'archive_nofollowto', param( 'archive_nofollowto', 'integer', 0 ) );
+			$this->set_setting( 'chapter_noindex', param( 'chapter_noindex', 'integer', 0 ) );
+			$this->set_setting( 'tag_noindex', param( 'tag_noindex', 'integer', 0 ) );
+			$this->set_setting( 'filtered_noindex', param( 'filtered_noindex', 'integer', 0 ) );
+			$this->set_setting( 'arcdir_noindex', param( 'arcdir_noindex', 'integer', 0 ) );
+			$this->set_setting( 'catdir_noindex', param( 'catdir_noindex', 'integer', 0 ) );
+			$this->set_setting( 'feedback-popup_noindex', param( 'feedback-popup_noindex', 'integer', 0 ) );
+			$this->set_setting( 'msgform_noindex', param( 'msgform_noindex', 'integer', 0 ) );
+			$this->set_setting( 'special_noindex', param( 'special_noindex', 'integer', 0 ) );
+			$this->set_setting( 'title_link_type', param( 'title_link_type', 'string', '' ) );
+			$this->set_setting( 'permalinks', param( 'permalinks', 'string', '' ) );
+			$this->set_setting( '404_response', param( '404_response', 'string', '' ) );
+			$this->set_setting( 'help_link', param( 'help_link', 'string', '' ) );
 			$this->set_setting( 'excerpts_meta_description', param( 'excerpts_meta_description', 'integer', 0 ) );
 			$this->set_setting( 'categories_meta_description', param( 'categories_meta_description', 'integer', 0 ) );
 			$this->set_setting( 'tags_meta_keywords', param( 'tags_meta_keywords', 'integer', 0 ) );
 		}
 
-
-		if( param( 'custom_double1', 'string', NULL ) !== NULL )
-		{	// Description:
-			for( $i = 1 ; $i <= 5; $i++ )
-			{
-				$this->set_setting( 'custom_double'.$i, param( 'custom_double'.$i, 'string', NULL ) );
-			}
-			for( $i = 1 ; $i <= 3; $i++ )
-			{
-				$this->set_setting( 'custom_varchar'.$i, param( 'custom_varchar'.$i, 'string', NULL ) );
-			}
+		// Load custom double & varchar fields
+		$custom_field_names = array();
+		$this->load_custom_fields( 'double', $update_cascade_query, $custom_field_names );
+		$this->load_custom_fields( 'varchar', $update_cascade_query, $custom_field_names );
+		if( !empty( $update_cascade_query ) )
+		{ // Some custom fields were deleted and these fields must be deleted from the item settings table also. Add required query.
+			$this->CollectionSettings->add_update_cascade( $update_cascade_query );
 		}
 
 
@@ -556,10 +689,41 @@ class Blog extends DataObject
 		if( $current_User->check_perm( 'blog_admin', 'edit', false, $this->ID ) )
 		{	// We have permission to edit advanced admin settings:
 
+			if( in_array( 'cache', $groups ) )
+			{ // we want to load the cache params:
+				$this->set_setting( 'ajax_form_enabled', param( 'ajax_form_enabled', 'integer', 0 ) );
+				$this->set_setting( 'ajax_form_loggedin_enabled', param( 'ajax_form_loggedin_enabled', 'integer', 0 ) );
+				$this->set_setting( 'cache_enabled_widgets', param( 'cache_enabled_widgets', 'integer', 0 ) );
+			}
+
+			if( in_array( 'styles', $groups ) )
+			{ // we want to load the styles params:
+				$this->set( 'allowblogcss', param( 'blog_allowblogcss', 'integer', 0 ) );
+				$this->set( 'allowusercss', param( 'blog_allowusercss', 'integer', 0 ) );
+			}
+
+			if( in_array( 'login', $groups ) )
+			{ // we want to load the login params:
+				$this->set_setting( 'in_skin_login', param( 'in_skin_login', 'integer', 0 ) );
+				$this->set_setting( 'in_skin_editing', param( 'in_skin_editing', 'integer', 0 ) );
+			}
+
+			if( param( 'blog_head_includes', 'html', NULL ) !== NULL )
+			{	// HTML header includes:
+				param_check_html( 'blog_head_includes', T_('Invalid Custom meta section') );
+				$this->set_setting( 'head_includes', get_param( 'blog_head_includes' ) );
+			}
+
+			if( param( 'blog_footer_includes', 'html', NULL ) !== NULL )
+			{	// HTML header includes:
+				param_check_html( 'blog_footer_includes', T_('Invalid Custom javascript section') );
+				$this->set_setting( 'footer_includes', get_param( 'blog_footer_includes' ) );
+			}
+
 			if( param( 'owner_login', 'string', NULL ) !== NULL )
 			{ // Permissions:
 				$UserCache = & get_UserCache();
-				$owner_User = & $UserCache->get_by_login( get_param('owner_login'), false, false );
+				$owner_User = & $UserCache->get_by_login( get_param('owner_login') );
 				if( empty( $owner_User ) )
 				{
 					param_error( 'owner_login', sprintf( T_('User &laquo;%s&raquo; does not exist!'), get_param('owner_login') ) );
@@ -649,12 +813,6 @@ class Blog extends DataObject
 				$this->set_setting( 'aggregate_coll_IDs', $aggregate_coll_IDs );
 			}
 
-			if( param( 'source_file', 'string', NULL ) !== NULL )
-			{	// Static file:
-				$this->set_setting( 'source_file', get_param( 'source_file' ) );
-				$this->set_setting( 'static_file', param( 'static_file', 'string', '' ) );
-			}
-
 
 			if( param( 'blog_media_location',  'string', NULL ) !== NULL )
 			{	// Media files location:
@@ -713,11 +871,87 @@ class Blog extends DataObject
 						break;
 				}
 			}
-
-
 		}
 
 		return ! param_errors_detected();
+	}
+
+
+	/**
+	 * Load blog custom fields setting
+	 *
+	 * @param string custom field types
+	 * @param string query to remove deleted custom field settings from items
+	 * @param array Field names array is used to check the diplicates
+	 */
+	function load_custom_fields( $type, & $update_cascade_query, & $field_names )
+	{
+		global $DB, $Messages;
+
+		$empty_title_error = false; // use this to display empty title fields error message only ones
+		$real_custom_field_count = 0; // custom fields count after update
+		$custom_field_count = param( 'count_custom_'.$type, 'integer', 0 ); // all custom fields count ( contains even deleted fields )
+		$deleted_custom_fields = explode( ',', param( 'deleted_custom_'.$type, 'string', '' ) );
+
+		// Update custom fields
+		for( $i = 1 ; $i <= $custom_field_count; $i++ )
+		{
+			$custom_field_guid = param( 'custom_'.$type.'_guid'.$i, '/^[a-z0-9\-_]+$/', NULL );
+			if( in_array( $custom_field_guid, $deleted_custom_fields ) )
+			{ // This field was deleted, don't neeed to update
+				continue;
+			}
+
+			$real_custom_field_count++;
+			$custom_field_value = param( 'custom_'.$type.'_'.$i, 'string', NULL );
+			$custom_field_name = param( 'custom_'.$type.'_fname'.$i, '/^[a-z0-9\-_]+$/', NULL );
+			if( empty( $custom_field_value ) )
+			{ // Field title can't be emtpy
+				if( !$empty_title_error )
+				{ // This message was not displayed yet
+					$Messages->add( T_('Custom field titles can\'t be empty!') );
+					$empty_title_error = true;
+				}
+			}
+			elseif( empty( $custom_field_name ) )
+			{ // Field identical name can't be emtpy
+				$Messages->add( sprintf( T_('Please enter name for custom field "%s"'), $custom_field_value ) );
+			}
+			elseif( in_array( $custom_field_name, $field_names ) )
+			{ // Field name must be identical
+				$Messages->add( sprintf( T_('The field name "%s" is not identical, please use another.'), $custom_field_value ) );
+			}
+			else
+			{ // Add new identical field name
+				$field_names[] = $custom_field_name;
+			}
+			// Update field settings
+			$this->set_setting( 'custom_'.$type.$real_custom_field_count, $custom_field_guid );
+			$this->set_setting( 'custom_'.$type.'_'.$custom_field_guid, $custom_field_value );
+			$this->set_setting( 'custom_fname_'.$custom_field_guid, $custom_field_name );
+		}
+
+		// get custom field count from db
+		$db_custom_field_count = $this->get_setting( 'count_custom_'.$type );
+		for( $i = $real_custom_field_count + 1 ; $i <= $db_custom_field_count; $i++ )
+		{ // delete not wanted settings by index
+			$this->delete_setting( 'custom_'.$type.$i );
+		}
+		foreach( $deleted_custom_fields as $delted_field_guid )
+		{ // delete not wanted settings by guid
+			if( empty( $update_cascade_query ) )
+			{
+				$update_cascade_query = 'DELETE FROM T_items__item_settings WHERE iset_name = "custom_'.$type.'_'.$delted_field_guid.'"';
+			}
+			else
+			{
+				$update_cascade_query .= ' OR iset_name = "custom_'.$type.'_'.$delted_field_guid.'"';
+			}
+			$this->delete_setting( 'custom_fname_'.$delted_field_guid );
+			$this->delete_setting( 'custom_'.$type.'_'.$delted_field_guid );
+		}
+		// update number of custom fields
+		$this->set_setting( 'count_custom_'.$type, $real_custom_field_count );
 	}
 
 
@@ -794,16 +1028,6 @@ class Blog extends DataObject
 	{
 		global $baseurl, $basedomain, $Settings;
 
-		if( $type == 'static' )
-		{ // We want the static page, there is no access type option here:
-			debug_die( 'static page currently not supported' );
-		}
-
-		if( $type == 'dynamic' )
-		{ // We want to force a dynamic page
-			debug_die( 'dynamic page currently not supported' );
-		}
-
 		switch( $this->access_type )
 		{
 			case 'default':
@@ -828,7 +1052,7 @@ class Blog extends DataObject
 				return $baseurl.$this->siteurl;
 
 			case 'subdom':
-				return 'http://'.$this->urlname.'.'.$basedomain.'/';
+				return preg_replace( '#(https?://)#i', '$1'.$this->urlname.'.', $baseurl );
 
 			case 'absolute':
 				return $this->siteurl;
@@ -840,9 +1064,8 @@ class Blog extends DataObject
 
 
 	/**
-	 * Generate the baseurl of the blog (URL of the folder where the blog lives)
-	 *
-	 * @todo test
+	 * Generate the baseurl of the blog (URL of the folder where the blog lives).
+	 * Will always end with '/'.
 	 */
 	function gen_baseurl()
 	{
@@ -863,7 +1086,7 @@ class Blog extends DataObject
 				break;
 
 			case 'subdom':
-				return 'http://'.$this->urlname.'.'.$basedomain.'/';
+				return preg_replace( '#(https?://)#i', '$1'.$this->urlname.'.', $baseurl );
 
 			case 'absolute':
 				$url = $this->siteurl;
@@ -873,233 +1096,105 @@ class Blog extends DataObject
 				debug_die( 'Unhandled Blog access type ['.$this->access_type.']' );
 		}
 
+		if( substr( $url, -1 ) != '/' )
+		{	// Crop at the last "/"
+			$url = substr( $url, 0, strrpos($url,'/')+1 );
+		}
+
 		// For case relative and absolute:
 		return preg_replace( '~^(.+)/[^/]$~', '$1/', $url );
 	}
 
 
 	/**
-	 * Load presets
-	 *
-	 * @param string
+	 * This is the domain of the blog.
+	 * This returns NO trailing slash.
 	 */
-	function load_presets( $set_name )
+	function get_baseurl_root()
 	{
-		switch( $set_name )
+		if( preg_match( '#^(https?://(.+?)(:.+?)?)/#', $this->gen_baseurl(), $matches ) )
 		{
-			case 'awall':
-				$this->set_setting( 'archive_links', 'extrapath' );
-				$this->set_setting( 'archive_posts_per_page', NULL );
-				$this->set_setting( 'chapter_links', 'chapters' );
-				$this->set_setting( 'chapter_posts_per_page', NULL );
-				$this->set_setting( 'tag_posts_per_page', NULL );
-				$this->set_setting( 'tag_links', 'colon' );
-				$this->set_setting( 'single_links', 'short' );
-
-				$this->set_setting( 'canonical_homepage', 1 );
-				$this->set_setting( 'relcanonical_homepage', 1 );
-				$this->set_setting( 'canonical_item_urls', 1 );
-				$this->set_setting( 'relcanonical_item_urls', 1 );
-				$this->set_setting( 'canonical_archive_urls', 1 );
-				$this->set_setting( 'relcanonical_archive_urls', 1 );
-				$this->set_setting( 'canonical_cat_urls', 1 );
-				$this->set_setting( 'relcanonical_cat_urls', 1 );
-				$this->set_setting( 'canonical_tag_urls', 1 );
-				$this->set_setting( 'relcanonical_tag_urls', 1 );
-
-				$this->set_setting( 'category_prefix', '' );
-				$this->set_setting( 'tag_prefix', '' );
-
-				$this->set_setting( 'default_noindex', 0 );
-				$this->set_setting( 'paged_noindex', 1 );
-				$this->set_setting( 'paged_nofollowto', 0 );
-				$this->set_setting( 'archive_noindex', 1 );
-				$this->set_setting( 'archive_nofollowto', 0 );
-				$this->set_setting( 'chapter_noindex', 0 );
-				$this->set_setting( 'tag_noindex', 0 );
-				$this->set_setting( 'filtered_noindex', 1 ); // temporary
-
-				$this->set_setting( 'arcdir_noindex', 1 );
-				$this->set_setting( 'catdir_noindex', 0 );
-				$this->set_setting( 'feedback-popup_noindex', 1 );
-				$this->set_setting( 'msgform_noindex', 1 );
-				$this->set_setting( 'special_noindex', 1 ); // temporary
-
-				$this->set_setting( 'permalinks', 'single' );
-				$this->set_setting( 'title_link_type', 'permalink' );
-				break;
-
-			case 'abeal':
-				$this->set_setting( 'archive_links', 'extrapath' );
-				$this->set_setting( 'archive_posts_per_page', 10 );
-				$this->set_setting( 'chapter_links', 'subchap' );
-				$this->set_setting( 'chapter_posts_per_page', 10 );
-				$this->set_setting( 'tag_posts_per_page', 10 );
-				$this->set_setting( 'tag_links', 'colon' );
-				$this->set_setting( 'single_links', 'short' );
-
-				$this->set_setting( 'canonical_homepage', 1 );
-				$this->set_setting( 'relcanonical_homepage', 1 );
-				$this->set_setting( 'canonical_item_urls', 1 );
-				$this->set_setting( 'relcanonical_item_urls', 1 );
-				$this->set_setting( 'canonical_archive_urls', 1 );
-				$this->set_setting( 'relcanonical_archive_urls', 1 );
-				$this->set_setting( 'canonical_cat_urls', 1 );
-				$this->set_setting( 'relcanonical_cat_urls', 1 );
-				$this->set_setting( 'canonical_tag_urls', 1 );
-				$this->set_setting( 'relcanonical_tag_urls', 1 );
-
-				$this->set_setting( 'category_prefix', '' );
-				$this->set_setting( 'tag_prefix', '' );
-
-				$this->set_setting( 'default_noindex', 0 );
-				$this->set_setting( 'paged_noindex', 1 );
-				$this->set_setting( 'paged_nofollowto', 0 );
-				$this->set_setting( 'archive_noindex', 1 );
-				$this->set_setting( 'archive_nofollowto', 0 );
-				$this->set_setting( 'chapter_noindex', 1 );
-				$this->set_setting( 'tag_noindex', 1 );
-				$this->set_setting( 'filtered_noindex', 1 ); // temporary
-
-				$this->set_setting( 'arcdir_noindex', 0 );
-				$this->set_setting( 'catdir_noindex', 0 );
-				$this->set_setting( 'feedback-popup_noindex', 0 );
-				$this->set_setting( 'msgform_noindex', 1 );
-				$this->set_setting( 'special_noindex', 1 ); // temporary
-
-				$this->set_setting( 'permalinks', 'single' );
-				$this->set_setting( 'title_link_type', 'permalink' );
-				break;
-
-			case 'mgray':
-				$this->set_setting( 'archive_links', 'extrapath' );
-				$this->set_setting( 'archive_posts_per_page', 20 );
-				$this->set_setting( 'chapter_links', 'chapters' );
-				$this->set_setting( 'chapter_posts_per_page', 20 );
-				$this->set_setting( 'tag_posts_per_page', 20 );
-				$this->set_setting( 'tag_links', 'colon' );
-				$this->set_setting( 'single_links', 'chapters' );
-
-				$this->set_setting( 'canonical_homepage', 1 );
-				$this->set_setting( 'relcanonical_homepage', 1 );
-				$this->set_setting( 'canonical_item_urls', 1 );
-				$this->set_setting( 'relcanonical_item_urls', 1 );
-				$this->set_setting( 'canonical_archive_urls', 1 );
-				$this->set_setting( 'relcanonical_archive_urls', 1 );
-				$this->set_setting( 'canonical_cat_urls', 1 );
-				$this->set_setting( 'relcanonical_cat_urls', 1 );
-				$this->set_setting( 'canonical_tag_urls', 1 );
-				$this->set_setting( 'relcanonical_tag_urls', 1 );
-
-				$this->set_setting( 'category_prefix', '' );
-				$this->set_setting( 'tag_prefix', '' );
-
-				$this->set_setting( 'default_noindex', 0 );
-				$this->set_setting( 'paged_noindex', 1 );
-				$this->set_setting( 'paged_nofollowto', 0 );
-				$this->set_setting( 'archive_noindex', 1 );
-				$this->set_setting( 'archive_nofollowto', 0 );
-				$this->set_setting( 'chapter_noindex', 0 );
-				$this->set_setting( 'tag_noindex', 1 );
-				$this->set_setting( 'filtered_noindex', 1 ); // temporary
-
-				$this->set_setting( 'arcdir_noindex', 1 );
-				$this->set_setting( 'catdir_noindex', 0 );
-				$this->set_setting( 'feedback-popup_noindex', 1 );
-				$this->set_setting( 'msgform_noindex', 1 );
-				$this->set_setting( 'special_noindex', 1 ); // temporary
-
-				$this->set_setting( 'permalinks', 'single' );
-				$this->set_setting( 'title_link_type', 'permalink' );
-				break;
-
-			case 'rfishkin':
-				$this->set_setting( 'archive_links', 'extrapath' );
-				$this->set_setting( 'archive_posts_per_page', 75 );
-				$this->set_setting( 'chapter_links', 'chapters' );
-				$this->set_setting( 'chapter_posts_per_page', 75 );
-				$this->set_setting( 'tag_posts_per_page', 75 );
-				$this->set_setting( 'tag_links', 'colon' );
-				$this->set_setting( 'single_links', 'short' );
-
-				$this->set_setting( 'canonical_homepage', 1 );
-				$this->set_setting( 'relcanonical_homepage', 1 );
-				$this->set_setting( 'canonical_item_urls', 1 );
-				$this->set_setting( 'relcanonical_item_urls', 1 );
-				$this->set_setting( 'canonical_archive_urls', 1 );
-				$this->set_setting( 'relcanonical_archive_urls', 1 );
-				$this->set_setting( 'canonical_cat_urls', 1 );
-				$this->set_setting( 'relcanonical_cat_urls', 1 );
-				$this->set_setting( 'canonical_tag_urls', 1 );
-				$this->set_setting( 'relcanonical_tag_urls', 1 );
-
-				$this->set_setting( 'category_prefix', '' );
-				$this->set_setting( 'tag_prefix', '' );
-
-				$this->set_setting( 'default_noindex', 0 );
-				$this->set_setting( 'paged_noindex', 1 );
-				$this->set_setting( 'paged_nofollowto', 1 );
-				$this->set_setting( 'archive_noindex', 1 );
-				$this->set_setting( 'archive_nofollowto', 1 );
-				$this->set_setting( 'chapter_noindex', 0 );
-				$this->set_setting( 'tag_noindex', 0 );
-				$this->set_setting( 'filtered_noindex', 1 ); // temporary
-
-				$this->set_setting( 'arcdir_noindex', 1 );
-				$this->set_setting( 'catdir_noindex', 1 );
-				$this->set_setting( 'feedback-popup_noindex', 0 );
-				$this->set_setting( 'msgform_noindex', 1 );
-				$this->set_setting( 'special_noindex', 1 ); // temporary
-
-				$this->set_setting( 'permalinks', 'single' );
-				$this->set_setting( 'title_link_type', 'permalink' );
-
-				$this->set_setting( 'excerpts_meta_description', '1' );
-				$this->set_setting( '404_response', '301' );
-				break;
-
-			case 'sspencer':
-				$this->set_setting( 'archive_links', 'extrapath' );
-				$this->set_setting( 'archive_posts_per_page', 10 );
-				$this->set_setting( 'chapter_links', 'chapters' );
-				$this->set_setting( 'chapter_posts_per_page', 10 );
-				$this->set_setting( 'tag_posts_per_page', 10 );
-				$this->set_setting( 'tag_links', 'colon' );
-				$this->set_setting( 'single_links', 'chapters' );
-
-				$this->set_setting( 'canonical_homepage', 1 );
-				$this->set_setting( 'relcanonical_homepage', 1 );
-				$this->set_setting( 'canonical_item_urls', 1 );
-				$this->set_setting( 'relcanonical_item_urls', 1 );
-				$this->set_setting( 'canonical_archive_urls', 1 );
-				$this->set_setting( 'relcanonical_archive_urls', 1 );
-				$this->set_setting( 'canonical_cat_urls', 1 );
-				$this->set_setting( 'relcanonical_cat_urls', 1 );
-				$this->set_setting( 'canonical_tag_urls', 1 );
-				$this->set_setting( 'relcanonical_tag_urls', 1 );
-
-				$this->set_setting( 'category_prefix', 'category' );
-				$this->set_setting( 'tag_prefix', 'tag' );
-
-				$this->set_setting( 'default_noindex', 0 );
-				$this->set_setting( 'paged_noindex', 1 );
-				$this->set_setting( 'paged_nofollowto', 1 );
-				$this->set_setting( 'archive_noindex', 1 );
-				$this->set_setting( 'archive_nofollowto', 1 );
-				$this->set_setting( 'chapter_noindex', 0 );
-				$this->set_setting( 'tag_noindex', 0 );
-				$this->set_setting( 'filtered_noindex', 1 ); // temporary
-
-				$this->set_setting( 'arcdir_noindex', 1 );
-				$this->set_setting( 'catdir_noindex', 0 );
-				$this->set_setting( 'feedback-popup_noindex', 1 );
-				$this->set_setting( 'msgform_noindex', 1 );
-				$this->set_setting( 'special_noindex', 1 ); // temporary
-
-				$this->set_setting( 'permalinks', 'single' );
-				$this->set_setting( 'title_link_type', 'permalink' );
-				break;
+			return $matches[1];
 		}
+		debug_die( 'Blog::get(baseurl)/baseurlroot - assertion failed [baseurl: '.$this->gen_baseurl().'].' );
+	}
+
+
+	/**
+	 * Get the URL to the basepath of that blog.
+	 * This is supposed to be the same as $baseurl but localized to the domain of the blog/
+	 *
+	 * @todo The current implementation may not work in all situations. See TODO below.
+	 */
+	function get_basepath_url()
+	{
+		global $basesubpath;
+
+		// fp> TODO: this may be very borked and may need some tweaking for non standard multiblog situations:
+		// One way to fix this, if neede, may be to add a settinf to Blog Settings > URLs
+		// -- Create a block for "System URLs" and give a radio option between default and custom with input field
+
+		if( empty($this->basepath_url) )
+		{
+			$this->basepath_url = $this->get_baseurl_root().$basesubpath;
+		}
+
+		return $this->basepath_url;
+	}
+
+
+	/**
+	 * Get the URL of the htsrv folder, on the current blog's domain (which is NOT always the same as the $baseurl domain!).
+	 */
+	function get_local_htsrv_url()
+	{
+		global $htsrv_subdir;
+
+		return $this->get_basepath_url().$htsrv_subdir;
+	}
+
+
+	/**
+	 * Get the URL of the media folder, on the current blog's domain (which is NOT always the same as the $baseurl domain!).
+	 */
+	function get_local_media_url()
+	{
+		global $media_subdir;
+
+		return $this->get_basepath_url().$media_subdir;
+	}
+
+
+	/**
+	 * Get the URL of the rsc folder, on the current blog's domain (which is NOT always the same as the $baseurl domain!).
+	 */
+	function get_local_rsc_url()
+	{
+		global $rsc_subdir;
+
+		return $this->get_basepath_url().$rsc_subdir;
+	}
+
+
+	/**
+	 * Get the URL of the skins folder, on the current blog's domain (which is NOT always the same as the $baseurl domain!).
+	 */
+	function get_local_skins_url()
+	{
+		global $skins_subdir;
+
+		return $this->get_basepath_url().$skins_subdir;
+	}
+
+
+	/**
+	 * Get the URL of the xmlsrv folder, on the current blog's domain (which is NOT always the same as the $baseurl domain!).
+	 */
+	function get_local_xmlsrv_url()
+	{
+		global $xmlsrv_subdir;
+
+		return $this->get_basepath_url().$xmlsrv_subdir;
 	}
 
 
@@ -1335,23 +1430,27 @@ class Blog extends DataObject
 
 		if( empty( $status ) )
 		{
-			$status = 'draft';
+			$status = $this->get_setting('default_post_status');
 		}
-		if( ! $current_User->check_perm( 'blog_post!'.$status, 'edit', false, $this->ID ) )
+		if( ! $current_User->check_perm( 'blog_post!'.$status, 'create', false, $this->ID ) )
 		{ // We need to find another one:
 			$status = NULL;
 
-			if( $current_User->check_perm( 'blog_post!published', 'edit', false, $this->ID ) )
+			if( $current_User->check_perm( 'blog_post!published', 'create', false, $this->ID ) )
 				$status = 'published';
-			elseif( $current_User->check_perm( 'blog_post!protected', 'edit', false, $this->ID ) )
+			elseif( $current_User->check_perm( 'blog_post!community', 'create', false, $this->ID ) )
+				$status = 'community';
+			elseif( $current_User->check_perm( 'blog_post!protected', 'create', false, $this->ID ) )
 				$status = 'protected';
-			elseif( $current_User->check_perm( 'blog_post!private', 'edit', false, $this->ID ) )
+			elseif( $current_User->check_perm( 'blog_post!private', 'create', false, $this->ID ) )
 				$status = 'private';
-			elseif( $current_User->check_perm( 'blog_post!draft', 'edit', false, $this->ID ) )
+			elseif( $current_User->check_perm( 'blog_post!review', 'create', false, $this->ID ) )
+				$status = 'review';
+			elseif( $current_User->check_perm( 'blog_post!draft', 'create', false, $this->ID ) )
 				$status = 'draft';
-			elseif( $current_User->check_perm( 'blog_post!deprecated', 'edit', false, $this->ID ) )
+			elseif( $current_User->check_perm( 'blog_post!deprecated', 'create', false, $this->ID ) )
 				$status = 'deprecated';
-			elseif( $current_User->check_perm( 'blog_post!redirected', 'edit', false, $this->ID ) )
+			elseif( $current_User->check_perm( 'blog_post!redirected', 'create', false, $this->ID ) )
 				$status = 'redirected';
 		}
 		return $status;
@@ -1383,18 +1482,21 @@ class Blog extends DataObject
 
 		if( empty( $this->default_cat_ID ) )
 		{	// If the previous query has returned NULL
-			$sql = 'SELECT cat_ID
-			          FROM T_categories
-			         WHERE cat_blog_ID = '.$this->ID;
 			if( $Settings->get('chapter_ordering') == 'manual' )
 			{	// Manual order
-				$sql .= ' ORDER BY cat_order';
+				$select_temp_order = ', IF( cat_order IS NULL, 999999999, cat_order ) AS temp_order';
+				$sql_order = ' ORDER BY temp_order';
 			}
 			else
 			{	// Alphabetic order
-				$sql .= ' ORDER BY cat_name';
+				$select_temp_order = '';
+				$sql_order = ' ORDER BY cat_name';
 			}
-			$sql .= ' LIMIT 1';
+			$sql = 'SELECT cat_ID'.$select_temp_order.'
+			          FROM T_categories
+			         WHERE cat_blog_ID = '.$this->ID
+			         .$sql_order
+			         .' LIMIT 1';
 
 			$this->default_cat_ID = $DB->get_var( $sql, 0, 0, 'Get default category' );
 		}
@@ -1415,7 +1517,7 @@ class Blog extends DataObject
 	 */
 	function get_media_dir( $create = true )
 	{
-		global $media_path, $Messages, $Settings, $Debuglog;
+		global $media_path, $current_User, $Messages, $Settings, $Debuglog;
 
 		if( ! $Settings->get( 'fm_enable_roots_blog' ) )
 		{ // User directories are disabled:
@@ -1446,12 +1548,15 @@ class Blog extends DataObject
 		// TODO: use a File object here (to access perms, ..), using FileCache::get_by_root_and_path().
 		if( $create && ! is_dir( $mediadir ) )
 		{
+			// Display absolute path to blog admin and relative path to everyone else
+			$msg_mediadir_path = $current_User->check_perm( 'blog_admin', 'edit', false, $this->ID ) ? $mediadir : rel_path_to_base($mediadir);
+
 			// TODO: Link to some help page(s) with errors!
 			if( ! is_writable( dirname($mediadir) ) )
 			{ // add error
 				if( is_admin_page() )
 				{
-					$Messages->add( sprintf( T_("The blog's media directory &laquo;%s&raquo; could not be created, because the parent directory is not writable or does not exist."), rel_path_to_base($mediadir) )
+					$Messages->add( sprintf( T_("The blog's media directory &laquo;%s&raquo; could not be created, because the parent directory is not writable or does not exist."), $msg_mediadir_path )
 								.get_manual_link('media_file_permission_errors'), 'error' );
 				}
 				return false;
@@ -1460,7 +1565,7 @@ class Blog extends DataObject
 			{ // add error
 				if( is_admin_page() )
 				{
-					$Messages->add( sprintf( T_("The blog's media directory &laquo;%s&raquo; could not be created."), rel_path_to_base($mediadir) )
+					$Messages->add( sprintf( T_("The blog's media directory &laquo;%s&raquo; could not be created."), $msg_mediadir_path )
 								.get_manual_link('directory_creation_error'), 'error' );
 				}
 				return false;
@@ -1474,7 +1579,7 @@ class Blog extends DataObject
 				}
 				if( is_admin_page() )
 				{
-					$Messages->add( sprintf( T_("The blog's media directory &laquo;%s&raquo; has been created with permissions %s."), rel_path_to_base($mediadir), substr( sprintf('%o', fileperms($mediadir)), -3 ) ), 'success' );
+					$Messages->add( sprintf( T_("The blog's media directory &laquo;%s&raquo; has been created with permissions %s."), $msg_mediadir_path, substr( sprintf('%o', fileperms($mediadir)), -3 ) ), 'success' );
 				}
 			}
 		}
@@ -1490,7 +1595,7 @@ class Blog extends DataObject
 	 */
 	function get_media_url()
 	{
-		global $media_url, $Settings, $Debuglog;
+		global $media_subdir, $Settings, $Debuglog;
 
 		if( ! $Settings->get( 'fm_enable_roots_blog' ) )
 		{ // User directories are disabled:
@@ -1501,10 +1606,10 @@ class Blog extends DataObject
 		switch( $this->media_location )
 		{
 			case 'default':
-				return $media_url.'blogs/'.$this->urlname.'/';
+				return $this->get_local_media_url().'blogs/'.$this->urlname.'/';
 
 			case 'subdir':
-				return $media_url.$this->media_subdir;
+				return $this->get_local_media_url().$this->media_subdir;
 				break;
 
 			case 'custom':
@@ -1525,10 +1630,10 @@ class Blog extends DataObject
 	 */
 	function get_filemanager_link()
 	{
-		global $dispatcher;
+		global $admin_url;
 
 		load_class( '/files/model/_fileroot.class.php', 'FileRoot' );
-		return $dispatcher.'?ctrl=files&amp;root='.FileRoot::gen_ID( 'collection', $this->ID );
+		return $admin_url.'?ctrl=files&amp;root='.FileRoot::gen_ID( 'collection', $this->ID );
 	}
 
 
@@ -1630,31 +1735,11 @@ class Blog extends DataObject
 			case 'url':
 				return $this->gen_blogurl( 'default' );
 
-			case 'dynurl':
-				return $this->gen_blogurl( 'dynamic' );
-
-			case 'staticurl':
-				return $this->gen_blogurl( 'static' );
-
-			case 'dynfilepath':
-				// Source file for static page:
-				return $basepath.$this->get_setting('source_file');
-
-			case 'staticfilepath':
-				// Destiantion file for static page:
-				return $basepath.$this->get_setting('static_file');
-
 			case 'baseurl':
 				return $this->gen_baseurl();
 
 			case 'baseurlroot':
-				// fp>> TODO: cleanup
-				if( preg_match( '#^(https?://(.+?)(:.+?)?)/#', $this->gen_baseurl(), $matches ) )
-				{
-					// TODO: shouldn't that include a trailing slash?:
-					return $matches[1];
-				}
-				debug_die( 'Blog::get(baseurl)/baseurlroot - assertion failed [baseurl: '.$this->gen_baseurl().'].' );
+				return $this->get_baseurl_root();
 
 			case 'lastcommentsurl':
 				return url_add_param( $this->gen_blogurl(), 'disp=comments' );
@@ -1683,11 +1768,14 @@ class Blog extends DataObject
 			case 'userurl':
 				return url_add_param( $this->gen_blogurl(), 'disp=user' );
 
+			case 'usersurl':
+				return url_add_param( $this->gen_blogurl(), 'disp=users' );
+
 			case 'loginurl':
 				return url_add_param( $this->gen_blogurl(), 'disp=login' );
 
 			case 'subsurl':
-				return url_add_param( $this->gen_blogurl(), 'disp=subs' );
+				return url_add_param( $this->gen_blogurl(), 'disp=subs#subs' );
 
 			case 'helpurl':
 				if( $this->get_setting( 'help_link' ) == 'slug' )
@@ -1698,6 +1786,9 @@ class Blog extends DataObject
 				{
 					return url_add_param( $this->gen_blogurl(), 'disp=help' );
 				}
+
+			case 'skin_ID':
+				return $this->get_skin_ID();
 
 			case 'description':			// RSS wording
 			case 'shortdesc':
@@ -1727,6 +1818,8 @@ class Blog extends DataObject
 			case 'comments_atom_url':
 				return $this->get_comment_feed_url( '_atom' );
 
+			case 'rsd_url':
+				return $this->get_local_xmlsrv_url().'rsd.php?blog='.$this->ID;
 
 			/* Add the html for a blog-specified stylesheet
 			 * All stylesheets will be included if the blog settings allow it
@@ -1770,16 +1863,110 @@ class Blog extends DataObject
 	}
 
 
+	/**
+	 * Get warning message about the enabled advanced perms for those cases when we grant some permission for anonymous users which can be restricted for logged in users
+	 *
+	 * @return mixed NULL if advanced perms are not enabled in this blog, the warning message otherwise
+	 */
+	function get_advanced_perms_warning()
+	{
+		global $admin_url;
+
+		if( $this->get( 'advanced_perms' ) )
+		{
+			$warning = T_('ATTENTION: advanced <a href="%s">user</a> & <a href="%s">group</a> permissions are enabled and some logged in users may have less permissions than anonymous users.');
+			$advanced_perm_url = url_add_param( $admin_url, 'ctrl=coll_settings&amp;blog='.$this->ID.'&amp;tab=' );
+			return ' <span class="warning">'.sprintf( $warning, $advanced_perm_url.'perm', $advanced_perm_url.'permgroup' ).'</span>';
+		}
+
+		return NULL;
+	}
+
+
  	/**
 	 * Get a setting.
 	 *
+	 * @param string setting name
+	 * @param boolean true to return param's real value
 	 * @return string|false|NULL value as string on success; NULL if not found; false in case of error
 	 */
-	function get_setting( $parname )
+	function get_setting( $parname, $real_value = false )
+	{
+		global $Settings;
+
+		$this->load_CollectionSettings();
+
+		$result = $this->CollectionSettings->get( $this->ID, $parname );
+
+		switch( $parname )
+		{
+			case 'normal_skin_ID':
+				if( $result == NULL )
+				{ // Try to get default from the global settings
+					$result = $Settings->get( 'def_'.$parname );
+				}
+				break;
+
+			case 'mobile_skin_ID':
+			case 'tablet_skin_ID':
+				if( $result == NULL )
+				{ // Try to get default from the global settings
+					$result = $Settings->get( 'def_'.$parname );
+				}
+				if( ( $result === '0' ) && ! $real_value )
+				{ // 0 value means that use the same as normal case
+					$result = $this->get_setting( 'normal_skin_ID' );
+				}
+				break;
+
+			case 'moderation_statuses':
+				if( $result == NULL )
+				{ // moderation_statuses was not set yet, set the default value, which depends from the blog type
+					$default = 'review,draft';
+					$result = ( $this->type == 'forum' ) ? 'community,protected,'.$default : $default;
+				}
+				break;
+
+			case 'default_post_status':
+			case 'new_feedback_status':
+				if( $result == NULL )
+				{ // Default post/comment status was not set yet, use a default value corresponding to the blog type
+					$result = ( $this->type == 'forum' ) ? 'review' : 'draft';
+				}
+				break;
+		}
+
+		return $result;
+	}
+
+
+ 	/**
+	 * Get a ready-to-display setting from the DB settings table.
+	 *
+	 * Same as disp but don't echo
+	 *
+	 * @param string Name of setting
+	 * @param string Output format, see {@link format_to_output()}
+	 */
+	function dget_setting( $parname, $format = 'htmlbody' )
 	{
 		$this->load_CollectionSettings();
 
-		return $this->CollectionSettings->get( $this->ID, $parname );
+		return format_to_output( $this->CollectionSettings->get( $this->ID, $parname ), $format );
+	}
+
+
+ 	/**
+	 * Display a setting from the DB settings table.
+	 *
+	 * @param string Name of setting
+	 * @param string Output format, see {@link format_to_output()}
+	 */
+	function disp_setting( $parname, $format = 'htmlbody' )
+	{
+		$this->load_CollectionSettings();
+
+		echo format_to_output( $this->CollectionSettings->get( $this->ID, $parname ), $format );
 	}
 
 
@@ -1868,10 +2055,12 @@ class Blog extends DataObject
 
 	/**
 	 * Create a new blog...
+	 *
+	 * @param string Kind of blog ( 'std', 'photo', 'group', 'forum' )
 	 */
-	function create()
+	function create( $kind = '' )
 	{
-		global $DB, $Messages, $basepath, $current_User, $Settings;
+		global $DB, $Messages, $basepath, $admin_url, $current_User, $Settings;
 		$DB->begin();
 
 		// DB INSERT
@@ -1898,15 +2087,49 @@ class Blog extends DataObject
 		// Note: The owner of teh blog has permissions just by the sole fact he is registered as the owner.
 		if( $current_User != NULL )
 		{ // Proceed insertions:
+			$perm_statuses = "'review,draft,private,protected,deprecated,community,published'";
 			$DB->query( "
 					INSERT INTO T_coll_user_perms( bloguser_blog_ID, bloguser_user_ID, bloguser_ismember,
 						bloguser_perm_poststatuses, bloguser_perm_delpost, bloguser_perm_edit_ts,
-						bloguser_perm_draft_cmts, bloguser_perm_publ_cmts, bloguser_perm_depr_cmts,
+						bloguser_perm_recycle_owncmts, bloguser_perm_vote_spam_cmts, bloguser_perm_cmtstatuses,
 						bloguser_perm_cats, bloguser_perm_properties,
 						bloguser_perm_media_upload, bloguser_perm_media_browse, bloguser_perm_media_change )
 					VALUES ( $this->ID, $current_User->ID, 1,
-						'published,protected,private,draft,deprecated', 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 )" );
+						$perm_statuses, 1, 1, 1, 1, $perm_statuses, 1, 1, 1, 1, 1 )" );
 		}
+
+		/*
+		if( $kind == 'forum' )
+		{	// Set default group permissions for the Forum blog
+			$GroupCache = & get_GroupCache();
+			$groups_permissions = array();
+			if( $GroupCache->get_by_ID( 1, false ) )
+			{	// Check if "Administrators" group still exists
+				$groups_permissions[ 'admins' ] = "( $this->ID, 1, 1, 'published,deprecated,protected,private,draft', 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 )";
+			}
+			if( $GroupCache->get_by_ID( 2, false ) )
+			{	// Check if "Moderators" group still exists
+				$groups_permissions[ 'privileged' ] = "( $this->ID, 2, 1, 'published,deprecated,protected,private,draft', 1, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1 )";
+			}
+			if( $GroupCache->get_by_ID( 3, false ) )
+			{	// Check if "Bloggers" group still exists
+				$groups_permissions[ 'bloggers' ] = "( $this->ID, 3, 1, 'published,deprecated,protected,private,draft', 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0 )";
+			}
+			if( $GroupCache->get_by_ID( 4, false ) )
+			{	// Check if "Basic Users" group still exists
+				$groups_permissions[ 'users' ] = "( $this->ID, 4, 1, 'published', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 )";
+			}
+			if( $GroupCache->get_by_ID( 5, false ) )
+			{	// Check if "Spam/Suspect Users" group still exists
+				$groups_permissions[ 'spam' ] = "( $this->ID, 5, 1, 'published,deprecated,protected,private,draft', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 )";
+			}
+			$DB->query( 'INSERT INTO T_coll_group_perms( bloggroup_blog_ID, bloggroup_group_ID, bloggroup_ismember,
+					bloggroup_perm_poststatuses, bloggroup_perm_delpost, bloggroup_perm_edit_ts,
+					bloggroup_perm_recycle_owncmts, bloggroup_perm_vote_spam_cmts, bloggroup_perm_draft_cmts, bloggroup_perm_publ_cmts, bloggroup_perm_depr_cmts,
+					bloggroup_perm_cats, bloggroup_perm_properties,
+					bloggroup_perm_media_upload, bloggroup_perm_media_browse, bloggroup_perm_media_change )
+				VALUES '.implode( ',', $groups_permissions ) );
+		}*/
 
 		// Create default category:
 		load_class( 'chapters/model/_chapter.class.php', 'Chapter' );
@@ -1921,7 +2144,7 @@ class Blog extends DataObject
 
 		// ADD DEFAULT WIDGETS:
 		load_funcs( 'widgets/_widgets.funcs.php' );
-		insert_basic_widgets( $this->ID );
+		insert_basic_widgets( $this->ID, false, $kind );
 
 		$Messages->add( T_('Default widgets have been set-up for this blog.'), 'success' );
 
@@ -1938,6 +2161,11 @@ class Blog extends DataObject
 			}
 		}
 		$this->set_setting( 'cache_enabled_widgets', $Settings->get( 'newblog_cache_enabled_widget' ) );
+
+		if( $this->get( 'advanced_perms' ) )
+		{	// Display this warning if blog has the enabled advanced perms be default
+			$Messages->add( sprintf(T_('ATTENTION: go to the <a %s>advanced group permissions for this blog/forum</a> in order to allow some user groups to post new topics into this forum.'), 'href='.$admin_url.'?ctrl=coll_settings&amp;tab=permgroup&amp;blog='.$this->ID ), 'warning' );
+		}
 
 		// Commit changes in cache:
 		$BlogCache = & get_BlogCache();
@@ -1958,7 +2186,7 @@ class Blog extends DataObject
 
 		// if this blog settings was modified we need to invalidate this blog's page caches
 		// this way all existing cached page on this blog will be regenerated during next display
-		// TODO: Ideally we want to detect if the changes are minor/irrelevant to caching and not invalidate the page cache if not necessary. 
+		// TODO: Ideally we want to detect if the changes are minor/irrelevant to caching and not invalidate the page cache if not necessary.
 		// In case of doubt (and for unknown changes), it's better to invalidate.
 		$this->set_setting( 'last_invalidation_timestamp', $servertimenow );
 
@@ -1988,10 +2216,9 @@ class Blog extends DataObject
 	 *
 	 * Includes WAY TOO MANY requests because we try to be compatible with MySQL 3.23, bleh!
 	 *
-	 * @param boolean true if you want to try to delete the static file
 	 * @param boolean true if you want to echo progress
 	 */
-	function dbdelete($delete_static_file = false, $echo = false )
+	function dbdelete( $echo = false )
 	{
 		global $DB, $Messages, $Plugins;
 
@@ -2042,15 +2269,44 @@ class Blog extends DataObject
 
 				// Delete comments
 				if( $echo ) echo '<br />Deleting comments on blog\'s posts... ';
-				$ret = $DB->query( "DELETE FROM T_comments
-														WHERE comment_post_ID IN ($post_list)" );
+				$comments_list = implode( ',', $DB->get_col( "
+						SELECT comment_ID
+						  FROM T_comments
+						 WHERE comment_post_ID IN ($post_list)" ) );
+				if( !empty( $comments_list ) )
+				{	// Delete the comments & dependencies
+					$DB->query( "DELETE FROM T_comments__votes
+												WHERE cmvt_cmt_ID IN ($comments_list)" );
+					$ret = $DB->query( "DELETE FROM T_comments
+															WHERE comment_post_ID IN ($post_list)" );
+				}
+				else
+				{	// No comments in this blog
+					$ret = 0;
+				}
 				if( $echo ) printf( '(%d rows)', $ret );
 				$Messages->add( T_('Deleted comments on blog\'s posts'), 'success' );
 
 
 				// Delete posts
 				if( $echo ) echo '<br />Deleting blog\'s posts... ';
-				$ret = $DB->query(	"DELETE FROM T_items__item
+				$DB->query( "DELETE FROM T_items__itemtag
+											WHERE itag_itm_ID IN ($post_list)" );
+				$DB->query( "DELETE FROM T_items__item_settings
+											WHERE iset_item_ID IN ($post_list)" );
+				$DB->query( "DELETE FROM T_items__prerendering
+											WHERE itpr_itm_ID IN ($post_list)" );
+				$DB->query( "DELETE FROM T_items__status
+											WHERE pst_ID IN ($post_list)" );
+				$DB->query( "DELETE FROM T_items__subscriptions
+											WHERE isub_item_ID IN ($post_list)" );
+				$DB->query( "DELETE FROM T_items__version
+											WHERE iver_itm_ID IN ($post_list)" );
+				$DB->query( "DELETE FROM T_links
+											WHERE link_itm_ID IN ($post_list)" );
+				$DB->query( "DELETE FROM T_slug
+											WHERE slug_itm_ID IN ($post_list)" );
+				$ret = $DB->query( "DELETE FROM T_items__item
 															WHERE post_ID IN ($post_list)" );
 				if( $echo ) printf( '(%d rows)', $ret );
 				$Messages->add( T_('Deleted blog\'s posts'), 'success' );
@@ -2065,28 +2321,6 @@ class Blog extends DataObject
 			$Messages->add( T_('Deleted blog\'s categories'), 'success' );
 
 		} // / are there cats?
-
-
-		if( $delete_static_file )
-		{ // Delete static file
-			if( $echo ) echo '<br />Trying to delete static file... ';
-			if( ! @unlink( $this->get('staticfilepath') ) )
-			{
-				if( $echo )
-				{
-					echo '<span class="error">';
-					printf(	T_('ERROR! Could not delete! You will have to delete the file [%s] by hand.'),
-									$this->get('staticfilepath') );
-					echo '</span>';
-				}
-				$Messages->add( sprintf( T_('Could not delete static file [%s]'), $this->get('staticfilepath') ), 'error' );
-			}
-			else
-			{
-				if( $echo ) echo 'OK.';
-				$Messages->add( T_('Deleted blog\'s static file'), 'success' );
-			}
-		}
 
 		// Delete the blog cache folder - try to delete even if cache is disabled
 		load_class( '_core/model/_pagecache.class.php', 'PageCache' );
@@ -2194,6 +2428,32 @@ class Blog extends DataObject
 	{
 		return strmaxlen( $this->get_name(), $maxlen, NULL, 'raw' );
 	}
+
+
+	/*
+	 * Get the blog skin ID which correspond to the current session device
+	 *
+	 * @return integer skin ID
+	 */
+	function get_skin_ID()
+	{
+		global $Session;
+
+		if( !empty( $Session ) )
+		{
+			if( $Session->is_mobile_session() )
+			{
+				return $this->get_setting( 'mobile_skin_ID' );
+			}
+			if( $Session->is_tablet_session() )
+			{
+				return $this->get_setting( 'tablet_skin_ID' );
+			}
+		}
+
+		return $this->get_setting( 'normal_skin_ID' );
+	}
+
 
 	/**
 	 * Resolve user ID of owner
@@ -2377,9 +2637,213 @@ class Blog extends DataObject
 		return $DB->get_var( $sql );
 
 	}
+
+
+	/**
+	 * Get the corresponding ajax form enabled setting
+	 *
+	 * @return boolean true if ajax form is enabled, false otherwise
+	 */
+	function get_ajax_form_enabled()
+	{
+		if( is_logged_in() )
+		{
+			return $this->get_setting( 'ajax_form_loggedin_enabled' );
+		}
+		return $this->get_setting( 'ajax_form_enabled' );
+	}
+
+
+	/**
+	 * Get timestamp value from the setting "timestamp_min"
+	 *
+	 * @return string
+	 */
+	function get_timestamp_min()
+	{
+		$timestamp_min = $this->get_setting( 'timestamp_min' );
+
+		switch ( $timestamp_min )
+		{
+			case 'duration': // Set timestamp to show past posts after this date
+				$timestamp_value = time() - $this->get_setting( 'timestamp_min_duration' );
+				break;
+			case 'no': // Don't show past posts
+				$timestamp_value = 'now';
+				break;
+			case 'yes': // Show all past posts
+			default:
+				$timestamp_value = '';
+				break;
+		}
+
+		return $timestamp_value;
+	}
+
+
+	/**
+	 * Get timestamp value from the setting "timestamp_max"
+	 *
+	 * @return string
+	 */
+	function get_timestamp_max()
+	{
+		$timestamp_max = $this->get_setting( 'timestamp_max' );
+
+		switch ( $timestamp_max )
+		{
+			case 'duration': // Set timestamp to show future posts before this date
+				$timestamp_value = time() + $this->get_setting( 'timestamp_max_duration' );
+				break;
+			case 'yes': // Show all future posts
+				$timestamp_value = '';
+				break;
+			case 'no': // Don't show future posts
+			default:
+				$timestamp_value = 'now';
+				break;
+		}
+
+		return $timestamp_value;
+	}
+
+
+	/**
+	 * Get url to write a new Post
+	 *
+	 * @param integer Category ID
+	 * @param string Post title
+	 * @param string Post urltitle
+	 * @param string Post type
+	 * @return string Url to write a new Post
+	 */
+	function get_write_item_url( $cat_ID = 0, $post_title = '', $post_urltitle = '', $post_type = '' )
+	{
+		$url = '';
+
+		if( is_logged_in( false ) )
+		{	// Only logged in and activated users can write a Post
+			global $current_User;
+
+			$ChapterCache = & get_ChapterCache();
+			$selected_Chapter = $ChapterCache->get_by_ID( $cat_ID, false, false );
+			if( $selected_Chapter && $selected_Chapter->lock )
+			{ // This category is locked, don't allow to create new post with this cat
+				return '';
+			}
+			if( $current_User->check_perm( 'blog_post_statuses', 'edit', false, $this->ID ) )
+			{	// We have permission to add a post with at least one status:
+				if( $this->get_setting( 'in_skin_editing' ) && ! is_admin_page() )
+				{	// We have a mode 'In-skin editing' for the current Blog
+					// User must have a permission to publish a post in this blog
+					$cat_url_param = '';
+					if( $cat_ID > 0 )
+					{	// Link to create a Item with predefined category
+						$cat_url_param = '&amp;cat='.$cat_ID;
+					}
+					$url = url_add_param( $this->get( 'url' ), 'disp=edit'.$cat_url_param );
+				}
+				elseif( $current_User->check_perm( 'admin', 'restricted' ) )
+				{	// Edit a post from Back-office
+					global $admin_url;
+					$url = $admin_url.'?ctrl=items&amp;action=new&amp;blog='.$this->ID;
+					if( !empty( $cat_ID ) )
+					{	// Add category param to preselect category on the form
+						$url = url_add_param( $url, 'cat='.$cat_ID );
+					}
+				}
+
+				if( !empty( $post_title ) )
+				{ // Append a post title
+					$url = url_add_param( $url, 'post_title='.$post_title );
+				}
+				if( !empty( $post_urltitle ) )
+				{ // Append a post urltitle
+					$url = url_add_param( $url, 'post_urltitle='.$post_urltitle );
+				}
+				if( !empty( $post_type ) )
+				{ // Append a post type
+					$url = url_add_param( $url, 'post_type='.$post_type );
+				}
+			}
+		}
+
+		return $url;
+	}
+
+
+	/**
+	 * Get url to create a new Chapter
+	 *
+	 * @param integer Parent category ID
+	 * @return string Url to create a new Chapter
+	 */
+	function get_create_chapter_url( $cat_ID = 0 )
+	{
+		$url = '';
+
+		if( is_logged_in( false ) )
+		{	// Only logged in and activated users can write a Post
+			global $current_User;
+
+			if( $current_User->check_perm( 'admin', 'restricted' ) &&
+			    $current_User->check_perm( 'blog_cats', 'edit', false, $this->ID ) )
+			{	// Check permissions to create a new chapter in this blog
+				global $admin_url;
+				$url = $admin_url.'?ctrl=chapters&amp;action=new&amp;blog='.$this->ID;
+				if( !empty( $cat_ID ) )
+				{	// Add category param to preselect category on the form
+					$url = url_add_param( $url, 'cat_parent_ID='.$cat_ID );
+				}
+			}
+		}
+
+		return $url;
+	}
+
+
+	/**
+	 * Country is visible for defining
+	 *
+	 * @return boolean TRUE if users can define a country for posts of current blog
+	 */
+	function country_visible()
+	{
+		return $this->get_setting( 'location_country' ) != 'hidden' || $this->region_visible();
+	}
+
+
+	/**
+	 * Region is visible for defining
+	 *
+	 * @return boolean TRUE if users can define a region for posts of current blog
+	 */
+	function region_visible()
+	{
+		return $this->get_setting( 'location_region' ) != 'hidden' || $this->subregion_visible();
+	}
+
+
+	/**
+	 * Subregion is visible for defining
+	 *
+	 * @return boolean TRUE if users can define a subregion for posts of current blog
+	 */
+	function subregion_visible()
+	{
+		return $this->get_setting( 'location_subregion' ) != 'hidden' || $this->city_visible();
+	}
+
+
+	/**
+	 * City is visible for defining
+	 *
+	 * @return boolean TRUE if users can define a city for posts of current blog
+	 */
+	function city_visible()
+	{
+		return $this->get_setting( 'location_city' ) != 'hidden';
+	}
 }
 
-/*
- * $Log: _blog.class.php,v $
- */
 ?>

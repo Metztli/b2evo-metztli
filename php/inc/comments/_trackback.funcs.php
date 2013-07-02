@@ -5,7 +5,7 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2004-2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
@@ -26,7 +26,7 @@
  * @author sakichan: Nobuo SAKIYAMA.
  * @author vegarg: Vegar BERG GULDAL.
  *
- * @version $Id: _trackback.funcs.php 1107 2012-03-28 19:05:24Z sam2kb $
+ * @version $Id: _trackback.funcs.php 3508 2013-04-19 06:58:02Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -45,7 +45,7 @@ function trackbacks( $post_trackbacks, $Item )
 	$excerpt = $Item->get_excerpt();
 
 	$Messages->add( T_('Excerpt sent in trackbacks:').' '.$excerpt, 'note' );
-	$trackback_urls = preg_split('~( )+~', $post_trackbacks,10);		// fplanque: ;
+	$trackback_urls = split('( )+', $post_trackbacks,10);		// fplanque: ;
 	foreach($trackback_urls as $tb_url)
 	{ // trackback each url:
 		$tb_url = trim($tb_url);
@@ -131,7 +131,7 @@ function trackback(
 			$http_request .= "User-Agent: $app_name/$app_version\r\n";
 			$http_request .= "\r\n";
 			$http_request .= $query_string;
-			flush();
+			evo_flush();
 			if( $fs = @fsockopen($trackback_url['host'], $port, $errno, $errst, 20) ) // this timeout is just for setting up the socket
 			{
 				// Set timeout for data:
@@ -221,8 +221,4 @@ function trackback_number( $zero='#', $one='#', $more='#', $post_ID = NULL )
 	echo $blah;
 }
 
-
-/*
- * $Log: _trackback.funcs.php,v $
- */
 ?>

@@ -4,35 +4,45 @@
 * Distributed with b2evolution with written permission from Michael Heilemann (2007-01-25).
 */
 
-/* The following are now requested in _skin.class.php::display_init() -- please see note there */
-/* @import url("../../rsc/css/basic.css");	/* Import basic styles */
-/* @import url("../../rsc/css/blog_base.css");	/* Import default blog navigation styles */
-/* @import url("item.css");	/* Import blog content styles */
-
 
 /* Begin Typography & Colors */
 body {
 font-size: 62.5%; /* Resets 1em to 10px */
 font-family: 'Lucida Grande', Verdana, Arial, Sans-Serif;
-background: #d5d6d7 url('img/kubrickbgcolor.jpg');
+background: #e7e7e7;
 color: #333;
 text-align: center;
+}
+textarea, input, select, option, optgroup, ul.ui-autocomplete, li.token-input-token-facebook, div.token-input-dropdown-facebook {
+font: 12px 'Lucida Grande', Verdana, Arial, Sans-Serif;
 }
 
 #page {
 background-color: white;
-/* border: 1px solid #959596; */
 text-align: left;
 }
 
 #header {
-background: #73a0c5 url('img/kubrickheader.jpg') no-repeat bottom center;
+margin: 10px auto 0;
+padding: 0;
+width: 720px;
+overflow: hidden;
+-moz-border-radius: 6px;
+-webkit-border-radius: 6px;
+-khtml-border-radius: 6px;
+border-radius: 6px;
 }
 
-#headerimg 	{
+#headerimg {
 font-size: 1.2em;
 text-align: center;
 color: white;
+height: 182px;
+background:-webkit-linear-gradient(top, #6aace6, #4280b6);
+background:-moz-linear-gradient(top, #6aace6, #4280b6);
+background:-o-linear-gradient(top, #6aace6, #4280b6);
+background: -ms-linear-gradient(top, #6aace6, #4280b6);
+filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#6aace6', endColorstr='#4280b6');
 }
 
 #content {
@@ -61,11 +71,6 @@ text-align: center;
 background-color: #f8f8f8;
 border-top: 1px solid #ddd;
 border-bottom: 1px solid #ddd;
-}
-
-#footer {
-background: url('img/kubrickfooter.jpg') no-repeat bottom;
-border: none;
 }
 
 h1, h2, h3 {
@@ -186,31 +191,28 @@ padding: 0;
 }
 
 #page {
-background-color: white;
+background: #FFF left 0 repeat-y;
 margin: 20px auto;
 padding: 0;
-width: 760px;
-/* border: 1px solid #959596; */
+width: 740px;
+border: 1px solid #a2a2a2;
+-moz-border-radius: 8px;
+-webkit-border-radius: 8px;
+-khtml-border-radius: 8px;
+border-radius: 8px;
+box-shadow: 0 2px 3px 0 rgba(0, 0, 0, 0.3);
+overflow: hidden;
 }
-
-.page-left {
-background: url("img/kubrickbg-ltr-left.jpg");
+#page.page-left, #page.page-right {
+background-image: url('img/kubrickbg-ltr.gif');
 }
-
-.page-right {
-background: url("img/kubrickbg-ltr-right.jpg");
-}
-
-#header {
-margin: 0 0 0 1px;
-padding: 0;
-height: 200px;
-width: 758px;
+#page.page-right {
+background-position : right 0;
 }
 
 div.page-right .narrowcolumn {
 float: left;
-padding: 0 0 20px 45px;
+padding: 0 0 20px 35px;
 margin: 0px 0 0;
 width: 450px;
 }
@@ -273,12 +275,22 @@ clear: left;
 }
 
 #footer {
+border: none;
 padding: 0;
 margin: 0 auto;
-width: 760px;
+width: 740px;
 clear: both;
 color: #999;
 -webkit-text-size-adjust: none; /* iPhone */
+background:-webkit-linear-gradient(top, #FFF, #e3e3e3);
+background:-moz-linear-gradient(top, #FFF, #e3e3e3);
+background:-o-linear-gradient(top, #FFF, #e3e3e3);
+background: -ms-linear-gradient(top, #FFF, #e3e3e3);
+filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#FFFFFF', endColorstr='#e3e3e3');
+border-radius: 8px;
+-moz-border-radius: 8px;
+-webkit-border-radius: 8px;
+-khtml-border-radius: 8px;
 }
 
 #footer a {
@@ -287,7 +299,7 @@ color: #999;
 
 #footer p {
 margin: 0;
-padding: 20px 0;
+padding: 25px 0 15px;
 text-align: center;
 }
 /* End Structure */
@@ -403,12 +415,12 @@ padding: 0;
 
 /* Begin Sidebar */
 .sidebar-left {
-	margin-left:25px;
+	margin-left:15px;
 	width:190px;
 }
 
 .sidebar-right {
-	margin-left: 545px;
+	margin-left: 534px;
 	width: 190px;
 }
 
@@ -440,7 +452,7 @@ font-size: 100%;
 
 .widget_core_coll_search_form div.compact_search_form input.SearchField {
 	width: 106px;
-	background:url(img/search_i_bg.png) no-repeat left top;
+	background:url(img/search_sprite.png) no-repeat left top;
 	border:0px;
 	height:23px;
 	padding:0px 10px 0px 25px;
@@ -450,7 +462,7 @@ font-size: 100%;
 	color:#535353;
 }
 .widget_core_coll_search_form div.compact_search_form input:hover.SearchField {
-	background:url(img/search_i_bg.png) no-repeat 0px -24px;
+	background:url(img/search_sprite.png) no-repeat 0px -24px;
 }
 
 .compact_search_form{padding:10px 0px 0px 0px;}
@@ -458,7 +470,7 @@ font-size: 100%;
 .widget_core_coll_search_form div.compact_search_form input.search_submit{
 	width:42px;
 	height:24px;
-	background:url(img/submit_btn.png) no-repeat left top;
+	background:url(img/search_sprite.png) no-repeat -142px 0px;
 	border:0px;
 	font-size:0px;
 	padding:0px;
@@ -466,7 +478,7 @@ font-size: 100%;
 	cursor:pointer;
 }
 .widget_core_coll_search_form div.compact_search_form input:hover.search_submit{
-	background:url(img/submit_btn.png) no-repeat 0px -24px;
+	background:url(img/search_sprite.png) no-repeat -142px -24px;
 }
 
 /* End Sidebar */
@@ -498,8 +510,10 @@ width: 100%;
 /* Styles for comments */
 div.bComment, /* Entire comment block */
 form.bComment { /* New comment form */
-margin: 1ex 0;
-border: 1px dotted #999;
+	margin: 1ex 0;
+}
+form.bComment {
+	margin-top: 0;
 }
 
 div.moderation_msg {
@@ -521,7 +535,7 @@ div#header ul {
 float:right;
 list-style-type:none;
 margin: 0;
-padding: 27px 24px;
+padding: 10px 10px 27px;
 }
 div#header li {
 margin: 0;
@@ -543,14 +557,14 @@ text-decoration: underline;
 
 
 div.widget_core_coll_title {
-	padding-top: 70px;
+	padding-top: 55px;
 }
 
 
 /* Top menu */
 div.top_menu ul {
 float:left;
-margin: 8px 0 0 24px;
+margin: 8px 0 0 14px;
 padding: 0;
 list-style-type:none;
 font-size: 108%;
@@ -561,6 +575,8 @@ width: 490px;
 div.top_menu li {
 display: inline;
 padding: 0 1em 0 0;
+white-space: nowrap;
+float: left;
 }
 div.top_menu a {
 font-weight: bold;
@@ -579,4 +595,23 @@ div.top_menu_left {
 
 div.top_menu_right {
 	margin-left: 0px;
+}
+
+/* jQuery Tokeninput plugin */
+div.input ul.token-input-list-facebook {
+	width: 309px;
+}
+
+/* Not published comments display */
+#styled_content_block .bComment .status_draft,
+#styled_content_block .bComment .status_review,
+#styled_content_block .bComment .status_community,
+#styled_content_block .bComment .status_protected,
+#styled_content_block .bComment .status_private {
+	top: 0px;
+	left: 12px;
+}
+
+div.tabs {
+	padding-left: 10px;
 }

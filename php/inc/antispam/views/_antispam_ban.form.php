@@ -5,7 +5,7 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
  *
@@ -18,7 +18,7 @@
  *
  * @todo Allow applying / re-checking of the known data, not just after an update!
  *
- * @version $Id: _antispam_ban.form.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _antispam_ban.form.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -101,7 +101,7 @@ $Form->begin_form( 'fform',  T_('Confirm ban & delete') );
 	}
 
 	// Check for potentially affected comments:
-	$sql = 'SELECT * 
+	$sql = 'SELECT *
 				FROM T_comments
 			 WHERE comment_author LIKE '.$DB->quote('%'.$keyword.'%').'
 				 OR comment_author_email LIKE '.$DB->quote('%'.$keyword.'%').'
@@ -116,69 +116,45 @@ $Form->begin_form( 'fform',  T_('Confirm ban & delete') );
 	}
 	else
 	{ // create comment arrays
-		$draft_comments = array();
-		$published_comments = array();
-		$deprecated_comments = array();
-		$draft_noperms_count = 0;
-		$publ_noperms_count = 0;
-		$depr_noperms_count = 0;
+		$comments_by_status = array( 'published' => array(), 'community' => array(), 'protected' => array(), 'private' => array(), 'draft' => array(), 'review' => array(), 'deprecated' => array() );
+		$no_perms_count = array( 'published' => 0, 'community' => 0, 'protected' => 0, 'private' => 0, 'draft' => 0, 'review' => 0, 'deprecated' => 0 );
 		foreach( $res_affected_comments as $row_stats )
 		{ // select comments
 			$affected_Comment = new Comment($row_stats);
-			$affected_Item = & $affected_Comment->get_Item();
-			$comment_blog = $affected_Item->get_blog_ID();
-			switch( $affected_Comment->get( 'status' ) )
-			{
-				case 'draft':
-					if( ! $current_User->check_perm( 'blog_draft_comments', 'edit', false, $comment_blog ) )
-					{ // no permission to delete
-						$draft_noperms_count++;
-						continue;
-					}
-					$draft_comments[] = $affected_Comment;
-					break;
-				case 'published':
-					if( ! $current_User->check_perm( 'blog_published_comments', 'edit', false, $comment_blog ) )
-					{ // no permission to delete
-						$publ_noperms_count++;
-						continue;
-					}
-					$published_comments[] = $affected_Comment;
-					break;
-				case 'deprecated':
-					if( ! $current_User->check_perm( 'blog_deprecated_comments', 'edit', false, $comment_blog ) )
-					{ // no permission to delete
-						$depr_noperms_count++;
-						continue;
-					}
-					$deprecated_comments[] = $affected_Comment;
-					break;
-				case 'trash':
-					break;
-				default:
-					debug_die( 'Invalid comment status' );
+			$comment_status = $affected_Comment->get( 'status' );
+			if( $comment_status == 'trash' )
+			{ // This comment was already deleted
+				continue;
 			}
+			if( !$current_User->check_perm( 'comment!CURSTATUS', 'edit', false, $affected_Comment ) )
+			{ // no permission to delete
+				$no_perms_count[$comment_status] = $no_perms_count[$comment_status] + 1;
+				continue;
+			}
+			// Add comment to the corresponding list
+			$comments_by_status[$comment_status][] = $affected_Comment;
 		}
+
 		// show comments
-		echo_affected_comments( $draft_comments, 'draft', $keyword, $draft_noperms_count );
-		echo_affected_comments( $published_comments, 'published', $keyword, $publ_noperms_count );
-		echo_affected_comments( $deprecated_comments, 'deprecated', $keyword, $depr_noperms_count );
+		foreach( $comments_by_status as $status => $comments )
+		{
+			echo_affected_comments( $comments, $status, $keyword, $no_perms_count[$status] );
+		}
 	}
 
 	// Check for potentially affected comments:
 	$quoted_keyword = $DB->quote('%'.$keyword.'%');
-	$sql = 'SELECT T_users.* 
-				FROM T_users LEFT JOIN T_users__fields ON user_ID = uf_user_ID
+	$sql = 'SELECT DISTINCT T_users.*
+				FROM T_users 
+					LEFT JOIN T_users__fields ON user_ID = uf_user_ID
+					LEFT JOIN T_users__usersettings user_domain_setting ON user_ID = user_domain_setting.uset_user_ID AND user_domain_setting.uset_name = "user_domain"
 			 WHERE user_url LIKE '.$quoted_keyword.'
 				 OR user_email LIKE '.$quoted_keyword.'
-				 OR user_domain LIKE '.$quoted_keyword.'
+				 OR user_domain_setting.uset_value LIKE '.$quoted_keyword.'
 				 OR user_nickname LIKE '.$quoted_keyword.'
 				 OR user_firstname LIKE '.$quoted_keyword.'
 				 OR user_lastname LIKE '.$quoted_keyword.'
 				 OR user_login LIKE '.$quoted_keyword.'
-				 OR user_aim LIKE '.$quoted_keyword.'
-				 OR user_msn LIKE '.$quoted_keyword.'
-				 OR user_yim LIKE '.$quoted_keyword.'
 				 OR uf_varchar LIKE '.$quoted_keyword.'
 			 ORDER BY user_login ASC
 			 LIMIT 500';
@@ -289,7 +265,4 @@ $Form->begin_form( 'fform', T_('Add a banned keyword') );
 	 */
 $Form->end_form( array( array( 'submit', 'submit', T_('Check & ban...'), 'SaveButton' ) ) );
 
-/*
- * $Log: _antispam_ban.form.php,v $
- */
 ?>

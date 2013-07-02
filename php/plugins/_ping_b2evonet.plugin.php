@@ -8,7 +8,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -30,7 +30,7 @@
  *
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: _ping_b2evonet.plugin.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _ping_b2evonet.plugin.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -48,13 +48,12 @@ class ping_b2evonet_plugin extends Plugin
 	 */
 	var $code = 'ping_b2evonet';
 	var $priority = 50;
-	var $version = '2.4.2.1';
+	var $version = '5.0.0';
 	var $author = 'The b2evo Group';
 
 	/*
 	 * These variables MAY be overriden.
 	 */
-	var $apply_rendering = 'never';
 	var $group = 'ping';
 	var $number_of_installs = 1;
 
@@ -107,8 +106,4 @@ class ping_b2evonet_plugin extends Plugin
 
 }
 
-
-/*
- * $Log: _ping_b2evonet.plugin.php,v $
- */
 ?>

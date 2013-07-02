@@ -4,13 +4,13 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
- * @see http://manual.b2evolution.net/B2_API
+ * @see http://b2evolution.net/man/b2-api
  *
  * @package xmlsrv
  *
- * @version $Id: _b2.api.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _b2.api.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -36,8 +36,6 @@ $b2newpost_sig = array(array($xmlrpcString, $xmlrpcString, $xmlrpcString, $xmlrp
  */
 function b2_newpost($m)
 {
-	global $localtimenow;
-
 	// CHECK LOGIN:
 	/**
 	 * @var User
@@ -51,44 +49,21 @@ function b2_newpost($m)
 	$publish = $publish->scalarval();
 	$status = $publish ? 'published' : 'draft';
 
-	$main_cat = $m->getParam(7);
-	$main_cat = $main_cat->scalarval();
-
-	// Check if category exists and can be used
-	$ChapterCache = & get_ChapterCache();
-	if( $ChapterCache->get_by_ID( $main_cat, false ) === false )
-	{ // Cat does not exist:
-		return xmlrpcs_resperror( 11 );	// User error 11
-	}
-	$cat_IDs = array( $main_cat );
-
-	// CHECK PERMISSION: (we need perm on all categories, especially if they are in different blogs)
-	if( ! $current_User->check_perm( 'cats_post!'.$status, 'edit', false, $cat_IDs ) )
-	{	// Permission denied
-		return xmlrpcs_resperror( 3 );	// User error 3
-	}
-	
-	logIO( 'Permission granted.' );
-
-	$postdate = $m->getParam(8);
-	$postdate = $postdate->scalarval();
-	if( $postdate != '' )
-	{
-		$post_date = $postdate;
-	}
-	else
-	{
-		$post_date = date('Y-m-d H:i:s', $localtimenow);
-	}
-
-	$post_title = $m->getParam(6);
-	$post_title = $post_title->scalarval();
-
  	$content = $m->getParam(4);
-	$content = $content->scalarval();
+ 	$title = $m->getParam(6);
+ 	$main_cat = $m->getParam(7);
+ 	$date = $m->getParam(8);
+
+	$params = array(
+			'title'			=> $title->scalarval(),
+			'content'		=> $content->scalarval(),
+			'main_cat_ID'	=> $main_cat->scalarval(),
+			'date'			=> $date->scalarval(),
+			'status'		=> $status,
+		);
 
 	// COMPLETE VALIDATION & INSERT:
-	return xmlrpcs_new_item( $post_title, $content, $post_date, $main_cat, $cat_IDs, $status );
+	return xmlrpcs_new_item( $params );
 }
 
 
@@ -132,7 +107,7 @@ $b2_getPostURL_sig = array(array($xmlrpcString, $xmlrpcString, $xmlrpcString, $x
 function b2_getposturl($m)
 {
 	// CHECK LOGIN:
-  /**
+	/**
 	 * @var User
 	 */
 	if( ! $current_User = & xmlrpcs_login( $m, 2, 3 ) )
@@ -141,7 +116,7 @@ function b2_getposturl($m)
 	}
 
 	// GET POST:
-  /**
+	/**
 	 * @var Item
 	 */
 	if( ! $edited_Item = & xmlrpcs_get_Item( $m, 4 ) )
@@ -154,7 +129,7 @@ function b2_getposturl($m)
 	{	// Permission denied
 		return xmlrpcs_resperror( 3 );	// User error 3
 	}
-	
+
 	logIO( 'OK.' );
 	return new xmlrpcresp( new xmlrpcval( $edited_Item->get_permanent_url() ) );
 }
@@ -175,7 +150,4 @@ $xmlrpc_procs['b2.getPostURL'] = array(
 				'signature' => $b2_getPostURL_sig,
 				'docstring' => $b2_getPostURL_doc );
 
-/*
- * $Log: _b2.api.php,v $
- */
 ?>

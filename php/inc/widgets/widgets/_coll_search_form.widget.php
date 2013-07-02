@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -21,7 +21,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _coll_search_form.widget.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _coll_search_form.widget.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -88,6 +88,12 @@ class coll_search_form_Widget extends ComponentWidget
 					'size' => 40,
 					'defaultvalue' => T_('Search'),
 				),
+				'button' => array(
+					'label' => T_('Button name'),
+					'note' => T_( 'Button name to submit a search form.' ),
+					'size' => 40,
+					'defaultvalue' => T_('Go'),
+				),
 				'disp_search_options' => array(
 					'label' => T_( 'Search options' ),
 					'note' => T_( 'Display radio buttons for "All Words", "Some Word" and "Entire Phrase"' ),
@@ -131,8 +137,6 @@ class coll_search_form_Widget extends ComponentWidget
 		{
 			echo '<div class="compact_search_form">';
 		}
-		$s = get_param( 's' );
-		echo '<input type="text" name="s" size="25" value="'.htmlspecialchars($s).'" class="search_field SearchField" />';
 
 		if( $this->disp_params[ 'disp_search_options' ] )
 		{
@@ -143,11 +147,15 @@ class coll_search_form_Widget extends ComponentWidget
 			echo '<div class="search_option"><input type="radio" name="sentence" value="sentence" id="sentence" '.( $sentence=='sentence' ? 'checked="checked" ' : '' ).'/><label for="sentence">'.T_('Entire phrase').'</label></div>';
 			echo '</div>';
 		}
+
+		$s = get_param( 's' );
+		echo '<input type="text" name="s" size="25" value="'.htmlspecialchars($s).'" class="search_field SearchField" />';
+
 		if( $this->disp_params[ 'use_search_disp' ] )
 		{
 			echo '<input type="hidden" name="disp" value="search" />';
 		}
-		echo '<input type="submit" name="submit" class="search_submit submit" value="'.T_('Search').'" />';
+		echo '<input type="submit" name="submit" class="search_submit submit" value="'.format_to_output( $this->disp_params['button'], 'htmlattr' ).'" />';
 		echo '</div>';
 		echo '</form>';
 
@@ -157,8 +165,4 @@ class coll_search_form_Widget extends ComponentWidget
 	}
 }
 
-
-/*
- * $Log: _coll_search_form.widget.php,v $
- */
 ?>

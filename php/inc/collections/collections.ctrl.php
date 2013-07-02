@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -31,11 +31,13 @@
  * @todo (sessions) When creating a blog, provide "edit options" (3 tabs) instead of a single long "New" form (storing the new Blog object with the session data).
  * @todo Currently if you change the name of a blog it gets not reflected in the blog list buttons!
  *
- * @version $Id: collections.ctrl.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: collections.ctrl.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
 $AdminUI->set_path( 'blogs' );
+
+param( 'tab', 'string', 'list' );
 
 param_action( 'list' );
 
@@ -43,7 +45,8 @@ if( $action != 'new'
 	&& $action != 'new-selskin'
 	&& $action != 'new-name'
 	&& $action != 'list'
-	&& $action != 'create' )
+	&& $action != 'create'
+	&& $action != 'update_settings' )
 {
 	if( valid_blog_requested() )
 	{
@@ -84,7 +87,7 @@ switch( $action )
 
 		// dh> TODO: "New %s" is probably too generic. What can %s become? (please comment it in "TRANS")
 		// Tblue> Look at get_collection_kinds(). I wrote a TRANS comment (30.01.09 22:03, HEAD).
-		$AdminUI->append_path_level( 'new', array( 'text' => sprintf( /* TRANS: %s can become "Photoblog", "Group blog" or "Standard blog" */ T_('New %s'), get_collection_kinds($kind) ) ) );
+		$AdminUI->append_path_level( 'new', array( 'text' => sprintf( /* TRANS: %s can become "Standard blog", "Photoblog", "Group blog" or "Forum" */ T_('New %s'), get_collection_kinds($kind) ) ) );
 		break;
 
 	case 'new-name':
@@ -99,7 +102,7 @@ switch( $action )
 		param( 'kind', 'string', true );
 		$edited_Blog->init_by_kind( $kind );
 
- 		param( 'skin_ID', 'integer', true );
+		param( 'skin_ID', 'integer', true );
 
 		$AdminUI->append_path_level( 'new', array( 'text' => sprintf( T_('New %s'), get_collection_kinds($kind) ) ) );
 		break;
@@ -126,16 +129,16 @@ switch( $action )
 			$edited_Blog->set( 'urlname', urltitle_validate( $edited_Blog->get( 'urlname' ) , '', 0, false, 'blog_urlname', 'blog_ID', 'T_blogs' ) );
 		}
 
- 		param( 'skin_ID', 'integer', true );
-		$edited_Blog->set( 'skin_ID', $skin_ID );
+		param( 'skin_ID', 'integer', true );
+		$edited_Blog->set_setting( 'normal_skin_ID', $skin_ID );
 
 		if( $edited_Blog->load_from_Request( array() ) )
 		{
 			// create the new blog
-			$edited_Blog->create();
+			$edited_Blog->create( $kind );
 
 			// We want to highlight the edited object on next list display:
- 			// $Session->set( 'fadeout_array', array( 'blog_ID' => array($edited_Blog->ID) ) );
+			// $Session->set( 'fadeout_array', array( 'blog_ID' => array($edited_Blog->ID) ) );
 
 			header_redirect( $dispatcher.'?ctrl=coll_settings&tab=features&blog='.$edited_Blog->ID ); // will save $Messages into Session
 		}
@@ -146,7 +149,7 @@ switch( $action )
 		// ----------  Delete a blog from DB ----------
 		// Check that this action request is not a CSRF hacked request:
 		$Session->assert_received_crumb( 'collection' );
-		
+
 		// Check permissions:
 		$current_User->check_perm( 'blog_properties', 'edit', true, $blog );
 
@@ -155,8 +158,7 @@ switch( $action )
 			// Delete from DB:
 			$msg = sprintf( T_('Blog &laquo;%s&raquo; deleted.'), $edited_Blog->dget('name') );
 
-			param( 'delete_static_file', 'integer', 0 );
-			$edited_Blog->dbdelete( $delete_static_file );
+			$edited_Blog->dbdelete();
 
 			$Messages->add( $msg, 'success' );
 
@@ -170,82 +172,93 @@ switch( $action )
 
 			$action = 'list';
 			// Redirect so that a reload doesn't write to the DB twice:
-			header_redirect( '?ctrl=collections', 303 ); // Will EXIT
+			$redirect_to = param( 'redirect_to', 'string', '?ctrl=collections' );
+			header_redirect( $redirect_to, 303 ); // Will EXIT
 			// We have EXITed already at this point!!
 		}
 		break;
 
 
-	case 'GenStatic':
-		// ----------  Generate static homepage for blog ----------
-		$AdminUI->append_to_titlearea( sprintf( T_('Generating static page for blog [%s]'), $edited_Blog->dget('name') ) );
-		$current_User->check_perm( 'blog_genstatic', 'any', true, $blog );
+	case 'update_settings':
+		// Check that this action request is not a CSRF hacked request:
+		$Session->assert_received_crumb( 'collectionsettings' );
 
-		param( 'redir_after_genstatic', 'string', NULL );
+		// Check permission:
+		$current_User->check_perm( 'options', 'edit', true );
 
-		$sourcefile = $edited_Blog->get_setting('source_file');
-		if( empty( $sourcefile ) )
+		if( param( 'default_blog_ID', 'integer', NULL ) !== NULL )
 		{
-			$Messages->add( T_('You haven\'t defined a source file for this blog!') );
+			$Settings->set( 'default_blog_ID', $default_blog_ID );
 		}
-		else
+
+		$Settings->set( 'blogs_order_by', param( 'blogs_order_by', 'string', true ) );
+		$Settings->set( 'blogs_order_dir', param( 'blogs_order_dir', 'string', true ) );
+
+		// Reload page timeout
+		$reloadpage_timeout = param_duration( 'reloadpage_timeout' );
+
+		if( $reloadpage_timeout > 99999 )
 		{
-			$staticfilename = $edited_Blog->get_setting('static_file');
-			if( empty( $staticfilename ) )
-			{
-				$Messages->add( T_('You haven\'t defined a static file for this blog!') );
-			}
-			else
-			{
-				// GENERATION!
-				$static_gen_saved_locale = $current_locale;
-				$generating_static = true;
-				$resolve_extra_path = false;
+			param_error( 'reloadpage_timeout', sprintf( T_( 'Reload-page timeout must be between %d and %d seconds.' ), 0, 99999 ) );
+		}
+		$Settings->set( 'reloadpage_timeout', $reloadpage_timeout );
 
-				ob_start();
+		// Smart hit count
+		$Settings->set( 'smart_view_count', param( 'smart_view_count', 'integer', 0 ) );
 
-				// Set some defaults in case they're not set by stub/source file:
-				// We need to set required variables
-				$blog = $edited_Blog->ID;
-				# This setting retricts posts to those published, thus hiding drafts.
-				$show_statuses = array();
-				# Here you can set a limit before which posts will be ignored
-				$timestamp_min = '';
-				# Here you can set a limit after which posts will be ignored
-				$timestamp_max = 'now';
-
-				require $edited_Blog->get('dynfilepath');
-
-				$generated_static_page_html = ob_get_contents();
-				ob_end_clean();
-
-				unset( $generating_static );
-
-				// Switch back to saved locale (the blog page may have changed it):
-				locale_activate( $static_gen_saved_locale);
-
-				$staticfilename = $edited_Blog->get('staticfilepath');
-
-				if( ! ($fp = @fopen( $staticfilename, 'w' )) )
-				{ // could not open file
-					$Messages->add( T_('File cannot be written!') );
-					$Messages->add( sprintf( '<p>'.T_('You should check the file permissions for [%s]. See <a %s>online manual on file permissions</a>.').'</p>',$staticfilename, 'href="http://manual.b2evolution.net/Directory_and_file_permissions"' ) );
-				}
-				else
-				{ // file is writable
-					fwrite( $fp, $generated_static_page_html );
-					fclose( $fp );
-					$Messages->add( sprintf( T_('Generated static file &laquo;%s&raquo;.'), $staticfilename ), 'success' );
-				}
+		$new_cache_status = param( 'general_cache_enabled', 'integer', 0 );
+		if( ! $Messages->has_errors() )
+		{
+			load_funcs( 'collections/model/_blog.funcs.php' );
+			$result = set_cache_enabled( 'general_cache_enabled', $new_cache_status, NULL, false );
+			if( $result != NULL )
+			{ // general cache setting was changed
+				list( $status, $message ) = $result;
+				$Messages->add( $message, $status );
 			}
 		}
 
-		if( !empty( $redir_after_genstatic ) )
+		$Settings->set( 'newblog_cache_enabled', param( 'newblog_cache_enabled', 'integer', 0 ) );
+		$Settings->set( 'newblog_cache_enabled_widget', param( 'newblog_cache_enabled_widget', 'integer', 0 ) );
+
+		// Outbound pinging:
+		param( 'outbound_notifications_mode', 'string', true );
+		$Settings->set( 'outbound_notifications_mode',  get_param('outbound_notifications_mode') );
+
+		// Categories:
+		$Settings->set( 'allow_moving_chapters', param( 'allow_moving_chapters', 'integer', 0 ) );
+		$Settings->set( 'chapter_ordering', param( 'chapter_ordering', 'string', 'alpha' ) );
+
+		// Cross posting:
+		$Settings->set( 'cross_posting', param( 'cross_posting', 'integer', 0 ) );
+		$Settings->set( 'cross_posting_blogs', param( 'cross_posting_blogs', 'integer', 0 ) );
+
+		// Subscribing to new blogs:
+		$Settings->set( 'subscribe_new_blogs', param( 'subscribe_new_blogs', 'string', 'public' ) );
+
+		// Default skins:
+		if( param( 'def_normal_skin_ID', 'integer', NULL ) !== NULL )
+		{ // this can't be NULL
+			$Settings->set( 'def_normal_skin_ID', get_param( 'def_normal_skin_ID' ) );
+		}
+		$Settings->set( 'def_mobile_skin_ID', param( 'def_mobile_skin_ID', 'integer', 0 ) );
+		$Settings->set( 'def_tablet_skin_ID', param( 'def_tablet_skin_ID', 'integer', 0 ) );
+
+		if( ! $Messages->has_errors() )
 		{
-			header_redirect( $redir_after_genstatic );
+			$Settings->dbupdate();
+			$Messages->add( T_('Settings updated.'), 'success' );
+			// Redirect so that a reload doesn't write to the DB twice:
+			header_redirect( '?ctrl=collections&tab=settings', 303 ); // Will EXIT
+			// We have EXITed already at this point!!
 		}
 		break;
 }
+
+$AdminUI->set_path( 'blogs', $tab );
+
+$AdminUI->breadcrumbpath_init( false );
+$AdminUI->breadcrumbpath_add( T_('Blogs'), '?ctrl=collections' );
 
 /**
  * Display page header, menus & messages:
@@ -255,7 +268,26 @@ if( strpos( $action, 'new' ) === false )
 	// fp> TODO: fall back to ctrl=chapters when no perm for blog_properties
 	$AdminUI->set_coll_list_params( 'blog_properties', 'edit',
 												array( 'ctrl' => 'coll_settings', 'tab' => 'general' ),
-												T_('List'), '?ctrl=collections&amp;blog=0' );
+												T_('All'), '?ctrl=collections&amp;blog=0' );
+
+	switch( $tab )
+	{
+		case 'settings':
+			// Check minimum permission:
+			$current_User->check_perm( 'options', 'view', true );
+
+			$AdminUI->breadcrumbpath_add( T_('Settings'), '?ctrl=collections&amp;tab=settings' );
+			break;
+
+		case 'list':
+		default:
+			$AdminUI->breadcrumbpath_add( T_('List'), '?ctrl=collections' );
+			break;
+	}
+}
+else
+{	// Creating a new blog
+	$AdminUI->breadcrumbpath_add( T_('New blog'), '?ctrl=collections&amp;action=new' );
 }
 
 // Display <html><head>...</head> section! (Note: should be done early if actions do not redirect)
@@ -317,34 +349,28 @@ switch($action)
 			<p>
 
 			<?php
+				$redirect_to = param( 'redirect_to', 'string', '' );
 
 				$Form = new Form( NULL, '', 'get', 'none' );
 
 				$Form->begin_form( 'inline' );
-
-				$Form->add_crumb( 'collection' );
-				$Form->hidden_ctrl();
-				$Form->hidden( 'action', 'delete' );
-				$Form->hidden( 'blog', $edited_Blog->ID );
-				$Form->hidden( 'confirm', 1 );
-
-				if( is_file( $edited_Blog->get('staticfilepath') ) )
-				{
-					?>
-					<input type="checkbox" id="delete_static_file" name="delete_static_file" value="1" />
-					<label for="delete_static_file"><?php printf( T_('Also try to delete static file [<strong><a %s>%s</a></strong>]'), 'href="'.$edited_Blog->dget('staticurl').'"', $edited_Blog->dget('staticfilepath') ); ?></label><br />
-					<br />
-					<?php
-				}
-
-				$Form->submit( array( '', T_('I am sure!'), 'DeleteButton' ) );
-
+					$Form->add_crumb( 'collection' );
+					$Form->hidden_ctrl();
+					$Form->hidden( 'action', 'delete' );
+					$Form->hidden( 'blog', $edited_Blog->ID );
+					$Form->hidden( 'confirm', 1 );
+					$Form->hidden( 'redirect_to', $redirect_to );
+					$Form->submit( array( '', T_('I am sure!'), 'DeleteButton' ) );
 				$Form->end_form();
 
+				$Form = new Form( !empty( $redirect_to ) ? $redirect_to: NULL, '', 'get', 'none' );
 
 				$Form->begin_form( 'inline' );
-					$Form->hidden_ctrl();
-					$Form->hidden( 'blog', 0 );
+					if( empty( $redirect_to ) )
+					{ // If redirect url is not defined we should go to blogs list after cancel action
+						$Form->hidden_ctrl();
+						$Form->hidden( 'blog', 0 );
+					}
 					$Form->submit( array( '', T_('CANCEL'), 'CancelButton' ) );
 				$Form->end_form();
 			?>
@@ -358,10 +384,19 @@ switch($action)
 
 	default:
 		// List the blogs:
-		$AdminUI->displayed_sub_begin = 1;	// DIRTY HACK :/ replacing an even worse hack...
 		$AdminUI->disp_payload_begin();
 		// Display VIEW:
-		$AdminUI->disp_view( 'collections/views/_coll_list.view.php' );
+		switch( $tab )
+		{
+			case 'settings':
+				$AdminUI->disp_view( 'collections/views/_coll_settings.form.php' );
+				break;
+
+			case 'list':
+			default:
+				$AdminUI->disp_view( 'collections/views/_coll_list.view.php' );
+				break;
+		}
 		$AdminUI->disp_payload_end();
 
 }
@@ -370,8 +405,4 @@ switch($action)
 // Display body bottom, debug info and close </html>:
 $AdminUI->disp_global_footer();
 
-
-/*
- * $Log: collections.ctrl.php,v $
- */
 ?>

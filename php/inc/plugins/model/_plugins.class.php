@@ -7,7 +7,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -31,7 +31,7 @@
  * @author fplanque: Francois PLANQUE - {@link http://fplanque.net/}
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: _plugins.class.php 99 2011-10-27 04:58:47Z fplanque $
+ * @version $Id: _plugins.class.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -92,6 +92,12 @@ class Plugins
 	var $index_apply_rendering_codes = array();
 
 	/**
+	 * Cache all plugin codes by blogs apply_comment_rendering setting.
+	 * @var array of blog_ID => array of plugin codes
+	 */
+	var $coll_apply_comment_rendering = array();
+
+	/**
 	 * Path to plugins.
 	 *
 	 * The preferred method is to have a sub-directory for each plugin (named
@@ -138,7 +144,7 @@ class Plugins
 	 * @static
 	 */
 	var $sql_load_plugins_table = '
-			SELECT plug_ID, plug_priority, plug_classname, plug_code, plug_name, plug_shortdesc, plug_apply_rendering, plug_status, plug_version, plug_spam_weight
+			SELECT plug_ID, plug_priority, plug_classname, plug_code, plug_name, plug_shortdesc, plug_status, plug_version, plug_spam_weight
 			  FROM T_plugins
 			 WHERE plug_status = \'enabled\'
 			 ORDER BY plug_priority, plug_classname';
@@ -321,13 +327,12 @@ class Plugins
 	 * @param string name of plugin class to instantiate and register
 	 * @param int ID in database (0 if not installed)
 	 * @param int Priority in database (-1 to keep default)
-	 * @param array When should rendering apply? (NULL to keep default)
 	 * @param string Path of the .php class file of the plugin.
 	 * @param boolean Must the plugin exist (classfile_path and classname)?
 	 *                This is used internally to be able to unregister a non-existing plugin.
 	 * @return Plugin Plugin ref to newly created plugin; string in case of error
 	 */
-	function & register( $classname, $ID = 0, $priority = -1, $apply_rendering = NULL, $classfile_path = NULL, $must_exists = true )
+	function & register( $classname, $ID = 0, $priority = -1, $classfile_path = NULL, $must_exists = true )
 	{
 		global $Debuglog, $Messages, $Timer;
 
@@ -353,7 +358,7 @@ class Plugins
 				$Debuglog->add( $r, array( 'plugins', 'error' ) );
 
 				// Get the Plugin object (must not exist)
-				$Plugin = & $this->register( $classname, $ID, $priority, $apply_rendering, $classfile_path, false );
+				$Plugin = & $this->register( $classname, $ID, $priority, $classfile_path, false );
 				$this->plugin_errors[$ID]['register'] = $r;
 				$this->set_Plugin_status( $Plugin, 'broken' );
 
@@ -387,7 +392,7 @@ class Plugins
 				$Debuglog->add( $r, array( 'plugins', 'error' ) );
 
 				// Get the Plugin object (must not exist)    fp> why is this recursive?
-				$Plugin = & $this->register( $classname, $ID, $priority, $apply_rendering, $classfile_path, false );
+				$Plugin = & $this->register( $classname, $ID, $priority, $classfile_path, false );
 				$this->plugin_errors[$ID]['register'] = $r;
 				$this->set_Plugin_status( $Plugin, 'broken' );
 
@@ -410,7 +415,6 @@ class Plugins
 			{
 				$Plugin = new Plugin;	// COPY !
 				$Plugin->code = NULL;
-				$Plugin->apply_rendering = 'never';
 			}
 		}
 		else
@@ -441,11 +445,6 @@ class Plugins
 		$Plugin->classname = $classname;
 		// Tell him his priority:
 		if( $priority > -1 ) { $Plugin->priority = $priority; }
-
-		if( isset($apply_rendering) )
-		{
-			$Plugin->apply_rendering = $apply_rendering;
-		}
 
 		if( empty($Plugin->name) )
 		{
@@ -599,15 +598,7 @@ class Plugins
 
 		$this->forget_events( $Plugin->ID );
 
-		// Unset apply-rendering index:
-		if( isset( $this->index_apply_rendering_codes[ $Plugin->apply_rendering ] ) )
-		{
-			while( ( $key = array_search( $Plugin->code, $this->index_apply_rendering_codes[$Plugin->apply_rendering] ) ) !== false )
-			{
-				unset( $this->index_apply_rendering_codes[$Plugin->apply_rendering][$key] );
-			}
-		}
-
+		// TODO: Check if it is necessarry to unset from the $index_apply_rendering_codes and unset if it must be removed
 		unset( $this->index_code_Plugins[ $Plugin->code ] );
 		unset( $this->index_ID_Plugins[ $Plugin->ID ] );
 
@@ -1286,7 +1277,7 @@ class Plugins
 	 * @param string content to render (by reference)
 	 * @param array renderer codes to use for opt-out, opt-in and lazy
 	 * @param string Output format, see {@link format_to_output()}. Only 'htmlbody',
-	 *        'entityencoded', 'xml' and 'text' are supported.
+	 *        'entityencoded', 'xml', 'htmlfeed' and 'text' are supported.
 	 * @param array Additional params to the Render* methods (e.g. "Item" for items).
 	 *              Do not use "data" or "format" here, because it gets used internally.
 	 * @return string rendered content
@@ -1313,12 +1304,48 @@ class Plugins
 		else debug_die( 'Unexpected format in Plugins::render(): '.var_export($format, true) );
 
 		$renderer_Plugins = $this->get_list_by_event( $event );
+		// Set blog from where the "apply_rendering" collection setting should be get
+		if( isset( $params['Item'] ) && !empty( $params['Item'] ) )
+		{ // the Item is set, get Item Blog
+			$Item = & $params['Item'];
+			$setting_Blog = & $Item->get_Blog();
+		}
+		else
+		{ // use global Blog if it is set
+			global $Blog;
+			if( !empty( $Blog ) )
+			{
+				$setting_Blog = $Blog;
+			}
+			else
+			{	// Try to get Blog by global blog ID
+				global $blog;
+				if( !empty( $blog ) )
+				{
+					$BlogCache = & get_BlogCache();
+					$setting_Blog = & $BlogCache->get_by_ID( $blog );
+				}
+				else
+				{
+					$setting_Blog = NULL;
+				}
+			}
+		}
+
+		if( empty( $setting_Blog ) )
+		{ // This should be impossible, but make sure $setting_Blog is set
+			global $Settings;
+			$default_blog = $Settings->get('default_blog_ID');
+			$BlogCache = & get_BlogCache();
+			$setting_Blog = $BlogCache->get_by_ID( $default_blog );
+		}
 
 		foreach( $renderer_Plugins as $loop_RendererPlugin )
 		{ // Go through whole list of renders
 			// echo ' ',$loop_RendererPlugin->code, ':';
 
-			switch( $loop_RendererPlugin->apply_rendering )
+			$apply_rendering_value = $loop_RendererPlugin->get_coll_setting( 'coll_apply_rendering', $setting_Blog );
+			switch( $apply_rendering_value )
 			{
 				case 'stealth':
 				case 'always':
@@ -1427,7 +1454,6 @@ class Plugins
 
 		$this->index_ID_rows = array();
 		$this->index_code_ID = array();
-		$this->index_apply_rendering_codes = array();
 		$this->sorted_IDs = array();
 
 		foreach( $DB->get_results( $this->sql_load_plugins_table, ARRAY_A ) as $row )
@@ -1437,12 +1463,42 @@ class Plugins
 			{
 				$this->index_code_ID[$row['plug_code']] = $row['plug_ID'];
 			}
-			$this->index_apply_rendering_codes[$row['plug_apply_rendering']][] = $row['plug_code'];
 
 			$this->sorted_IDs[] = $row['plug_ID'];
 		}
 
 		$this->loaded_plugins_table = true;
+	}
+
+
+	/**
+	 * Load rendering Plugins specific apply_rendering setting for the given Blog and setting_name
+	 *
+	 * @param String setting name ( 'coll_apply_rendering', 'coll_apply_comment_rendering' )
+	 * @param Object the Blog which apply rendering setting should be loaded
+	 */
+	function load_index_apply_rendering( $setting_name, & $Blog )
+	{
+		if( isset( $this->index_apply_rendering_codes[$Blog->ID][$setting_name] ) )
+		{ // This data is already loaded
+			return;
+		}
+
+		// make sure plugins are loaded
+		$this->load_plugins_table();
+
+		$index = & $this->sorted_IDs;
+		foreach( $index as $plugin_ID )
+		{ // iterate through each plugin
+			$Plugin = $this->get_by_ID( $plugin_ID );
+			if( $Plugin->group != 'rendering' )
+			{ // This plugin doesn't belong to the rendering plugins group
+				continue;
+			}
+			// get and set the specific plugin collection setting
+			$rendering_value = $Plugin->get_coll_setting( $setting_name, $Blog );
+			$this->index_apply_rendering_codes[$Blog->ID][$setting_name][$rendering_value][] = $Plugin->code;
+		}
 	}
 
 
@@ -1477,7 +1533,7 @@ class Plugins
 			$row = & $this->index_ID_rows[$plugin_ID];
 
 			// Register the plugin:
-			$Plugin = & $this->register( $row['plug_classname'], $row['plug_ID'], $row['plug_priority'], $row['plug_apply_rendering'] );
+			$Plugin = & $this->register( $row['plug_classname'], $row['plug_ID'], $row['plug_priority'] );
 
 			if( is_string( $Plugin ) )
 			{
@@ -1802,15 +1858,46 @@ class Plugins
 	 * Validate renderer list.
 	 *
 	 * @param array renderer codes ('default' will include all "opt-out"-ones)
+	 * @params array params to set Blog and apply_rendering setting_name ( see {@link load_index_apply_rendering()} )
 	 * @return array validated array of renderer codes
 	 */
-	function validate_renderer_list( $renderers = array('default') )
+	function validate_renderer_list( $renderers = array('default'), $params )
 	{
-		$this->load_plugins_table();
+		// Init Blog and $setting_name from the given params
+		if( isset( $params['Item'] ) )
+		{ // Validate post renderers
+			$Item = & $params['Item'];
+			$Blog = & $Item->get_Blog();
+			$setting_name = 'coll_apply_rendering';
+		}
+		elseif( isset( $params['Comment'] ) )
+		{ // Validate comment renderers
+			$Comment = & $params['Comment'];
+			$Item = & $Comment->get_Item();
+			$Blog = & $Item->get_Blog();
+			$setting_name = 'coll_apply_comment_rendering';
+		}
+		elseif( isset( $params['Blog'] ) && isset( $params['setting_name'] ) )
+		{ // Validate the given rendering option in the give Blog
+			$Blog = & $params['Blog'];
+			$setting_name = $params['setting_name'];
+			if( !in_array( $setting_name, array( 'coll_apply_rendering', 'coll_apply_comment_rendering' ) ) )
+			{
+				debug_die( 'Invalid apply rendering param name received!' );
+			}
+		}
+		else
+		{ // Invalid params to validate renderers!
+			return array();
+		}
+
+		// Make sure the requested apply_rendering settings are loaded
+		$this->load_index_apply_rendering( $setting_name, $Blog );
 
 		$validated_renderers = array();
 
-		$index = & $this->index_apply_rendering_codes;
+		// Get requested apply_rendering setting array
+		$index = & $this->index_apply_rendering_codes[$Blog->ID][$setting_name];
 
 		if( isset( $index['stealth'] ) )
 		{
@@ -1884,6 +1971,149 @@ class Plugins
 	}
 
 
+	/**
+	 * Get checkable list of renderers
+	 *
+	 * @param array If given, assume these renderers to be checked.
+	 * @param array params from where to get 'apply_rendering' setting
+	 */
+	function get_renderer_checkboxes( $current_renderers = NULL, $params )
+	{
+		global $inc_path, $admin_url;
+
+		load_funcs('plugins/_plugin.funcs.php');
+
+		$name_prefix = isset( $params['name_prefix'] ) ? $params['name_prefix'] : '';
+
+		$this->restart(); // make sure iterator is at start position
+
+		if( ! is_array($current_renderers) )
+		{
+			$current_renderers = explode( '.', $current_renderers );
+		}
+
+		$atLeastOneRenderer = false;
+		$setting_Blog = NULL;
+		if( isset( $params['Comment'] ) && !empty( $params['Comment'] ) )
+		{ // get Comment apply_rendering setting
+			$Comment = & $params['Comment'];
+			$comment_Item = & $Comment->get_Item();
+			$setting_Blog = & $comment_Item->get_Blog();
+			$setting_name = 'coll_apply_comment_rendering';
+		}
+		elseif( isset( $params['Item'] ) )
+		{ // get Post apply_rendering setting
+			$setting_name = 'coll_apply_rendering';
+			$Item = & $params['Item'];
+			$setting_Blog = & $Item->get_Blog();
+		}
+		elseif( isset( $params['Blog'] ) && isset( $params['setting_name'] ) )
+		{ // get given "apply_rendering" collection setting from the given Blog
+			$setting_Blog = & $params['Blog'];
+			$setting_name = $params['setting_name'];
+		}
+		else
+		{ // Invalid params
+			return '';
+		}
+
+		if( $setting_name == 'coll_apply_comment_rendering' )
+		{ // Get Comment renderer plugins
+			$RendererPlugins = $this->get_list_by_events( array('FilterCommentContent') );
+		}
+		else
+		{ // Get Item renderer plugins
+			$RendererPlugins = $this->get_list_by_events( array('RenderItemAsHtml', 'RenderItemAsXml', 'RenderItemAsText') );
+		}
+
+		$r = '<input type="hidden" name="renderers_displayed" value="1" />';
+
+		foreach( $RendererPlugins as $loop_RendererPlugin )
+		{ // Go through whole list of renders
+			// echo ' ',$loop_RendererPlugin->code;
+			if( empty($loop_RendererPlugin->code) )
+			{ // No unique code!
+				continue;
+			}
+			if( empty( $setting_Blog ) )
+			{ // If $setting_Blog is not set we can't get apply_rendering options
+				continue;
+			}
+
+			// get rendering setting from plugin coll settings
+			$apply_rendering = $loop_RendererPlugin->get_coll_setting( $setting_name, $setting_Blog );
+
+			if( $apply_rendering == 'stealth'
+				|| $apply_rendering == 'never' )
+			{ // This is not an option.
+				continue;
+			}
+			$atLeastOneRenderer = true;
+
+			$r .= '<div>';
+
+			$r .= '<input type="checkbox" class="checkbox" name="'.$name_prefix.'renderers[]" value="'.$loop_RendererPlugin->code.'" id="renderer_'.$loop_RendererPlugin->code.'"';
+
+			switch( $apply_rendering )
+			{
+				case 'always':
+					$r .= ' checked="checked" disabled="disabled"';
+					break;
+
+				case 'opt-out':
+					if( in_array( $loop_RendererPlugin->code, $current_renderers ) // Option is activated
+						|| in_array( 'default', $current_renderers ) ) // OR we're asking for default renderer set
+					{
+						$r .= ' checked="checked"';
+					}
+					break;
+
+				case 'opt-in':
+					if( in_array( $loop_RendererPlugin->code, $current_renderers ) ) // Option is activated
+					{
+						$r .= ' checked="checked"';
+					}
+					break;
+
+				case 'lazy':
+					if( in_array( $loop_RendererPlugin->code, $current_renderers ) ) // Option is activated
+					{
+						$r .= ' checked="checked"';
+					}
+					$r .= ' disabled="disabled"';
+					break;
+			}
+
+			$r .= ' title="'.format_to_output($loop_RendererPlugin->short_desc, 'formvalue').'" /> <label for="renderer_'.$loop_RendererPlugin->code.'" title="';
+			$r .= format_to_output($loop_RendererPlugin->short_desc, 'formvalue').'">';
+			$r .= format_to_output($loop_RendererPlugin->name).'</label>';
+
+			// fp> TODO: the first thing we want here is a TINY javascript popup with the LONG desc. The links to readme and external help should be inside of the tiny popup.
+			// fp> a javascript DHTML onhover help would be even better than the JS popup
+
+			// external help link:
+			$r .= ' '.$loop_RendererPlugin->get_help_link('$help_url');
+
+			$r .= "</div>\n";
+		}
+
+		if( !$atLeastOneRenderer )
+		{
+			if( is_admin_page() )
+			{	// Display info about no renderer plugins only in backoffice
+				global $admin_url;
+				$r .= '<a title="'.T_('Configure plugins').'" href="'.$admin_url.'?ctrl=plugins"'.'>'.T_('No renderer plugins are installed.').'</a>';
+			}
+			else
+			{
+				return '';
+			}
+		}
+
+		return $r;
+	}
+
+
 	// Deprecated stubs: {{{
 
 	/**
@@ -1895,21 +2125,6 @@ class Plugins
 		$Debuglog->add('Call to deprecated method Plugins::count_regs()', 'deprecated');
 		$Plugins_admin = & get_Plugins_admin();
 		return $Plugins_admin->count_regs($classname);
-	}
-
-
-	/**
-	 * Set the apply_rendering value for a given Plugin ID.
-	 *
-	 * It makes sure that the index is handled and writes it to DB.
-	 *
-	 * @deprecated by Plugins_admin::set_apply_rendering()
-	 * @return boolean true if set to new value, false in case of error or if already set to same value
-	 */
-	function set_apply_rendering( $plugin_ID, $apply_rendering )
-	{
-		$Plugins_admin = & get_Plugins_admin();
-		return $Plugins_admin->set_apply_rendering($plugin_ID, $apply_rendering);
 	}
 
 
@@ -1932,8 +2147,4 @@ class Plugins
 	// }}}
 }
 
-
-/*
- * $Log: _plugins.class.php,v $
- */
 ?>

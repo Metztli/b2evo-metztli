@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -21,11 +21,11 @@
  *
  * @package admin
  *
- * @version $Id: _stats_syndication.view.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _stats_syndication.view.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
-global $blog, $admin_url, $rsc_url, $AdminUI;
+global $blog, $admin_url, $rsc_url, $AdminUI, $agent_type_color;
 
 echo '<h2>'.T_('Hits from RSS/Atom feed readers - Summary').'</h2>';
 
@@ -35,7 +35,7 @@ $sql = "
 	SELECT SQL_NO_CACHE COUNT(*) AS hits, EXTRACT(YEAR FROM hit_datetime) AS year,
 			   EXTRACT(MONTH FROM hit_datetime) AS month, EXTRACT(DAY FROM hit_datetime) AS day
 		FROM T_hitlog
-	 WHERE hit_agent_type = 'rss'";
+	 WHERE hit_type = 'rss'";
 if( $blog > 0 )
 {
 	$sql .= ' AND hit_blog_ID = '.$blog;
@@ -76,7 +76,7 @@ if( count($res_hits) )
 	require dirname(__FILE__).'/inc/_bar_chart.inc.php';
 
 	$chart[ 'series_color' ] = array (
-			'ff6600',
+			$agent_type_color['rss'],
 		);
 
 	echo '<div class="center">';
@@ -86,7 +86,4 @@ if( count($res_hits) )
 
 }
 
-/*
- * $Log: _stats_syndication.view.php,v $
- */
 ?>

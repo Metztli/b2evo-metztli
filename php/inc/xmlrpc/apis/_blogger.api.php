@@ -4,15 +4,15 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
- * @see http://manual.b2evolution.net/Blogger_API
+ * @see http://b2evolution.net/man/blogger-api
  * @see http://www.blogger.com/developers/api/1_docs/
  * @see http://www.sixapart.com/developers/xmlrpc/blogger_api/
  *
  * @package xmlsrv
  *
- * @version $Id: _blogger.api.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _blogger.api.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -73,46 +73,21 @@ function blogger_newpost( $m )
 	$status = $publish ? 'published' : 'draft';
 	logIO("Publish: $publish -> Status: $status");
 
+	$title = xmlrpc_getposttitle( $content );
 	$cat_IDs = xmlrpc_getpostcategories( $content );
-	if( empty( $cat_IDs ) )
-	{ // There were no categories passed in the content:
-		if( ! $main_cat = $Blog->get_default_cat_ID() )
-		{	// No default category found for requested blog.
-			return xmlrpcs_resperror( 12 ); // User error 12
-		}
-		$cat_IDs = array( $main_cat );
-	}
-	else
-	{
-		$main_cat = $cat_IDs[0];
-	}
 
-	logIO( 'Current main cat: '.$main_cat );
-
-	// Check if category exists and can be used
-	if( ! xmlrpcs_check_cats( $main_cat, $Blog, $cat_IDs ) )
-	{	// Error
-		return xmlrpcs_resperror();
-	}
-
-	logIO( 'New main cat: '.$main_cat );
-
-	// CHECK PERMISSION: (we need perm on all categories, especially if they are in different blogs)
-	if( ! $current_User->check_perm( 'cats_post!'.$status, 'edit', false, $cat_IDs ) )
-	{	// Permission denied
-		return xmlrpcs_resperror( 3 );	// User error 3
-	}
-	logIO( 'Permission granted.' );
-
-	$post_date = date('Y-m-d H:i:s', (time() + $Settings->get('time_difference')));
-	// Extract <title> from content
-	$post_title = xmlrpc_getposttitle( $content );
-	// cleanup content from extra tags like <category> and <title>:
+	// Cleanup content from extra tags like <category> and <title>:
 	$content = xmlrpc_removepostdata( $content );
 
+	$params = array(
+			'title'		=> $title,
+			'content'	=> $content,
+			'cat_IDs'	=> $cat_IDs,
+			'status'	=> $status,
+		);
 
 	// COMPLETE VALIDATION & INSERT:
-	return xmlrpcs_new_item( $post_title, $content, $post_date, $main_cat, $cat_IDs, $status );
+	return xmlrpcs_new_item( $params, $Blog );
 }
 
 
@@ -154,7 +129,7 @@ function blogger_editpost($m)
 	{	// Login failed, return (last) error:
 		return xmlrpcs_resperror();
 	}
-	
+
 	// GET POST:
 	/**
 	 * @var Item
@@ -178,47 +153,31 @@ function blogger_editpost($m)
 	$status = $publish ? 'published' : 'draft';
 	logIO("Publish: $publish -> Status: $status");
 
+	$title = xmlrpc_getposttitle( $content );
 	$cat_IDs = xmlrpc_getpostcategories( $content );
-	if( empty( $cat_IDs ) )
-	{ // There were no categories passed in the content:
-		$main_cat = $edited_Item->main_cat_ID;
-		$cat_IDs = array( $main_cat );
-	}
-	else
-	{
-		$main_cat = $cat_IDs[0];
-	}
 
-	// Check if category exists and can be used
-	$Blog = & $edited_Item->get_Blog();
-	if( ! xmlrpcs_check_cats( $main_cat, $Blog, $cat_IDs ) )
-	{	// Error
-		return xmlrpcs_resperror();
-	}
+	// Cleanup content from extra tags like <category> and <title>:
+	$content = xmlrpc_removepostdata( $content );
 
-	logIO( 'Main cat: '.$main_cat );
+	$params = array(
+			'title'		=> $title,
+			'content'	=> $content,
+			'cat_IDs'	=> $cat_IDs,
+			'status'	=> $status,
+		);
 
-	// CHECK PERMISSION: (we need perm on all categories, especially if they are in different blogs)
-	if( ! $current_User->check_perm( 'cats_post!'.$status, 'edit', false, $cat_IDs ) )
-	{	// Permission denied
-		return xmlrpcs_resperror( 3 );	// User error 3
-	}
-	logIO( 'Permission granted.' );
-
-	$post_date = NULL;
-	$post_title = xmlrpc_getposttitle($content);
-	$content = xmlrpc_removepostdata($content);
-
-
-	// COMPLETE VALIDATION & UPDATE:
-	return xmlrpcs_edit_item( $edited_Item, $post_title, $content, $post_date, $main_cat, $cat_IDs, $status );
+	// COMPLETE VALIDATION & INSERT:
+	return xmlrpcs_edit_item( $edited_Item, $params );
 }
 
 
 
 
 $bloggerdeletepost_doc = 'Deletes a post, blogger-api like';
-$bloggerdeletepost_sig = array(array($xmlrpcBoolean, $xmlrpcString, $xmlrpcString, $xmlrpcString, $xmlrpcString, $xmlrpcBoolean));
+$bloggerdeletepost_sig = array(
+		array($xmlrpcBoolean, $xmlrpcString, $xmlrpcString, $xmlrpcString, $xmlrpcString, $xmlrpcBoolean),
+		array($xmlrpcBoolean, $xmlrpcString, $xmlrpcString, $xmlrpcString, $xmlrpcString),
+	);
 /**
  * blogger.deletePost deletes a given post.
  *
@@ -237,7 +196,22 @@ $bloggerdeletepost_sig = array(array($xmlrpcBoolean, $xmlrpcString, $xmlrpcStrin
  */
 function blogger_deletepost($m)
 {
-	return _mw_blogger_deletepost( $m );
+	// CHECK LOGIN:
+	if( ! $current_User = & xmlrpcs_login( $m, 2, 3 ) )
+	{	// Login failed, return (last) error:
+		return xmlrpcs_resperror();
+	}
+
+	// GET POST:
+	/**
+	 * @var Item
+	 */
+	if( ! $edited_Item = & xmlrpcs_get_Item( $m, 1 ) )
+	{	// Failed, return (last) error:
+		return xmlrpcs_resperror();
+	}
+
+	return xmlrpcs_delete_item( $edited_Item );
 }
 
 
@@ -467,7 +441,7 @@ function blogger_getrecentposts( $m )
 	{
 		logIO( 'Item:'.$Item->title.
 					' - Issued: '.$Item->issue_date.
-					' - Modified: '.$Item->mod_date );
+					' - Modified: '.$Item->datemodified );
 
 		$post_date = mysql2date('U', $Item->issue_date);
 		$post_date = gmdate('Ymd', $post_date).'T'.gmdate('H:i:s', $post_date);
@@ -531,7 +505,4 @@ $xmlrpc_procs['blogger.getRecentPosts'] = array(
 				'signature' => $bloggergetrecentposts_sig,
 				'docstring' => $bloggergetrecentposts_doc );
 
-/*
- * $Log: _blogger.api.php,v $
- */
 ?>

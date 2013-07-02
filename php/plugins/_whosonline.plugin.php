@@ -4,7 +4,7 @@
  *
  * This file is part of the b2evolution project - {@link http://b2evolution.net/}
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -29,7 +29,7 @@
  * @author fplanque: Francois PLANQUE - {@link http://fplanque.net/}
  * @author jeffbearer: Jeff BEARER - {@link http://www.jeffbearer.com/}.
  *
- * @version $Id: _whosonline.plugin.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _whosonline.plugin.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -49,7 +49,7 @@ class whosonline_plugin extends Plugin
 	var $name;
 	var $code = 'evo_WhosOnline';
 	var $priority = 96;
-	var $version = '2.0';
+	var $version = '5.0.0';
 	var $author = 'The b2evo Group';
 	var $group = 'widget';
 
@@ -102,10 +102,10 @@ class whosonline_plugin extends Plugin
 	 */
 	function SkinTag( $params )
 	{
-		global $generating_static, $Plugins;
+		global $Plugins;
 
-		if( ! empty($generating_static) || $Plugins->trigger_event_first_true('CacheIsCollectingContent') )
-		{ // We're not generating static pages nor is a caching plugin collecting the content, so we can display this block
+		if( $Plugins->trigger_event_first_true('CacheIsCollectingContent') )
+		{ // A caching plugin collecting the content
 			return false;
 		}
 
@@ -188,7 +188,7 @@ class OnlineSessions
 		{
 			return true;
 		}
-		global $DB, $localtimenow;
+		global $DB, $UserSettings, $localtimenow;
 
 		$this->_count_guests = 0;
 		$this->_registered_Users = array();
@@ -199,21 +199,24 @@ class OnlineSessions
 
 		// We get all sessions that have been seen in $timeout_YMD and that have a session key.
 		// NOTE: we do not use DISTINCT here, because guest users are all "NULL".
-		foreach( $DB->get_results( "
+		$online_user_ids = $DB->get_col( "
 			SELECT SQL_NO_CACHE sess_user_ID
 			  FROM T_sessions INNER JOIN T_hitlog ON sess_ID = hit_sess_ID
-			 WHERE sess_lastseen > '".$timeout_YMD."'
+			 WHERE sess_lastseen_ts > '".$timeout_YMD."'
 			   AND sess_key IS NOT NULL
 			   AND hit_agent_type = 'browser'
-			 GROUP BY sess_ID", OBJECT, 'Sessions: get list of relevant users.' ) as $row )
+			 GROUP BY sess_ID", 0, 'Sessions: get list of relevant users.' );
+		$registered_online_user_ids = array_diff( $online_user_ids, array( NULL ) );
+		// load all online users into the cache because we need information ( login, avatar ) about them
+		$UserCache->load_list( $registered_online_user_ids );
+		foreach( $online_user_ids as $user_ID )
 		{
-			if( !empty( $row->sess_user_ID )
-					&& ( $User = & $UserCache->get_by_ID( $row->sess_user_ID ) ) )
+			if( !empty( $user_ID ) && ( $User = & $UserCache->get_by_ID( $user_ID, false ) ) )
 			{
 				// assign by ID so that each user is only counted once (he could use multiple user agents at the same time)
-				$this->_registered_Users[ $User->ID ] = & $User;
+				$this->_registered_Users[ $user_ID ] = & $User;
 
-				if( !$User->showonline )
+				if( $UserSettings->get( 'show_online', $User->ID ) )
 				{
 					$this->_count_guests++;
 				}
@@ -268,9 +271,7 @@ class OnlineSessions
 	 */
 	function display_online_users( $params )
 	{
-		global $DB, $Blog;
-		global $generating_static;
-		if( isset($generating_static) ) { return; }
+		global $DB, $Blog, $UserSettings;
 
 		if( !isset($this->_registered_Users) )
 		{
@@ -282,7 +283,7 @@ class OnlineSessions
 
 		foreach( $this->_registered_Users as $User )
 		{
-			if( $User->showonline )
+			if( $UserSettings->get( 'show_online', $User->ID ) )
 			{
 				if( empty($r) )
 				{ // first user
@@ -313,9 +314,6 @@ class OnlineSessions
 	 */
 	function display_online_guests( $params )
 	{
-		global $generating_static;
-		if( isset($generating_static) ) { return; }
-
 		if( !isset($this->_count_guests) )
 		{
 			$this->init();
@@ -332,8 +330,4 @@ class OnlineSessions
 	}
 }
 
-
-/*
- * $Log: _whosonline.plugin.php,v $
- */
 ?>

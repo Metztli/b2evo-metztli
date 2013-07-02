@@ -3,7 +3,7 @@
  * This file is part of b2evolution - {@link http://b2evolution.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2009 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @copyright (c)2009-2013 by Francois PLANQUE - {@link http://fplanque.net/}
  * Parts of this file are copyright (c)2009 by The Evo Factory - {@link http://www.evofactory.com/}.
  *
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
@@ -20,7 +20,7 @@
  * @author efy-maxim: Evo Factory / Maxim.
  * @author fplanque: Francois Planque.
  *
- * @version $Id: _backup.class.php 1108 2012-03-28 19:21:15Z sam2kb $
+ * @version $Id: _backup.class.php 3508 2013-04-19 06:58:02Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -211,13 +211,13 @@ class Backup
 		// Create current backup path
 		$cbackup_path = $backup_path.date( 'Y-m-d-H-i-s', $servertimenow ).'/';
 
- 		echo '<p>'.sprintf( T_('Starting backup to: &laquo;%s&raquo; ...'), $cbackup_path ).'</p>';
- 		flush();
+		echo '<p>'.sprintf( T_('Starting backup to: &laquo;%s&raquo; ...'), $cbackup_path ).'</p>';
+		evo_flush();
 
- 		// Prepare backup directory
- 		$success = prepare_maintenance_dir( $backup_path, true );
+		// Prepare backup directory
+		$success = prepare_maintenance_dir( $backup_path, true );
 
- 		// Backup directories and files
+		// Backup directories and files
 		if( $success && $this->has_included( $this->backup_paths ) )
 		{
 			$backup_files_path = $this->pack_backup_files ? $cbackup_path : $cbackup_path.'files/';
@@ -244,7 +244,7 @@ class Backup
 		if( $success )
 		{
 			echo '<p>'.sprintf( T_('Backup complete. Directory: &laquo;%s&raquo;'), $cbackup_path ).'</p>';
-			flush();
+			evo_flush();
 
 			return true;
 		}
@@ -263,7 +263,7 @@ class Backup
 		global $basepath, $backup_paths, $inc_path;
 
 		echo '<h4>'.T_( 'Creating folders/files backup...' ).'</h4>';
-		flush();
+		evo_flush();
 
 		// Find included and excluded files
 
@@ -271,7 +271,13 @@ class Backup
 
 		if( $root_included = $this->backup_paths['application_files'] )
 		{
-			$included_files = get_filenames( $basepath, true, true, true, false, true, true );
+			$filename_params = array(
+					'recurse'			=> false,
+					'basename'			=> true,
+					'trailing_slash'	=> true,
+					//'inc_evocache'	=> true, // Uncomment to backup ?evocache directories
+				);
+			$included_files = get_filenames( $basepath, $filename_params );
 		}
 
 		// Prepare included/excluded paths
@@ -307,18 +313,18 @@ class Backup
 			$PclZip = new PclZip( $zip_filepath );
 
 			echo sprintf( T_( 'Archiving files to &laquo;<strong>%s</strong>&raquo;...' ), $zip_filepath ).'<br/>';
-			flush();
+			evo_flush();
 
 			foreach( $included_files as $included_file )
 			{
 				echo sprintf( T_( 'Backing up &laquo;<strong>%s</strong>&raquo; ...' ), $basepath.$included_file ).'<br/>';
-				flush();
+				evo_flush();
 
 				$file_list = $PclZip->add( no_trailing_slash( $basepath.$included_file ), PCLZIP_OPT_REMOVE_PATH, no_trailing_slash( $basepath ) );
 				if ($file_list == 0)
 				{
 					echo '<p style="color:red">'.sprintf( T_( 'Unable to create &laquo;%s&raquo;' ), $zip_filepath ).'</p>';
-	    			flush();
+					evo_flush();
 
 					return false;
 				}
@@ -347,7 +353,7 @@ class Backup
 		global $DB, $db_config, $backup_tables, $inc_path;
 
 		echo '<h4>'.T_( 'Creating database backup...' ).'</h4>';
-		flush();
+		evo_flush();
 
 		// Collect all included tables
 		$ready_to_backup = array();
@@ -406,7 +412,7 @@ class Backup
 		if( file_exists( $backup_sql_filepath ) )
 		{	// Stop tables backup, because backup file exists
 			echo '<p style="color:red">'.sprintf( T_( 'Unable to write database dump. Database dump already exists: &laquo;%s&raquo;' ), $backup_sql_filepath ).'</p>';
-			flush();
+			evo_flush();
 
 			return false;
 		}
@@ -415,20 +421,20 @@ class Backup
 		if( $f == false )
 		{	// Stop backup, because it can't open backup file for writing
 			echo '<p style="color:red">'.sprintf( T_( 'Unable to write database dump. Could not open &laquo;%s&raquo; for writing.' ), $backup_sql_filepath ).'</p>';
-			flush();
+			evo_flush();
 
 			return false;
 		}
 
 		echo sprintf( T_( 'Dumping tables to &laquo;<strong>%s</strong>&raquo;...' ), $backup_sql_filepath ).'<br/>';
-		flush();
+		evo_flush();
 
 		// Create and save created SQL backup script
 		foreach( $ready_to_backup as $table )
 		{
 			// progressive display of what backup is doing
 			echo sprintf( T_( 'Backing up table &laquo;<strong>%s</strong>&raquo; ...' ), $table ).'<br/>';
-			flush();
+			evo_flush();
 
 			$row_table_data = $DB->get_row( 'SHOW CREATE TABLE '.$table, ARRAY_N );
 			fwrite( $f, $row_table_data[1].";\n\n" );
@@ -488,7 +494,7 @@ class Backup
 			if ($file_list == 0)
 			{
 				echo '<p style="color:red">'.sprintf( T_( 'Unable to create &laquo;%s&raquo;' ), $zip_filepath ).'</p>';
-	    		flush();
+				evo_flush();
 
 				return false;
 			}
@@ -522,7 +528,7 @@ class Backup
 						if( $root )
 						{ // progressive display of what backup is doing
 							echo sprintf( T_( 'Backing up &laquo;<strong>%s</strong>&raquo; ...' ), $srcfile ).'<br/>';
-							flush();
+							evo_flush();
 						}
 						$this->recurse_copy( $srcfile, $dest . '/' . $file, false );
 					}
@@ -596,8 +602,4 @@ class Backup
 	}
 }
 
-
-/*
- * $Log: _backup.class.php,v $
- */
 ?>

@@ -3,7 +3,7 @@
  * This file is part of b2evolution - {@link http://b2evolution.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2009 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @copyright (c)2009-2013 by Francois PLANQUE - {@link http://fplanque.net/}
  * Parts of this file are copyright (c)2009 by The Evo Factory - {@link http://www.evofactory.com/}.
  *
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
@@ -20,7 +20,7 @@
  * @author efy-maxim: Evo Factory / Maxim.
  * @author fplanque: Francois Planque.
  *
- * @version $Id: _messaging.install.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _messaging.install.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page directly.' );
 
@@ -63,6 +63,7 @@ $schema_queries['T_messaging__threadstatus'] = array(
 			tsta_thread_ID int(10) unsigned NOT NULL,
 			tsta_user_ID int(10) unsigned NOT NULL,
 			tsta_first_unread_msg_ID int(10) unsigned NULL,
+			tsta_thread_leave_msg_ID int(10) unsigned NULL DEFAULT NULL,
 			INDEX(tsta_user_ID)
 		) ENGINE = innodb DEFAULT CHARSET = $db_storage_charset" );
 
@@ -76,8 +77,23 @@ $schema_queries['T_messaging__contact'] = array(
 			PRIMARY KEY mct_PK (mct_from_user_ID, mct_to_user_ID)
 		) ENGINE = innodb DEFAULT CHARSET = $db_storage_charset" );
 
+$schema_queries['T_messaging__contact_groups'] = array(
+		'Creating table for groups of messaging contacts',
+		"CREATE TABLE T_messaging__contact_groups (
+			cgr_ID      int(10) unsigned NOT NULL auto_increment,
+			cgr_user_ID int(10) unsigned NOT NULL,
+			cgr_name    varchar(50) NOT NULL,
+			PRIMARY KEY cgr_ID (cgr_ID)
+		) ENGINE = innodb DEFAULT CHARSET = $db_storage_charset" );
 
-/*
- * $Log: _messaging.install.php,v $
- */
+$schema_queries['T_messaging__contact_groupusers'] = array(
+		'Creating table for group users of messaging contacts',
+		"CREATE TABLE T_messaging__contact_groupusers (
+			cgu_user_ID int(10) unsigned NOT NULL,
+			cgu_cgr_ID  int(10) unsigned NOT NULL,
+			PRIMARY KEY cgu_PK (cgu_user_ID, cgu_cgr_ID),
+			FOREIGN KEY (cgu_cgr_ID) REFERENCES T_messaging__contact_groups(cgr_ID)
+                      ON DELETE CASCADE
+		) ENGINE = innodb DEFAULT CHARSET = $db_storage_charset" );
+
 ?>

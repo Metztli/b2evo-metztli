@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -27,7 +27,7 @@
  *
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: _generic_ping.plugin.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _generic_ping.plugin.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -45,14 +45,13 @@ class generic_ping_plugin extends Plugin
 	 */
 	var $code = '';
 	var $priority = 50;
-	var $version = '1.9-dev';
+	var $version = '5.0.0';
 	var $author = 'The b2evo Group';
 	var $help_url = '';  // empty URL defaults to manual wiki
 
 	/*
 	 * These variables MAY be overriden.
 	 */
-	var $apply_rendering = 'never';
 	var $group = 'ping';
 
 
@@ -216,8 +215,4 @@ class generic_ping_plugin extends Plugin
 
 }
 
-
-/*
- * $Log: _generic_ping.plugin.php,v $
- */
 ?>

@@ -4,7 +4,7 @@
  *
  * This file is part of the b2evolution project - {@link http://b2evolution.net/}
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
  *
@@ -14,7 +14,7 @@
  * @author fplanque: Francois PLANQUE - {@link http://fplanque.net/}
  * @author cafelog (team) - http://cafelog.com/
  *
- * @version $Id: _bookmarklet.plugin.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _bookmarklet.plugin.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -102,8 +102,4 @@ class bookmarklet_plugin extends Plugin
 	}
 }
 
-
-/*
- * $Log: _bookmarklet.plugin.php,v $
- */
 ?>

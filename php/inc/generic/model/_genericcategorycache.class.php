@@ -7,7 +7,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
  * {@internal License choice
@@ -31,7 +31,7 @@
  * @author fplanque: Francois PLANQUE.
  * @author mbruneau: Marc BRUNEAU / PROGIDISTRI
  *
- * @version $Id: _genericcategorycache.class.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _genericcategorycache.class.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -87,9 +87,9 @@ class GenericCategoryCache extends GenericCache
 	/**
 	 * Constructor
 	 */
-	function GenericCategoryCache( $objtype, $load_all, $tablename, $prefix = '', $dbIDname = 'ID', $name_field = NULL, $subset_property = NULL, $order_by = '' )
+	function GenericCategoryCache( $objtype, $load_all, $tablename, $prefix = '', $dbIDname = 'ID', $name_field = NULL, $subset_property = NULL, $order_by = '', $allow_none_text = NULL, $allow_none_value = '', $select = '' )
 	{
-		parent::GenericCache( $objtype, $load_all, $tablename, $prefix, $dbIDname, $name_field, $order_by );
+		parent::GenericCache( $objtype, $load_all, $tablename, $prefix, $dbIDname, $name_field, $order_by, $allow_none_text, $allow_none_value, $select );
 
 		$this->subset_property = $subset_property;
 	}
@@ -100,8 +100,8 @@ class GenericCategoryCache extends GenericCache
 	 */
 	function clear()
 	{
- 		$this->subset_cache = array();
- 		$this->loaded_subsets = array();
+		$this->subset_cache = array();
+		$this->loaded_subsets = array();
 		$this->root_cats = array();
 		$this->subset_root_cats = array();
 		$this->revealed_all_children = false;
@@ -155,7 +155,7 @@ class GenericCategoryCache extends GenericCache
 			echo 'Revealing all children -- this is not yet handling all edge cases that the subset version can handle';
 
 			// Make sure everything has been loaded:
-    	$this->load_all();
+			$this->load_all();
 
 			// Reveal children:
 			if( !empty( $this->cache ) )
@@ -185,7 +185,7 @@ class GenericCategoryCache extends GenericCache
 				// Make sure everything has been loaded:
 				$this->load_all();
 
-    		echo 'REVEALING ALL SUBSETS in a row. Is this needed?';
+				echo 'REVEALING ALL SUBSETS in a row. Is this needed?';
 
 				foreach( $this->subset_cache as $subset_ID => $dummy )
 				{
@@ -207,7 +207,7 @@ class GenericCategoryCache extends GenericCache
 				$Debuglog->add( 'Revealing subset of children', 'CategoryCache' );
 
 				// Make sure the requested subset has been loaded:
-    		$this->load_subset($subset_ID);
+				$this->load_subset($subset_ID);
 
 				// Reveal children:
 				if( !empty( $this->subset_cache[$subset_ID] ) )
@@ -357,6 +357,18 @@ class GenericCategoryCache extends GenericCache
 
 		}
 
+		if( !empty( $cat->parent_ID ) && !empty( $callbacks['posts'] ) )
+		{	// Callback to display the posts under subchapters
+			if( is_array( $callbacks['posts'] ) )
+			{	// object callback:
+				$r .= $callbacks['posts'][0]->{$callbacks['posts'][1]}( $cat->parent_ID );
+			}
+			else
+			{
+				$r .= $callbacks['posts']( $cat->parent_ID );
+			}
+		}
+
 		if( is_array( $callbacks['after_level'] ) )
 		{ // object callback:
 			$r .= $callbacks['after_level'][0]->{$callbacks['after_level'][1]}( $level ); // </ul>
@@ -432,7 +444,4 @@ class GenericCategoryCache extends GenericCache
 
 }
 
-/*
- * $Log: _genericcategorycache.class.php,v $
- */
 ?>

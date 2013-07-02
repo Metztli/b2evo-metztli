@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * (dh please re-add)
  *
  * {@internal License choice
@@ -27,7 +27,7 @@
  * @author fplanque: Francois PLANQUE.
  * (dh please re-add)
  *
- * @version $Id: upload.ctrl.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: upload.ctrl.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -54,13 +54,14 @@ $AdminUI->set_path( 'files' );
 
 // Params that may need to be passed through:
 param( 'fm_mode', 'string', NULL, true );
-param( 'item_ID', 'integer', NULL, true );
+param( 'link_type', 'string', NULL, true );
+param( 'link_object_ID', 'integer', NULL, true );
 param( 'user_ID', 'integer', NULL, true );
 param( 'iframe_name', 'string', '', true );
 param( 'tab3', 'string' );
 if( empty( $tab3 ) )
 {
-	$tab3 = 'quick';
+	$tab3 = param( 'tab3_onsubmit', 'string', 'quick' );
 }
 
 $action = param_action();
@@ -68,8 +69,10 @@ $action = param_action();
 if( $tab3 == 'quick' )
 {
 	require_css( 'quick_upload.css' );
-	require_js( 'multiupload/sendfile.js' );
-	require_js( 'multiupload/quick_upload.js' );
+	//require_js( 'multiupload/sendfile.js' );
+	//require_js( 'multiupload/quick_upload.js' );
+	require_js( 'multiupload/fileuploader.js' );
+	require_css( 'fileuploader.css' );
 }
 
 // INIT params:
@@ -121,7 +124,7 @@ if( ! $fm_FileRoot )
 		foreach( $available_Roots as $l_FileRoot )
 		{
 			if( $current_User->check_perm( 'files', 'add', false, $l_FileRoot ) )
-			{ // select 
+			{ // select
 				$fm_FileRoot = $l_FileRoot;
 				break;
 			}
@@ -247,7 +250,7 @@ $renamedMessages = array();
 // Process files we want to get from an URL:
 param( 'uploadfile_url', 'array', array() );
 param( 'uploadfile_source', 'array', array() );
-if( $uploadfile_url )
+if( ( $action != 'switchtab' ) && $uploadfile_url )
 {
 	// Check that this action request is not a CSRF hacked request:
 	$Session->assert_received_crumb( 'file' );
@@ -281,17 +284,16 @@ if( $uploadfile_url )
 					$failedFiles[$k] = 'Failed to find temporary directory.'; // no trans: very unlikely
 					continue;
 				}
-				$tmpfile = fopen($tmpfile_name, 'w');
-				if( ! fwrite($tmpfile, $file_contents) )
+
+				if( ! save_to_file( $file_contents, $tmpfile_name, 'w' ) )
 				{
-					unlink($tmpfile);
-					$failedFiles[$k] = sprintf( 'Could not write to temporary file (%s).', $tmpfile );
+					unlink($tmpfile_name);
+					$failedFiles[$k] = sprintf( 'Could not write to temporary file (%s).', $tmpfile_name );
 					continue;
 				}
-				fclose($tmpfile);
 
 				// Fake/inject info into PHP's array of uploaded files.
-	// fp> TODO! This is a nasty dirty hack. That kind of stuff always breaks somewhere down the line. Needs cleanup.
+				// fp> TODO! This is a nasty dirty hack. That kind of stuff always breaks somewhere down the line. Needs cleanup.
 				// This allows us to treat it (nearly) the same way as regular uploads, apart from
 				// is_uploaded_file(), which we skip and move_uploaded_file() (where we use rename()).
 				$_FILES['uploadfile']['name'][$k] = rawurldecode(basename($parsed_url['path']));
@@ -376,7 +378,7 @@ if( ! empty($renamedFiles) )
 }
 
 // Process uploaded files:
-if( isset($_FILES) && count( $_FILES ) )
+if(  ( $action != 'switchtab' ) && isset($_FILES) && count( $_FILES ) )
 {
 	// Check that this action request is not a CSRF hacked request:
 	$Session->assert_received_crumb( 'file' );
@@ -393,20 +395,21 @@ if( isset($_FILES) && count( $_FILES ) )
 		{
 			$success_msg = sprintf( T_('The file &laquo;%s&raquo; has been successfully uploaded to the server.'), $uploadedFile->dget('name') );
 
-			// Allow to insert/link new upload into currently edited post:
-			if( $mode == 'upload' && !empty($item_ID) )
-			{	// The filemanager has been opened from an Item, offer to insert an img tag into original post.
+			// Allow to insert/link new upload into currently edited link object:
+			if( $mode == 'upload' && !empty( $link_object_ID ) && !empty( $link_type ) )
+			{	// The filemanager has been opened from a link owner object, offer to insert an img tag into original object.
+				$LinkOwner = get_link_owner( $link_type, $link_object_ID );
 				// TODO: Add plugin hook to allow generating JS insert code(s)
 				$img_tag = format_to_output( $uploadedFile->get_tag(), 'formvalue' );
 				if( $uploadedFile->is_image() )
 				{
-					$link_msg = T_('Link this image to your post');
+					$link_msg = $LinkOwner->T_( 'Link this image to your owner' );
 					$link_note = T_('recommended - allows automatic resizing');
 				}
 				else
 				{
-					$link_msg = T_('Link this file to your post');
-					$link_note = T_('The file will be appended for download at the end of the post');
+					$link_msg = $LinkOwner->T_( 'Link this file to your owner' );
+					$link_note = $LinkOwner->T_( 'The file will be appended for download at the end of the owner' );
 				}
 				$success_msg .= '<ul>'
 						.'<li>'.action_icon( T_('Link this file!'), 'link',
@@ -415,9 +418,9 @@ if( isset($_FILES) && count( $_FILES ) )
 						.' ('.$link_note.')</li>'
 
 						.'<li>'.T_('or').' <a href="#" onclick="if( window.focus && window.opener ){'
-						.'window.opener.focus(); textarea_wrap_selection( window.opener.document.getElementById(\'itemform_post_content\'), \''
+						.'window.opener.focus(); textarea_wrap_selection( window.opener.document.getElementById(\''.$LinkOwner->type.'form_post_content\'), \''
 						.format_to_output( $uploadedFile->get_tag(), 'formvalue' ).'\', \'\', 1, window.opener.document ); } return false;">'
-						.T_('Insert the following code snippet into your post').'</a> : <input type="text" value="'.$img_tag.'" size="60" /></li>'
+						.$LinkOwner->T_( 'Insert the following code snippet into your owner' ).'</a> : <input type="text" value="'.$img_tag.'" size="60" /></li>'
 						// fp> TODO: it would be supacool to have an ajaxy "tumbnail size selector" here that generates a thumnail of requested size on server and then changes the code in the input above
 					.'</ul>';
 			}
@@ -446,7 +449,7 @@ $AdminUI->set_path( 'files', 'upload', $tab3 );
 
 // fp> TODO: this here is a bit sketchy since we have Blog & fileroot not necessarilly in sync. Needs investigation / propositions.
 // Note: having both allows to post from any media dir into any blog.
-$AdminUI->breadcrumbpath_init();
+$AdminUI->breadcrumbpath_init( false );
 $AdminUI->breadcrumbpath_add( T_('Files'), '?ctrl=files&amp;blog=$blog$' );
 if( !isset($Blog) || $fm_FileRoot->type != 'collection' || $fm_FileRoot->in_type_ID != $Blog->ID )
 {	// Display only if we're not browsing our home blog
@@ -455,6 +458,20 @@ if( !isset($Blog) || $fm_FileRoot->type != 'collection' || $fm_FileRoot->in_type
 			$fm_FileRoot->name, $Blog->get('shortname') ) : '' );
 }
 $AdminUI->breadcrumbpath_add( /* TRANS: noun */ T_('Upload'), '?ctrl=upload&amp;blog=$blog$&amp;root='.$fm_FileRoot->ID );
+switch( $tab3 )
+{
+	case 'quick':
+		$AdminUI->breadcrumbpath_add( T_('Quick'), '?ctrl=upload&amp;tab3='.$tab3 );
+		break;
+
+	case 'standard':
+		$AdminUI->breadcrumbpath_add( T_('Standard'), '?ctrl=upload&amp;tab3='.$tab3 );
+		break;
+
+	case 'advanced':
+		$AdminUI->breadcrumbpath_add( T_('Advanced'), '?ctrl=upload&amp;tab3='.$tab3 );
+		break;
+}
 
 // Display <html><head>...</head> section! (Note: should be done early if actions do not redirect)
 $AdminUI->disp_html_head();
@@ -478,8 +495,4 @@ else
 // Display body bottom, debug info and close </html>:
 $AdminUI->disp_global_footer();
 
-
-/*
- * $Log: upload.ctrl.php,v $
- */
 ?>

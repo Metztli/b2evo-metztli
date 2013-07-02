@@ -1,11 +1,11 @@
 <?php
 /**
- * This file implements the xyz Widget class.
+ * This file implements the coll_xml_feeds Widget class.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -21,7 +21,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _coll_xml_feeds.widget.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _coll_xml_feeds.widget.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -109,9 +109,9 @@ class coll_xml_feeds_Widget extends ComponentWidget
 
 	function get_title()
 	{
-		global $rsc_url;
+		global $rsc_uri;
 
-		$title = str_replace( '$icon$', '<img src="'.$rsc_url.'icons/feed-icon-16x16.gif" width="16" height="16" class="top" alt="" /> ', $this->disp_params['title']);
+		$title = str_replace( '$icon$', get_icon('feed'), $this->disp_params['title']);
 		// fp> TODO: support for different icon sizes and backgrounds (at least black and white; mid grey would be cool also)
 
 		return $title;
@@ -150,7 +150,7 @@ class coll_xml_feeds_Widget extends ComponentWidget
 			echo $this->disp_params['item_start'];
 			echo $Skin->name.': ';
 			echo '<a href="'.$Blog->get_item_feed_url( $Skin->folder ).'">'.T_('Posts').'</a>';
-			if ( $Blog->get_setting( 'allow_comments') != 'never' && $Blog->get_setting( 'comment_feed_content') != 'none' )
+			if ( $Blog->get_setting( 'allow_comments' ) != 'never' && $Blog->get_setting( 'comment_feed_content' ) != 'none' && $Blog->get_setting( 'comments_latest' ) )
 			{
 				echo ', <a href="'.$Blog->get_comment_feed_url( $Skin->folder ).'">'.T_('Comments').'</a>';
 			}
@@ -192,8 +192,4 @@ class coll_xml_feeds_Widget extends ComponentWidget
 	}
 }
 
-
-/*
- * $Log: _coll_xml_feeds.widget.php,v $
- */
 ?>

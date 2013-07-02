@@ -3,7 +3,7 @@
  * This is the main/default page template.
  *
  * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://manual.b2evolution.net/Skins_2.0}
+ * {@link http://b2evolution.net/man/skin-structure}
  *
  * The main page template is used to display the blog when no specific page template is available
  * to handle the request (based on $disp).
@@ -74,6 +74,7 @@ if( version_compare( $app_version, '2.4.1' ) < 0 )
 	// Display message if no post:
 	display_if_empty();
 
+	echo '<div id="styled_content_block">'; // Beginning of posts display
 	while( $Item = & mainlist_get_item() )
 	{	// For each blog post:
 		// ---------------------- ITEM BLOCK INCLUDED HERE ------------------------
@@ -83,6 +84,7 @@ if( version_compare( $app_version, '2.4.1' ) < 0 )
 			) );
 		// ----------------------------END ITEM BLOCK  ----------------------------
 	}
+	echo '</div>'; // End of posts display
 
 	// -------------------- PREV/NEXT PAGE LINKS (POST LIST MODE) --------------------
 	mainlist_page_links( array(

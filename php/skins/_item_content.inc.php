@@ -8,7 +8,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  */
@@ -52,6 +52,13 @@ $params = array_merge( array(
 		'excerpt_image_limit'      => 1,
 		'excerpt_image_link_to'    => 'single',
 
+		'before_gallery'           => '<div class="bGallery">',
+		'after_gallery'            => '</div>',
+		'gallery_image_size'       => 'crop-80x80',
+		'gallery_image_limit'      => 1000,
+		'gallery_colls'            => 5,
+		'gallery_order'            => '', // Can be 'ASC', 'DESC', 'RAND' or empty
+
 		'before_url_link'          => '<p class="post_link">'.T_('Link:').' ',
 		'after_url_link'           => '</p>',
 		'url_link_text_template'   => '$url$', // If evaluates to empty, nothing will be displayed (except player if podcast)
@@ -74,6 +81,10 @@ $params = array_merge( array(
 		'page_links_start'         => '<p class="right">'.T_('Pages:').' ',
 		'page_links_end'           => '</p>',
 		'page_links_separator'     => '&middot; ',
+		'page_links_single'        => '',
+		'page_links_current_page'  => '#',
+		'page_links_pagelink'      => '%d',
+		'page_links_url'           => '',
 
 		'footer_text_mode'         => '#', // 'single', 'xml' or empty. Will detect 'single' from $disp automatically.
 		'footer_text_start'        => '<div class="item_footer">',
@@ -112,6 +123,11 @@ if( $content_mode == 'auto' )
 			$content_mode = $Blog->get_setting('filtered_content');
 			break;
 
+		case 'single':
+		case 'page':
+			$content_mode = 'full';
+			break;
+
 		case 'posts-default':  // home page 1
 		case 'posts-next':     // next page 2, 3, etc
 		default:
@@ -138,6 +154,12 @@ switch( $content_mode )
 					'image_size'          => $params['excerpt_image_size'],
 					'limit'               => $params['excerpt_image_limit'],
 					'image_link_to'       => $params['excerpt_image_link_to'],
+					'before_gallery'      => $params['before_gallery'],
+					'after_gallery'       => $params['after_gallery'],
+					'gallery_image_size'  => $params['gallery_image_size'],
+					'gallery_image_limit' => $params['gallery_image_limit'],
+					'gallery_colls'       => $params['gallery_colls'],
+					'gallery_order'       => $params['gallery_order'],
 					'restrict_to_image_position' => 'teaser', // Optionally restrict to files/images linked to specific position: 'teaser'|'aftermore'
 				) );
 		}
@@ -178,6 +200,12 @@ switch( $content_mode )
 					'image_size'          => $params['image_size'],
 					'limit'               => $params['image_limit'],
 					'image_link_to'       => $params['image_link_to'],
+					'before_gallery'      => $params['before_gallery'],
+					'after_gallery'       => $params['after_gallery'],
+					'gallery_image_size'  => $params['gallery_image_size'],
+					'gallery_image_limit' => $params['gallery_image_limit'],
+					'gallery_colls'       => $params['gallery_colls'],
+					'gallery_order'       => $params['gallery_order'],
 					// Optionally restrict to files/images linked to specific position: 'teaser'|'aftermore'
 					'restrict_to_image_position' => 'teaser',
 				) );
@@ -199,8 +227,15 @@ switch( $content_mode )
 
 			// Display CONTENT:
 			$Item->content_teaser( array(
-					'before'      => $params['before_content_teaser'],
-					'after'       => $params['after_content_teaser'],
+					'before'              => $params['before_content_teaser'],
+					'after'               => $params['after_content_teaser'],
+					'before_image'        => $params['before_image'],
+					'before_image_legend' => $params['before_image_legend'],
+					'after_image_legend'  => $params['after_image_legend'],
+					'after_image'         => $params['after_image'],
+					'image_size'          => $params['image_size'],
+					'limit'               => $params['image_limit'],
+					'image_link_to'       => $params['image_link_to'],
 				) );
 
 			$Item->more_link( array(
@@ -225,6 +260,12 @@ switch( $content_mode )
 						'image_size'          => $params['image_size'],
 						'limit'               => $params['image_limit'],
 						'image_link_to'       => $params['image_link_to'],
+						'before_gallery'      => $params['before_gallery'],
+						'after_gallery'       => $params['after_gallery'],
+						'gallery_image_size'  => $params['gallery_image_size'],
+						'gallery_image_limit' => $params['gallery_image_limit'],
+						'gallery_colls'       => $params['gallery_colls'],
+						'gallery_order'       => $params['gallery_order'],
 						// Optionally restrict to files/images linked to specific position: 'teaser'|'aftermore'
 						'restrict_to_image_position' => 'aftermore',
 					) );
@@ -237,7 +278,15 @@ switch( $content_mode )
 				) );
 
 			// Links to post pages (for multipage posts):
-			$Item->page_links( $params['page_links_start'], $params['page_links_end'], $params['page_links_separator'] );
+			$Item->page_links( array(
+					'before'      => $params['page_links_start'],
+					'after'       => $params['page_links_end'],
+					'separator'   => $params['page_links_separator'],
+					'single'      => $params['page_links_single'],
+					'current_page'=> $params['page_links_current_page'],
+					'pagelink'    => $params['page_links_pagelink'],
+					'url'         => $params['page_links_url'],
+				) );
 
 			// Display Item footer text (text can be edited in Blog Settings):
 			$Item->footer( array(
@@ -263,10 +312,15 @@ switch( $content_mode )
 				) );
 		}
 
+		// Display location info
+		$Item->location( '<div class="item_location"><strong>'.T_('Location').': </strong>', '</div>' );
+
+		if( $disp == 'single' )
+		{	// Display custom fields
+			$Item->custom_fields();
+		}
+
 		echo $params['content_end_full'];
 
 }
-/*
- * $Log: _item_content.inc.php,v $
- */
 ?>

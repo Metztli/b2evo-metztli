@@ -20,14 +20,6 @@ $skin = '';
 # You should not have to change this.
 $show_statuses = array();
 
-# Here you can set a limit before which posts will be ignored
-# You can use a unix timestamp value or 'now' which will hide all posts in the past
-$timestamp_min = '';
-
-# Here you can set a limit after which posts will be ignored
-# You can use a unix timestamp value or 'now' which will hide all posts in the future
-$timestamp_max = 'now';
-
 # Additionnaly, you can set other values (see URL params in the manual)...
 # $order = 'ASC'; // This for example would display the blog in chronological order...
 
@@ -65,7 +57,19 @@ if( ! $PageCache->check() )
 // Do inits depending on current $disp:
 skin_init( $disp );
 
+// Add CSS:
+require_css( 'basic_styles.css', 'rsc_url' ); // the REAL basic styles
+require_css( 'basic.css', 'rsc_url' ); // Basic styles
+require_css( 'blog_base.css', 'rsc_url' ); // Default styles for the blog navigation
+require_css( 'item_base.css', 'rsc_url' ); // Default styles for the post CONTENT
+require_css( 'fp02.css', 'rsc_url' );
+
 add_js_for_toolbar();		// Registers all the javascripts needed by the toolbar menu
+
+// Functions to work with AJAX response data
+require_js( '#jquery#', 'rsc_url' );
+require_js( '#jqueryUI#', 'rsc_url' );
+require_js( 'ajax.js', 'rsc_url' );
 
 headers_content_mightcache( 'text/html' );		// In most situations, you do NOT want to cache dynamic content!
 ?>
@@ -85,7 +89,6 @@ headers_content_mightcache( 'text/html' );		// In most situations, you do NOT wa
 		// ------------------------------ END OF REQUEST TITLE -----------------------------
 	?>Multiblog Demo</title>
 	<!-- InstanceEndEditable -->
-<link rel="stylesheet" href="rsc/css/fp02.css" type="text/css" />
 <!-- InstanceBeginEditable name="head" -->
 	<?php skin_base_tag(); /* You're not using any skin here but this won't hurt. However it will be very helpful to have this here when you make the switch to a skin! */ ?>
 	<?php skin_description_tag(); ?>
@@ -103,7 +106,7 @@ headers_content_mightcache( 'text/html' );		// In most situations, you do NOT wa
 	require $skins_path.'_toolbar.inc.php';
 	// ------------------------------- END OF TOOLBAR --------------------------------
 	echo "\n";
-	if( is_logged_in() )
+	if( show_toolbar() )
 	{
 		echo '<div id="skin_wrapper" class="skin_wrapper_loggedin">';
 	}
@@ -309,7 +312,7 @@ headers_content_mightcache( 'text/html' );		// In most situations, you do NOT wa
 
 			<h3>#2: <a href="<?php $Blog_B->disp( 'blogurl', 'raw' ) ?>"><?php echo $Blog_B->disp( 'name', 'htmlbody' ) ?></a></h3>
 			<?php
-			$BlogBList = new ItemList2( $Blog_B, $timestamp_min, $timestamp_max, $posts );
+			$BlogBList = new ItemList2( $Blog_B, $Blog_B->get_timestamp_min(), $Blog_B->get_timestamp_max(), $posts );
 
 			$BlogBList->set_filters( array(
 					'authors' => $author,
@@ -344,6 +347,7 @@ headers_content_mightcache( 'text/html' );		// In most situations, you do NOT wa
 									'after'       => '',
 									'disppage'    => 1,
 									'stripteaser' => false,
+									'image_size'  => 'fit-400x320',
 								) );
 						?>
 					</div>
@@ -368,7 +372,7 @@ headers_content_mightcache( 'text/html' );		// In most situations, you do NOT wa
 		?>
 		<h3>#3: <a href="<?php $Blog_roll->disp( 'blogurl', 'raw' ) ?>"><?php echo $Blog_roll->disp( 'name', 'htmlbody' ) ?></a></h3>
 		<?php
-		$LinkblogList = new ItemList2( $Blog_roll, $timestamp_min, $timestamp_max, $posts );
+		$LinkblogList = new ItemList2( $Blog_roll, $Blog_roll->get_timestamp_min(), $Blog_roll->get_timestamp_max(), $posts );
 
 		$LinkblogList->set_filters( array(
 				'authors' => $author,
@@ -402,6 +406,7 @@ headers_content_mightcache( 'text/html' );		// In most situations, you do NOT wa
 								'after'       => '',
 								'disppage'    => 1,
 								'stripteaser' => false,
+								'image_size'  => 'fit-400x320',
 							) );
 					?>
 				</div>

@@ -3,7 +3,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2009 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @copyright (c)2009-2013 by Francois PLANQUE - {@link http://fplanque.net/}
  * Parts of this file are copyright (c)2009 by The Evo Factory - {@link http://www.evofactory.com/}.
  *
  * {@internal License choice
@@ -26,7 +26,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _userfield.form.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _userfield.form.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -51,21 +51,31 @@ $Form->begin_form( 'fform', $creating ?  T_('New user field') : T_('User field')
 
 	$Form->add_crumb( 'userfield' );
 
-	$Form->hiddens_by_key( get_memorized( 'action'.( $creating ? ',ufdf_ID' : '' ) ) ); // (this allows to come back to the right list order & page)
+	$Form->hiddens_by_key( get_memorized( 'action' ) ); // (this allows to come back to the right list order & page)
 
-	if( $creating )
-	{
-		$Form->text_input( 'new_ufdf_ID', '', 8, T_('ID'), '', array( 'maxlength'=> 10, 'required'=>true ) );
-	}
-	else
-	{
-		$Form->hidden( 'ufdf_ID', $edited_Userfield->ID );
-	}
+	$Form->select_input_array( 'ufdf_ufgp_ID', $edited_Userfield->group_ID, $edited_Userfield->get_groups(),
+		T_('Group'), '', array( 'required' => true, 'force_keys_as_values' => true ) );
+
+	$Form->text_input( 'ufdf_name', $edited_Userfield->name, 50, T_('Field name'), '', array( 'maxlength'=> 255, 'required'=>true ) );
 
 	$Form->select_input_array( 'ufdf_type', $edited_Userfield->type, $edited_Userfield->get_types(),
-		T_('Type'), '', array( 'required'=>true ) );
+		T_('Field type'), '', array( 'required' => true ) );
 
-	$Form->text_input( 'ufdf_name', $edited_Userfield->name, 50, T_('Name'), '', array( 'maxlength'=> 255, 'required'=>true ) );
+	// Show this textarea only for field type with "Option list"
+	echo '<div id="div_ufdf_options"'. ( $edited_Userfield->type != 'list' ? ' style="display:none"' : '' ) .'>';
+	$Form->textarea_input( 'ufdf_options', $edited_Userfield->options, 10, T_('Options'), array( 'required' => true, 'note' => T_('Enter one option per line') ) );
+	echo '</div>';
+
+	// Suggest values only for field type with "Single word"
+	echo '<div id="div_ufdf_suggest"'. ( $edited_Userfield->type != 'word' ? ' style="display:none"' : '' ) .'>';
+	$Form->checkbox_input( 'ufdf_suggest', $edited_Userfield->suggest, T_('Suggest values') );
+	echo '</div>';
+
+	$Form->radio_input( 'ufdf_duplicated', $edited_Userfield->duplicated, $edited_Userfield->get_duplicateds(), T_('Multiple values'), array( 'required'=>true, 'lines'=>true ) );
+
+	$Form->radio_input( 'ufdf_required', $edited_Userfield->required, $edited_Userfield->get_requireds(), T_('Required?'), array( 'required'=>true ) );
+
+	$Form->textarea_input( 'ufdf_bubbletip', $edited_Userfield->bubbletip, 5, T_('Bubbletip text') );
 
 if( $creating )
 {
@@ -79,8 +89,26 @@ else
 	$Form->end_form( array( array( 'submit', 'actionArray[update]', T_('Update'), 'SaveButton' ),
 													array( 'reset', '', T_('Reset'), 'ResetButton' ) ) );
 }
-
-/*
- * $Log: _userfield.form.php,v $
- */
 ?>
+<script type="text/javascript">
+	jQuery( '#ufdf_type' ).change( function()
+	{	// Show textarea input only for field type with "Option list"
+		if( jQuery( this ).val() == 'list' )
+		{
+			jQuery( '#div_ufdf_options' ).show();
+		}
+		else
+		{
+			jQuery( '#div_ufdf_options' ).hide();
+		}
+		// Suggest values only for field type with "Single word"
+		if( jQuery( this ).val() == 'word' )
+		{
+			jQuery( '#div_ufdf_suggest' ).show();
+		}
+		else
+		{
+			jQuery( '#div_ufdf_suggest' ).hide();
+		}
+	} );
+</script>

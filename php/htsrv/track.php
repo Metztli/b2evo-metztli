@@ -4,7 +4,7 @@
  *
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
  *
@@ -12,7 +12,7 @@
  *
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: track.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: track.php 3508 2013-04-19 06:58:02Z yura $
  */
 
 /**
@@ -63,12 +63,12 @@ if( !empty($Goal->goal_redir_url) )
 		}
 	}
 
-	header( 'HTTP/1.1 302 Found' );
+	header_http_response( '302 Found' );
 	header( 'Location: '.$redir_url, true, 302 ); // explictly setting the status is required for (fast)cgi
 	// TODO: dh> str_repeat won't be enough (when gzipped), see http://core.trac.wordpress.org/ticket/8942
 	//           should be probably a more general function and get used in e.g. bad_request_die(), too (if necessary)
 	echo str_repeat( ' ', 1024 );
-	flush();
+	evo_flush();
 	// At this point Firefox 2 will redirect without waiting for the end of the page, but IE7 will not :/
 }
 else
@@ -80,7 +80,7 @@ else
 	header('Content-Length: '.filesize( $blank_gif ) );
 	header_nocache();
 	readfile( $blank_gif );
-	flush();
+	evo_flush();
 }
 
 // We need to log the HIT now! Because we need the hit ID!
@@ -102,9 +102,4 @@ $sql = 'INSERT INTO T_track__goalhit( ghit_goal_ID, ghit_hit_ID, ghit_params )
 				VALUES( '.$Goal->goal_ID.', '.$Hit->ID.', '.$DB->quote($extra_params).' )';
 $DB->query( $sql );
 
-
-
-/*
- * $Log: track.php,v $
- */
 ?>

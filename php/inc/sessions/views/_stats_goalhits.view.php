@@ -5,16 +5,16 @@
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
  *
- * @version $Id: _stats_goalhits.view.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _stats_goalhits.view.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
 global $blog, $admin_url, $rsc_url;
-global $Session;
+global $Session, $UserSettings;
 
 /**
  * View funcs
@@ -54,7 +54,7 @@ else
 {
 	// Create result set:
 	$SQL = new SQL();
-	$SQL->SELECT( 'hit_ID, sess_ID, sess_hitcount, hit_datetime, hit_referer_type, hit_uri, hit_blog_ID, hit_referer, hit_remote_addr,
+	$SQL->SELECT( 'hit_ID, sess_ID, hit_datetime, hit_referer_type, hit_uri, hit_blog_ID, hit_referer, hit_remote_addr,
 									user_login, hit_agent_type, dom_name, goal_name, keyp_phrase' );
 	$SQL->FROM( 'T_track__goalhit LEFT JOIN T_hitlog ON ghit_hit_ID = hit_ID
 									LEFT JOIN T_basedomains ON dom_ID = hit_referer_dom_ID
@@ -95,7 +95,7 @@ else
 	}
 }
 
-$Results = new Results( $SQL->get(), 'hits_', '--D', 20, $SQL_count->get() );
+$Results = new Results( $SQL->get(), 'ghits_', '--D', $UserSettings->get( 'results_per_page' ), $SQL_count->get() );
 
 $Results->title = T_('Recent goal hits');
 
@@ -104,7 +104,7 @@ $Results->title = T_('Recent goal hits');
  *
  * @param Form
  */
-function filter_hits( & $Form )
+function filter_goal_hits( & $Form )
 {
 	global $datestart, $datestop;
 
@@ -116,7 +116,7 @@ function filter_hits( & $Form )
 	$Form->text_input( 'goal_name', get_param('goal_name'), 20, T_('Goal names starting with'), '', array( 'maxlength'=>50 ) );
 }
 $Results->filter_area = array(
-	'callback' => 'filter_hits',
+	'callback' => 'filter_goal_hits',
 	'url_ignore' => 'results_hits_page,exclude,sess_ID,goal_name,datestartinput,datestart,datestopinput,datestop',
 	'presets' => array(
 		'all' => array( T_('All'), '?ctrl=stats&amp;tab=goals&amp;tab3=hits&amp;blog=0' ),
@@ -128,7 +128,7 @@ $Results->cols[] = array(
 		'th' => T_('Session'),
 		'order' => 'hit_sess_ID',
 		'td_class' => 'right',
-		'td' => '<a href="?ctrl=stats&amp;tab=sessions&amp;tab3=hits&amp;blog=0&amp;sess_ID=$sess_ID$">$sess_ID$</a>',
+		'td' => '<a href="?ctrl=stats&amp;tab=hits&amp;blog=0&amp;sess_ID=$sess_ID$">$sess_ID$</a>',
 	);
 
 $Results->cols[] = array(
@@ -178,17 +178,7 @@ $Results->cols[] = array(
 		'td' => '$goal_name$',
 	);
 
-$Results->cols[] = array(
-		'th' => T_('Hits'),
-		'order' => 'sess_hitcount',
-		'td_class' => 'right',
-		'td' => '<a href="?ctrl=stats&amp;tab=sessions&amp;tab3=hits&amp;blog=0&amp;sess_ID=$sess_ID$">$sess_hitcount$</a>',
-	);
-
 // Display results:
 $Results->display();
 
-/*
- * $Log: _stats_goalhits.view.php,v $
- */
 ?>

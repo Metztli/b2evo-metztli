@@ -5,13 +5,13 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
  *
  * @package admin
  *
- * @version $Id: _widget.form.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _widget.form.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -77,8 +77,4 @@ else
 													array( 'reset', '', T_('Reset'), 'ResetButton' ) ) );
 }
 
-
-/*
- * $Log: _widget.form.php,v $
- */
 ?>

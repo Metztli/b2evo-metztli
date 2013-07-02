@@ -6,7 +6,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  */
@@ -15,10 +15,16 @@ if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.'
 
 // Default params:
 $params = array_merge( array(
-    'comment_start'  => '<div class="bComment">',
-    'comment_end'    => '</div>',
-		'link_to'		     => 'userurl>userpage',		// 'userpage' or 'userurl' or 'userurl>userpage' or 'userpage>userurl'
-    'Comment'        => NULL, // This object MUST be passed as a param!
+		'comment_start'        => '<div class="bComment">',
+		'comment_end'          => '</div>',
+		'link_to'              => 'userurl>userpage', // 'userpage' or 'userurl' or 'userurl>userpage' or 'userpage>userurl'
+		'author_link_text'     => 'preferredname',
+		'before_image'         => '<div class="image_block">',
+		'before_image_legend'  => '<div class="image_legend">',
+		'after_image_legend'   => '</div>',
+		'after_image'          => '</div>',
+		'image_size'           => 'fit-400x320',
+		'Comment'              => NULL, // This object MUST be passed as a param!
 	), $params );
 
 /**
@@ -31,6 +37,10 @@ $Comment = & $params['Comment'];
 <?php
 	$Comment->anchor();
 	echo $params['comment_start'];
+	if( $Comment->status != 'published' )
+	{
+		$Comment->status( 'styled' );
+	}
 ?>
 	<div class="bCommentTitle">
 	<?php
@@ -57,7 +67,7 @@ $Comment = & $params['Comment'];
 						'after_user'   => '#',
 						'format'       => 'htmlbody',
 						'link_to'		   => $params['link_to'],		// 'userpage' or 'userurl' or 'userurl>userpage' or 'userpage>userurl'
-						'link_text'    => 'preferredname',
+						'link_text'    => $params['author_link_text'],
 					) );
 
 				$Comment->msgform_link( $Blog->get('msgformurl') );
@@ -86,28 +96,27 @@ $Comment = & $params['Comment'];
 		}
 	?>
 	</div>
-	<?php $Comment->rating(); ?>
+	<?php
+	$Comment->rating();
+	?>
 	<div class="bCommentText">
 		<?php
 			$Comment->avatar();
-			$Comment->content();
+			$Comment->content( 'htmlbody', false, true, $params );
 		?>
 	</div>
 	<div class="bCommentSmallPrint">
 		<?php
-			$Comment->edit_link( '', '', '#', '#', 'permalink_right' ); /* Link to backoffice for editing */
-			$Comment->delete_link( '', '', '#', '#', 'permalink_right' ); /* Link to backoffice for deleting */
+			$commented_Item = & $Comment->get_Item();
+			$Comment->edit_link( '', '', '#', '#', 'permalink_right', '&amp;', true, rawurlencode( $Comment->get_permanent_url() ) ); /* Link to backoffice for editing */
+			$Comment->delete_link( '', '', '#', '#', 'permalink_right', false, '&amp;', true, false, '#', rawurlencode( $commented_Item->get_permanent_url() ) ); /* Link to backoffice for deleting */
 		?>
 
 		<?php $Comment->date() ?> @ <?php $Comment->time( 'H:i' ) ?>
+		<?php $Comment->reply_link(); /* Link for replying to the Comment */ ?>
+		<?php $Comment->vote_helpful( '', '', '&amp;', true, true );?>
 	</div>
 <?php
-  echo $params['comment_end'];
+	echo $params['comment_end'];
 ?>
 <!-- ========== END of a COMMENT/TB/PB ========== -->
-<?php
-
-/*
- * $Log: _item_comment.inc.php,v $
- */
-?>

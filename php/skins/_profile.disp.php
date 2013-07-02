@@ -12,7 +12,7 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
  *
@@ -32,16 +32,16 @@
  * @author blueyed: Daniel HAHLER
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _profile.disp.php 1010 2012-03-08 08:39:41Z attila $
+ * @version $Id: _profile.disp.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
 load_class( 'regional/model/_country.class.php', 'Country' );
 
-global $Blog, $Session, $Messages, $inc_path, $demo_mode;
+global $Blog, $Session, $Messages, $inc_path;
 global $action, $user_profile_only, $edited_User, $form_action;
 
-$form_action = url_add_param( $Blog->gen_blogurl(), 'disp='.$disp, '&' );
+$form_action = get_secure_htsrv_url().'profile_update.php';
 
 if( ! is_logged_in() )
 { // must be logged in!
@@ -50,46 +50,19 @@ if( ! is_logged_in() )
 }
 
 $user_profile_only = true;
-// edited_User is always the current_User
-$edited_User = $current_User;
-
-$action = param_action();
-
-if( !empty( $action ) )
-{ // some action was submited
-	if( $demo_mode && ( $current_User->ID <= 3 ) )
-	{ // we are in demo mode, and in demo mode automatically generated users edit is not permitted
-		echo '<p class="error">'.sprintf( 'Demo mode: you can\'t edit %s profile!', $current_User->login ).'</p>';
-		$action = NULL;
-	}
-	else
-	{ // Check that this action request is not a CSRF hacked request:
-		$Session->assert_received_crumb( 'user' );
-	}
+// check if there is unsaved User object stored in Session
+$edited_User = $Session->get( 'core.unsaved_User' );
+if( $edited_User == NULL )
+{ // edited_User is the current_User
+	$edited_User = $current_User;
 }
-
-switch( $action )
-{
-	case 'update_avatar':
-		$file_ID = param( 'file_ID', 'integer', NULL );
-		$current_User->update_avatar( $file_ID );
-		$Messages->display();
-		break;
-
-	case 'remove_avatar':
-		$current_User->remove_avatar();
-		$Messages->display();
-		break;
-
-	case 'update':
-		$current_User->update_from_request();
-		$Messages->display();
-		break;
-
-	case 'upload_avatar':
-		$current_User->update_avatar_from_upload();
-		$Messages->display();
-		break;
+else
+{ // unsaved user exists, delete it from Session
+	$Session->delete( 'core.unsaved_User' );
+	if( $edited_User->ID != $current_User->ID )
+	{ // edited user ID must be the same as current User
+		debug_die( 'Inconsistent state, you are allowed to edit only your profile' );
+	}
 }
 
 // Display tabs
@@ -126,12 +99,11 @@ switch( $disp )
 	case 'userprefs':
 		require $inc_path.'users/views/_user_preferences.form.php';
 		break;
+	case 'subs':
+		require $inc_path.'users/views/_user_subscriptions.form.php';
+		break;
 	default:
 		debug_die( "Unknown user tab" );
 }
 
-
-/*
- * $Log: _profile.disp.php,v $
- */
 ?>

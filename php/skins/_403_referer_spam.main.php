@@ -6,7 +6,8 @@
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
-header('HTTP/1.0 403 Forbidden');
+// fp>vitaliy  move HTTP/1.0  into header_http_response('')
+header_http_response('403 Forbidden');
 header('Content-Type: text/html; charset=iso-8859-1'); // no translation
 
 ?>
@@ -30,4 +31,5 @@ header('Content-Type: text/html; charset=iso-8859-1'); // no translation
 </html>
 <?php
 	exit(0);
+
 ?>

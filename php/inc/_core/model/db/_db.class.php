@@ -15,7 +15,7 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2004 by Justin Vincent - {@link http://php.justinvincent.com}
  * Parts of this file are copyright (c)2004-2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
@@ -57,7 +57,7 @@
  * @author fplanque: Francois PLANQUE
  * @author Justin VINCENT
  *
- * @version $Id: _db.class.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _db.class.php 3611 2013-04-30 09:08:54Z attila $
  * @todo transaction support
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -167,6 +167,14 @@ class DB
 	 * You need to use InnoDB in order to enable this.  See the {@link $db_config "table_options" key}.
 	 */
 	var $use_transactions = false;
+
+	/**
+	 * Which transaction isolation level should be used?
+	 * 
+	 * Possible values in case of MySQL: REPEATABLE READ | READ COMMITTED | READ UNCOMMITTED | SERIALIZABLE
+	 * Defailt value is REPEATABLE READ
+	 */
+	var $transaction_isolation_level = 'REPEATABLE READ';
 
 	/**
 	 * How many transactions are currently nested?
@@ -474,6 +482,16 @@ class DB
 
 
 	/**
+	 * Escapes text for SQL LIKE special characters % and _
+	 */
+	function like_escape($str)
+	{
+		$str = str_replace( array('%', '_'), array('\\%', '\\_'), $str );
+		return $this->escape($str);
+	}
+
+
+	/**
 	 * Format a string correctly for safe insert under all PHP conditions
 	 */
 	function escape($str)
@@ -696,7 +714,7 @@ class DB
 		}
 		else
 		{
-			$this->version = preg_replace( '¤-.*¤', '', $this->version_long );
+			$this->version = preg_replace( '~-.*~', '', $this->version_long );
 		}
 		$this->restore_error_state();
 
@@ -766,7 +784,15 @@ class DB
 			//          IMHO, a cleaner solution would be to use {T_xxx} in the queries and replace it here. In object properties (e.g. DataObject::$dbtablename), only "T_xxx" would get used and surrounded by "{..}" in the queries it creates.
 
 			if( preg_match( '~^\s*(UPDATE\s+)(.*?)(\sSET\s.*)$~is', $query, $match ) )
-			{ // replace only between UPDATE and SET:
+			{ // replace only between UPDATE and SET, but check subqueries:
+				if( preg_match( '~^(.*SELECT.*FROM\s+)(.*?)(\s.*)$~is', $match[3], $subquery_match ) )
+				{ // replace in subquery
+					$match[3] = $subquery_match[1].preg_replace( $this->dbaliases, $this->dbreplaces, $subquery_match[2] ).$subquery_match[3];
+				}
+				if( preg_match( '~^(.*SELECT.*JOIN\s+)(.*?)(\s.*)$~is', $match[3], $subquery_match ) )
+				{ // replace in whole subquery, there can be any number of JOIN:
+					$match[3] = preg_replace( $this->dbaliases, $this->dbreplaces, $match[3] );
+				}
 				$query = $match[1].preg_replace( $this->dbaliases, $this->dbreplaces, $match[2] ).$match[3];
 			}
 			elseif( preg_match( '~^\s*(INSERT|REPLACE\s+)(.*?)(\s(VALUES|SET)\s.*)$~is', $query, $match ) )
@@ -841,6 +867,12 @@ class DB
 			if( is_resource($this->result) )
 			{
 				mysql_free_result($this->result);
+			}
+			$last_errno = mysql_errno($this->dbhandle);
+			if( $this->use_transactions && ( $this->transaction_isolation_level == 'SERIALIZABLE' ) && ( 1213 == $last_errno ) )
+			{ // deadlock exception occured, transaction must be rolled back
+				$this->rollback_nested_transaction = true;
+				return false;
 			}
 			$this->print_error( '', '', $title );
 			return false;
@@ -1322,7 +1354,7 @@ class DB
 
 					echo '<code id="'.$div_id.'" style="display:none">'.$sql_short.'</code>';
 					echo '<code id="'.$div_id.'_full">'.$sql.'</code>';
-					echo '<script type="text/javascript">debug_onclick_toggle_div("'.$div_id.','.$div_id.'_full", "Hide full SQL", "Show full SQL");</script>';
+					echo '<script type="text/javascript">debug_onclick_toggle_div("'.$div_id.','.$div_id.'_full", "Show less", "Show more", false);</script>';
 				}
 				else
 				{
@@ -1526,14 +1558,33 @@ class DB
 	 *
 	 * Note 3: The default isolation level is REPEATABLE READ.
 	 */
-	function begin()
+	function begin( $transaction_isolation_level = 'REPEATABLE READ' )
 	{
-		if( $this->use_transactions )
-		{
-			$this->query( 'BEGIN', 'BEGIN transaction' );
-
-			$this->transaction_nesting_level++;
+		if( !$this->use_transactions )
+		{ // don't use transactions at all
+			return;
 		}
+
+		$transaction_isolation_level = strtoupper( $transaction_isolation_level );
+		if( !in_array( $transaction_isolation_level, array( 'REPEATABLE READ', 'READ COMMITTED', 'READ UNCOMMITTED', 'SERIALIZABLE' ) ) )
+		{
+			debug_die( 'Invalid transaction isolation level!' );
+		}
+
+		if( ( $this->transaction_isolation_level != $transaction_isolation_level ) && ( ( !$this->transaction_nesting_level ) || ( $transaction_isolation_level == 'SERIALIZABLE' ) ) )
+		{ // The isolation level was changed and it is the beggining of a new transaction or this is a nested transaction but it needs 'SERIALIZABLE' isolation level
+			// Note: We change the transaction isolation level for nested transactions only if the requested isolation level is 'SERIALIZABLE'
+			// Set session transaction isolation level to the new value
+			$this->transaction_isolation_level = $transaction_isolation_level;
+			$this->query( 'SET SESSION TRANSACTION ISOLATION LEVEL '.$transaction_isolation_level, 'Set transaction isolation level' );
+		}
+
+		if( !$this->transaction_nesting_level )
+		{ // Start a new transaction
+			$this->query( 'BEGIN', 'BEGIN transaction' );
+		}
+
+		$this->transaction_nesting_level++;
 	}
 
 
@@ -1542,24 +1593,27 @@ class DB
 	 */
 	function commit()
 	{
-		if( $this->use_transactions )
-		{
-			if( $this->transaction_nesting_level == 1 )
-			{ // Only COMMIT if there are no remaining nested transactions:
-				if( $this->rollback_nested_transaction )
-				{
-					$this->query( 'ROLLBACK', 'ROLLBACK transaction because there was a failure somewhere in the nesting of transactions' );
-				}
-				else
-				{
-					$this->query( 'COMMIT', 'COMMIT transaction' );
-				}
-				$this->rollback_nested_transaction = false;
-			}
-			if( $this->transaction_nesting_level )
+		if( !$this->use_transactions )
+		{ // don't use transactions at all
+			return;
+		}
+
+		if( $this->transaction_nesting_level == 1 )
+		{ // Only COMMIT if there are no remaining nested transactions:
+			if( $this->rollback_nested_transaction )
 			{
-				$this->transaction_nesting_level--;
+				$this->query( 'ROLLBACK', 'ROLLBACK transaction because there was a failure somewhere in the nesting of transactions' );
 			}
+			else
+			{
+				$this->query( 'COMMIT', 'COMMIT transaction' );
+			}
+			$this->rollback_nested_transaction = false;
+		}
+
+		if( $this->transaction_nesting_level )
+		{ // decrease transaction nesting level
+			$this->transaction_nesting_level--;
 		}
 	}
 
@@ -1569,21 +1623,23 @@ class DB
 	 */
 	function rollback()
 	{
-		if( $this->use_transactions )
+		if( !$this->use_transactions )
+		{ // don't use transactions at all
+			return;
+		}
+
+		if( $this->transaction_nesting_level == 1 )
+		{ // Only ROLLBACK if there are no remaining nested transactions:
+			$this->query( 'ROLLBACK', 'ROLLBACK transaction' );
+			$this->rollback_nested_transaction = false;
+		}
+		else
+		{ // Remember we'll have to roll back at the end!
+			$this->rollback_nested_transaction = true;
+		}
+		if( $this->transaction_nesting_level )
 		{
-			if( $this->transaction_nesting_level == 1 )
-			{ // Only ROLLBACK if there are no remaining nested transactions:
-				$this->query( 'ROLLBACK', 'ROLLBACK transaction' );
-				$this->rollback_nested_transaction = false;
-			}
-			else
-			{ // Remember we'll have to roll back at the end!
-				$this->rollback_nested_transaction = true;
-			}
-			if( $this->transaction_nesting_level )
-			{
-				$this->transaction_nesting_level--;
-			}
+			$this->transaction_nesting_level--;
 		}
 	}
 
@@ -1694,8 +1750,4 @@ class DB
 
 }
 
-
-/*
- * $Log: _db.class.php,v $
- */
 ?>

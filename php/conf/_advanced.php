@@ -7,19 +7,9 @@
  *
  * @package conf
  *
- * @version $Id: _advanced.php 1518 2012-07-16 07:16:42Z attila $
+ * @version $Id: _advanced.php 3968 2013-06-11 00:26:57Z fplanque $
  */
 if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page directly.' );
-
-/**
- * No Translation. Does nothing.
- *
- * Nevertheless, the string will be extracted by the gettext tools
- */
-function NT_( $string )
-{
-	return $string;
-}
 
 /**
  * Display debugging informations?
@@ -32,11 +22,15 @@ function NT_( $string )
  * @global integer
  */
 $debug = 'pwd';
+$debug_jslog = 'pwd';
 
 /**
  * When $debug is 'pwd' and you set a /password/ below,
  * you can turn on debugging at any time by adding ?debug=YOUR_PASSWORD to your url.
  * You can turn off by adding just ?debug
+ *
+ * You can ALSO turn on debugging of JavaScript(AJAX Requests) by adding ?jslog=YOUR_PASSWORD to your url.
+ * You can turn off by adding just ?jslog
  *
  * @var string
  */
@@ -47,7 +41,7 @@ $debug_pwd = '';
 // b2evo should run notice free! (plugins too!)
 if( version_compare( phpversion(), '5.3', '>=' ) )
 {	// sam2kb> Disable E_STRICT messages on PHP > 5.3, there are numerous E_STRICT warnings displayed throughout the app
-	error_reporting( E_ALL & ~E_DEPRECATED & ~E_STRICT );
+	error_reporting( E_ALL & ~E_STRICT );
 }
 else
 {
@@ -58,10 +52,10 @@ else
 // In this case, uncomment the following line:
 // ini_set( 'display_errors', 'on' );
 
-// If you get blank pages, PHP may be crashing because it doesn't have enough memory.
+// If you get blank pages or missing thumbnail images, PHP may be crashing because it doesn't have enough memory.
 // The default is 8 MB (in PHP < 5.2) and 128 MB (in PHP > 5.2)
 // Try uncommmenting the following line:
-// ini_set( 'memory_limit', '32M' );
+// ini_set( 'memory_limit', '128M' );
 
 
 /**
@@ -77,13 +71,18 @@ else
  */
 $log_app_errors = 1;
 
+/**
+ * Allows to force a timezone if PHP>=5.1
+ * See: http://b2evolution.net/man/date_default_timezone-forcing-a-timezone
+ */
+$date_default_timezone = '';
 
 /**
  * Thumbnail size definitions.
  *
  * NOTE: this gets used for general resizing, too. E.g. in the coll_avatar_Widget.
  *
- * type, width, height, quality
+ * type, width, height, quality, percent of blur effect
  */
 $thumbnail_sizes = array(
 			'fit-720x500' => array( 'fit', 720, 500, 90 ),
@@ -92,6 +91,8 @@ $thumbnail_sizes = array(
 			'fit-400x320' => array( 'fit', 400, 320, 85 ),
 			'fit-320x320' => array( 'fit', 320, 320, 85 ),
 			'fit-160x160' => array( 'fit', 160, 160, 80 ),
+			'fit-160x160-blur-13' => array( 'fit', 160, 160, 80, 13 ),
+			'fit-160x160-blur-18' => array( 'fit', 160, 160, 80, 18 ),
 			'fit-160x120' => array( 'fit', 160, 120, 80 ),
 			'fit-80x80' => array( 'fit', 80, 80, 80 ),
 			'crop-80x80' => array( 'crop', 80, 80, 85 ),
@@ -99,6 +100,11 @@ $thumbnail_sizes = array(
 			'crop-48x48' => array( 'crop', 48, 48, 85 ),
 			'crop-32x32' => array( 'crop', 32, 32, 85 ),
 			'crop-15x15' => array( 'crop', 15, 15, 85 ),
+			'crop-top-80x80' => array( 'crop-top', 80, 80, 85 ),
+			'crop-top-64x64' => array( 'crop-top', 64, 64, 85 ),
+			'crop-top-48x48' => array( 'crop-top', 48, 48, 85 ),
+			'crop-top-32x32' => array( 'crop-top', 32, 32, 85 ),
+			'crop-top-15x15' => array( 'crop-top', 15, 15, 85 ),
 	);
 
 
@@ -110,6 +116,14 @@ $thumbnail_sizes = array(
  * @global boolean Default: false
  */
 $demo_mode = false;
+
+/**
+ * If enabled, this will create more demo contents and enable more features during install.
+ * This may result in an overloaded/bloated blog.
+ *
+ * @global boolean
+ */
+$test_install_all_features = false;
 
 
 /**
@@ -178,7 +192,7 @@ else
 /**
  * Base domain of b2evolution.
  *
- * By default we try to extract it automagically from $basehost (itself extracted from $abaseurl)
+ * By default we try to extract it automagically from $basehost (itself extracted from $baseurl)
  * But you may need to adjust this manually.
  *
  * @todo does anyone have a clean way of handling stuff like .co.uk ?
@@ -203,22 +217,6 @@ $basedomain = preg_replace( '/^( .* \. )? (.+? \. .+? )$/xi', '$2', $basehost );
  * @global string Default: 'b2evo'
  */
 $instance_name = 'b2evo'; // MUST BE A SINGLE WORD! NO SPACES!!
-
-
-/**
- * Default email address for sending notifications (comments, trackbacks,
- * user registrations...).
- *
- * Set a custom address like this:
- * <code>$notify_from = 'b2evolution@your_server.com';</code>
- *
- * Alternatively you can use this automated address generation (which removes "www." from
- * the beginning of $basehost):
- * <code>$notify_from = $instance_name.'@'.preg_replace( '/^www\./i', '', $basehost );</code>
- *
- * @global string Default: $instance_name.'@'.$basehost;
- */
-$notify_from = $instance_name.'-noreply@'.preg_replace( '/^www\./i', '', $basehost );
 
 
 // ** DB options **
@@ -300,11 +298,11 @@ if( strpos($basehost, '.') === false )
 	$cookie_domain = '';
 }
 elseif( preg_match( '~^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$~i', $basehost ) )
-{	// Use the basehost as it is:
+{	// The basehost is an IP address, use the basehost as it is:
 	$cookie_domain = $basehost;
 }
 else
-{
+{	// Keep the part of the basehost after the www. :
 	$cookie_domain = preg_replace( '/^(www\. )? (.+)$/xi', '.$2', $basehost );
 
 	// When hosting multiple domains (not just subdomains) on a single instance of b2evo,
@@ -470,6 +468,7 @@ $xmlsrv_url = $baseurl.$xmlsrv_subdir;   // You should not need to change this
 $rsc_subdir = 'rsc/';                    // Subdirectory relative to base
 $rsc_path = $basepath.$rsc_subdir;       // You should not need to change this
 $rsc_url = $baseurl.$rsc_subdir;         // You should not need to change this
+$rsc_uri = $basesubpath.$rsc_subdir;
 
 /**
  * Location of the skins folder.
@@ -478,6 +477,14 @@ $rsc_url = $baseurl.$rsc_subdir;         // You should not need to change this
 $skins_subdir = 'skins/';                // Subdirectory relative to base
 $skins_path = $basepath.$skins_subdir;   // You should not need to change this
 $skins_url = $baseurl.$skins_subdir;     // You should not need to change this
+
+/**
+ * Location of the email skins folder.
+ * @global string $emailskins_subdir
+ */
+$emailskins_subdir = 'skins_email/';                // Subdirectory relative to base
+$emailskins_path = $basepath.$emailskins_subdir;   // You should not need to change this
+$emailskins_url = $baseurl.$emailskins_subdir;     // You should not need to change this
 
 
 /**
@@ -625,7 +632,7 @@ $force_upload_forbiddenext = array( 'cgi', 'exe', 'htaccess', 'htpasswd', 'php',
 /**
  * Admin can configure max file upload size, but he won't be able to set it higher than this "max max" value.
  */
-$upload_maxmaxkb = 10000;
+$upload_maxmaxkb = 32000;
 
 /**
  * The admin can configure the regexp for valid file names in the Settings interface
@@ -633,6 +640,17 @@ $upload_maxmaxkb = 10000;
  */
 $force_regexp_filename = '';
 $force_regexp_dirname = '';
+
+/**
+ * The maximum length of a file name. On new uploads file names with more characters are not allowed.
+ */
+$filename_max_length = 64;
+
+/**
+ * The maximum length of a file absolute path. Creating folders/files with longer path then this value is not allowed.
+ * Note: 247 is the max length what php file operations functions can handle on windows
+ */
+$dirpath_max_length = 247 - $filename_max_length - 35 /* the maximum additional path length because of the _evocache folder */;
 
 
 /**
@@ -649,6 +667,73 @@ $debug_xmlrpc_logging = 0;
  * Seconds after which a scheduled task is considered to be timed out.
  */
 $cron_timeout_delay = 1800; // 30 minutes
+
+
+/**
+ * Password change request delay in seconds. Only one email can be requested for one login or email address in each x seconds defined below.
+ */
+$pwdchange_request_delay = 300; // 5 minutes
+
+
+/**
+ * Account activation reminder settings.
+ * Each element of the array is given in seconds
+ * Assume that the number of element in the array below is n then the following must be followed:
+ * n must be greater then 1; n - 1 will be the max number of account activation reminder emails.
+ * The first element of the array ( in position 0 ) shows the time in seconds when the firs reminder email must be sent after the new user was registered, or the user status was changed to new, deactivated or emailchanged status
+ * Each element between the postion [1 -> (n - 1)) shows the time in seconds when the next reminder email must be sent after the previous one
+ * The last element of the array shows when an account status will be set to 'failedactivation' if it was not activated after the last reminder email. This value must be the highest value of the array!
+ * 
+ * E.g. $activate_account_reminder_config = array( 86400, 129600, 388800, 604800 ); = array( 1 day, 1.5 days, 4.5 days, 7 days )
+ * At most 3 reminder will be sent, the first 1 day after the registration or deactivation, the seond in 1.5 days after the first one, and the third one after 2.5 days after the second one.
+ * 7 days after the last reminder email the account status will be set to 'failedactivation' and no more reminder will be sent.
+ */
+$activate_account_reminder_config = array( 86400/* one day */, 129600/* 1.5 days */, 388800/* 4.5 days */, 604800/* 7 days */ );
+
+
+/**
+ * Account activation reminder threshold given in seconds.
+ * A user may receive Account activation reminder if the account was created at least x ( = threshold value defined below ) seconds ago.
+ */
+$activate_account_reminder_threshold = 86400; // 24 hours
+
+
+/**
+ * Comment moderation reminder threshold given in seconds.
+ * A moderator user may receive Comment moderation reminder if there are comments awaiting moderation which were created at least x ( = threshold value defined below ) seconds ago.
+ */
+$comment_moderation_reminder_threshold = 86400; // 24 hours
+
+
+/**
+ * Post moderation reminder threshold given in seconds.
+ * A moderator user may receive Post moderation reminder if there are posts awaiting moderation which were created at least x ( = threshold value defined below ) seconds ago.
+ */
+$post_moderation_reminder_threshold = 86400; // 24 hours
+
+
+/**
+ * Unread private messages reminder threshold given in seconds.
+ * A user may receive unread message reminder if it has unread private messages at least as old as this threshold value.
+ */
+$unread_messsage_reminder_threshold = 86400; // 24 hours
+
+
+/**
+ * Unread message reminder is sent in every y days in case when a user last logged in date is below x days.
+ * The array below is in x => y format.
+ * The values of this array must be ascendant.
+ */
+$unread_message_reminder_delay = array(
+	10  => 3,  // less than 10 days -> 3 days spacing
+	30  => 6,  // 10 to 30 days -> 6 days spacing
+	90  => 15, // 30 to 90 days -> 15 days spacing
+	180 => 30, // 90 to 180 days -> 30 days spacing
+	365 => 60, // 180 to 365 days -> 60 days spacing
+	730 => 120 // 365 to 730 days -> 120 days spacing
+	// more => "The user has not logged in for x days, so we will not send him notifications any more".
+);
+
 
 /**
  * Enable a workaround to allow accessing posts with URL titles ending with

@@ -6,7 +6,7 @@
  * >c:\php4\php cron_exec.php
  * >c:\php4\php-cli cron_exec.php
  *
- * @version $Id: cron_exec.php 57 2011-10-26 08:18:58Z sam2kb $
+ * @version $Id: cron_exec.php 4068 2013-06-26 09:49:47Z attila $
  */
 
 
@@ -21,10 +21,16 @@ require_once dirname(__FILE__).'/../conf/_config.php';
  */
 require_once $inc_path .'_main.inc.php';
 
+if( $Settings->get( 'system_lock' ) )
+{ // System is locked down for maintenance, Stop cron execution
+	echo 'The site is locked for maintenance. All scheduled jobs are postponed. No job was executed.';
+	exit(0);
+}
+
 /**
  * Cron support functions
  */
-load_funcs( '/cron/_cron.funcs.php' );
+load_funcs( 'cron/_cron.funcs.php' );
 
 /**
  * @global integer Quietness.
@@ -35,6 +41,9 @@ load_funcs( '/cron/_cron.funcs.php' );
 $quiet = 0;
 if( $is_cli )
 { // called through Command Line Interface, handle args:
+
+	// Load required functions ( we need to load here, because in CLI mode it is not loaded )
+	load_funcs( '_core/_url.funcs.php' );
 
 	if( isset( $_SERVER['argc'], $_SERVER['argv'] ) )
 	{
@@ -73,20 +82,32 @@ if( $is_cli )
 			}
 		}
 	}
+
+	global $default_locale, $current_charset;
+
+	// We don't load _init_session.inc.php in CLI mode, so we set locale and DB connection charset here
+	locale_overwritefromDB();
+	locale_activate( $default_locale );
+
+	// Init charset handling - this will also set the encoding for MySQL connection
+	init_charsets( $current_charset );
 }
 else
 { // This is a web request: (for testing purposes only. Not designed for production)
-	
+
 	// Make sure the response is never cached:
 	header_nocache();
 	header_content_type();
 
+	// Add CSS:
+	require_css( 'basic_styles.css', 'rsc_url' ); // the REAL basic styles
+	require_css( 'basic.css', 'rsc_url' ); // Basic styles
 	?>
 	<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 	<html>
 	<head>
 		<title>Cron exec</title>
-		<link rel="stylesheet" type="text/css" href="<?php echo $rsc_url ?>css/basic.css">
+		<?php include_headlines() /* Add javascript and css files included by plugins and skin */ ?>
 	</head>
 	<body>
 		<h1>Cron exec</h1>
@@ -110,6 +131,7 @@ $sql = 'SELECT *
 				 ORDER BY ctsk_start_datetime ASC, ctsk_ID ASC
 				 LIMIT 1';
 $task = $DB->get_row( $sql, OBJECT, 0, 'Get next task to run in queue which has not started execution yet' );
+$error_task = NULL;
 
 if( empty( $task ) )
 {
@@ -166,21 +188,35 @@ else
 			$cron_params = unserialize( $task->ctsk_params );
 		}
 
-		// The job may need to know its ID (to set logical locks for example):
+		// The job may need to know its ID and name (to set logical locks for example):
 		$cron_params['ctsk_ID'] = $ctsk_ID;
 
 		// EXECUTE
-		call_job( $task->ctsk_controller, $cron_params );
+		$error_message = call_job( $task->ctsk_controller, $cron_params );
+		if( !empty( $error_message ) )
+		{
+			$error_task = array(
+					'ID'      => $ctsk_ID,
+					'name'    => $ctsk_name,
+					'message' => $error_message,
+				);
+		}
 
 		// Record task as finished:
 		if( empty($timestop) )
 		{
 			$timestop = time() + $time_difference;
 		}
+
+		if( is_array( $result_message ) )
+		{	// If result is array we should store it as serialized data
+			$result_message = serialize( $result_message );
+		}
+
 		$sql = ' UPDATE T_cron__log
 								SET clog_status = '.$DB->quote($result_status).',
-										clog_realstop_datetime = '.$DB->quote( date2mysql($timestop) ).',
-										clog_messages = '.$DB->quote($result_message) /* May be NULL */.'
+										clog_realstop_datetime = '.$DB->quote( date2mysql( $timestop ) ).',
+										clog_messages = '.$DB->quote( $result_message ) /* May be NULL */.'
 							WHERE clog_ctsk_ID = '.$ctsk_ID;
 		$DB->query( $sql, 'Record task as finished.' );
 	}
@@ -189,11 +225,7 @@ else
 
 //echo 'detecting timeouts...';
 // Detect timed out tasks:
-$sql = ' UPDATE T_cron__log
-						SET clog_status = "timeout"
-					WHERE clog_status = "started"
-								AND clog_realstart_datetime < '.$DB->quote( date2mysql( time() + $time_difference - $cron_timeout_delay ) );
-$DB->query( $sql, 'Detect cron timeouts.' );
+detect_timeout_cron_jobs( $error_task );
 
 
 
@@ -209,7 +241,4 @@ if( ! $is_cli )
 	<?php
 }
 
-/*
- * $Log: cron_exec.php,v $
- */
 ?>

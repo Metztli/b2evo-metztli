@@ -3,11 +3,15 @@ Original b2evolution template: Vastitude
 design by Andrew Hreschak
 blog.thedarksighed.com
 */
-@import url(../../rsc/css/basic.css);	/* Import basic styles */
 
 body {
 	font:86% Tahoma, "Lucida Sans", Arial, Verdana, Sans-Serif;
-	background:#4c4c4e;}
+	background:#4c4c4e;
+}
+
+textarea, input, select, option, optgroup, ul.ui-autocomplete, li.token-input-token-facebook, div.token-input-dropdown-facebook {
+	font: 12.38px Tahoma, "Lucida Sans", Arial, Verdana, Sans-Serif;
+}
 
 li.widget_core_coll_title, li.widget_core_coll_longdesc, li.widget_plugin_evo_Calr, li.widget_core_coll_search_form, li.widget_core_linkblog, li.widget_core_coll_category_list, li.widget_core_coll_common_links, li.widget_core_coll_xml_feeds, li.widget_core_user_tools, li.widget_core_coll_xml_feeds ul li, li.prevnext {list-style:none;}
 table.prevnext_post {margin: 20px 0;}
@@ -44,7 +48,7 @@ ul#mainnav li, ul#mainnav a.selected, .leftside h3, .bCommentTitle {color:#c0926
 
 #bannertop ul li a {color:#4b3528;}
 #bannertop a:hover {color:#fff;}
-#bannertop a.selected {#3c2d21}
+#bannertop a.selected {color:#3c2d21;}
 
 /* LINK STYLEE */
 
@@ -72,9 +76,25 @@ a.search_cloud_10 {color:#f7ecda;}
 #prewrap {width:912px; margin:-10px auto;}
 #prewrap ul {padding-top:20px;}
 #prewrap ul li {margin-left:0px; display:inline;}
-#wrap {width:912px; background:url(img/vast_body.gif) top repeat-y; margin:0 auto 10px auto;}
-#bannertop {width:912px; background:url(img/vast_header.jpg) top no-repeat; height:53px;}
-#bannermid {width:912px; background:url(img/vast_header.jpg) bottom no-repeat; height:104px;}
+#wrap {
+	width:900px;
+	background:#895c46 url(img/vast_foot.gif) bottom repeat-x;
+	margin:0 auto 10px auto;
+	-moz-border-radius: 10px;
+	-webkit-border-radius: 10px;
+	-khtml-border-radius: 10px;
+	border-radius: 10px;
+	border: 1px solid #000;
+	box-shadow: 0 0 5px 1px #000000;
+	overflow: hidden;
+}
+#bannertop {
+	width:900px;
+	background:url(img/vast_header.jpg) top no-repeat;
+	height:46px;
+	-webkit-border-radius: 9px 9px 0 0;
+}
+#bannermid {width:900px; background:url(img/vast_header.jpg) bottom no-repeat; height:104px;}
 #quote, .google_banner {font:1.0em "Lucida Sans";font-style:italic;margin-left:40px;margin-bottom:20px;}
 
 .topicons {font-size:0.7em; font-weight:bold; padding:0px 0px 0 0; margin:20px 18px 0 0; float:right;}
@@ -89,31 +109,19 @@ a.search_cloud_10 {color:#f7ecda;}
 
 .subtitle h1 {margin-bottom:10px;margin-left:-40px;}
 
-/*.submenu { ENABLE FOR SINGLE BLOG SYSTEMS
-	font:0.9em "Lucida Sans", Arial, Verdana, Tahoma, Sans-Serif;
-	font-weight:bold;
-	letter-spacing:0.1em;
-	height:20px;
-	padding:6px 0px 2px 35px;
-	margin:0px 6px 30px;
-	background-color:#000;
-	background:url(img/vast_menu.jpg) top repeat-y;
-	border-bottom:1px solid #9e7d55;}*/
-
 .submenu { /* ENABLE FOR MULTIBLOG SYSTEMS */
 	font:0.9em "Lucida Sans", Arial, Verdana, Tahoma, Sans-Serif;
 	font-weight:bold;
 	letter-spacing:0.1em;
 	padding-top:8px;
 	padding-left:10px;
-	margin:0px 6px 30px;
-	background-color:#000;
-	background:url(img/vast_menu.jpg) top repeat-y;
+	margin:0 0 30px;
+	background:#2b1a12;
 	border-bottom:1px solid #9e7d55;}
 
 .submenu h1 {display:inline; padding-right:4px;}
 
-#content {width:912px; background:url(img/vast_body.gif) top repeat-y;}
+#content {width:900px;}
 
 a img {border:0px; vertical-align:middle;}
 
@@ -193,6 +201,7 @@ h3.blogname {padding-bottom:5px;}
 
 .leftside form {padding:0; margin-left:0;}
 .leftside form.bComment, fieldset {border:none;}
+.leftside .messages_list form.bComment, fieldset {border: 1px solid #BBB;}
 
 div.bCommentTitle {background-color:#4b3528; margin:0px -10px; padding-left:10px; padding-bottom:5px; border-bottom:1px solid #9e7d55;}
 div.bCommentTitle img {vertical-align:middle;margin-left:5px;padding-bottom:2px;}
@@ -260,8 +269,7 @@ td.bCalendarLinkPost {background-color:#6b4634; font-weight:bold;}
 
 div.rss {background:url(img/vast_rss.gif) top left no-repeat; padding-top:40px; margin-top:25px;}
 
-.pagefoot {
-	background:url(img/vast_foot.gif) bottom no-repeat; font-size:0.75em; height:90px; clear:both; text-align:center;}
+.pagefoot {font-size: 0.75em; height: 90px; clear: both; text-align: center;}
 .pagefoot a {
 	color:#3C2D21;
 	text-decoration: none;
@@ -295,4 +303,52 @@ div.powered_by {
 .post_date {
 	font-size: 0.9em;
 	font-weight: bold;
+}
+
+.ui-autocomplete li{
+	list-style: none;
+}
+
+.item_custom_fields {
+	margin-top: 10px;
+}
+
+/* jQuery Tokeninput plugin */
+div.input ul.token-input-list-facebook {
+	width: 100%;
+	background: #FFF;
+}
+
+/* Not published comments display */
+#styled_content_block .bComment .status_draft,
+#styled_content_block .bComment .status_review,
+#styled_content_block .bComment .status_community,
+#styled_content_block .bComment .status_protected,
+#styled_content_block .bComment .status_private {
+	left: 10px;
+	top: 24px;
+}
+/* Not published posts display */
+#styled_content_block .bSmallHead .status_draft,
+#styled_content_block .bSmallHead .status_review,
+#styled_content_block .bSmallHead .status_community,
+#styled_content_block .bSmallHead .status_protected,
+#styled_content_block .bSmallHead .status_private {
+	top: -40px;
+}
+
+form#user_checkchanges.bComment {
+	border-width: 1px;
+}
+div.tabs div a {
+	border-color: #D8C19A;
+	background-color: #2f2118;
+	color: #997340;
+}
+div.tabs div.selected a, div.tabs div:hover a {
+	background-color: transparent;
+	color: #D8C19A;
+}
+div.tabs div.selected a {
+	border-bottom-color: #895c46;
 }

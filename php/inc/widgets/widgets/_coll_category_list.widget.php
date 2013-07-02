@@ -1,11 +1,11 @@
 <?php
 /**
- * This file implements the xyz Widget class.
+ * This file implements the Category list Widget class.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2008 by Daniel HAHLER - {@link http://daniel.hahler.de/}.
  *
  * {@internal License choice
@@ -23,7 +23,7 @@
  * @author blueyed: Daniel HAHLER
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _coll_category_list.widget.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _coll_category_list.widget.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -114,6 +114,11 @@ class coll_category_list_Widget extends ComponentWidget
 					'defaultvalue' => 1, /* previous behaviour */
 					'note' => T_('Display blog names, if this is an aggregated blog.'),
 				),
+			'exclude_cats' => array(
+					'type' => 'text',
+					'label' => T_('Exclude categories'),
+					'note' => T_('A comma-separated list of category IDs that you want to exclude from the list.'),
+				),
 
 			// Hidden, used by the item list sidebar in the backoffice.
 			'display_checkboxes' => array(
@@ -150,6 +155,11 @@ class coll_category_list_Widget extends ComponentWidget
 			'before_level' => array( $this, 'cat_before_level' ),
 			'after_level'  => array( $this, 'cat_after_level' )
 		);
+
+		if( !empty( $params['callback_posts'] ) )
+		{
+			$callbacks['posts'] = $params['callback_posts'];
+		}
 
 		// START DISPLAY:
 		echo $this->disp_params['block_start'];
@@ -300,9 +310,19 @@ class coll_category_list_Widget extends ComponentWidget
 			$cat_array = array();
 		}
 
+		$exclude_cats = sanitize_id_list($this->disp_params['exclude_cats'], true);
+		if( in_array( $Chapter->ID, $exclude_cats ) )
+		{    // Cat ID is excluded, skip it
+			return;
+		}
+
 		if( in_array( $Chapter->ID, $cat_array ) )
-		{ // This category is in the current selection
+		{	// This category is in the current selection
 			$r = $this->disp_params['item_selected_start'];
+		}
+		else if( empty( $Chapter->children ) )
+		{	// This category has no children
+			$r = $this->disp_params['item_last_start'];
 		}
 		else
 		{
@@ -311,12 +331,24 @@ class coll_category_list_Widget extends ComponentWidget
 
 		if( $this->disp_params['use_form'] || $this->disp_params['display_checkboxes'] )
 		{	// We want to add form fields:
-			$r .= '<label><input type="checkbox" name="catsel[]" value="'.$Chapter->ID.'" class="checkbox"';
+			$cat_checkbox_params = '';
+			if( $Chapter->meta )
+			{	// Hide and disable the checkbox of meta category
+				$cat_checkbox_params = ' style="visibility:hidden" disabled="disabled"';
+			}
+
+			$r .= '<label><input type="checkbox" name="catsel[]" value="'.$Chapter->ID.'" class="checkbox middle"';
 			if( in_array( $Chapter->ID, $cat_array ) )
 			{ // This category is in the current selection
 				$r .= ' checked="checked"';
 			}
-			$r .= ' /> ';
+			$r .= $cat_checkbox_params.' /> ';
+		}
+
+		$cat_name_params = '';
+		if( $Chapter->meta )
+		{	// Mark the meta category with bold style
+			$cat_name_params = ' style="font-weight:bold"';
 		}
 
 		$r .= '<a href="';
@@ -330,7 +362,13 @@ class coll_category_list_Widget extends ComponentWidget
 			$r .= $Chapter->get_permanent_url();
 		}
 
-		$r .= '">'.$Chapter->dget('name').'</a>';
+		$cat_name = $Chapter->dget('name');
+		if( $Chapter->lock && isset( $this->disp_params['show_locked'] ) && $this->disp_params['show_locked'] )
+		{
+			$cat_name .= '<span style="padding:0 5px;" >'.get_icon( 'file_not_allowed', 'imgtag', array( 'title' => T_('Locked')) ).'</span>';
+		}
+
+		$r .= '"'.$cat_name_params.'>'.$cat_name.'</a>';
 
 		if( $this->disp_params['use_form'] || $this->disp_params['display_checkboxes'] )
 		{	// We want to add form fields:
@@ -394,8 +432,4 @@ class coll_category_list_Widget extends ComponentWidget
 	}
 }
 
-
-/*
- * $Log: _coll_category_list.widget.php,v $
- */
 ?>

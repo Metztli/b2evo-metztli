@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -29,7 +29,7 @@
  * @author fplanque: Francois PLANQUE
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: _uiwidget.class.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _uiwidget.class.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -65,6 +65,10 @@ class Widget
 	 */
 	var $global_icons = array();
 
+	/**
+	 * Top block which located near second level tabs
+	 */
+	var $top_block = '';
 
 	/**
 	 * Constructor
@@ -200,6 +204,14 @@ class Widget
 			case 'no_results':
 				// No Results text:
 				return $this->no_results_text;
+
+			case 'top_block':
+				// Top block:
+				return $this->top_block;
+
+			case 'prefix' :
+				//prefix
+				return $this->param_prefix;
 
 			default:
 				return '[Unknown:'.$matches[1].']';
@@ -387,13 +399,13 @@ class Table extends Widget
 
 		if( $fold_state == 'collapsed' )
 		{
-			echo '<a class="filters_title" href="'.regenerate_url( '', 'expand='.$option_name ).'"
+			echo '<a class="filters_title" href="'.regenerate_url( 'action,target', 'action=expand_filter&target='.$option_name ).'"
 								onclick="return toggle_filter_area(\''.$option_name.'\');" >'
 						.get_icon( 'expand', 'imgtag', array( 'id' => 'clickimg_'.$option_name ) );
 		}
 		else
 		{
-			echo '<a class="filters_title" href="'.regenerate_url( '', 'collapse='.$option_name ).'"
+			echo '<a class="filters_title" href="'.regenerate_url( 'action,target', 'action=collapse_filter&target='.$option_name ).'"
 								onclick="return toggle_filter_area(\''.$option_name.'\');" >'
 						.get_icon( 'collapse', 'imgtag', array( 'id' => 'clickimg_'.$option_name ) );
 		}
@@ -414,7 +426,14 @@ class Table extends Widget
 				}
 				else
 				{	// Display preset filter link:
-					$r[] = '[<a href="'.$preset[1].'">'.$preset[0].'</a>]';
+					if( isset( $preset[2] ) )
+					{	// Link with additional params
+						$r[] = '<span '.$preset[2].'>[<a href="'.$preset[1].'">'.$preset[0].'</a>]</span>';
+					}
+					else
+					{
+						$r[] = '[<a href="'.$preset[1].'">'.$preset[0].'</a>]';
+					}
 				}
 			}
 
@@ -505,9 +524,16 @@ class Table extends Widget
 			return;
 		}
 
+		if( empty( $this->param_prefix ) )
+		{	// Deny to use a list without prefix
+			debug_die( 'You must define a $param_prefix before you can use filters.' );
+		}
+
 		$option_name = $this->param_prefix.'filters';
 
-		$this->display_option_area( $option_name, 'filter_area', T_('Filters'), T_('Filter list'), 'expanded' );
+		$submit_title = !empty( $this->filter_area['submit_title'] ) ? $this->filter_area['submit_title'] : T_('Filter list');
+
+		$this->display_option_area( $option_name, 'filter_area', T_('Filters'), $submit_title, 'expanded' );
 	}
 
 
@@ -519,7 +545,7 @@ class Table extends Widget
 	function display_list_start()
 	{
 		if( $this->total_pages == 0 )
-		{ // There are no results! Nothing to display!
+		{	// There are no results! Nothing to display!
 			echo $this->replace_vars( $this->params['no_results_start'] );
 		}
 		else
@@ -550,13 +576,15 @@ class Table extends Widget
 	/**
 	 * Display list/table head.
 	 *
-	 * This includes list head/title and column headers.
+	 * This includes list head/title and filters.
 	 * EXPERIMENTAL: also dispays <tfoot>
 	 */
 	function display_head()
 	{
-		echo $this->params['head_start'];
-
+		if( is_ajax_content() )
+		{	// Don't display this content on AJAX request
+			return;
+		}
 
 		// DISPLAY TITLE:
 		if( isset($this->title) )
@@ -571,16 +599,9 @@ class Table extends Widget
 		$this->display_colselect();
 
 
-		// DISPLAY COLUMN HEADERS:
-		$this->display_col_headers();
-
-
-		echo $this->params['head_end'];
-
-
 		// Experimental:
-		echo $this->params['tfoot_start'];
-		echo $this->params['tfoot_end'];
+		/*echo $this->params['tfoot_start'];
+		echo $this->params['tfoot_end'];*/
 	}
 
 
@@ -590,6 +611,8 @@ class Table extends Widget
 	 */
 	function display_col_headers()
 	{
+		echo $this->params['head_start'];
+
 		if( isset( $this->cols ) )
 		{
 
@@ -774,6 +797,15 @@ class Table extends Widget
 							$output = str_replace( '$class_attrib$', 'class="'.$class.'"', $output );
 						}
 
+						// Replace column header title attribute
+						if( isset( $this->cols[$key]['th_title'] ) )
+						{ // Column header title is set
+							$output = str_replace( '$title_attrib$', ' title="'.$this->cols[$key]['th_title'].'"', $output );
+						}
+						else
+						{ // Column header title is not set, replace with empty string
+							$output = str_replace( '$title_attrib$', '', $output );
+						}
 
 						// Set colspan and rowspan values for the cell:
 						$output = preg_replace( '#(<)([^>]*)>$#', '$1$2 colspan="'.$cell['colspan'].'" rowspan="'.$cell['rowspan'].'">' , $output );
@@ -833,8 +865,10 @@ class Table extends Widget
 								}
 
 								// Toggle Icon + Title
+								// Set link title only if the column header title was not set
+								$link_title = isset( $this->cols[$key]['th_title'] ) ? '' : ' title="'.T_('Change Order').'"';
 								echo '<a href="'.$col_sort_values['order_toggle'].'"'
-											.' title="'.T_('Change Order').'"'
+											.$link_title
 											.' class="basic'.$class_suffix.'"'
 											.'>'.$sort_icon.' '.$th_title.'</a>';
 
@@ -853,6 +887,8 @@ class Table extends Widget
 				echo $this->params['line_end'];
 			}
 		} // this->cols not set
+
+		echo $this->params['head_end'];
 	}
 
 
@@ -966,9 +1002,22 @@ class Table extends Widget
 		// Tblue> TODO: Make this more elegant (e. g.: replace "$extra_attr$" with the attributes string).
 		if( $extra_attr )
 		{
-			$output = substr( $output, 0, -1 ).get_field_attribs_as_string( $extra_attr ).'>';
-		}
+			if ( ! isset ($extra_attr['format_to_output']))
+			{
+				$output = substr( $output, 0, -1 ).get_field_attribs_as_string( $extra_attr ).'>';
+			}
+			else
+			{
+				$format_to_output = $extra_attr['format_to_output'];
+				unset($extra_attr['format_to_output']);
+				$output = substr( $output, 0, -1 ).get_field_attribs_as_string( $extra_attr, $format_to_output ).'>';
 
+				
+			}
+
+		}
+		// Check variables in column declaration:
+		$output = $this->parse_class_content( $output );
 		echo $output;
 	}
 
@@ -1009,9 +1058,64 @@ class Table extends Widget
 		}
 	}
 
+	/**
+	 * Handle variable subtitutions for class column contents.
+	 *
+	 * This is one of the key functions to look at when you want to use the Results class.
+	 * - #var#
+	 */
+	function parse_class_content( $content )
+	{
+		// Make variable substitution for RAWS:
+		while (preg_match('!\# (\w+) \#!ix', $content, $matchesarray))
+		{ // Replace all matches to the content of the current row's cell. That means that several variables can be inserted to the class.
+			if (! empty($this->rows[$this->current_idx]->$matchesarray[1]))
+			{
+				$content = str_replace($matchesarray[0],$this->rows[$this->current_idx]->$matchesarray[1] , $content);
+			}
+			else
+			{
+				$content = str_replace($matchesarray[0], 'NULL' , $content);
+			}
+		}
+
+		while (preg_match('#% (.+?) %#ix', $content, $matchesarray))
+		{
+			 eval('$result = '.$matchesarray[1].';');
+			 $content = str_replace($matchesarray[0],$result, $content);
+		}
+
+		return $content;
+	}
+
+
+	/**
+	 * Init results params from skin template params. It's used when Results table is filled from ajax result.
+	 *
+	 * @param string the template param which can have values( 'admin', 'front' )
+	 * @param string the name of the skin
+	 */
+	function init_params_by_skin( $skin_type, $skin_name )
+	{
+		switch( $skin_type )
+		{
+			case 'admin': // admin skin type
+				global $adminskins_path;
+				require_once $adminskins_path.$skin_name.'/_adminUI.class.php';
+				$this->params = AdminUI::get_template( 'Results' );
+				break;
+
+			case 'front': // front office skin type
+				global $skins_path;
+				require_once $skins_path.$skin_name.'/_skin.class.php';
+				$this->params = Skin::get_template( 'Results' );
+				break;
+
+			default:
+				debug_die( 'Invalid results template param!' );
+		}
+	}
+
 }
 
-/*
- * $Log: _uiwidget.class.php,v $
- */
 ?>

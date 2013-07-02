@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -23,7 +23,7 @@
  *
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _coll_plugin_settings.form.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _coll_plugin_settings.form.php 4042 2013-06-25 10:02:42Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -37,11 +37,20 @@ global $Blog;
  */
 global $Plugins;
 
+global $current_User, $admin_url;
 
 $Form = new Form( NULL, 'plugin_settings_checkchanges' );
 
 // PluginUserSettings
 load_funcs('plugins/_plugin.funcs.php');
+
+if( $current_User->check_perm( 'options', 'edit', false ) )
+{	// Display this message only if current user has permission to manage the plugins
+	echo '<p class="center">'
+			.sprintf( T_('Here you can configure some plugins individually for each blog. To manage your installed plugins go <a %s>here</a>.'),
+					      'href="'.$admin_url.'?ctrl=plugins"' )
+		.'</p>';
+}
 
 $have_plugins = false;
 $Plugins->restart();
@@ -58,7 +67,8 @@ while( $loop_Plugin = & $Plugins->get_next() )
 	// We use output buffers here to display the fieldset only if there's content in there
 	ob_start();
 
-	$Form->begin_fieldset( $loop_Plugin->name.get_manual_link('blog_plugin_settings') );
+	$priority_link = '<a href="'.$loop_Plugin->get_edit_settings_url().'#ffield_edited_plugin_code">'.$loop_Plugin->priority.'</a>';
+	$Form->begin_fieldset( $loop_Plugin->name.' '.$loop_Plugin->get_help_link('$help_url').' ('.T_('Priority').': '.$priority_link.')'.get_manual_link('blog_plugin_settings') );
 
 	ob_start();
 
@@ -101,7 +111,4 @@ else
 	$Form->end_form();
 }
 
-/*
- * $Log: _coll_plugin_settings.form.php,v $
- */
 ?>

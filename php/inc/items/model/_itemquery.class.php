@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -24,7 +24,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _itemquery.class.php 3460 2013-04-11 12:54:22Z yura $
+ * @version $Id: _itemquery.class.php 3459 2013-04-11 12:35:09Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -97,7 +97,7 @@ class ItemQuery extends SQL
 			{
 				$eq_p = ' = ';
 			}
-			
+
 			$this->WHERE_and( $this->dbIDname.$eq_p.intval($this->p) );
 			$r = true;
 		}
@@ -114,7 +114,7 @@ class ItemQuery extends SQL
 			{
 				$eq_title = ' = ';
 			}
-			
+
 			global $DB;
 			$this->WHERE_and( $this->dbprefix.'urltitle'.$eq_title.$DB->quote($this->title) );
 			$r = true;
@@ -224,7 +224,9 @@ class ItemQuery extends SQL
 	 * @param Blog
 	 * @param array
 	 * @param string
-	 * @param string 'wide' to search in extra cats too, 'main' for main cat only
+	 * @param string 'wide' to search in extra cats too
+	 *               'main' for main cat only
+	 *               'extra' for extra cats only
 	 */
 	function where_chapter2( & $Blog, $cat_array, $cat_modifier, $cat_focus = 'wide' )
 	{
@@ -234,10 +236,11 @@ class ItemQuery extends SQL
 		$this->cat_array = $cat_array;
 		$this->cat_modifier = $cat_modifier;
 
-		if( $cat_focus == 'wide' )
+		if( $cat_focus == 'wide' || $cat_focus == 'extra' )
 		{
+			$sql_join_categories = ( $cat_focus == 'extra' ) ? ' AND post_main_cat_ID != cat_ID' : '';
 			$this->FROM_add( 'INNER JOIN T_postcats ON '.$this->dbIDname.' = postcat_post_ID
-												INNER JOIN T_categories ON postcat_cat_ID = cat_ID' );
+												INNER JOIN T_categories ON postcat_cat_ID = cat_ID'.$sql_join_categories );
 			// fp> we try to restrict as close as possible to the posts but I don't know if it matters
 			$cat_ID_field = 'postcat_cat_ID';
 		}
@@ -296,7 +299,7 @@ class ItemQuery extends SQL
 			debug_die( 'Status restriction requires to work with a specific blog first.' );
 		}
 
-		$this->WHERE_and( statuses_where_clause( $show_statuses, $this->dbprefix, $this->blog ) );
+		$this->WHERE_and( statuses_where_clause( $show_statuses, $this->dbprefix, $this->blog, 'blog_post!', true, $this->author ) );
 	}
 
 
@@ -755,8 +758,4 @@ class ItemQuery extends SQL
 
 }
 
-
-/*
- * $Log: _itemquery.class.php,v $
- */
 ?>

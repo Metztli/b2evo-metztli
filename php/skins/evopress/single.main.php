@@ -3,7 +3,7 @@
  * This is the main/default page template.
  *
  * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://manual.b2evolution.net/Skins_2.0}
+ * {@link http://b2evolution.net/man/skin-structure}
  *
  * The main page template is used to display the blog when no specific page template is available
  * to handle the request (based on $disp).
@@ -26,7 +26,7 @@ skin_init( $disp );
 // -------------------------- HTML HEADER INCLUDED HERE --------------------------
 add_headline( <<<HEREDOC
 <style type="text/css" media="screen">
-	#page { background: url("img/kubrickbgwide.jpg") repeat-y top; }
+	#page.page-left, #page.page-right{background-image:none}
 </style>
 HEREDOC
 );
@@ -98,6 +98,7 @@ skin_include( '_body_header.inc.php' );
 // Display message if no post:
 display_if_empty();
 
+echo '<div id="styled_content_block">'; // Beginning of posts display
 while( $Item = & mainlist_get_item() )
 {	// For each blog post, do everything below up to the closing curly brace "}"
 	?>
@@ -107,8 +108,17 @@ while( $Item = & mainlist_get_item() )
 	?>
 
 	<div id="<?php $Item->anchor_id() ?>" class="post post<?php $Item->status_raw() ?>" lang="<?php $Item->lang() ?>">
-
-		<h2><?php $Item->title(); ?></h2>
+		<?php 
+		if( $Item->status != 'published' )
+		{
+			$Item->status( array( 'format' => 'styled' ) );
+		}
+		?>
+		<h2><?php
+			$Item->title( array(
+					'link_type' => 'permalink'
+				) );
+		?></h2>
 
 		<?php
 			// ---------------------- POST CONTENT INCLUDED HERE ----------------------
@@ -120,13 +130,41 @@ while( $Item = & mainlist_get_item() )
 			// -------------------------- END OF POST CONTENT -------------------------
 		?>
 
+    <?php
+      // ------------------------- "Item - Single" CONTAINER EMBEDDED HERE --------------------------
+      // WARNING: EXPERIMENTAL -- NOT RECOMMENDED FOR PRODUCTION -- MAY CHANGE DRAMATICALLY BEFORE RELEASE.
+      // Display container contents:
+      skin_container( NT_('Item Single'), array(
+          // The following (optional) params will be used as defaults for widgets included in this container:
+          // This will enclose each widget in a block:
+          'block_start' => '<div class="$wi_class$">',
+          'block_end' => '</div>',
+          // This will enclose the title of each widget:
+          'block_title_start' => '<h3>',
+          'block_title_end' => '</h3>',
+          // If a widget displays a list, this will enclose that list:
+          'list_start' => '<ul>',
+          'list_end' => '</ul>',
+          // This will enclose each item in a list:
+          'item_start' => '<li>',
+          'item_end' => '</li>',
+          // This will enclose sub-lists in a list:
+          'group_start' => '<ul>',
+          'group_end' => '</ul>',
+          // This will enclose (foot)notes:
+          'notes_start' => '<div class="notes">',
+          'notes_end' => '</div>',
+        ) );
+      // ----------------------------- END OF "Sidebar" CONTAINER -----------------------------
+    ?>
+
 		<p class="postmetadata alt">
 			<small>
 				<?php
 					$Item->author( array(
-							'link_text'    => 'avatar',
+							'link_text'    => 'only_avatar',
 							'link_rel'     => 'nofollow',
-							'thumb_size'   => 'crop-32x32',
+							'thumb_size'   => 'crop-top-32x32',
 							'thumb_class'  => 'leftmargin',
 						) );
 				?>
@@ -198,6 +236,7 @@ while( $Item = & mainlist_get_item() )
 	<?php
 	locale_restore_previous();	// Restore previous locale (Blog locale)
 }
+echo '</div>'; // End of posts display
 ?>
 
 </div>

@@ -7,7 +7,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2010 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @copyright (c)2010-2013 by Francois PLANQUE - {@link http://fplanque.net/}
  * Parts of this file are copyright (c)2009 by Daniel HAHLER - {@link http://daniel.hahler.de/}.
  *
  * {@internal License choice
@@ -27,7 +27,7 @@
  *
  * @package evocore
  *
- * @version $Id: _class5.funcs.php 16 2011-10-25 01:34:59Z sam2kb $
+ * @version $Id: _class5.funcs.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -101,8 +101,4 @@ function duplicate( $Obj )
 	return $Copy;
 }
 
-
-/*
- * $Log: _class5.funcs.php,v $
- */
 ?>

@@ -5,7 +5,7 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
@@ -15,7 +15,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _item_list_sidebar.view.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _item_list_sidebar.view.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -31,13 +31,26 @@ global $Blog;
  * @var Plugins
  */
 global $Plugins;
-
-global $tab, $show_past, $show_future, $show_statuses, $s, $sentence, $exact, $author, $assgn, $status;
-
 /**
  * @var ItemList
  */
 global $ItemList;
+
+$pp = $ItemList->param_prefix;
+
+global $tab;
+global ${$pp.'show_past'}, ${$pp.'show_future'}, ${$pp.'show_statuses'}, ${$pp.'s'}, ${$pp.'sentence'}, ${$pp.'exact'}, ${$pp.'author'}, ${$pp.'assgn'}, ${$pp.'status'};
+
+$show_past = ${$pp.'show_past'};
+$show_future = ${$pp.'show_future'};
+$show_statuses = ${$pp.'show_statuses'};
+$s = ${$pp.'s'};
+$sentence = ${$pp.'sentence'};
+$exact = ${$pp.'exact'};
+$author = ${$pp.'author'};
+$assgn = ${$pp.'assgn'};
+$status = ${$pp.'status'};
+
 
 load_funcs( 'skins/_skin.funcs.php' );
 
@@ -81,35 +94,30 @@ echo $Widget->replace_vars( $template['block_start'] );
 		?>
 		<div>
 
-		<input type="checkbox" name="show_past" value="1" id="ts_min" class="checkbox" <?php if( $show_past ) echo 'checked="checked" '?> />
+		<input type="checkbox" name="<?php echo $pp ?>show_past" value="1" id="ts_min" class="checkbox" <?php if( $show_past ) echo 'checked="checked" '?> />
 		<label for="ts_min"><?php echo T_('Past') ?></label><br />
 
-		<input type="checkbox" name="show_future" value="1" id="ts_max" class="checkbox" <?php if( $show_future ) echo 'checked="checked" '?> />
+		<input type="checkbox" name="<?php echo $pp ?>show_future" value="1" id="ts_max" class="checkbox" <?php if( $show_future ) echo 'checked="checked" '?> />
 		<label for="ts_max"><?php echo T_('Future') ?></label>
 
 		</div>
 
 		<div>
 
-		<input type="checkbox" name="show_statuses[]" value="published" id="sh_published" class="checkbox" <?php if( in_array( "published", $show_statuses ) ) echo 'checked="checked" '?> />
-		<label for="sh_published"><?php echo T_('Published') ?> <span class="notes">(<?php echo T_('Public') ?>)</span></label><br />
+		<?php
+		// Get those statuses that current User can't view in this blog, and don't display those as filters
+		$exclude_statuses = array_merge( get_restricted_statuses( $Blog->ID, 'blog_post!' ), array( 'trash' ) );
+		$statuses = get_visibility_statuses( 'notes-array', $exclude_statuses );
+		foreach( $statuses as $status_key => $status_name )
+		{ // show statuses
+			?>
+			<input type="checkbox" name="<?php echo $pp ?>show_statuses[]" value="<?php echo $status_key; ?>" id="sh_<?php echo $status_key; ?>" class="checkbox" <?php if( in_array( $status_key, $show_statuses ) ) echo 'checked="checked" '?> />
+			<label for="sh_<?php echo $status_key; ?>" title="<?php echo substr( $status_name[1], 1, strlen( $status_name[1] ) - 2 ); ?>"><?php echo $status_name[0] ?></label><br />
+			<?php
+		}
+		?>
 
-		<input type="checkbox" name="show_statuses[]" value="protected" id="sh_protected" class="checkbox" <?php if( in_array( "protected", $show_statuses ) ) echo 'checked="checked" '?> />
-		<label for="sh_protected"><?php echo T_('Protected') ?> <span class="notes">(<?php echo T_('Members only') ?>)</span></label><br />
-
-		<input type="checkbox" name="show_statuses[]" value="private" id="sh_private" class="checkbox" <?php if( in_array( "private", $show_statuses ) ) echo 'checked="checked" '?> />
-		<label for="sh_private"><?php echo T_('Private') ?> <span class="notes">(<?php echo T_('You only') ?>)</span></label><br />
-
-		<input type="checkbox" name="show_statuses[]" value="draft" id="sh_draft" class="checkbox" <?php if( in_array( "draft", $show_statuses ) ) echo 'checked="checked" '?> />
-		<label for="sh_draft"><?php echo T_('Draft') ?> <span class="notes">(<?php echo T_('Not published!') ?>)</span></label><br />
-
-		<input type="checkbox" name="show_statuses[]" value="deprecated" id="sh_deprecated" class="checkbox" <?php if( in_array( "deprecated", $show_statuses ) ) echo 'checked="checked" '?> />
-		<label for="sh_deprecated"><?php echo T_('Deprecated') ?> <span class="notes">(<?php echo T_('Not published!') ?>)</span></label><br />
-
-		<input type="checkbox" name="show_statuses[]" value="redirected" id="sh_redirected" class="checkbox" <?php if( in_array( "redirected", $show_statuses ) ) echo 'checked="checked" '?> />
-		<label for="sh_redirected"><?php echo T_('Redirected') ?></label><br />
-
-	 	</div>
+		</div>
 
 		<?php
 		echo '</fieldset>';
@@ -120,25 +128,25 @@ echo $Widget->replace_vars( $template['block_start'] );
 
 		echo $Form->inputstart;
 		?>
-		<div><input type="text" name="s" size="20" value="<?php echo htmlspecialchars($s) ?>" class="SearchField" /></div>
+		<div><input type="text" name="<?php echo $pp ?>s" size="20" value="<?php echo htmlspecialchars($s) ?>" class="SearchField" /></div>
 		<?php
 		echo $Form->inputend;
 		// echo T_('Words').' : ';
 		?>
 		<div class="tile">
-			<input type="radio" name="sentence" value="AND" id="sentAND" class="radio" <?php if( $sentence=='AND' ) echo 'checked="checked" '?> />
+			<input type="radio" name="<?php echo $pp ?>sentence" value="AND" id="sentAND" class="radio" <?php if( $sentence=='AND' ) echo 'checked="checked" '?> />
 			<label for="sentAND"><?php echo T_('AND') ?></label>
 		</div>
 		<div class="tile">
-			<input type="radio" name="sentence" value="OR" id="sentOR" class="radio" <?php if( $sentence=='OR' ) echo 'checked="checked" '?> />
+			<input type="radio" name="<?php echo $pp ?>sentence" value="OR" id="sentOR" class="radio" <?php if( $sentence=='OR' ) echo 'checked="checked" '?> />
 			<label for="sentOR"><?php echo T_('OR') ?></label>
 		</div>
 		<div class="tile">
-			<input type="radio" name="sentence" value="sentence" id="sentence" class="radio" <?php if( $sentence=='sentence' ) echo 'checked="checked" '?> />
+			<input type="radio" name="<?php echo $pp ?>sentence" value="sentence" id="sentence" class="radio" <?php if( $sentence=='sentence' ) echo 'checked="checked" '?> />
 			<label for="sentence"><?php echo T_('Entire phrase') ?></label>
 		</div>
 		<div class="tile">
-			<input type="checkbox" name="exact" value="1" id="exact" class="checkbox" <?php if( $exact ) echo 'checked="checked" '?> />
+			<input type="checkbox" name="<?php echo $pp ?>exact" value="1" id="exact" class="checkbox" <?php if( $exact ) echo 'checked="checked" '?> />
 			<label for="exact"><?php echo T_('Exact match') ?></label>
 		</div>
 
@@ -159,15 +167,15 @@ echo $Widget->replace_vars( $template['block_start'] );
 		{
 			echo '<ul>';
 
-			echo '<li><input type="radio" name="assgn" value="-" class="radio"';
+			echo '<li><input type="radio" name="'.$pp.'assgn" value="-" class="radio"';
 			if( '-' == $assgn ) echo ' checked="checked"';
 			echo ' /> <a href="'.regenerate_url( 'assgn', 'assgn=-' ).'">'.T_('Not assigned').'</a></li>';
 
 			foreach( $UserCache->cache as $loop_Obj )
 			{
-				echo '<li><input type="radio" name="assgn" value="'.$loop_Obj->ID.'" class="radio"';
+				echo '<li><input type="radio" name="'.$pp.'assgn" value="'.$loop_Obj->ID.'" class="radio"';
 				if( $loop_Obj->ID == $assgn ) echo ' checked="checked"';
-				echo ' /> <a href="'.regenerate_url( 'assgn', 'assgn='.$loop_Obj->ID ).'">';
+				echo ' /> <a href="'.regenerate_url( 'assgn', 'assgn='.$loop_Obj->ID ).'" class="'.$loop_Obj->get_gender_class().'" rel="bubbletip_user_'.$loop_Obj->ID.'">';
 				$loop_Obj->preferred_name();
 				echo '</a></li>';
 			}
@@ -189,9 +197,9 @@ echo $Widget->replace_vars( $template['block_start'] );
 			echo '<ul>';
 			foreach( $UserCache->cache as $loop_Obj )
 			{
-				echo '<li><input type="radio" name="author" value="'.$loop_Obj->ID.'" class="radio"';
+				echo '<li><input type="radio" name="'.$pp.'author" value="'.$loop_Obj->ID.'" class="radio"';
 				if( $loop_Obj->ID == $author ) echo ' checked="checked"';
-				echo ' /> <a href="'.regenerate_url( 'author', 'author='.$loop_Obj->ID ).'">';
+				echo ' /> <a href="'.regenerate_url( 'author', 'author='.$loop_Obj->ID ).'" class="'.$loop_Obj->get_gender_class().'" rel="bubbletip_user_'.$loop_Obj->ID.'">';
 				$loop_Obj->preferred_name();
 				echo '</a></li>';
 			}
@@ -212,13 +220,13 @@ echo $Widget->replace_vars( $template['block_start'] );
 			echo '<legend>'.T_('Statuses').'</legend>';
 			echo '<ul>';
 
-			echo '<li><input type="radio" name="status" value="-" class="radio"';
+			echo '<li><input type="radio" name="'.$pp.'status" value="-" class="radio"';
 			if( '-' == $status ) echo ' checked="checked"';
 			echo ' /> <a href="'.regenerate_url( 'status', 'status=-' ).'">'.T_('Without status').'</a></li>';
 
 			foreach( $ItemStatusCache->cache as $loop_Obj )
 			{
-				echo '<li><input type="radio" name="status" value="'.$loop_Obj->ID.'" class="radio"';
+				echo '<li><input type="radio" name="'.$pp.'status" value="'.$loop_Obj->ID.'" class="radio"';
 				if( $loop_Obj->ID == $status ) echo ' checked="checked"';
 				echo ' /> <a href="'.regenerate_url( 'status', 'status='.$loop_Obj->ID ).'">';
 				$loop_Obj->disp('name');
@@ -239,6 +247,7 @@ echo $Widget->replace_vars( $template['block_start'] );
 				'block_title_end' => '</legend>',
 				'link_type' => 'context',
 				'display_checkboxes' => 1,
+				'show_locked' => true,
 			) );
 		// ---------------------------------- END OF CATEGORY LIST ---------------------------------
 
@@ -268,7 +277,4 @@ echo $Widget->replace_vars( $template['block_start'] );
 
 echo $template['block_end'];
 
-/*
- * $Log: _item_list_sidebar.view.php,v $
- */
 ?>

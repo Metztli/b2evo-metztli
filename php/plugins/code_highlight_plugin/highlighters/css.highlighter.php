@@ -4,7 +4,7 @@
  *
  * This file is part of the b2evolution project - {@link http://b2evolution.net/}
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2005-2009 by Yabba/Scott - {@link http://astonishme.co.uk/contact/}.
  *
  * {@internal License choice
@@ -79,8 +79,8 @@ class am_css_highlighter
 
 		$block = preg_replace(
 					array(
-						'¤(/\*(.+?)\*/)¤s', // highlight comments
-						'¤(@import([^;]+?);)¤i', // highlight includes
+						'~(/\*(.+?)\*/)~s', // highlight comments
+						'~(@import([^;]+?);)~i', // highlight includes
 					),
 					array(
 						'<span class="amc_comment">$1</span>',
@@ -88,7 +88,7 @@ class am_css_highlighter
 					),
 						 $block );
 		// highlight remaining css
-		$block = callback_on_non_matching_blocks(  $block, '¤<span([\s\S]+?)</span>¤', array( $this, 'highlight_css' ) );
+		$block = callback_on_non_matching_blocks(  $block, '~<span([\s\S]+?)</span>~', array( $this, 'highlight_css' ) );
 
 		return $this->parent->tidy_code_output( '<span class="amc_default">'.$block.'</span>' );
 	}
@@ -104,7 +104,7 @@ class am_css_highlighter
 	{
 		// highlight all tag/class names and id's
 		$block = callback_on_non_matching_blocks( $block, '#\{.+?}#s', array( $this, 'highlight_names' ) );
-		$block = callback_on_non_matching_blocks(  $block, '¤<span([\s\S]+?)</span>¤', array( $this, 'highlight_rest' ) );
+		$block = callback_on_non_matching_blocks(  $block, '~<span([\s\S]+?)</span>~', array( $this, 'highlight_rest' ) );
 		return '<span class="amc_default">'.$block.'</span>';
 	}
 
@@ -131,7 +131,7 @@ class am_css_highlighter
 	{
 		$block = preg_replace( array(
 						'#\.([\w:]+)#', // highlight classes
-						'¤#([\w:]+)¤', // highlight ID's
+						'~#([\w:]+)~', // highlight ID's
 					),
 					array(
 						'<span class="amc_class">.$1</span>',
@@ -163,8 +163,4 @@ class am_css_highlighter
 
 }
 
-
-/*
- * $Log: css.highlighter.php,v $
- */
 ?>

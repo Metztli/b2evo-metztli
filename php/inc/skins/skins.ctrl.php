@@ -4,7 +4,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
@@ -17,18 +17,18 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: skins.ctrl.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: skins.ctrl.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
+
+// Memorize this as the last "tab" used in the Blog Settings:
+$UserSettings->set( 'pref_coll_settings_tab', 'manage_skins' );
+$UserSettings->dbupdate();
 
 load_funcs( 'skins/_skin.funcs.php' );
 
 // Check permission to display:
 $current_User->check_perm( 'options', 'view', true );
-
-// Memorize this as the last "tab" used in the Blog Settings:
-$UserSettings->set( 'pref_glob_settings_tab', $ctrl );
-$UserSettings->dbupdate();
 
 
 param( 'action', 'string', 'list' );
@@ -74,7 +74,7 @@ switch( $action )
 		$Messages->add( T_('Skin has been installed.'), 'success' );
 
 		// We want to highlight the edited object on next list display:
- 		$Session->set( 'fadeout_array', array( 'skin_ID' => array($edited_Skin->ID) ) );
+		$Session->set( 'fadeout_array', array( 'skin_ID' => array($edited_Skin->ID) ) );
 
 		// PREVENT RELOAD & Switch to list mode:
 		header_redirect( $redirect_to );
@@ -101,7 +101,7 @@ switch( $action )
 			$Messages->add( T_('Skin properties updated.'), 'success' );
 
 			// We want to highlight the edited object on next list display:
- 			$Session->set( 'fadeout_array', array( 'skin_ID' => array($edited_Skin->ID) ) );
+			$Session->set( 'fadeout_array', array( 'skin_ID' => array($edited_Skin->ID) ) );
 
 			// Redirect so that a reload doesn't write to the DB twice:
 			header_redirect( $redirect_to, 303 ); // Will EXIT
@@ -199,12 +199,20 @@ switch( $action )
 }
 
 
-$AdminUI->set_path( 'options', 'skins' );
+$AdminUI->set_path( 'blogs', 'skin', 'manage_skins' );
+
+
+/**
+ * Display page header, menus & messages:
+ */
+$AdminUI->set_coll_list_params( 'blog_properties', 'edit',
+											array( 'ctrl' => 'skins' ),
+											T_('All'), '?ctrl=collections&amp;blog=0' );
 
 
 $AdminUI->breadcrumbpath_init();
-$AdminUI->breadcrumbpath_add( T_('Global settings'), '?ctrl=settings',
-		T_('Global settings are shared between all blogs; see Blog settings for more granular settings.') );
+$AdminUI->breadcrumbpath_add( T_('Settings'), '?ctrl=coll_settings&amp;blog=$blog$' );
+$AdminUI->breadcrumbpath_add( T_('Skin'), '?ctrl=coll_settings&amp;tab=skin&amp;blog=$blog$' );
 $AdminUI->breadcrumbpath_add( T_('Skin configuration'), '?ctrl=skins' );
 
 
@@ -250,7 +258,4 @@ $AdminUI->disp_payload_end();
 // Display body bottom, debug info and close </html>:
 $AdminUI->disp_global_footer();
 
-/*
- * $Log: skins.ctrl.php,v $
- */
 ?>

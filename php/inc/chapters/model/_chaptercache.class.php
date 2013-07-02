@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -20,7 +20,7 @@
  *
  * @author fplanque: Francois PLANQUE
  *
- * @version $Id: _chaptercache.class.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _chaptercache.class.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -49,14 +49,16 @@ class ChapterCache extends GenericCategoryCache
 
 		if( $Settings->get('chapter_ordering') == 'manual' )
 		{	// Manual order
-			$order_by = 'cat_order';
+			$select_temp_order = 'IF( cat_order IS NULL, 999999999, cat_order ) AS temp_order';
+			$order_by = 'temp_order';
 		}
 		else
 		{	// Alphabetic order
+			$select_temp_order = '';
 			$order_by = 'cat_name';
 		}
 
-		parent::GenericCategoryCache( 'Chapter', false, 'T_categories', 'cat_', 'cat_ID', 'cat_name', 'blog_ID', $order_by );
+		parent::GenericCategoryCache( 'Chapter', false, 'T_categories', 'cat_', 'cat_ID', 'cat_name', 'blog_ID', $order_by, NULL, '', $select_temp_order );
 	}
 
 
@@ -189,13 +191,40 @@ class ChapterCache extends GenericCategoryCache
 	}
 
 
+	/**
+	 * Load a list of chapter referenced by their urlname into the cache
+	 *
+	 * @param array of urlnames of Chapters to load
+	 */
+	function load_urlname_array( $req_array )
+	{
+		global $DB, $Debuglog;
+
+		$req_list = $DB->quote( $req_array );
+		$Debuglog->add( "Loading <strong>$this->objtype($req_list)</strong> into cache", 'dataobjects' );
+		$sql = "SELECT * FROM $this->dbtablename WHERE cat_urlname IN ( $req_list )";
+		$dbIDname = $this->dbIDname;
+		$objtype = $this->objtype;
+		foreach( $DB->get_results( $sql ) as $row )
+		{
+			$this->cache[ $row->$dbIDname ] = new $objtype( $row ); // COPY!
+
+			// put into index:
+			$this->urlname_index[$row->cat_urlname] = & $this->cache[ $row->$dbIDname ];
+
+			$Debuglog->add( "Cached <strong>$this->objtype($row->cat_urlname)</strong>" );
+		}
+	}
+
+
 
 	/**
 	 * Load a keyed subset of the cache
 	 *
  	 * @param integer|NULL NULL for all subsets
+ 	 * @param string Force 'order by' setting ('manual' = 'ORDER BY cat_order')
 	 */
-	function load_subset( $subset_ID )
+	function load_subset( $subset_ID, $force_order_by = '' )
 	{
 		global $DB, $Debuglog, $Settings;
 
@@ -208,17 +237,20 @@ class ChapterCache extends GenericCategoryCache
 		$this->clear( true );
 
 		$Debuglog->add( 'ChapterCache - Loading <strong>chapters('.$subset_ID.')</strong> into cache', 'dataobjects' );
-		$sql = 'SELECT *
-							FROM T_categories
-						 WHERE cat_blog_ID = '.$subset_ID;
-		if( $Settings->get('chapter_ordering') == 'manual' )
+		if( $Settings->get('chapter_ordering') == 'manual' || $force_order_by == 'manual' )
 		{	// Manual order
-			$sql .= ' ORDER BY cat_order';
+			$select_temp_order = ', IF( cat_order IS NULL, 999999999, cat_order ) AS temp_order';
+			$sql_order = ' ORDER BY temp_order';
 		}
 		else
 		{	// Alphabetic order
-			$sql .= ' ORDER BY cat_name';
+			$select_temp_order = '';
+			$sql_order = ' ORDER BY cat_name';
 		}
+		$sql = 'SELECT *'.$select_temp_order.'
+							FROM T_categories
+						 WHERE cat_blog_ID = '.$subset_ID
+						.$sql_order;
 
 		foreach( $DB->get_results( $sql, OBJECT, 'Loading chapters('.$subset_ID.') into cache' ) as $row )
 		{
@@ -316,7 +348,4 @@ class ChapterCache extends GenericCategoryCache
 	}
 }
 
-/*
- * $Log: _chaptercache.class.php,v $
- */
 ?>

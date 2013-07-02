@@ -4,7 +4,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal Open Source relicensing agreement:
  * }}
@@ -14,7 +14,7 @@
  *
  * @package admin
  *
- * @version $Id: widgets.ctrl.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: widgets.ctrl.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -71,6 +71,7 @@ if( $display_mode == 'js' )
 {	// Javascript in debug mode conflicts/fails.
 	// fp> TODO: either fix the debug javascript or have an easy way to disable JS in the debug output.
 	$debug = 0;
+	$debug_jslog = false;
 }
 // This should probably be handled with teh existing $mode var
 
@@ -152,8 +153,9 @@ switch( $display_mode )
 }
 
 // Get Skin used by current Blog:
+$blog_normal_skin_ID = $Blog->get_setting( 'normal_skin_ID' );
 $SkinCache = & get_SkinCache();
-$Skin = & $SkinCache->get_by_ID( $Blog->skin_ID );
+$Skin = & $SkinCache->get_by_ID( $blog_normal_skin_ID );
 // Make sure containers are loaded for that skin:
 $container_list = $Skin->get_containers();
 
@@ -453,7 +455,7 @@ switch( $action )
 		/**
 		 * @var Skin
 		 */
-		$edited_Skin = & $SkinCache->get_by_ID( $Blog->skin_ID );
+		$edited_Skin = & $SkinCache->get_by_ID( $blog_normal_skin_ID );
 
 		// Look for containers in skin file:
 		$edited_Skin->discover_containers();
@@ -475,7 +477,7 @@ if( $display_mode == 'normal' )
 	 * Display page header, menus & messages:
 	 */
 	$AdminUI->set_coll_list_params( 'blog_properties', 'edit', array( 'ctrl' => 'widgets' ),
-				T_('List'), '?ctrl=collections&amp;blog=0' );
+				T_('All'), '?ctrl=collections&amp;blog=0' );
 
 	$AdminUI->set_path( 'blogs', 'widgets' );
 
@@ -508,8 +510,8 @@ if( $display_mode == 'normal' )
 	require_css( 'blog_widgets.css' );
 
 
-	$AdminUI->breadcrumbpath_init( false );
-	$AdminUI->breadcrumbpath_add( T_('Blog settings'), '?ctrl=coll_settings&amp;blog=$blog$' );
+	$AdminUI->breadcrumbpath_init( true );
+	$AdminUI->breadcrumbpath_add( T_('Settings'), '?ctrl=coll_settings&amp;blog=$blog$' );
 	$AdminUI->breadcrumbpath_add( T_('Widgets'), '?ctrl=widgets&amp;blog=$blog$' );
 
 	// Display <html><head>...</head> section! (Note: should be done early if actions do not redirect)
@@ -600,8 +602,4 @@ switch( $action )
 // Display body bottom, debug info and close </html>:
 $AdminUI->disp_global_footer();
 
-
-/*
- * $Log: widgets.ctrl.php,v $
- */
 ?>

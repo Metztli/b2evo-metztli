@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -21,7 +21,7 @@
  *
  * @package admin
  *
- * @version $Id: _html_footer.inc.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _html_footer.inc.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -75,8 +75,3 @@ include_footerlines(); // enables translation strings for js
 
 </body>
 </html>
-<?php
-/*
- * $Log: _html_footer.inc.php,v $
- */
-?>

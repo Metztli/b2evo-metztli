@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004 by PROGIDISTRI - {@link http://progidistri.com/}.
  * Parts of this file are copyright (c)2004-2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
@@ -43,7 +43,7 @@
  * This will most probably cause problems, when nesting inputs. This should be refactored
  * to use a field_name-based member array. (blueyed)
  *
- * @version $Id: _form.class.php 57 2011-10-26 08:18:58Z sam2kb $
+ * @version $Id: _form.class.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -144,6 +144,13 @@ class Form extends Widget
 
 
 	/**
+	 * Indicates if the form is ended
+	 * @var boolean
+	 */
+	var $_form_ended = false;
+
+
+	/**
 	 * Constructor
 	 *
 	 * @param string the action destination of the form (NULL for pagenow)
@@ -154,7 +161,7 @@ class Form extends Widget
 	 */
 	function Form( $form_action = NULL, $form_name = '', $form_method = 'post', $layout = NULL, $enctype = '' )
 	{
-		global $AdminUI, $pagenow;
+		global $AdminUI, $pagenow, $Skin;
 
 		$this->form_name = $form_name;
 		$this->form_action = (is_null($form_action) ? $pagenow : $form_action );
@@ -176,27 +183,43 @@ class Form extends Widget
 		}
 		else
 		{	// This happens for comment forms & login screen for example...
-			$template = array(
-				'layout' => 'fieldset',
-				'formstart' => '<div>',// required before (no_)title_fmt for validation
-				'title_fmt' => '<span style="float:right">$global_icons$</span><h2>$title$</h2>'."\n",
-				'no_title_fmt' => '<span style="float:right">$global_icons$</span>'."\n",
-				'fieldset_begin' => '<fieldset $fieldset_attribs$>'."\n"
-														.'<legend $title_attribs$>$fieldset_title$</legend>'."\n",
-				'fieldset_end' => '</fieldset>'."\n",
-				'fieldstart' => '<fieldset$ID$>'."\n",
-				'labelstart' => '<div class="label">',
-				'labelend' => "</div>\n",
-				'labelempty' => '<div class="label"></div>', // so that IE6 aligns DIV.input correcctly
-				'inputstart' => '<div class="input">',
-				'infostart' => '<div class="info">',
-				'inputend' => "</div>\n",
-				'fieldend' => "</fieldset>\n\n",
-				'buttonsstart' => '<fieldset><div class="label"></div><div class="input">', // DIV.label for IE6
-				'buttonsend' => "</div></fieldset>\n\n",
-				'formend' => '</div>',
-			);
-			$layout = 'fieldset';
+			$template_is_empty = true;
+			if( ( is_object( $Skin ) ) && ( !empty( $layout ) ) )
+			{ // Get skin setting:
+				$template = $Skin->get_template( $layout.'_form' );
+				$template_is_empty = empty( $template );
+				if( !$template_is_empty )
+				{
+					$layout = $template['layout'];
+				}
+			}
+
+			if( $template_is_empty )
+			{
+				$template = array(
+					'layout' => 'fieldset',
+					'formstart' => '<div>',// required before (no_)title_fmt for validation
+					'title_fmt' => '<span style="float:right">$global_icons$</span><h2>$title$</h2>'."\n",
+					'no_title_fmt' => '<span style="float:right">$global_icons$</span>'."\n",
+					'fieldset_begin' => '<fieldset $fieldset_attribs$>'."\n"
+															.'<legend $title_attribs$>$fieldset_title$</legend>'."\n",
+					'fieldset_end' => '</fieldset>'."\n",
+					'fieldstart' => '<fieldset$ID$>'."\n",
+					'labelstart' => '<div class="label">',
+					'labelend' => "</div>\n",
+					'labelempty' => '<div class="label"></div>', // so that IE6 aligns DIV.input correcctly
+					'inputstart' => '<div class="input">',
+					'infostart' => '<div class="info">',
+					'inputend' => "</div>\n",
+					'fieldend' => "</fieldset>\n\n",
+					'buttonsstart' => '<fieldset><div class="label"></div><div class="input">', // DIV.label for IE6
+					'buttonsend' => "</div></fieldset>\n\n",
+					'customstart' => '<div class="custom_content">',
+					'customend' => "</div>\n",
+					'formend' => '</div>',
+				);
+				$layout = 'fieldset';
+			}
 		}
 
 		$this->saved_layouts = array($layout);
@@ -234,26 +257,28 @@ class Form extends Widget
 			if( count($this->saved_layouts) )
 			{
 				$this->layout = array_shift($this->saved_layouts);
-				// Temporary hack:
-				$template = array_shift($this->saved_templates);
+				$template = $this->saved_templates[0];
 				if( !empty($template ) )
 				{
-					//pre_dump($template);
-					$this->template =     $template;
-					$this->formstart =    $template['formstart'];
-					$this->title_fmt =    $template['title_fmt'];
-					$this->no_title_fmt = $template['no_title_fmt'];
-					$this->fieldstart =   $template['fieldstart'];
-					$this->labelstart =   $template['labelstart'];
-					$this->labelend =     $template['labelend'];
-					$this->labelempty =   $template['labelempty'];
-					$this->inputstart =   $template['inputstart'];
-					$this->infostart =    $template['infostart'];
-					$this->inputend =     $template['inputend'];
-					$this->fieldend =     $template['fieldend'];
-					$this->buttonsstart = $template['buttonsstart'];
-					$this->buttonsend =   $template['buttonsend'];
-					$this->formend =      $template['formend'];
+					$this->template       = $template;
+					$this->formstart      = $template['formstart'];
+					$this->title_fmt      = $template['title_fmt'];
+					$this->no_title_fmt   = $template['no_title_fmt'];
+					$this->fieldset_begin = $template['fieldset_begin'];
+					$this->fieldset_end   = $template['fieldset_end'];
+					$this->fieldstart     = $template['fieldstart'];
+					$this->labelstart     = $template['labelstart'];
+					$this->labelend       = $template['labelend'];
+					$this->labelempty     = $template['labelempty'];
+					$this->inputstart     = $template['inputstart'];
+					$this->infostart      = $template['infostart'];
+					$this->inputend       = $template['inputend'];
+					$this->fieldend       = $template['fieldend'];
+					$this->buttonsstart   = $template['buttonsstart'];
+					$this->buttonsend     = $template['buttonsend'];
+					$this->customstart    = $template['customstart'];
+					$this->customend      = $template['customend'];
+					$this->formend        = $template['formend'];
 				}
 			}
 		}
@@ -271,6 +296,9 @@ class Form extends Widget
 															.'<span class="right_icons">$global_icons$</span>'
 															.'$title$</div></th></tr>'."\n";
 					$this->no_title_fmt = '<tr><th colspan="2"><span class="right_icons">$global_icons$</span></th></tr>'."\n";
+					$this->fieldset_begin = '<fieldset $fieldset_attribs$>'."\n"
+															.'<legend $title_attribs$>$fieldset_title$</legend>'."\n";
+					$this->fieldset_end = '</fieldset>'."\n";
 					$this->fieldstart = '<tr$ID$>'."\n";
 					$this->labelstart = '<td class="label">';
 					$this->labelend = "</td>\n";
@@ -281,6 +309,8 @@ class Form extends Widget
 					$this->fieldend = "</tr>\n\n";
 					$this->buttonsstart = '<tr class="buttons"><td colspan="2">';
 					$this->buttonsend = "</td></tr>\n";
+					$this->customstart = '<tr><td colspan="2" class="custom_content">';
+					$this->customend = "</td></tr>\n";
 					$this->formend = "</table>\n";
 					break;
 
@@ -288,6 +318,9 @@ class Form extends Widget
 					$this->formstart = '<div>';// required before (no_)title_fmt for validation
 					$this->title_fmt = '<span style="float:right">$global_icons$</span><h2>$title$</h2>'."\n";
 					$this->no_title_fmt = '<span style="float:right">$global_icons$</span>'."\n";
+					$this->fieldset_begin = '<fieldset $fieldset_attribs$>'."\n"
+															.'<legend $title_attribs$>$fieldset_title$</legend>'."\n";
+					$this->fieldset_end = '</fieldset>'."\n";
 					$this->fieldstart = '<fieldset$ID$>'."\n";
 					$this->labelstart = '<div class="label">';
 					$this->labelend = "</div>\n";
@@ -298,6 +331,8 @@ class Form extends Widget
 					$this->fieldend = "</fieldset>\n\n";
 					$this->buttonsstart = '<fieldset><div class="label"></div><div class="input">'; // DIV.label for IE6
 					$this->buttonsend = "</div></fieldset>\n\n";
+					$this->customstart = '<div class="custom_content">';
+					$this->customend = "</div>\n";
 					$this->formend = '</div>';
 					break;
 
@@ -305,6 +340,9 @@ class Form extends Widget
 					$this->formstart = '<div>';// required before (no_)title_fmt for validation
 					$this->title_fmt = '<span style="float:right">$global_icons$</span><h2>$title$</h2>'."\n";
 					$this->no_title_fmt = '<span style="float:right">$global_icons$</span>'."\n";
+					$this->fieldset_begin = '<fieldset $fieldset_attribs$>'."\n"
+															.'<legend $title_attribs$>$fieldset_title$</legend>'."\n";
+					$this->fieldset_end = '</fieldset>'."\n";
 					$this->fieldstart = '<fieldset$ID$>'."\n";
 					$this->labelstart = '<div class="label">';
 					$this->labelend = "</div>\n";
@@ -315,6 +353,8 @@ class Form extends Widget
 					$this->fieldend = "</fieldset>\n\n";
 					$this->buttonsstart = '<fieldset><div class="label"></div><div class="input">'; // DIV.label for IE6
 					$this->buttonsend = "</div></fieldset>\n\n";
+					$this->customstart = '<div class="custom_content">';
+					$this->customend = "</div>\n";
 					$this->formend = '</div>';
 					break;
 
@@ -322,6 +362,9 @@ class Form extends Widget
 					$this->formstart = '';
 					$this->title_fmt = '<span style="float:right">$global_icons$</span><h2>$title$</h2>'."\n";
 					$this->no_title_fmt = '<span style="float:right">$global_icons$</span>&nbsp;'."\n";
+					$this->fieldset_begin = '<fieldset $fieldset_attribs$>'."\n"
+															.'<legend $title_attribs$>$fieldset_title$</legend>'."\n";
+					$this->fieldset_end = '</fieldset>'."\n";
 					$this->fieldstart = '<div class="tile"$ID$>';
 					$this->labelstart = '<strong>';
 					$this->labelend = "</strong>\n";
@@ -332,6 +375,8 @@ class Form extends Widget
 					$this->fieldend = "</div>\n";
 					$this->buttonsstart = '';
 					$this->buttonsend = "\n";
+					$this->customstart = '';
+					$this->customend = "\n";
 					$this->formend = '';
 					break;
 
@@ -339,6 +384,9 @@ class Form extends Widget
 					$this->formstart = '';
 					$this->title_fmt = '$title$'."\n"; // TODO: icons
 					$this->no_title_fmt = '';          //           "
+					$this->fieldset_begin = '<fieldset $fieldset_attribs$>'."\n"
+															.'<legend $title_attribs$>$fieldset_title$</legend>'."\n";
+					$this->fieldset_end = '</fieldset>'."\n";
 					$this->fieldstart = '<span class="block"$ID$>';
 					$this->labelstart = '';
 					$this->labelend = "\n";
@@ -349,6 +397,8 @@ class Form extends Widget
 					$this->fieldend = '</span>'.get_icon( 'pixel' )."\n";
 					$this->buttonsstart = '';
 					$this->buttonsend = "\n";
+					$this->customstart = '';
+					$this->customend = '';
 					$this->formend = '';
 					break;
 
@@ -357,6 +407,9 @@ class Form extends Widget
 					$this->formstart = '';
 					$this->title_fmt = '$title$'."\n"; // TODO: icons
 					$this->no_title_fmt = '';          //           "
+					$this->fieldset_begin = '<fieldset $fieldset_attribs$>'."\n"
+															.'<legend $title_attribs$>$fieldset_title$</legend>'."\n";
+					$this->fieldset_end = '</fieldset>'."\n";
 					$this->fieldstart = ''; // fp> shall we still use $ID$ here ?
 					$this->labelstart = '';
 					$this->labelend = "\n";
@@ -367,9 +420,44 @@ class Form extends Widget
 					$this->fieldend = "\n";
 					$this->buttonsstart = '';
 					$this->buttonsend = "\n";
+					$this->customstart = '';
+					$this->customend = "\n";
 					$this->formend = '';
 			}
 
+		}
+	}
+
+
+	/**
+	 * Set a parts of form from array
+	 *
+	 * @param array:
+	 *    formstart
+	 *    title_fmt
+	 *    no_title_fmt
+	 *    fieldset_begin
+	 *    fieldset_end
+	 *    fieldstart
+	 *    labelstart
+	 *    labelend
+	 *    labelempty
+	 *    inputstart
+	 *    infostart
+	 *    inputend
+	 *    fieldend
+	 *    buttonsstart
+	 *    buttonsend
+	 *    formend
+	 */
+	function switch_template_parts( $parts )
+	{
+		if( is_array( $parts ) && count( $parts ) > 0 )
+		{	// Change a default form params from defined vars on current skin
+			foreach( $parts as $part => $value )
+			{
+				$this->$part = $value;
+			}
 		}
 	}
 
@@ -391,6 +479,17 @@ class Form extends Widget
 		{
 			$this->_common_params = array();
 		}
+
+		$field_classes = array();
+		if( !empty( $this->_common_params['wide'] ) && $this->_common_params['wide'] )
+		{ // Wide field
+			$field_classes[] = 'field_wide';
+		}
+		if( !empty( $this->_common_params['inline'] ) && $this->_common_params['inline'] )
+		{ // Inline field
+			$field_classes[] = 'field_inline';
+		}
+
 		// Remember these, to make them available to get_label()
 		if( isset($field_name) )
 		{
@@ -403,18 +502,23 @@ class Form extends Widget
 
 		// Start the new form field and inject an automatic DOM id
 		// This is useful to show/hide the whole field by JS.
-		if( !empty(	$this->_common_params['id'] ) )
+		if( !empty( $this->_common_params['id'] ) )
 		{
 			$ffield_id = ' id="ffield_'.$this->_common_params['id'].'" ';
 		}
 		else
-		{	// No ID in case there's no id/name given for a field.
+		{ // No ID in case there's no id/name given for a field.
 			$ffield_id = '';
 		}
 		// quick and dirty "required_field" addition, needs tidying once tested
 		if( !empty( $this->_common_params['required'] ) )
 		{ // required field
-			$ffield_id .= ' class="field_required"';
+			$field_classes[] = 'field_required';
+		}
+
+		if( count( $field_classes ) > 0 )
+		{ // Add class attribute
+			$ffield_id .= ' class="'.implode( ' ', $field_classes ).'"';
 		}
 
 		$r = str_replace( '$ID$', $ffield_id, $this->fieldstart );
@@ -471,10 +575,9 @@ class Form extends Widget
 	 */
 	function begin_fieldset( $title = '', $field_params = array() )
 	{
-		if( !isset($field_params['class']) )
-		{
-			$field_params['class'] = 'fieldset';
-		}
+		$field_params = array_merge( array(
+				'class' => 'fieldset',
+			), $field_params );
 
 		switch( $this->layout )
 		{
@@ -497,8 +600,7 @@ class Form extends Widget
 					unset( $field_params['legend_params'] );
 				}
 
-				$r = str_replace( '$fieldset_attribs$', get_field_attribs_as_string($field_params), $this->template['fieldset_begin'] );
-				// $r = '<fieldset'.get_field_attribs_as_string($field_params).'>'."\n";
+				$r = str_replace( '$fieldset_attribs$', get_field_attribs_as_string($field_params), $this->fieldset_begin );
 
 				$r = str_replace( '$fieldset_title$', $title, $r );
 				if( isset($field_params['id']) )
@@ -540,7 +642,7 @@ class Form extends Widget
 				break;
 
 			default:
-				$r = $this->template['fieldset_end'];
+				$r = $this->fieldset_end;
 				$this->_opentags['fieldset']--;
 		}
 
@@ -568,44 +670,31 @@ class Form extends Widget
 	 */
 	function text_input( $field_name, $field_value, $field_size, $field_label, $field_note = '', $field_params = array() )
 	{
-		$field_params['value'] = $field_value;
+		$field_params = array_merge( array(
+				'inline'    => false,
+				'type'      => 'text',
+				'value'     => $field_value,
+				'note'      => $field_note,
+				'size'      => $field_size,
+				'maxlength' => $field_size,
+				'name'      => $field_name,
+				'label'     => $field_label,
+				'class'     => '', // default class 'form_text_input'
+			), $field_params );
 
-		if( !empty($field_note) )
-		{
-			$field_params['note'] = $field_note;
-		}
-
-		if( !empty($field_size) )
-		{
-			if( !isset($field_params['maxlength']) )
-			{ // maxlength defaults to size
-				$field_params['maxlength'] = $field_size;
-			}
-
-			$field_params['size'] = $field_size;
-		}
-
-		if( !isset($field_params['type']) )
-		{ // type defaults to "text"
-			$field_params['type'] = 'text';
-		}
-
-		if( isset($field_params['force_to']) )
+		if( isset( $field_params['force_to'] ) )
 		{
 			if( $field_params['force_to'] == 'UpperCase' )
 			{ // Force input to uppercase (at front of onchange event)
 				$field_params['onchange'] = 'this.value = this.value.toUpperCase();'
-					.( empty($field_params['onchange']) ? '' : ' '.$field_params['onchange'] );
+					.( empty( $field_params['onchange'] ) ? '' : ' '.$field_params['onchange'] );
 			}
-			unset($field_params['force_to']); // not a html attrib
+			unset( $field_params['force_to'] ); // not a html attrib
 		}
 
 		// Give it a class, so it can be selected for CSS in IE6
-		if( empty($field_params['class']) ) $field_params['class'] = 'form_text_input';
-		else $field_params['class'] .= ' form_text_input';
+		$field_params['class'] = empty( $field_params['class'] ) ? 'form_text_input' : $field_params['class'].' form_text_input';
 
-		$field_params['name'] = $field_name;
-		$field_params['label'] = $field_label;
 		return $this->input_field( $field_params );
 	}
 
@@ -648,6 +737,53 @@ class Form extends Widget
 		}
 
 		return $this->text_input( $field_name, $field_value, $field_size, $field_label, $field_note, $field_params );
+	}
+
+
+	/**
+	 * Builds a color input field.
+	 *
+	 * @param string The name of the input field. This gets used for id also, if no id given in $field_params.
+	 * @param string Initial value
+	 * @param string Label displayed with the field
+	 * @param string "help" note (Should provide something useful, otherwise leave it empty)
+	 * @param array Extended attributes/params.
+	 *                 - 'maxlength': if not set, $field_size gets used (use '' to disable it)
+	 *                 - 'class': the CSS class to use for the <input> element
+	 *                 - 'type': 'text', 'password' (defaults to 'text')
+	 *                 - 'force_to': 'UpperCase' (JS onchange handler)
+	 *                 - NOTE: any other attributes will be used as is (onchange, onkeyup, id, ..).
+	 * @return true|string true (if output) or the generated HTML if not outputting
+	 */
+	function color_input( $field_name, $field_value, $field_label, $field_note = '', $field_params = array() )
+	{
+		$field_params = array_merge( array(
+				'inline'    => false,
+				'type'      => 'text',
+				'value'     => $field_value,
+				'note'      => $field_note,
+				'size'      => 7,
+				'maxlength' => 7,
+				'name'      => $field_name,
+				'label'     => $field_label,
+				'class'     => '', // default class 'form_text_input form_color_input'
+			), $field_params );
+
+		if( isset( $field_params['force_to'] ) )
+		{
+			if( $field_params['force_to'] == 'UpperCase' )
+			{ // Force input to uppercase (at front of onchange event)
+				$field_params['onchange'] = 'this.value = this.value.toUpperCase();'
+					.( empty( $field_params['onchange'] ) ? '' : ' '.$field_params['onchange'] );
+			}
+			unset( $field_params['force_to'] ); // not a html attrib
+		}
+
+		// Give it a class, so it can be selected for CSS in IE6
+		$field_params['class'] = empty( $field_params['class'] ) ? 'form_text_input' : $field_params['class'].' form_text_input';
+		$field_params['class'] .= ' form_color_input';
+
+		return $this->input_field( $field_params );
 	}
 
 
@@ -737,7 +873,7 @@ class Form extends Widget
 		// dh> TODO: should probably also get ported to use jquery.ui.autocomplete (or its successor)
 		global $rsc_url;
 		$r .= '<script type="text/javascript" src="'.$rsc_url.'js/jquery/jquery.hintbox.min.js"></script>';
-		$r .= '<script type="text/javascript">$("<link>").appendTo("head").attr({
+		$r .= '<script type="text/javascript">jQuery("<link>").appendTo("head").attr({
 			rel: "stylesheet",
 			type: "text/css",
 			href: "'.$rsc_url.'css/jquery/jquery.hintbox.css"
@@ -926,7 +1062,14 @@ class Form extends Widget
 			$field_params['note'] = '('.$field_format.')';
 		}
 
-		$field_size = strlen($field_format);
+		if( ! isset($field_params['size']) )
+		{
+			$field_size = strlen($field_format);
+		}
+		else
+		{
+			$field_size = $field_params['size'];
+		}
 
 		// Get time part of datetime:
 		$field_value = substr( $field_value, 11, $field_size );
@@ -1259,23 +1402,17 @@ class Form extends Widget
 	 */
 	function checkbox_input( $field_name, $field_checked, $field_label, $field_params = array() )
 	{
-		$field_params['name'] = $field_name;
-		$field_params['label'] = $field_label;
-		$field_params['type'] = 'checkbox';
-
-		if( !isset($field_params['value']) )
-		{
-			$field_params['value'] = 1;
-		}
+		$field_params = array_merge( array(
+				'value' => 1,
+				'name'  => $field_name,
+				'label' => $field_label,
+				'type'  => 'checkbox',
+				'class' => 'checkbox',
+			), $field_params );
 
 		if( $field_checked )
 		{
 			$field_params['checked'] = 'checked';
-		}
-
-		if( !isset($field_params['class']) )
-		{
-			$field_params['class'] = 'checkbox';
 		}
 
 		return $this->input_field( $field_params );
@@ -1287,22 +1424,16 @@ class Form extends Widget
 	 */
 	function checkbox_basic_input( $field_name, $field_checked, $field_label, $field_params = array() )
 	{
-		$field_params['name'] = $field_name;
-		$field_params['type'] = 'checkbox';
-
-		if( !isset($field_params['value']) )
-		{
-			$field_params['value'] = 1;
-		}
+		$field_params = array_merge( array(
+				'name'  => $field_name,
+				'type'  => 'checkbox',
+				'value' => 1,
+				'class' => 'checkbox',
+			), $field_params );
 
 		if( $field_checked )
 		{
 			$field_params['checked'] = 'checked';
-		}
-
-		if( !isset($field_params['class']) )
-		{
-			$field_params['class'] = 'checkbox';
 		}
 
 		echo '<label>';
@@ -1415,6 +1546,10 @@ class Form extends Widget
 			$bozo_start_modified = true;
 			unset( $form_params['bozo_start_modified'] );
 		}
+		unset( $form_params['disp_edit_categories'] );
+		unset( $form_params['edit_form_params'] );
+		unset( $form_params['skin_form_params'] );
+
 		$r = "\n\n<form".get_field_attribs_as_string($form_params).">\n";
 
 		// $r .= '<div>'; // for XHTML (dh> removed 'style="display:inline"' because it's buggy with FireFox 1.0.x, at least at the "Write" admin page; see http://forums.b2evolution.net/viewtopic.php?t=10130)
@@ -1488,6 +1623,11 @@ class Form extends Widget
 	 */
 	function end_form( $buttons = array() )
 	{
+		if( $this->_form_ended )
+		{	// The form is already ended
+			return;
+		}
+
 		$r = '';
 		if( !empty( $buttons ) )
 		{
@@ -1551,6 +1691,7 @@ class Form extends Widget
 
 		// Reset (in case we re-use begin_form! NOTE: DO NOT REUSE begin_form, it's against the spec.)
 		$this->hiddens = array();
+		$this->_form_ended = true;
 
 		return $this->display_or_return( $r );
 	}
@@ -1574,15 +1715,23 @@ class Form extends Widget
 	 * @param string label
 	 * @param boolean true to surround checkboxes if they are required
 	 * @param boolean true add a surround_check span, used by check_all mouseover
+	 * @param array Params
 	 * @return mixed true (if output) or the generated HTML if not outputting
 	 */
-	function checklist( $options, $field_name, $field_label, $required = false, $add_highlight_spans = false )
+	function checklist( $options, $field_name, $field_label, $required = false, $add_highlight_spans = false, $field_params = array() )
 	{
-		$field_params = array();
-		$field_params['type'] = 'checkbox';
+		$field_params = array_merge( array(
+				'wide' => false,
+				'type' => 'checkbox',
+				'input_prefix' => '',
+				'input_suffix' => '',
+			), $field_params );
+
 		$this->handle_common_params( $field_params, $field_name, $field_label );
 
 		$r = $this->begin_field( $field_name, $field_label );
+
+		$r .= $field_params['input_prefix'];
 
 		foreach( $options as $option )
 		{ //loop to construct the list of 'input' tags
@@ -1641,6 +1790,8 @@ class Form extends Widget
 			}
 			$r .= "<br />\n";
 		}
+
+		$r .= $field_params['input_suffix'];
 
 		$r .= $this->end_field();
 
@@ -1767,6 +1918,75 @@ class Form extends Widget
 	}
 
 
+	/**
+	 * Display counrty select field and populate it with a cache object by using a callback
+	 * method.
+	 *
+	 * @uses select_input_options()
+	 * @param string Field name
+	 * @param string Default field value
+	 * @param DataObjectCache Cache containing values for list
+	 * @param string Field label to be display with the field
+	 * @param array Optional params. Additionally to {@link $_common_params} you can use:
+	 *              - 'allow_none': allow to select [none] in list (boolean, default false)
+	 *              - 'object_callback': Object's callback method name (string, default 'get_option_list')
+	 *              - 'loop_object_method': The method on the objects inside the callback (string, default NULL)
+	 * @return mixed true (if output) or the generated HTML if not outputting
+	 */
+	function select_country( $field_name, $field_value, & $field_object, $field_label, $field_params = array() )
+	{
+		global $edited_User;
+
+		if( isset($field_params['allow_none']) )
+		{
+			$allow_none = $field_params['allow_none'];
+			unset( $field_params['allow_none'] );
+		}
+		else
+		{
+			$allow_none = false;
+		}
+
+		if( isset($field_params['object_callback']) )
+		{
+			$field_object_callback = $field_params['object_callback'];
+			unset( $field_params['object_callback'] );
+		}
+		else
+		{
+			if (empty($edited_User->ctry_ID))
+			{	// if edited user didn't select a country then we form a dropdown list of countries using 'get_group_country_option_list' function.
+				$field_object_callback = 'get_group_country_option_list';
+			}
+			else
+			{	// if edited user has a selected country then we display a usual list of countries.
+				$field_object_callback = 'get_option_list';
+			}
+
+		}
+
+		if( isset($field_params['loop_object_method']) )
+		{
+			$field_options = $field_object->$field_object_callback( $field_value, $allow_none, $field_params['loop_object_method'] );
+			unset( $field_params['loop_object_method'] );
+		}
+		else
+		{
+			$field_options = $field_object->$field_object_callback( $field_value, $allow_none );
+		}
+
+		if( isset($field_params['note']) )
+		{
+			$field_note = $field_params['note'];
+			unset( $field_params['note'] );
+		}
+		else
+		{
+			$field_note = '';
+		}
+
+		return $this->select_input_options( $field_name, $field_options, $field_label, $field_note, $field_params );
+	}
 	/**
 	 * Display a select field and populate it with a cache object.
 	 *
@@ -1905,8 +2125,19 @@ class Form extends Widget
 			$force_keys_as_values = false;
 		}
 
+		if( isset($field_params['background_color']) )
+		{
+			$color_array = $field_params['background_color'];
+			unset($field_params['background_color']); // not an attribute to <select>
+		}
+		else
+		{
+			$color_array = false;
+		}
+
+
 		// Build $options_list
-		$options_list = Form::get_select_options_string($field_options, $field_value, $force_keys_as_values);
+		$options_list = Form::get_select_options_string($field_options, $field_value, $force_keys_as_values, $color_array);
 
 		return $this->select_input_options( $field_name, $options_list, $field_label, $field_note, $field_params );
 	}
@@ -1921,7 +2152,7 @@ class Form extends Widget
 	 *                which are strings will be used).
 	 * @return string
 	 */
-	function get_select_options_string($field_options, $field_value = NULL, $force_keys_as_values = false)
+	function get_select_options_string($field_options, $field_value = NULL, $force_keys_as_values = false, $color_array = false)
 	{
 		$r = '';
 
@@ -1930,8 +2161,14 @@ class Form extends Widget
 			// Get the value attribute from key if is_string():
 			$l_value = ($force_keys_as_values || is_string($l_key)) ? $l_key : $l_option;
 
-			$r .= '<option value="'.format_to_output($l_value, 'formvalue').'"';
-
+			if (empty($color_array) || !isset($color_array[$l_value]))
+			{
+				$r .= '<option value="'.format_to_output($l_value, 'formvalue').'"';
+			}
+			else
+			{
+				$r .= '<option style="background-color: #'.$color_array[$l_value].'" value="'.format_to_output($l_value, 'formvalue').'"';
+			}
 			if(
 					( is_array( $field_value ) && in_array( $l_value, $field_value ) ) ||
 					( !is_array( $field_value ) && (string)$l_value == (string)$field_value ) // cast to string so "1,2" is != 1
@@ -1978,6 +2215,17 @@ class Form extends Widget
 		}
 		unset($field_params['required']); // already handled above, do not pass to handle_common_params()
 
+		// Set size param for input with new value
+		if( isset( $field_params['new_field_size'] ) )
+		{
+			$new_field_size = $field_params['new_field_size'];
+		}
+		else
+		{
+			$new_field_size = 30;
+		}
+		unset( $field_params['new_field_size'] );
+
 		// Set onchange event on the select, when the select changes, we check the value to display or hide an input text after it
 		$field_params['onchange']= 'check_combo( this.id, this.options[this.selectedIndex].value, "'.$input_class.'")';
 
@@ -1996,7 +2244,7 @@ class Form extends Widget
 			 .$field_options
 			 ."</select>\n";
 
-		if( $field_options == $option_new  || $input_class == 'field_error' || !$field_value )
+		if( $field_options == $option_new  || $input_class == 'field_error' || $field_value != '' )
 		{	// The list is empty or there is an error on the combo or no field value, so we have to display the input text:
 			$visible = 'inline';
 		}
@@ -2005,7 +2253,7 @@ class Form extends Widget
 			$visible = 'none' ;
 		}
 
-		$r .= '<input type="text" id="'.$field_name.'_combo" name="'.$field_name.'_combo" size="30" class="'.$input_class.'" style="display:'.$visible.'">';
+		$r .= '<input type="text" id="'.$field_name.'_combo" name="'.$field_name.'_combo" size="'.$new_field_size.'" class="'.$input_class.'" style="display:'.$visible.'" value="'.$field_value.'" />';
 
 		if( $visible == 'none' )
 		{ // The input text is hidden, so if no javascript activated, we always display input text:
@@ -2072,14 +2320,14 @@ class Form extends Widget
 		$r = $this->begin_field()
 			// NOTE: The following pixel is needed to avoid the dity IE textarea expansion bug
 			// see http://fplanque.net/2003/Articles/iecsstextarea/index.html
-			.'<img src="'.$rsc_url.'img/blank.gif" width="1" height="1" alt="" />'
+			.get_icon( 'pixel' )
 			.'<textarea'
 			.get_field_attribs_as_string( $field_params )
 			.' rows="'.$field_rows.'">'
 			.format_to_output( $field_value, $format_value )
 			.'</textarea>'
 			// NOTE: this one is for compensating the previous pixel in case of center aligns.
-			.'<img src="'.$rsc_url.'img/blank.gif" width="1" height="1" alt="" />'
+			.get_icon( 'pixel' )
 			.$this->end_field();
 
 		return $this->display_or_return( $r );
@@ -2132,6 +2380,10 @@ class Form extends Widget
 	 */
 	function info_field( $field_label, $field_info, $field_params = array() )
 	{
+		$field_params = array_merge( array(
+				'note_format' => ' <small class="notes">%s</small>',
+			), $field_params );
+
 		if( isset($field_params['format_info']) )
 		{
 			$format_info = $field_params['format_info'];
@@ -2142,24 +2394,23 @@ class Form extends Widget
 			$format_info = 'htmlbody';
 		}
 
-		if( !isset($field_params['note_format']) )
-		{ // Default field_note for info:
-			$field_params['note_format'] = ' <small class="notes">%s</small>';
-		}
-
 		$this->handle_common_params( $field_params, NULL, $field_label );
 
 		$r = $this->fieldstart;
 
 		// Start the new form field and inject an automatic DOM id
 		// This is useful to show/hide the whole field by JS.
-		if( !empty(	$this->_common_params['id'] ) )
+		if( !empty( $this->_common_params['id'] ) )
 		{
 			$ffield_id = ' id="ffield_'.$this->_common_params['id'].'" ';
 		}
 		else
 		{	// No ID in case there's no id/name given for a field.
 			$ffield_id = '';
+		}
+		if( !empty( $field_params['class'] ) )
+		{	// Add class attribute
+			$ffield_id .= ' class="'.$field_params['class'].'"';
 		}
 		$r = str_replace( '$ID$', $ffield_id, $this->fieldstart );
 
@@ -2309,14 +2560,14 @@ class Form extends Widget
 	 */
 	function button_input( $field_params = array() )
 	{
+		$field_params = array_merge( array(
+				'type'         => 'submit',
+				'input_prefix' => "\t\t\t",
+			), $field_params );
+
 		if( empty($field_params['type']) )
 		{ // default type
 			$field_params['type'] = 'submit';
-		}
-
-		if( !isset($field_params['input_prefix']) )
-		{ // default prefix
-			$field_params['input_prefix'] = "\t\t\t";
 		}
 
 		return $this->display_or_return( $this->get_input_element( $field_params ) );
@@ -2611,6 +2862,10 @@ class Form extends Widget
 	 */
 	function radio_input( $field_name, $field_value, $field_options, $field_label, $field_params = array() )
 	{
+		$field_params = array_merge( array(
+				'note_format' => '<span class="notes">%s</span>',
+			), $field_params );
+
 		if( isset($field_params['lines']) )
 		{
 			$field_lines = $field_params['lines'];
@@ -2621,13 +2876,9 @@ class Form extends Widget
 			$field_lines = false;
 		}
 
-		if( !isset($field_params['note_format']) )
-		{ // Default field_note for radios:
-			$field_params['note_format'] = '<span class="notes">%s</span>';
-			if( $field_lines )
-			{
-				$field_params['note_format'] = '<div>'.$field_params['note_format'].'</div>';
-			}
+		if( $field_lines )
+		{
+			$field_params['note_format'] = '<div>'.$field_params['note_format'].'</div>';
 		}
 
 		$field_params['id'] = false; // No ID attribute for the label
@@ -2706,9 +2957,10 @@ class Form extends Widget
 	 * @param string label
 	 * @param boolean options on seperate lines (DIVs)
 	 * @param string notes
+	 * @param boolean required
 	 * @return mixed true (if output) or the generated HTML if not outputting
 	 */
-	function radio( $field_name, $field_value, $field_options, $field_label, $field_lines = false, $field_note = '' )
+	function radio( $field_name, $field_value, $field_options, $field_label, $field_lines = false, $field_note = '', $field_required = false )
 	{
 		$new_field_options = array();
 
@@ -2739,8 +2991,56 @@ class Form extends Widget
 		}
 
 		$field_params = array( 'lines' => $field_lines, 'note' => $field_note );
+		if( $field_required )
+		{	// Field is required
+			$field_params['required'] = true;
+		}
 
 		return $this->radio_input( $field_name, $field_value, $new_field_options, $field_label, $field_params );
+	}
+
+
+	/**
+	 * Builds an interval input fields.
+	 *
+	 * @param string The name of the input field "From". This gets used for id also, if no id given in $field_params.
+	 * @param string Initial value "From"
+	 * @param string The name of the input field "To". This gets used for id also, if no id given in $field_params.
+	 * @param string Initial value "To"
+	 * @param integer Size of the input field
+	 * @param string Label displayed with the field
+	 * @param string "help" note (Should provide something useful, otherwise leave it empty)
+	 * @param array Extended attributes/params.
+	 *                 - 'maxlength': if not set, $field_size gets used (use '' to disable it)
+	 *                 - 'class': the CSS class to use for the <input> element
+	 *                 - 'type': 'text', 'password' (defaults to 'text')
+	 *                 - 'force_to': 'UpperCase' (JS onchange handler)
+	 *                 - NOTE: any other attributes will be used as is (onchange, onkeyup, id, ..).
+	 * @return true|string true (if output) or the generated HTML if not outputting
+	 */
+	function interval( $field_name_from, $field_value_from, $field_name_to, $field_value_to, $field_size, $field_label, $field_note = '', $field_params = array() )
+	{
+		$save_output = $this->output;
+		$save_params = array(
+			'labelempty' => $this->labelempty,
+			'fieldstart' => $this->fieldstart,
+			'fieldend' => $this->fieldend,
+			'inputstart' => $this->inputstart,
+			'inputend' => $this->inputend,
+		);
+
+		// clear form params
+		$this->switch_template_parts( array_fill_keys( array_keys( $save_params ), '' ) );
+		$this->output = false;
+
+		// Field "From"
+		$field_params['input_suffix'] = T_(' to ').$this->text_input( $field_name_to, $field_value_to, $field_size, '', '', $field_params );
+
+		// return saved params
+		$this->output = $save_output;
+		$this->switch_template_parts( $save_params );
+
+		return $this->text_input( $field_name_from, $field_value_from, $field_size, $field_label, $field_note, $field_params );
 	}
 
 
@@ -2757,11 +3057,58 @@ class Form extends Widget
 	 */
 	function input_field( $field_params = array() )
 	{
-		$element = $this->get_input_element($field_params);
+		$field_params = array_merge( array(
+				'inline' => false,
+			), $field_params );
 
-		$r = $this->begin_field()
-				.$element
-				.$this->end_field();
+		$element = $this->get_input_element( $field_params );
+
+		if( $field_params['inline'] )
+		{ // Display label and input field in one line
+			$this->_common_params['label'] = sprintf( $this->_common_params['label'], $element );
+
+			// Save the form elements:
+			$label_suffix = $this->label_suffix;
+			$labelstart = $this->labelstart;
+			$labelend = $this->labelend;
+			$inputstart = $this->inputstart;
+			$inputend = $this->inputend;
+
+			// Remove suffix ':' after label and change other form elements for inline mode
+			$this->label_suffix = '';
+			if( isset( $this->inline_labelstart ) )
+			{
+				$this->labelstart = $this->inline_labelstart;
+			}
+			if( isset( $this->inline_labelend ) )
+			{
+				$this->labelend = $this->inline_labelend;
+			}
+			if( isset( $this->inline_inputstart ) )
+			{
+				$this->inputstart = $this->inline_inputstart;
+			}
+			if( isset( $this->inline_inputend ) )
+			{
+				$this->inputend = $this->inline_inputend;
+			}
+		}
+
+		$r = $this->begin_field();
+		if( !$field_params['inline'] )
+		{ // Append input field
+			$r .= $element;
+		}
+		$r .= $this->end_field();
+
+		if( $field_params['inline'] )
+		{ // Restore the changed form elements in mode 'inline'
+			$this->label_suffix = $label_suffix;
+			$this->labelstart = $labelstart;
+			$this->labelend = $labelend;
+			$this->inputstart = $inputstart;
+			$this->inputend = $inputend;
+		}
 
 		return $this->display_or_return( $r );
 	}
@@ -2868,7 +3215,7 @@ class Form extends Widget
 			if( isset( $this->_common_params['clickable_label'] ) && ! $this->_common_params['clickable_label'] )
 			{	// Not set if this method is invoked by ::begin_field()
 
-				if( isset($this->_common_params['required']) )
+				if( ! empty( $this->_common_params['required'] ) )
 				{
 					$r .= '<span class="label_field_required">*</span>';
 				}
@@ -2878,12 +3225,12 @@ class Form extends Widget
 			else
 			{
 				$r .= '<label'
-					.( !empty($this->_common_params['id'])
+					.( ! empty( $this->_common_params['id'] )
 						? ' for="'.format_to_output( $this->_common_params['id'], 'htmlattr' ).'"'
 						: '' )
 					.'>';
 
-					if( isset($this->_common_params['required']) )
+					if( ! empty( $this->_common_params['required'] ) )
 					{
 						$r .= '<span class="label_field_required">*</span>';
 					}
@@ -3050,6 +3397,18 @@ class Form extends Widget
 			}
 		}
 
+		if( isset( $field_params['wide'] ) && $field_params['wide'] )
+		{
+			$this->_common_params['wide'] = $field_params['wide'];
+			unset( $field_params['wide'] );
+		}
+
+		if( isset( $field_params['inline'] ) && $field_params['inline'] )
+		{
+			$this->_common_params['inline'] = $field_params['inline'];
+			unset( $field_params['inline'] );
+		}
+
 		#pre_dump( 'handle_common_params (after)', $field_params );
 	}
 
@@ -3072,9 +3431,22 @@ class Form extends Widget
 		}
 	}
 
+
+	/**
+	 * Builds a custom content field.
+	 *
+	 * @param string Content
+	 * @return true|string true (if output) or the generated HTML if not outputting
+	 */
+	function custom_content( $content )
+	{
+		$r = $this->customstart;
+		$r .= $content;
+		$r .= $this->customend;
+
+		return $this->display_or_return( $r );
+	}
+
 }
 
-/*
- * $Log: _form.class.php,v $
- */
 ?>

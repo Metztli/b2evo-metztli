@@ -3,7 +3,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2009 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @copyright (c)2009-2013 by Francois PLANQUE - {@link http://fplanque.net/}
  * Parts of this file are copyright (c)2009 by The Evo Factory - {@link http://www.evofactory.com/}.
  *
  * {@internal License choice
@@ -27,7 +27,7 @@
  * @author efy-maxim: Evo Factory / Maxim.
  * @author fplanque: Francois Planque.
  *
- * @version $Id: currencies.ctrl.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: currencies.ctrl.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -42,12 +42,13 @@ global $current_User;
 // Check minimum permission:
 $current_User->check_perm( 'options', 'view', true );
 
-// Memorize this as the last "tab" used in the Blog Settings:
+// Memorize this as the last "tab" used in the Global Settings:
 $UserSettings->set( 'pref_glob_settings_tab', $ctrl );
+$UserSettings->set( 'pref_glob_regional_tab', $ctrl );
 $UserSettings->dbupdate();
 
 // Set options path:
-$AdminUI->set_path( 'options', 'currencies' );
+$AdminUI->set_path( 'options', 'regional', 'currencies' );
 
 // Get action parameter from request:
 param_action();
@@ -94,8 +95,8 @@ switch( $action )
 		// Update db with new flag value.
 		$edited_Currency->dbupdate();
 
-		param( 'results_curr_page', integer, '', true );
-		param( 'results_curr_order', string, '', true );
+		param( 'results_curr_page', 'integer', '', true );
+		param( 'results_curr_order', 'string', '', true );
 
 		// Redirect so that a reload doesn't write to the DB twice:
 		header_redirect( regenerate_url ( '', '', '', '&' ), 303 ); // Will EXIT
@@ -258,9 +259,10 @@ switch( $action )
 }
 
 
-$AdminUI->breadcrumbpath_init();
-$AdminUI->breadcrumbpath_add( T_('Global settings'), '?ctrl=settings',
+$AdminUI->breadcrumbpath_init( false );
+$AdminUI->breadcrumbpath_add( T_('System'), '?ctrl=system',
 		T_('Global settings are shared between all blogs; see Blog settings for more granular settings.') );
+$AdminUI->breadcrumbpath_add( T_('Regional settings'), '?ctrl=locales' );
 $AdminUI->breadcrumbpath_add( T_('Currencies'), '?ctrl=currencies' );
 
 
@@ -310,7 +312,4 @@ $AdminUI->disp_payload_end();
 // Display body bottom, debug info and close </html>:
 $AdminUI->disp_global_footer();
 
-/*
- * $Log: currencies.ctrl.php,v $
- */
 ?>

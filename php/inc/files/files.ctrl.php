@@ -12,7 +12,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
@@ -41,7 +41,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: files.ctrl.php 1010 2012-03-08 08:39:41Z attila $
+ * @version $Id: files.ctrl.php 3520 2013-04-22 06:12:04Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -60,6 +60,8 @@ global $current_User;
 global $dispatcher;
 
 global $blog;
+
+global $filename_max_length, $dirpath_max_length;
 
 // Check permission:
 $current_User->check_perm( 'files', 'view', true, $blog ? $blog : NULL );
@@ -91,14 +93,16 @@ else
 /*
  * Load linkable objects:
  */
-if( param( 'item_ID', 'integer', NULL, true, false, false ) )
-{ // Load Requested iem:
-	$ItemCache = & get_ItemCache();
-	if( ($edited_Item = & $ItemCache->get_by_ID( $item_ID, false )) === false )
-	{	// We could not find the contact to link:
-		$Messages->add( sprintf( T_('Requested &laquo;%s&raquo; object does not exist any longer.'), T_('Item') ), 'error' );
-		forget_param( 'item_ID' );
-		unset( $item_ID );
+if( param( 'link_type', 'string', NULL, true, false, false ) && param( 'link_object_ID', 'integer', NULL, true, false, false ) )
+{ // Load Requested LinkOwner object:
+	$LinkOwner = get_link_owner( $link_type, $link_object_ID );
+	if( empty( $LinkOwner ) )
+	{ // We could not find the owner object to link:
+		$Messages->add( T_('Requested object does not exist any longer.'), 'error' );
+		forget_param( 'link_type' );
+		forget_param( 'link_object_ID' );
+		unset( $link_type );
+		unset( $link_object_ID );
 	}
 }
 
@@ -188,12 +192,12 @@ elseif( !empty($edited_User) )
 		$path = dirname( $avatar_File->get_rdfs_rel_path() ).'/';
 	}
 }
-elseif( !empty($edited_Item) )
+elseif( !empty($LinkOwner) )
 {	// We have a post, check if it already has a linked file in a particular root, in which case we want to use that root!
 	// This is useful when clicking "attach files" from the post edit screen: it takes you to the root where you have
 	// already attached files from. Otherwise the next block below will default to the Blog's fileroot.
 	// Get list of attached files:
-	if( $FileList = $edited_Item->get_attachment_FileList( 1 ) )
+	if( $FileList = $LinkOwner->get_attachment_FileList( 1 ) )
 	{	// Get first file:
 		/**
 		 * @var File
@@ -285,6 +289,11 @@ if( $fm_FileRoot )
 		{	// We have reduced the absolute path, we should also reduce the relative $path (used in urls params)
 			$path = get_canonical_path( $path );
 		}
+
+		if( ( $Messages->count() == 0 ) && ( strlen( $ads_list_path ) > $dirpath_max_length ) && $current_User->check_perm( 'options', 'edit' ) )
+		{ // This folder absolute path exceed the max allowed length, a warning message must be displayed, if there were no other message yet. ( If there are other messages then this one should have been already added )
+			$Messages->add( sprintf( T_( 'This folder has an access path that is too long and cannot be properly handled by b2evolution. Please check and increase the &laquo;%s&raquo; variable.'), '$dirpath_max_length' ), 'warning' );
+		}
 	}
 }
 
@@ -323,7 +332,7 @@ $Debuglog->add( 'path: '.var_export( $path, true ), 'files' );
  *
  * @global array
  */
-$fm_selected = param( 'fm_selected', 'array', array(), true );
+$fm_selected = param( 'fm_selected', 'array/string', array(), true );
 $Debuglog->add( count($fm_selected).' selected files/directories', 'files' );
 /**
  * The selected files (must be within current fileroot)
@@ -394,7 +403,7 @@ switch( $action )
 			break;
 		}
 
-		if( !	param( 'create_name', 'string', '' ) )
+		if( ! param( 'create_name', 'string', '' ) )
 		{ // No name was supplied:
 			$Messages->add( T_('Cannot create a directory without name.'), 'error' );
 			break;
@@ -415,6 +424,12 @@ switch( $action )
 		 */
 		$newFile = & $FileCache->get_by_root_and_path( $fm_FileRoot->type, $fm_FileRoot->in_type_ID, $path.$create_name );
 
+		if( strlen( $newFile->get_full_path() ) > $dirpath_max_length )
+		{
+			$Messages->add( T_('The new file access path is too long, shorter folder names would be required.'), 'error' );
+			break;
+		}
+
 		if( $newFile->exists() )
 		{
 			$Messages->add( sprintf( T_('The file &laquo;%s&raquo; already exists.'), $create_name ), 'error' );
@@ -423,7 +438,9 @@ switch( $action )
 
 		if( ! $newFile->create( $create_type ) )
 		{
-			$Messages->add( sprintf( T_('Could not create directory &laquo;%s&raquo; in &laquo;%s&raquo;.'), $create_name, $fm_Filelist->_rds_list_path ), 'error' );
+			$Messages->add( sprintf( T_('Could not create directory &laquo;%s&raquo; in &laquo;%s&raquo;.'), $create_name, $path )
+				.' '.get_file_permissions_message(), 'error' );
+			break;
 		}
 
 		$Messages->add( sprintf( T_('The directory &laquo;%s&raquo; has been created.'), $create_name ), 'success' );
@@ -447,7 +464,7 @@ switch( $action )
 			break;
 		}
 
-		if( !	param( 'create_name', 'string', '' ) )
+		if( ! param( 'create_name', 'string', '' ) )
 		{ // No name was supplied:
 			$Messages->add( T_('Cannot create a file without name.'), 'error' );
 			break;
@@ -470,7 +487,9 @@ switch( $action )
 
 		if( ! $newFile->create( $create_type ) )
 		{
-			$Messages->add( sprintf( T_('Could not create file &laquo;%s&raquo; in &laquo;%s&raquo;.'), $create_name, $fm_Filelist->_rds_list_path ), 'error' );
+			$Messages->add( sprintf( T_('Could not create file &laquo;%s&raquo; in &laquo;%s&raquo;.'), $create_name, $newFile->get_dir() )
+				.' '.get_file_permissions_message(), 'error' );
+			break;
 		}
 
 		$Messages->add( sprintf( T_('The file &laquo;%s&raquo; has been created.'), $create_name ), 'success' );
@@ -540,18 +559,14 @@ switch( $action )
 		param( 'file_content', 'html', '', false );
 
 
-    $fpath = $edited_File->get_full_path();
-    if( file_exists($fpath) && ! is_writeable($fpath) ) {
-    	$Messages->add( sprintf('The file &laquo;%s&raquo; is not writable.', rel_path_to_base($fpath)), 'error' );
-    	break;
-    }
+		$fpath = $edited_File->get_full_path();
+		if( file_exists($fpath) && ! is_writeable($fpath) ) {
+			$Messages->add( sprintf('The file &laquo;%s&raquo; is not writable.', rel_path_to_base($fpath)), 'error' );
+			break;
+		}
 
-    # TODO: dh> just use file_put_contents
-    $fh = fopen( $fpath, 'w+');
-		if( $fh )
+		if( save_to_file( $file_content, $fpath, 'w+' ) )
 		{
-			fwrite( $fh, $file_content );
-			fclose( $fh );
 			$Messages->add( sprintf( T_( 'The file &laquo;%s&raquo; has been updated.' ), $edited_File->dget('name') ), 'success' );
 		}
 		else
@@ -646,7 +661,7 @@ switch( $action )
 		// Downloading
 		load_class( '_ext/_zip_archives.php', 'zip_file' );
 
-		$arraylist = $selected_Filelist->get_array( 'get_rdfs_rel_path' );
+		$arraylist = $selected_Filelist->get_array( 'get_name' );
 
 		$options = array (
 			'basedir' => $fm_Filelist->get_ads_list_path(),
@@ -656,7 +671,7 @@ switch( $action )
 
 		$zipfile = new zip_file( $zipname );
 		$zipfile->set_options( $options );
-		$zipfile->add_files( $arraylist );
+		$zipfile->add_files( $arraylist, array( '_evocache' ) );
 		$zipfile->create_archive();
 
 		if( $zipfile->error )
@@ -708,7 +723,7 @@ switch( $action )
 			}
 
 			// Check if provided name is okay:
-			if( $check_error = check_rename( $new_names[$loop_src_File->get_md5_ID()], $loop_src_File->is_dir(), $allow_locked_filetypes ) )
+			if( $check_error = check_rename( $new_names[$loop_src_File->get_md5_ID()], $loop_src_File->is_dir(), $loop_src_File->get_dir(), $allow_locked_filetypes ) )
 			{
 				$confirmed = 0;
 				param_error( 'new_names['.$loop_src_File->get_md5_ID().']', $check_error );
@@ -840,7 +855,6 @@ switch( $action )
 
 
 	case 'make_post':
-	case 'make_posts':
 		// TODO: We don't need the Filelist, move UP!
 		// Make posts with selected images:
 
@@ -904,81 +918,37 @@ switch( $action )
 				}
 				$edited_Item->set( 'title', $title );
 
-				$DB->begin();
+				$DB->begin( 'SERIALIZABLE' );
 
 				// INSERT NEW POST INTO DB:
-				$edited_Item->dbinsert();
-
-				$order = 1;
-				do
-				{	// LOOP through files:
-					// echo '<br>file meta: '.$l_File->meta;
-					if(	$l_File->meta == 'notfound' )
-					{	// That file has no meta data yet, create it now!
-						$l_File->dbsave();
-					}
-
-					// Let's make the link!
-					$edited_Link = new Link();
-					$edited_Link->set( 'itm_ID', $edited_Item->ID );
-					$edited_Link->set( 'file_ID', $l_File->ID );
-					$edited_Link->set( 'position', 'teaser' );
-					$edited_Link->set( 'order', $order++ );
-					$edited_Link->dbinsert();
-
-					$Messages->add( sprintf( T_('&laquo;%s&raquo; has been attached.'), $l_File->dget('name') ), 'success' );
-
-				} while( $l_File = & $selected_Filelist->get_next() );
-
-				$DB->commit();
-
-				header_redirect( $dispatcher.'?ctrl=items&action=edit&p='.$edited_Item->ID );	// Will save $Messages
-				break;
-
-			case 'make_posts':
-				// MULTIPLE POST (1 per image):
-				while( $l_File = & $selected_Filelist->get_next() )
+				if( $edited_Item->dbinsert() )
 				{
-					// Create a post:
-					$edited_Item = new Item();
-					$edited_Item->set( 'status', $item_status );
-					$edited_Item->set( 'main_cat_ID', $Blog->get_default_cat_ID() );
+					$order = 1;
+					$LinkOwner = new LinkItem( $edited_Item );
+					do
+					{ // LOOP through files:
+						// echo '<br>file meta: '.$l_File->meta;
+						if(	$l_File->meta == 'notfound' )
+						{	// That file has no meta data yet, create it now!
+							$l_File->dbsave();
+						}
 
-					$title = $l_File->get('title');
-					if( empty($title) )
-					{
-						$title = $l_File->get('name');
-					}
-					$edited_Item->set( 'title', $title );
+						// Let's make the link!
+						$LinkOwner->add_link( $l_File->ID, 'teaser', $order++ );
 
-					$DB->begin();
+						$Messages->add( sprintf( T_('&laquo;%s&raquo; has been attached.'), $l_File->dget('name') ), 'success' );
 
-					// INSERT NEW POST INTO DB:
-					$edited_Item->dbinsert();
-
-					// echo '<br>file meta: '.$l_File->meta;
-					if(	$l_File->meta == 'notfound' )
-					{	// That file has no meta data yet, create it now!
-						$l_File->dbsave();
-					}
-
-					// Let's make the link!
-					$edited_Link = new Link();
-					$edited_Link->set( 'itm_ID', $edited_Item->ID );
-					$edited_Link->set( 'file_ID', $l_File->ID );
-					$edited_Link->set( 'position', 'teaser' );
-					$edited_Link->set( 'order', 1 );
-					$edited_Link->dbinsert();
+					} while( $l_File = & $selected_Filelist->get_next() );
 
 					$DB->commit();
-
-					$Messages->add( sprintf( T_('&laquo;%s&raquo; has been posted.'), $l_File->dget('name') ), 'success' );
+				}
+				else
+				{
+					$Messages->add( T_('Couldn\'t create the new post'), 'error' );
+					$DB->rollback();
 				}
 
-				// Note: we redirect without restoring filter. This should allow to see the new files.
-				// &filter=restore
-				header_redirect( $dispatcher.'?ctrl=items&blog='.$blog );	// Will save $Messages
-
+				header_redirect( $dispatcher.'?ctrl=items&action=edit&p='.$edited_Item->ID );	// Will save $Messages
 				break;
 		}
 
@@ -1077,7 +1047,7 @@ switch( $action )
 		if( $new_name != $old_name)
 		{ // Name has changed...
 			$allow_locked_filetypes = $current_User->check_perm( 'files', 'all' );
-			if( $check_error = check_rename( $new_name, $edited_File->is_dir(), $allow_locked_filetypes ) )
+			if( $check_error = check_rename( $new_name, $edited_File->is_dir(), $edited_File->get_dir(), $allow_locked_filetypes ) )
 			{
 				$error_occured = true;
 				param_error( 'new_name', $check_error );
@@ -1120,21 +1090,14 @@ switch( $action )
 
 		// Link File to User:
 		if( ! isset($edited_User) )
- 		{	// No User to link to
+		{	// No User to link to
 			$fm_mode = NULL;	// not really needed but just  n case...
-			break;
-		}
-
-		if( $demo_mode && ( $edited_User->ID <= 3 ) )
-		{
-			$Messages->add( sprintf( 'Sorry, you cannot update %s in demo mode!', $edited_User->login ), 'error' );
-			header_redirect();
 			break;
 		}
 
 		// Permission HAS been checked on top of controller!
 
- 		// Get the file we want to link:
+		// Get the file we want to link:
 		if( !$selected_Filelist->count() )
 		{
 			$Messages->add( T_('Nothing selected.'), 'error' );
@@ -1145,8 +1108,22 @@ switch( $action )
 		// Load meta data AND MAKE SURE IT IS CREATED IN DB:
 		$edited_File->load_meta( true );
 
+		// Check a file for min size
+		$min_size = $Settings->get( 'min_picture_size' );
+		$image_sizes = $edited_File->get_image_size( 'widthheight' );
+		if( $image_sizes[0] < $min_size || $image_sizes[1] < $min_size )
+		{	// Don't use this file as profile picture because it has small sizes
+			$Messages->add( sprintf( T_( 'Your profile picture must have a minimum size of %dx%d pixels.' ), $min_size, $min_size ), 'error' );
+			break;
+		}
+
+		// Link file to user
+		$LinkOwner = get_link_owner( 'user', $edited_User->ID );
+		$edited_File->link_to_Object( $LinkOwner );
 		// Assign avatar:
 		$edited_User->set( 'avatar_file_ID', $edited_File->ID );
+		// update profileupdate_date, because a publicly visible user property was changed
+		$edited_User->set_profileupdate_date();
 		// Save to DB:
  		$edited_User->dbupdate();
 
@@ -1181,7 +1158,7 @@ switch( $action )
 	case 'link':
 	case 'link_inpost':	// In the context of a post
 		// TODO: We don't need the Filelist, move UP!
-		// Link File to Item
+		// Link File to a LinkOwner
 
 		// Check that this action request is not a CSRF hacked request:
 		$Session->assert_received_crumb( 'file' );
@@ -1189,16 +1166,16 @@ switch( $action )
 		// Note: we are not modifying any file here, we're just linking it
 		// we only need read perm on file, but we'll need write perm on destination object (to be checked below)
 
-		if( ! isset($edited_Item) )
- 		{	// No Item to link to - end link_item mode.
+		if( ! isset( $LinkOwner ) )
+		{	// No Owner to link to - end link_object mode.
 			$fm_mode = NULL;
 			break;
 		}
 
 		// Check item EDIT permissions:
-		$current_User->check_perm( 'item_post!CURSTATUS', 'edit', true, $edited_Item );
+		$LinkOwner->check_perm( 'edit', true );
 
- 		// Get the file we want to link:
+		// Get the file we want to link:
 		if( !$selected_Filelist->count() )
 		{
 			$Messages->add( T_('Nothing selected.'), 'error' );
@@ -1208,7 +1185,7 @@ switch( $action )
 		$files_count = $selected_Filelist->count();
 		while( $edited_File = & $selected_Filelist->get_next() )
 		{	// Let's make the link!
-			$edited_File->link_to_Item($edited_Item);
+			$edited_File->link_to_Object( $LinkOwner );
 
 			// Reset LinkCache to autoincrement link_order
 			if( $files_count > 1 ) unset($GLOBALS['LinkCache']);
@@ -1217,56 +1194,20 @@ switch( $action )
 		// Forget selected files
 		if( $files_count > 1 ) $fm_selected = NULL;
 
-		$Messages->add( T_('Selected files have been linked to item.'), 'success' );
+		$Messages->add( $LinkOwner->T_( 'Selected files have been linked to owner.' ), 'success' );
 
 		// In case the mode had been closed, reopen it:
-		$fm_mode = 'link_item';
-
+		$fm_mode = 'link_object';
 
 		// REDIRECT / EXIT
 		if( $action == 'link_inpost' )
 		{
- 			header_redirect( $admin_url.'?ctrl=items&action=edit_links&mode=iframe&item_ID='.$edited_Item->ID );
+			header_redirect( $admin_url.'?ctrl=links&link_type='.$LinkOwner->type.'&action=edit_links&mode=iframe&link_object_ID='.$LinkOwner->get_ID() );
 		}
 		else
 		{
- 			header_redirect( regenerate_url( '', '', '', '&' ) );
+			header_redirect( regenerate_url( '', '', '', '&' ) );
 		}
-		break;
-
-
-	case 'unlink':
-		// TODO: We don't need the Filelist, move UP!
-		// Unlink File from Item (or other object if extended):
-
-		// Check that this action request is not a CSRF hacked request:
-		$Session->assert_received_crumb( 'link' );
-
-		// Note: we are not modifying any file here, we're just linking it
-		// we only need read perm on file, but we'll need write perm on destination object (to be checked below)
-
-		if( !isset( $edited_Link ) )
-		{
-			$action = 'list';
-			break;
-		}
-
-		// get Item (or other object) from Link to check perm
-		$edited_Item = & $edited_Link->Item;
-
-		// Check that we have permission to edit item:
-		$current_User->check_perm( 'item_post!CURSTATUS', 'edit', true, $edited_Item );
-
-		// Delete from DB:
-		$msg = sprintf( T_('Link from &laquo;%s&raquo; deleted.'), $edited_Link->Item->dget('title') );
-		$edited_Link->dbdelete( true );
-		unset( $edited_Link );
-		forget_param( 'link_ID' );
-
-		$Messages->add( $msg, 'success' );
-		$action = 'list';
-		// REDIRECT / EXIT
- 		header_redirect( regenerate_url( '', '', '', '&' ) );
 		break;
 
 
@@ -1390,8 +1331,8 @@ switch( $fm_mode )
 		      Something like $fm_Filelist->get_names_realtive_to( $a_File, $b_File, $root_type, $root_ID, $rel_path )
 		      that returns an array containing the name of $a_File and $b_File relative to the Root path given as
 		      param 3, 4, 5.
-		      This would allow to say "Copied «users/admin/test_me.jpg» to «test_me.jpg»." rather than just
-		      "Copied «test_me.jpg» to «test_me.jpg».".
+		      This would allow to say "Copied Â«users/admin/test_me.jpgÂ» to Â«test_me.jpgÂ»." rather than just
+		      "Copied Â«test_me.jpgÂ» to Â«test_me.jpgÂ».".
 			// fp>> I don't really understand this (probably missing a verb) but I do think that extending the Fileman object is not the right direction to go on the long term
 			// blueyed>> Tried to make it clearer. If it wasn't a Filemanager method, it has to be a function or
 			//   a method of the File class. IMHO it should be a method of the (to be killed) Filemanager object.
@@ -1406,7 +1347,7 @@ switch( $fm_mode )
 		}
 
 		// Get the source list
-		if( $fm_sources = param( 'fm_sources', 'array', array(), true ) )
+		if( $fm_sources = param( 'fm_sources', 'array/string', array(), true ) )
 		{
 			$fm_sources_root = param( 'fm_sources_root', 'string', '', true );
 
@@ -1488,10 +1429,18 @@ switch( $fm_mode )
 				continue;
 			}
 
-			// Check if destination file exists:
+			// If the source is a directory, then we must check if the target path length is allowed or not
 			$FileCache = & get_FileCache();
-			if( ($dest_File = & $FileCache->get_by_root_and_path( $fm_Filelist->get_root_type(), $fm_Filelist->get_root_ID(), $fm_Filelist->get_rds_list_path().$new_names[$loop_src_File->get_md5_ID()] ))
-							&& $dest_File->exists() )
+			$dest_File = & $FileCache->get_by_root_and_path( $fm_Filelist->get_root_type(), $fm_Filelist->get_root_ID(), $fm_Filelist->get_rds_list_path().$new_names[$loop_src_File->get_md5_ID()] );
+			if( $loop_src_File->is_dir() && ( strlen( $dest_File->get_full_path() ) > $dirpath_max_length ) )
+			{ // The path would be too long we can not allowe to move this folder
+				param_error( 'new_names['.$loop_src_File->get_md5_ID().']', T_('The target path is too long for this folder.') );
+				$confirm = 0;
+				continue;
+			}
+
+			// Check if destination file exists:
+			if( $dest_File && $dest_File->exists() )
 			{ // Target exists
 				if( $dest_File === $loop_src_File )
 				{
@@ -1624,18 +1573,20 @@ switch( $fm_mode )
 		break;
 
 
-	case 'link_item':
-		// We want to link file(s) to an item:
-
+	case 'link_object':
+		// We want to link file(s) to an object or view linked files to an object:
 		// TODO: maybe this should not be a mode and maybe we should handle linking as soon as we have an $edited_Item ...
 
-		if( !isset($edited_Item) )
-		{ // No Item to link to...
+		// Add JavaScript to handle links modifications.
+		require_js( 'links.js' );
+
+		if( !isset( $LinkOwner ) )
+		{ // No Object to link to...
 			$fm_mode = NULL;
 			break;
 		}
 
-		// TODO: check EDIT permissions!
+		$LinkOwner->check_perm( 'view', true );
 		break;
 
 }
@@ -1643,7 +1594,7 @@ switch( $fm_mode )
 
 // fp> TODO: this here is a bit sketchy since we have Blog & fileroot not necessarilly in sync. Needs investigation / propositions.
 // Note: having both allows to post from any media dir into any blog.
-$AdminUI->breadcrumbpath_init();
+$AdminUI->breadcrumbpath_init( false );
 $AdminUI->breadcrumbpath_add( T_('Files'), '?ctrl=files&amp;blog=$blog$' );
 if( !isset($Blog) || $fm_FileRoot->type != 'collection' || $fm_FileRoot->in_type_ID != $Blog->ID )
 {	// Display only if we're not browsing our home blog
@@ -1651,6 +1602,9 @@ if( !isset($Blog) || $fm_FileRoot->type != 'collection' || $fm_FileRoot->in_type
 			(isset($Blog) && $fm_FileRoot->type == 'collection') ? sprintf( T_('You are ready to post files from %s into %s...'),
 			$fm_FileRoot->name, $Blog->get('shortname') ) : '' );
 }
+
+// require colorbox js
+require_js_helper( 'colorbox' );
 
 // Display <html><head>...</head> section! (Note: should be done early if actions do not redirect)
 $AdminUI->disp_html_head();
@@ -1748,7 +1702,6 @@ if( !empty($action ) && $action != 'list' && $action != 'nil' )
 	}
 }
 
-
 /*
  * Diplay mode payload:
  */
@@ -1760,7 +1713,7 @@ switch( $fm_mode )
 		$AdminUI->disp_view( 'files/views/_file_copy_move.form.php' );
 		break;
 
-	case 'link_item':
+	case 'link_object':
 		// Links dialog:
 		$AdminUI->disp_view( 'files/views/_file_links.view.php' );
 		break;
@@ -1780,8 +1733,4 @@ $AdminUI->disp_payload_end();
 // Display body bottom, debug info and close </html>:
 $AdminUI->disp_global_footer();
 
-
-/*
- * $Log: files.ctrl.php,v $
- */
 ?>

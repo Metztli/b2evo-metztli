@@ -4,7 +4,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal Open Source relicensing agreement:
@@ -18,7 +18,7 @@
  * @author blueyed: Daniel HAHLER
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _coll_urls.form.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _coll_urls.form.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -121,14 +121,14 @@ $Form->begin_fieldset( T_('Blog URL').' ['.T_('Admin').']'.get_manual_link('blog
 		}
 
 		$siteurl_relative_warning = '';
- 		if( ! preg_match( '~(^|/|\.php.?)$~i', $blog_siteurl_relative ) )
- 		{
+		if( ! preg_match( '~(^|/|\.php.?)$~i', $blog_siteurl_relative ) )
+		{
 			$siteurl_relative_warning = ' <span class="note red">'.T_('WARNING: it is highly recommended that this ends in with a / or .php !').'</span>';
 		}
 
 		$siteurl_absolute_warning = '';
- 		if( ! preg_match( '~(^|/|\.php.?)$~i', $blog_siteurl_absolute ) )
- 		{
+		if( ! preg_match( '~(^|/|\.php.?)$~i', $blog_siteurl_absolute ) )
+		{
 			$siteurl_absolute_warning = ' <span class="note red">'.T_('WARNING: it is highly recommended that this ends in with a / or .php !').'</span>';
 		}
 
@@ -175,9 +175,9 @@ $Form->begin_fieldset( T_('Blog URL').' ['.T_('Admin').']'.get_manual_link('blog
 										'onclick="document.getElementById( \'blog_siteurl_relative\' ).focus();"'
 			),
 			array( 'subdom', T_('Subdomain of basedomain'),
-										'http://url_name.'.$basedomain.'/',
+										preg_replace( '#(https?://)#i', '$1'.$edited_Blog->urlname.'.', $baseurl ),
 										'',
-										'onclick="update_urlpreview( \'http://\'+document.getElementById( \'blog_urlname\' ).value+\'.'.$basedomain.'/\' )"'
+										'onclick="update_urlpreview( \'http://\'+document.getElementById( \'blog_urlname\' ).value+\'.'.preg_replace( '#(https?://)#i', '', $baseurl ).'\' )"'
 			),
 			array( 'absolute', T_('Absolute URL').':',
 										'',
@@ -331,7 +331,4 @@ $Form->buttons( array( array( 'submit', 'submit', T_('Save !'), 'SaveButton' ),
 
 $Form->end_form();
 
-/*
- * $Log: _coll_urls.form.php,v $
- */
 ?>

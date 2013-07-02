@@ -12,7 +12,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal Note: we need at least one file in the main package}}
  *
@@ -50,14 +50,6 @@ if( !init_requested_blog() )
 # This setting retricts posts to those published, thus hiding drafts.
 # You should not have to change this.
 $show_statuses = array();
-
-# Here you can set a limit before which posts will be ignored
-# You can use a unix timestamp value or 'now' which will hide all posts in the past
-$timestamp_min = '';
-
-# Here you can set a limit after which posts will be ignored
-# You can use a unix timestamp value or 'now' which will hide all posts in the future
-$timestamp_max = 'now';
 
 # Additionnaly, you can set other values (see URL params in the manual)...
 # $order = 'ASC'; // This for example would display the blog in chronological order...

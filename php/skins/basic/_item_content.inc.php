@@ -59,10 +59,14 @@ $Item->images( array(
 		$Item->content_extension( array(
 				'before'      => '',
 				'after'       => '',
+				'image_size' =>          'fit-400x320',
 			) );
 
 		// Links to post pages (for multipage posts):
-		$Item->page_links( '<p class="right">'.T_('Pages:').' ', '</p>', ' &middot; ' );
+		$Item->page_links( array(
+				'before'      => '<p class="right">'.T_('Pages:').' ',
+				'separator'   => ' &middot; ',
+			) );
 
 		// Display Item footer text (text can be edited in Blog Settings):
 		$Item->footer( array(
@@ -70,5 +74,13 @@ $Item->images( array(
 				'block_start' => '<div class="item_footer">',
 				'block_end'   => '</div>',
 			) );
+
+		// Display location info
+		$Item->location( '<div class="item_location"><strong>'.T_('Location').': </strong>', '</div>' );
+
+		if( $disp == 'single' )
+		{	// Display custom fields
+			$Item->custom_fields();
+		}
 	?>
 </div>

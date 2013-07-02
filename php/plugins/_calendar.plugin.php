@@ -4,7 +4,7 @@
  *
  * This file is part of the b2evolution project - {@link http://b2evolution.net/}
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -30,7 +30,7 @@
  * @author hansreinders: Hans REINDERS
  * @author cafelog (team)
  *
- * @version $Id: _calendar.plugin.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _calendar.plugin.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -50,7 +50,7 @@ class calendar_plugin extends Plugin
 	var $name;
 	var $code = 'evo_Calr';
 	var $priority = 20;
-	var $version = '3.0';
+	var $version = '5.0.0';
 	var $author = 'The b2evo Group';
 	var $group = 'widget';
 
@@ -165,8 +165,9 @@ class calendar_plugin extends Plugin
 		global $Blog, $cat_array, $cat_modifier;
 		global $show_statuses;
 		global $author, $assgn, $status, $types;
-		global $m, $w, $dstart, $timestamp_min, $timestamp_max;
+		global $m, $w, $dstart;
 		global $s, $sentence, $exact;
+		global $posttypes_specialtypes;
 
 		/**
 		 * Default params:
@@ -250,7 +251,7 @@ class calendar_plugin extends Plugin
 			$Calendar->ItemQuery->where_statuses( $status );
 
 			// - - - + * * if a month is specified in the querystring, load that month:
-			$Calendar->ItemQuery->where_datestart( /* NO m */'', /* NO w */'', $dstart, '', $timestamp_min, $timestamp_max );
+			$Calendar->ItemQuery->where_datestart( /* NO m */'', /* NO w */'', $dstart, '', $Blog->get_timestamp_min(), $Blog->get_timestamp_max() );
 
 			// Keyword search stuff:
 			$Calendar->ItemQuery->where_keywords( $s, $sentence, $exact );
@@ -267,10 +268,10 @@ class calendar_plugin extends Plugin
 			$Calendar->ItemQuery->where_visibility( $show_statuses );
 
 			// - - - + * * if a month is specified in the querystring, load that month:
-			$Calendar->ItemQuery->where_datestart( /* NO m */'', /* NO w */'', '', '', $timestamp_min, $timestamp_max );
+			$Calendar->ItemQuery->where_datestart( /* NO m */'', /* NO w */'', '', '', $Blog->get_timestamp_min(), $Blog->get_timestamp_max() );
 
-			// Exclude pages and intros:
-			$Calendar->ItemQuery->where_types( '-1000,1500,1520,1530,1570,1600' );
+			// Exclude pages and intros and sidebar stuff:
+			$Calendar->ItemQuery->where_types( '-'.implode(',',$posttypes_specialtypes) );
 		}
 
 		// DISPLAY:
@@ -1145,7 +1146,4 @@ class Calendar
 
 }
 
-/*
- * $Log: _calendar.plugin.php,v $
- */
 ?>

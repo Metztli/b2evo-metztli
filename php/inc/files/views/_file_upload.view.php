@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -29,7 +29,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _file_upload.view.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _file_upload.view.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -184,7 +184,7 @@ global $fm_FileRoot;
 	$Form->hidden_ctrl();
 	$Form->hidden( 'MAX_FILE_SIZE', $Settings->get( 'upload_maxkb' )*1024 ); // Just a hint for the browser.
 	$Form->hidden( 'upload_quickmode', $upload_quickmode );
-	$Form->hidden( 'tab3', $tab3 );
+	$Form->hidden( 'tab3_onsubmit', $tab3 );
 	$Form->hiddens_by_key( get_memorized() );
 
 	$Widget = new Widget( 'file_browser' );
@@ -343,9 +343,9 @@ global $fm_FileRoot;
 					{
 						jQuery(this).prevAll("[type=radio]").eq(0).attr("checked", "checked")
 					}
-					jQuery(".upload_file").live("click", handler);
-					jQuery(".upload_file").live("keyup", handler);
-					jQuery(".upload_file").live("change", handler);
+					jQuery( document ).on("click", ".upload_file", handler);
+					jQuery( document ).on("keyup", ".upload_file", handler);
+					jQuery( document ).on("change", ".upload_file", handler);
 				})();
 				var evo_upload_fields_count = jQuery("#uploadfileinputs li").length-1;
 			</script>
@@ -377,8 +377,4 @@ $Form->end_form();
 // End payload block:
 $this->disp_payload_end();
 
-
-/*
- * $Log: _file_upload.view.php,v $
- */
 ?>

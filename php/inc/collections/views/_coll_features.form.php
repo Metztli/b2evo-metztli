@@ -5,7 +5,7 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
  *
@@ -16,7 +16,7 @@
  *
  * @package admin
  *
- * @version $Id: _coll_features.form.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _coll_features.form.php 3480 2013-04-15 10:39:18Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -25,30 +25,6 @@ if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.'
  */
 global $edited_Blog;
 
-?>
-<script type="text/javascript">
-	<!--
-	function show_hide_feedback_details(ob)
-	{
-		var fldset = jQuery( '.feedback_details_container' );
-		if( ob.value == 'never' )
-		{
-			for( i = 0; i < fldset.length; i++ )
-			{
-				fldset[i].style.display = 'none';
-			}
-		}
-		else
-		{
-			for( i = 0; i < fldset.length; i++ )
-			{
-				fldset[i].style.display = '';
-			}
-		}
-	}
-	//-->
-</script>
-<?php
 
 $Form = new Form( NULL, 'coll_features_checkchanges' );
 
@@ -60,15 +36,57 @@ $Form->hidden( 'action', 'update' );
 $Form->hidden( 'tab', 'features' );
 $Form->hidden( 'blog', $edited_Blog->ID );
 
+$Form->begin_fieldset( T_('Post list').get_manual_link('item-list-features') );
+  $Form->select_input_array( 'orderby', $edited_Blog->get_setting('orderby'), get_available_sort_options(), T_('Order by'), T_('Default ordering of posts.') );
+  $Form->select_input_array( 'orderdir', $edited_Blog->get_setting('orderdir'), array(
+                        'ASC'  => T_('Ascending'),
+                        'DESC' => T_('Descending'), ), T_('Direction') );
+  $Form->radio( 'what_to_show', $edited_Blog->get_setting('what_to_show'),
+                array(  array( 'days', T_('days') ),
+                        array( 'posts', T_('posts') ),
+                      ), T_('Display unit'), false,  T_('Do you want to restrict on the number of days or the number of posts?') );
+  $Form->text( 'posts_per_page', $edited_Blog->get_setting('posts_per_page'), 4, T_('Posts/Days per page'), T_('How many days or posts do you want to display on the home page?'), 4 );
+
+  $Form->radio( 'timestamp_min', $edited_Blog->get_setting('timestamp_min'),
+                array(  array( 'yes', T_('yes') ),
+                        array( 'no', T_('no') ),
+                        array( 'duration', T_('only the last') ),
+                      ), T_('Show past posts'), true );
+  $Form->duration_input( 'timestamp_min_duration', $edited_Blog->get_setting('timestamp_min_duration'), '' );
+
+  $Form->radio( 'timestamp_max', $edited_Blog->get_setting('timestamp_max'),
+                array(  array( 'yes', T_('yes') ),
+                        array( 'no', T_('no') ),
+                        array( 'duration', T_('only the next') ),
+                      ), T_('Show future posts'), true );
+  $Form->duration_input( 'timestamp_max_duration', $edited_Blog->get_setting('timestamp_max_duration'), '' );
+
+$Form->end_fieldset();
+
+
 $Form->begin_fieldset( T_('Post options').get_manual_link('blog_features_settings') );
+	$Form->select_input_array( 'default_post_status', $edited_Blog->get_setting('default_post_status'), get_visibility_statuses('notes-string'), T_('Default status'), T_('Default status for new posts') );
+
 	$Form->radio( 'require_title', $edited_Blog->get_setting('require_title'),
 								array(  array( 'required', T_('Always'), T_('The blogger must provide a title') ),
 												array( 'optional', T_('Optional'), T_('The blogger can leave the title field empty') ),
 												array( 'none', T_('Never'), T_('No title field') ),
 											), T_('Post titles'), true );
-											
-	$Form->checkbox( 'enable_goto_blog', $edited_Blog->get_setting( 'enable_goto_blog' ),
-						T_( 'View blog after publishing' ), T_( 'Check this to automatically view the blog after publishing a post.' ) );
+
+	$Form->checkbox( 'allow_html_post', $edited_Blog->get_setting( 'allow_html_post' ),
+						T_( 'Allow HTML' ), T_( 'Check to allow HTML in posts.' ).' ('.T_('HTML code will pass several sanitization filters.').')' );
+
+	$Form->radio( 'enable_goto_blog', $edited_Blog->get_setting( 'enable_goto_blog' ),
+		array( array( 'no', T_( 'No' ), T_( 'Check this to view list of the posts.' ) ),
+			array( 'blog', T_( 'View home page' ), T_( 'Check this to automatically view the blog after publishing a post.' ) ),
+			array( 'post', T_( 'View new post' ), T_( 'Check this to automatically view the post page.' ) ), ),
+			T_( 'View blog after publishing' ), true );
+
+	$Form->radio( 'editing_goto_blog', $edited_Blog->get_setting( 'editing_goto_blog' ),
+		array( array( 'no', T_( 'No' ), T_( 'Check this to view list of the posts.' ) ),
+			array( 'blog', T_( 'View home page' ), T_( 'Check this to automatically view the blog after editing a post.' ) ),
+			array( 'post', T_( 'View edited post' ), T_( 'Check this to automatically view the post page.' ) ), ),
+			T_( 'View blog after editing' ), true );
 
 	// FP> TODO:
 	// -post_url  always('required')|optional|never
@@ -82,93 +100,36 @@ $Form->begin_fieldset( T_('Post options').get_manual_link('blog_features_setting
 			array( 'no_cat_post', T_('Don\'t allow category selections'), T_('(Main cat will be assigned automatically)') ) ),
 			T_('Post category options'), true );
 
-$Form->end_fieldset();
+	$Form->radio( 'post_navigation', $edited_Blog->get_setting('post_navigation'),
+		array( array( 'same_blog', T_('same blog') ),
+			array( 'same_category', T_('same category') ),
+			array( 'same_author', T_('same author') ) ),
+			T_('Default post by post navigation should stay in'), true, T_( 'Skins may override this setting!') );
 
-$Form->begin_fieldset( T_('Feedback options') );
-	$Form->radio( 'allow_view_comments', $edited_Blog->get_setting( 'allow_view_comments' ),
-						array(  array( 'any', T_('Any user'), T_('Including anonymous users') ),
-								array( 'registered', T_('Registered users only') ),
-								array( 'member', T_('Members only'),  T_( 'Users have to be members of this blog' ) ),
-								array( 'moderator', T_('Moderators & Admins only') ),
-					), T_('Comment viewing by'), true );
-
-	$Form->radio( 'allow_comments', $edited_Blog->get_setting( 'allow_comments' ),
-						array(  array( 'any', T_('Any user'), T_('Including anonymous users'),
-										'', 'onclick="show_hide_feedback_details(this);"'),
-								array( 'registered', T_('Registered users only'),  '',
-										'', 'onclick="show_hide_feedback_details(this);"'),
-								array( 'member', T_('Members only'),  T_( 'Users have to be members of this blog' ),
-										'', 'onclick="show_hide_feedback_details(this);"'),
-								array( 'never', T_('Not allowed'), '',
-										'', 'onclick="show_hide_feedback_details(this);"'),
-					), T_('Comment posting by'), true );
-
-	echo '<div class="feedback_details_container">';
-
-	$Form->checkbox( 'disable_comments_bypost', $edited_Blog->get_setting( 'disable_comments_bypost' ), '', T_('Comments can be disabled on each post separately') );
-
-	$Form->checkbox( 'allow_anon_url', $edited_Blog->get_setting( 'allow_anon_url' ), T_('Anonymous URLs'), T_('Allow anonymous commenters to submit an URL') );
-
-	$any_option = array( 'any', T_('Any user'), T_('Including anonymous users'), '' );
-	$registered_option = array( 'registered', T_('Registered users only'),  '', '' );
-	$member_option = array( 'member', T_('Members only'), T_('Users have to be members of this blog'), '' );
-	$never_option = array( 'never', T_('Not allowed'), '', '' );
-	$Form->radio( 'allow_attachments', $edited_Blog->get_setting( 'allow_attachments' ),
-						array(  $any_option, $registered_option, $member_option, $never_option,
-						), T_('Allow attachments from'), true );
-
-	$Form->radio( 'allow_rating', $edited_Blog->get_setting( 'allow_rating' ),
-						array( $any_option, $registered_option, $member_option, $never_option,
-						), T_('Allow ratings from'), true );
-
-	$Form->checkbox( 'blog_allowtrackbacks', $edited_Blog->get( 'allowtrackbacks' ), T_('Trackbacks'), T_("Allow other bloggers to send trackbacks to this blog, letting you know when they refer to it. This will also let you send trackbacks to other blogs.") );
-
-	$status_options = array(
-			'draft'      => T_('Draft'),
-			'published'  => T_('Published'),
-			'deprecated' => T_('Deprecated')
+	$location_options = array(
+			array( 'optional', T_('Optional') ),
+			array( 'required', T_('Required') ),
+			array( 'hidden', T_('Hidden') )
 		);
-	$Form->select_input_array( 'new_feedback_status', $edited_Blog->get_setting('new_feedback_status'), $status_options,
-				T_('New feedback status'), T_('This status will be assigned to new comments/trackbacks from non moderators (unless overriden by plugins).') );
 
-	$Form->radio( 'comments_orderdir', $edited_Blog->get_setting('comments_orderdir'),
-						array(	array( 'ASC', T_('Chronologic') ),
-								array ('DESC', T_('Reverse') ),
-						), T_('Display order'), true );
+	$Form->radio( 'location_country', $edited_Blog->get_setting( 'location_country' ), $location_options, T_('Country') );
 
-	$Form->checkbox( 'paged_comments', $edited_Blog->get_setting( 'paged_comments' ), T_( 'Paged comments' ), T_( 'Check to enable paged comments on the public pages.' ) );
+	$Form->radio( 'location_region', $edited_Blog->get_setting( 'location_region' ), $location_options, T_('Region') );
 
-	$Form->text( 'comments_per_page', $edited_Blog->get_setting('comments_per_page'), 4, T_('Comments/Page'),  T_('How many comments do you want to display on one page?'), 4 );
+	$Form->radio( 'location_subregion', $edited_Blog->get_setting( 'location_subregion' ), $location_options, T_('Sub-region') );
 
-	global $default_avatar;
-	$Form->radio( 'default_gravatar', $edited_Blog->get_setting('default_gravatar'),
-						array(	array( 'b2evo', T_('Default image'), $default_avatar ),
-								array ('', 'Gravatar' ),
-								array ('identicon', 'Identicon' ),
-								array ('monsterid', 'Monsterid' ),
-								array ('wavatar', 'Wavatar' ),
-						), T_('Default gravatars'), true, T_('Gravatar users can choose to set up a unique icon for themselves, and if they don\'t, they will be assigned a default image.') );
+	$Form->radio( 'location_city', $edited_Blog->get_setting( 'location_city' ), $location_options, T_('City') );
 
-	echo '</div>';
-
-	if( $edited_Blog->get_setting( 'allow_comments' ) == 'never' )
-	{ ?>
-	<script type="text/javascript">
-		<!--
-		var fldset = jQuery( '.feedback_details_container' );
-		for( i = 0; i < fldset.length; i++ )
-		{
-			fldset[i].style.display = 'none';
-		}
-		//-->
-	</script>
-	<?php
-	}
+	$Form->checkbox( 'show_location_coordinates', $edited_Blog->get_setting( 'show_location_coordinates' ),
+						T_( 'Show location coordinates' ), T_( 'Check this to be able to set the location coordinates and view on map.' ) );
 
 $Form->end_fieldset();
 
+// display features settings provided by optional modules:
+// echo 'modules';
+modules_call_method( 'display_collection_features', array( 'Form' => & $Form, 'edited_Blog' => & $edited_Blog ) );
 
-$Form->begin_fieldset( T_('RSS/Atom feeds') );
+$Form->begin_fieldset( T_('RSS/Atom feeds').get_manual_link('item-feeds-features') );
 	$Form->radio( 'feed_content', $edited_Blog->get_setting('feed_content'),
 								array(  array( 'none', T_('No feeds') ),
 												array( 'title', T_('Titles only') ),
@@ -176,12 +137,6 @@ $Form->begin_fieldset( T_('RSS/Atom feeds') );
 												array( 'normal', T_('Standard post contents (stopping at "&lt;!-- more -->")') ),
 												array( 'full', T_('Full post contents (including after "&lt;!-- more -->")') ),
 											), T_('Post feed contents'), true, T_('How much content do you want to make available in post feeds?') );
-
-	$Form->radio( 'comment_feed_content', $edited_Blog->get_setting('comment_feed_content'),
-								array(  array( 'none', T_('No feeds') ),
-										array( 'excerpt', T_('Comment excerpts') ),
-										array( 'normal', T_('Standard comment contents') ),
-									), T_('Comment feed contents'), true, T_('How much content do you want to make available in comment feeds?') );
 
 	$Form->text( 'posts_per_feed', $edited_Blog->get_setting('posts_per_feed'), 4, T_('Posts in feeds'),  T_('How many of the latest posts do you want to include in RSS & Atom feeds?'), 4 );
 
@@ -194,85 +149,138 @@ $Form->begin_fieldset( T_('RSS/Atom feeds') );
 $Form->end_fieldset();
 
 
-$Form->begin_fieldset( T_('Sitemaps') );
-	$Form->checkbox( 'enable_sitemaps', $edited_Blog->get_setting( 'enable_sitemaps' ),
-						T_( 'Enable sitemaps' ), T_( 'Check to allow usage of skins with the "sitemap" type.' ) );
-$Form->end_fieldset();
+$Form->begin_fieldset( T_('Custom fields').get_manual_link('item-custom-fields') );
+	$custom_field_types = array(
+			'double' => array( 'label' => T_('Numeric'), 'title' => T_('Add new numeric custom field'), 'note' => T_('Ex: Price, Weight, Length... &ndash; will be stored as a double floating point number.'), 'size' => 20, 'maxlength' => 40 ),
+			'varchar' => array( 'label' => T_('String'), 'title' => T_('Add new text custom field'), 'note' => T_('Ex: Color, Fabric... &ndash; will be stored as a varchar(2000) field.'), 'size' => 30, 'maxlength' => 60 )
+	);
 
-
-$Form->begin_fieldset( T_('Custom field names') );
-	$notes = array(
-			T_('Ex: Price'),
-			T_('Ex: Weight'),
-			T_('Ex: Latitude or Length'),
-			T_('Ex: Longitude or Width'),
-			T_('Ex: Altitude or Height'),
-		);
-	for( $i = 1 ; $i <= 5; $i++ )
+	foreach( $custom_field_types as $type => $data )
 	{
-		$Form->text( 'custom_double'.$i, $edited_Blog->get_setting('custom_double'.$i), 20, T_('(numeric)').' double'.$i, $notes[$i-1], 40 );
+		echo '<div id="custom_'.$type.'_field_list">';
+		// dispaly hidden count_custom_type value and increase after a new field was added
+		$count_custom_field = $edited_Blog->get_setting( 'count_custom_'.$type );
+		echo '<input type="hidden" name="count_custom_'.$type.'" value='.$count_custom_field.' />';
+		$deleted_custom_fields = param( 'deleted_custom_'.$type, 'string', '' );
+		echo '<input type="hidden" name="deleted_custom_'.$type.'" value="'.$deleted_custom_fields.'" />';
+		for( $i = 1 ; $i <= $count_custom_field; $i++ )
+		{ // dispaly all existing custom field name
+			$field_id_suffix = 'custom_'.$type.'_'.$i;
+			$custom_guid = $edited_Blog->get_setting( 'custom_'.$type.$i );
+			if( !empty( $deleted_custom_fields ) && ( strpos( $deleted_custom_fields, $custom_guid ) !== false ) )
+			{
+				continue;
+			}
+			$action_delete = get_icon( 'xross', 'imgtag', array( 'id' => 'delete_'.$field_id_suffix, 'style' => 'cursor:pointer', 'title' => T_('Delete custom field') ) );
+			$custom_field_name = $edited_Blog->get_setting( 'custom_fname_'.$custom_guid );
+			$custom_field_value = $edited_Blog->get_setting( 'custom_'.$type.'_'.$custom_guid );
+			$custom_field_value_class = '';
+			$custom_field_name_class = '';
+			if( empty( $custom_field_value ) )
+			{ // When user saves new field without name
+				$custom_field_value = get_param( $field_id_suffix );
+				$custom_field_value_class = 'new_custom_field_title';
+				$custom_field_name_class = 'field_error';
+			}
+			echo '<input type="hidden" name="custom_'.$type.'_guid'.$i.'" value="'.$custom_guid.'" />';
+			$custom_field_name = ' '.T_('Name').' <input type="text" name="custom_'.$type.'_fname'.$i.'" value="'.$custom_field_name.'" class="form_text_input custom_field_name '.$custom_field_name_class.'" maxlength="36" />';
+			$Form->text_input( $field_id_suffix, $custom_field_value, $data[ 'size' ], $data[ 'label' ], $action_delete, array(
+					'maxlength'    => $data[ 'maxlength' ],
+					'input_prefix' => T_('Title').' ',
+					'input_suffix' => $custom_field_name,
+					'class'        => $custom_field_value_class,
+				) );
+		}
+		echo '</div>';
+		// display link to create new custom field
+		echo '<div class="input">';
+		echo '<a onclick="return false;" href="#" id="add_new_'.$type.'_custom_field">'.$data[ 'title' ].'</a>';
+		echo '<span class="notes"> ( '.$data[ 'note' ].' )</span>';
+		echo '</div>';
 	}
-
-	$notes = array(
-			T_('Ex: Color'),
-			T_('Ex: Fabric'),
-			T_('Leave empty if not needed'),
-		);
-	for( $i = 1 ; $i <= 3; $i++ )
-	{
-		$Form->text( 'custom_varchar'.$i, $edited_Blog->get_setting('custom_varchar'.$i), 30, T_('(text)').' varchar'.$i, $notes[$i-1], 60 );
-	}
 $Form->end_fieldset();
-
-
-$Form->begin_fieldset( T_('Subscriptions') );
-	$Form->checkbox( 'allow_subscriptions', $edited_Blog->get_setting( 'allow_subscriptions' ), T_('Email subscriptions'), T_('Allow users to subscribe and receive email notifications for each new post and/or comment.') );
-	$Form->checkbox( 'allow_item_subscriptions', $edited_Blog->get_setting( 'allow_item_subscriptions' ), '', T_( 'Allow users to subscribe and receive email notifications for comments on a specific post.' ) );
-	// TODO: checkbox 'Enable RSS/Atom feeds'
-	// TODO2: which feeds (skins)?
-$Form->end_fieldset();
-
-$Form->begin_fieldset( T_('List of public blogs') );
-	$Form->checkbox( 'blog_in_bloglist', $edited_Blog->get( 'in_bloglist' ), T_('Include in public blog list'), T_('Check this if you want this blog to be advertised in the list of all public blogs on this system.') );
-$Form->end_fieldset();
-
-if( $current_User->check_perm( 'blog_admin', 'edit', false, $edited_Blog->ID ) )
-{	// Permission to edit advanced admin settings
-
-	$Form->begin_fieldset( T_('Skin and style').' ['.T_('Admin').']' );
-
-		$SkinCache = & get_SkinCache();
-		$SkinCache->load_all();
-		$Form->select_input_object( 'blog_skin_ID', $edited_Blog->skin_ID, $SkinCache, T_('Skin') );
-		$Form->checkbox( 'blog_allowblogcss', $edited_Blog->get( 'allowblogcss' ), T_('Allow customized blog CSS file'), T_('You will be able to customize the blog\'s skin stylesheet with a file named style.css in the blog\'s media file folder.') );
-		$Form->checkbox( 'blog_allowusercss', $edited_Blog->get( 'allowusercss' ), T_('Allow user customized CSS file for this blog'), T_('Users will be able to customize the blog and skin stylesheets with a file named style.css in their personal file folder.') );
-	$Form->end_fieldset();
-
-}
 
 
 $Form->end_form( array(
 	array( 'submit', 'submit', T_('Save !'), 'SaveButton' ),
 	array( 'reset', '', T_('Reset'), 'ResetButton' ) ) );
 
+
+load_funcs( 'regional/model/_regional.funcs.php' );
+echo_regional_required_js( 'location_' );
+
 ?>
+
 <script type="text/javascript">
-	jQuery( '#paged_comments' ).click( function()
+	function guidGenerator() {
+		var S4 = function() {
+			return (((1+Math.random())*0x10000)|0).toString(16).substring(1);
+		};
+		return (S4()+S4()+"-"+S4()+"-"+S4()+"-"+S4()+"-"+S4()+S4());
+	}
+
+	jQuery( '#add_new_double_custom_field' ).click( function()
 	{
-		if ( $('#paged_comments').is(':checked') )
-		{
-			$('#comments_per_page').val('20');
-		}
-		else
-		{
-			$('#comments_per_page').val('1000');
+		var count_custom_double = jQuery( 'input[name=count_custom_double]' ).attr( 'value' );
+		count_custom_double++;
+		var custom_guid = guidGenerator();
+		jQuery( '#custom_double_field_list' ).append( '<fieldset id="ffield_custom_double_' + count_custom_double + '">' +
+				'<input type="hidden" name="custom_double_guid' + count_custom_double + '" value="' + custom_guid + '" />' +
+				'<div class="label"><label for="custom_double_' + count_custom_double + '"><?php echo TS_('Numeric'); ?>:</label></div>' +
+				'<div class="input">' +
+					'Title <input type="text" id="custom_double_' + count_custom_double + '" name="custom_double_' + count_custom_double + '" class="form_text_input new_custom_field_title" size="20" maxlength="60" />' +
+					' Name <input type="text" name="custom_double_fname' + count_custom_double + '" value="" class="form_text_input custom_field_name" maxlength="36" />' +
+				'</div></fieldset>' );
+		jQuery( 'input[name=count_custom_double]' ).attr( 'value', count_custom_double );
+	} );
+
+	jQuery( '#add_new_varchar_custom_field' ).click( function()
+	{
+		var count_custom_varchar = jQuery( 'input[name=count_custom_varchar]' ).attr( 'value' );
+		count_custom_varchar++;
+		var custom_guid = guidGenerator();
+		jQuery( '#custom_varchar_field_list' ).append( '<fieldset id="ffield_custom_string' + count_custom_varchar + '">' +
+				'<input type="hidden" name="custom_varchar_guid' + count_custom_varchar + '" value="' + custom_guid + '" />' +
+				'<div class="label"><label for="custom_varchar_' + count_custom_varchar + '"><?php echo TS_('String'); ?>:</label></div>' +
+				'<div class="input">' +
+					'Title <input type="text" id="custom_varchar_' + count_custom_varchar + '" name="custom_varchar_' + count_custom_varchar + '" class="form_text_input new_custom_field_title" size="30" maxlength="40" />' +
+					' Name <input type="text" name="custom_varchar_fname' + count_custom_varchar + '" value="" class="form_text_input custom_field_name" maxlength="36" />' +
+				'</div></fieldset>' );
+		jQuery( 'input[name=count_custom_varchar]' ).attr( 'value', count_custom_varchar );
+	} );
+
+	jQuery( '[id^="delete_custom_"]' ).click( function()
+	{
+		if( confirm( '<?php echo TS_('Are you sure want to delete this custom field?\nThe update will be performed when you will click on the \'Save changes!\' button.'); ?>' ) )
+		{ // Delete custom field only from html form, This field will be removed after saving of changes
+			var delete_action_id = jQuery( this ).attr('id');
+			var field_parts = delete_action_id.split( '_' );
+			var field_type = field_parts[2];
+			var field_index = field_parts[3];
+			var field_guid = jQuery( '[name="custom_' + field_type + '_guid' + field_index + '"]' ).val();
+			var deleted_fields = '[name="deleted_custom_' + field_type + '"]';
+			var deleted_fields_value = jQuery( deleted_fields ).val();
+			if( deleted_fields_value )
+			{
+				deleted_fields_value = deleted_fields_value + ',';
+			}
+			jQuery( deleted_fields ).val( deleted_fields_value + field_guid );
+			jQuery( '#ffield_custom_' + field_type + '_' + field_index ).remove();
 		}
 	} );
+
+	jQuery( document ).on( 'keyup', '.new_custom_field_title', function()
+	{ // Prefill new field name
+		jQuery( this ).parent().find( '.custom_field_name' ).val( parse_custom_field_name( jQuery( this ).val() ) );
+	} );
+
+	jQuery( document ).on( 'blur', '.custom_field_name', function()
+	{ // Remove incorrect chars from field name on blur event
+		jQuery( this ).val( parse_custom_field_name( jQuery( this ).val() ) );
+	} );
+
+	function parse_custom_field_name( field_name )
+	{
+		return field_name.substr( 0, 36 ).replace( /[^a-z0-9\-_]/ig, '_' ).toLowerCase();
+	}
 </script>
-<?php
-
-
-/*
- * $Log: _coll_features.form.php,v $
- */
-?>

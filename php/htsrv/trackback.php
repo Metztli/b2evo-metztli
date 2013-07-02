@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -29,7 +29,7 @@
  * @author blueyed: Daniel HAHLER
  * @author fplanque: Francois PLANQUE
  *
- * @version $Id: trackback.php 2624 2012-12-04 13:37:04Z yura $
+ * @version $Id: trackback.php 3328 2013-03-26 11:44:11Z yura $
  */
 
 
@@ -39,6 +39,18 @@
 require_once dirname(__FILE__).'/../conf/_config.php';
 
 require_once $inc_path.'_main.inc.php';
+
+if( $Settings->get('system_lock') )
+{ // System is locked for maintenance, trackbacks are not allowed
+	$Messages->add( T_('You cannot leave a comment at this time because the system is under maintenance. Please try again in a few moments.'), 'error' );
+	header_redirect(); // Will save $Messages into Session
+}
+
+// Do not append Debuglog to response!
+$debug = false;
+
+// Do not append Debug JSlog to response!
+$debug_jslog = false;
 
 /**
  * Send a trackback response and exits.
@@ -143,7 +155,7 @@ if( ! empty($title) )
 }
 $comment .= $excerpt;
 
-$comment = format_to_post( $comment, 1, 1 ); // includes antispam
+$comment = format_to_post( $comment, 1 ); // includes antispam
 if( empty($comment) )
 { // comment should not be empty!
 	$Messages->add( T_('Please do not send empty comment'), 'error' );
@@ -210,8 +222,4 @@ $Plugins->trigger_event( 'AfterTrackbackInsert', array( 'Comment' => & $Comment 
 // fp>TODO: warn about moderation
 trackback_response( 0, 'ok' );
 
-
-/*
- * $Log: trackback.php,v $
- */
 ?>

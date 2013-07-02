@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -29,7 +29,7 @@
  * @author blueyed: Daniel HAHLER
  * @author fplanque: Francois PLANQUE
  *
- * @version $Id: _filelist.class.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _filelist.class.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -302,8 +302,6 @@ class Filelist
 	 *
 	 * NOTE: this does not work for arbitrary lists!
 	 *
-	 * @todo flatmode always shows hidden files, even if we don't want them :/
-	 *
 	 * @uses $flatmode
 	 * @return boolean True on sucess, false on failure (not accessible)
 	 */
@@ -328,8 +326,15 @@ class Filelist
 		$this->_rdfs_rel_path_index = array();
 		$this->_order_index = array();
 
-		// Attempt list files for requested directory: (recursively if flat mode):
-		if( ($filepath_array = get_filenames( $this->_ads_list_path, $this->include_files, $this->include_dirs, true, $this->flatmode )) === false )
+		// Attempt to list files for requested directory: (recursively if flat mode):
+		$filename_params = array(
+				'inc_files'		=> $this->include_files,
+				'inc_dirs'		=> $this->include_dirs,
+				'recurse'		=> $this->flatmode,
+				'inc_hidden'	=> $this->_show_hidden_files,
+				'inc_evocache'	=> $this->_show_evocache,
+			);
+		if( ($filepath_array = get_filenames( $this->_ads_list_path, $filename_params )) === false )
 		{
 			$Messages->add( sprintf( T_('Cannot open directory &laquo;%s&raquo;!'), $this->_ads_list_path ), 'error' );
 			return false;
@@ -1258,7 +1263,4 @@ class Filelist
 
 }
 
-/*
- * $Log: _filelist.class.php,v $
- */
 ?>

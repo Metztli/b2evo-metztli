@@ -31,6 +31,15 @@ function setupRollovers()
 			link.onmouseout = mouseout;
 		}
 	}
+
+	jQuery( document ).on( 'mouseover', 'a.rollover_sprite', function()
+	{
+		mouseoverout_sprite( jQuery( this ), 'over' );
+	} );
+	jQuery( document ).on( 'mouseout', 'a.rollover_sprite', function()
+	{
+		mouseoverout_sprite( jQuery( this ), 'out' );
+	} );
 }
 
 
@@ -96,6 +105,38 @@ function mouseout(e)
 	// Take the "src", which names an image as "something_over.ext",
 	// Make it point to "something.ext"
 	img_tag.src = img_tag.src.replace(/_over(\.[^.]+)$/, '$1');
+}
+
+
+/**
+ * MouseOver & MouseOut events handler for Sprite Icons
+ */
+function mouseoverout_sprite( obj, type )
+{
+	var span_tag = obj.find( 'span' );
+	if( span_tag.length == 0 )
+	{
+		return;
+	}
+
+	var shift = type == 'over' ? -16 : 16;
+
+	// Get current background-position
+	var xy = span_tag.css( 'background-position' );
+	if( xy != null && xy != 'undefined' )
+	{
+		xy = xy.match( /-*\d+/g );
+		var x = xy[0];
+		var y = xy[1];
+	}
+	else
+	{	// For IE
+		var x = span_tag.css( 'background-position-x' ).match( /-*\d+/g );
+		var y = span_tag.css( 'background-position-y' ).match( /-*\d+/g );
+	}
+
+	// Shift background position to the right to the one icon in the sprite
+	span_tag.css( 'background-position', ( parseInt( x ) + shift ) + 'px ' + parseInt( y ) + 'px' );
 }
 
 

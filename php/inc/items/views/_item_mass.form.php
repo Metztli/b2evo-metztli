@@ -3,7 +3,7 @@
  * This file is part of b2evolution - {@link http://b2evolution.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2009 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @copyright (c)2009-2013 by Francois PLANQUE - {@link http://fplanque.net/}
  * Parts of this file are copyright (c)2009 by The Evo Factory - {@link http://www.evofactory.com/}.
  *
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
@@ -20,7 +20,7 @@
  * @author efy-maxim: Evo Factory / Maxim.
  * @author fplanque: Francois Planque.
  *
- * @version $Id: _item_mass.form.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _item_mass.form.php 3520 2013-04-22 06:12:04Z attila $
  */
 
 
@@ -93,8 +93,8 @@ $Form->begin_form( '', '', $params );
 	$Form->hidden( 'post_excerpt', $edited_Item->get( 'excerpt' ) );
 	$Form->hidden( 'post_urltitle', $edited_Item->get( 'urltitle' ) );
 	$Form->hidden( 'titletag', $edited_Item->get( 'titletag' ) );
-	$Form->hidden( 'metadesc', $edited_Item->get( 'metadesc' ) );
-	$Form->hidden( 'metakeywords', $edited_Item->get( 'metakeywords' ) );
+	$Form->hidden( 'metadesc', $edited_Item->get_setting( 'post_metadesc' ) );
+	$Form->hidden( 'custom_headers', $edited_Item->get_setting( 'post_custom_headers' ) );
 
 	if( $Blog->get_setting( 'use_workflow' ) )
 	{	// We want to use workflow properties for this blog:
@@ -105,17 +105,11 @@ $Form->begin_form( '', '', $params );
 	}
 	$Form->hidden( 'trackback_url', $trackback_url );
 	$Form->hidden( 'item_featured', $edited_Item->featured );
+	$Form->hidden( 'item_hideteaser', $edited_Item->get_setting( 'hide_teaser' ) );
+	$Form->hidden( 'expiry_delay', $edited_Item->get_setting( 'post_expiry_delay' ) );
 	$Form->hidden( 'item_order', $edited_Item->order );
-	// CUSTOM FIELDS double
-	for( $i = 1 ; $i <= 5; $i++ )
-	{	// For each custom double field:
-		$Form->hidden( 'item_double'.$i, $edited_Item->{'double'.$i} );
-	}
-	// CUSTOM FIELDS varchar
-	for( $i = 1 ; $i <= 3; $i++ )
-	{	// For each custom varchar field:
-		$Form->hidden( 'item_varchar'.$i, $edited_Item->{'varchar'.$i} );
-	}
+	// CUSTOM FIELDS
+	display_hidden_custom_fields( $Form, $edited_Item );
 
 	// TODO: Form::hidden() do not add, if NULL?!
 
@@ -182,7 +176,7 @@ $Form->begin_form( '', '', $params );
 	$Form->begin_fieldset( T_('Text Renderers'), array( 'id' => 'itemform_renderers' ) );
 
 	// fp> TODO: there should be no param call here (shld be in controller)
-	$edited_Item->renderer_checkboxes( param('renderers', 'array', NULL) );
+	$edited_Item->renderer_checkboxes( param('renderers', 'array/string', NULL) );
 
 	$Form->end_fieldset();
 
@@ -223,7 +217,4 @@ $Form->end_form();
 // New category input box:
 echo_onchange_newcat();
 
-/*
- * $Log: _item_mass.form.php,v $
- */
 ?>

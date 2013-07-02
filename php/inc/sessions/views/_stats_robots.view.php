@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -21,7 +21,7 @@
  *
  * @package admin
  *
- * @version $Id: _stats_robots.view.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _stats_robots.view.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -31,7 +31,7 @@ if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.'
 require_once dirname(__FILE__).'/_stats_view.funcs.php';
 
 
-global $blog, $admin_url, $rsc_url, $AdminUI;
+global $blog, $admin_url, $rsc_url, $AdminUI, $agent_type_color;
 
 echo '<h2>'.T_('Hits from indexing robots / spiders / crawlers - Summary').'</h2>';
 
@@ -82,7 +82,7 @@ if( count($res_hits) )
 	require dirname(__FILE__).'/inc/_bar_chart.inc.php';
 
 	$chart[ 'series_color' ] = array (
-			'ff9900',
+			$agent_type_color['robot'],
 		);
 
 
@@ -172,7 +172,4 @@ $Results->cols[] = array(
 $Results->display();
 */
 
-/*
- * $Log: _stats_robots.view.php,v $
- */
 ?>

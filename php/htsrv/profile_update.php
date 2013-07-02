@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -32,7 +32,7 @@
  *
  * @todo integrate it into the skins to avoid ugly die() on error and confusing redirect on success.
  *
- * @version $Id: profile_update.php 1010 2012-03-08 08:39:41Z attila $
+ * @version $Id: profile_update.php 4096 2013-06-28 10:39:15Z attila $
  */
 
 /**
@@ -42,159 +42,141 @@ require_once dirname(__FILE__).'/../conf/_config.php';
 
 require_once $inc_path.'_main.inc.php';
 
-global $Session;
+$action = param_action();
+$disp = param( 'user_tab', 'string', '' );
+$blog = param( 'blog', 'integer', 0 );
 
-// Check that this action request is not a CSRF hacked request:
-$Session->assert_received_crumb( 'profileform' );
-
-// Getting GET or POST parameters:
-param( 'checkuser_id', 'integer', '' );
-param( 'newuser_firstname', 'string', '' );
-param( 'newuser_lastname', 'string', '' );
-param( 'newuser_nickname', 'string', '' );
-param( 'newuser_idmode', 'string', '' );
-param( 'newuser_locale', 'string', $default_locale );
-param( 'newuser_icq', 'string', '' );
-param( 'newuser_aim', 'string', '' );
-param( 'newuser_msn', 'string', '' );
-param( 'newuser_yim', 'string', '' );
-param( 'newuser_url', 'string', '' );
-param( 'newuser_email', 'string', '' );
-param( 'allow_pm', 'integer', 0 );           // checkbox
-param( 'allow_email', 'integer', 0 );        // checkbox
-param( 'newuser_notify', 'integer', 0 );        // checkbox
-param( 'newuser_ctry_ID', 'integer', 0 );
-param( 'newuser_showonline', 'integer', 0 );    // checkbox
-param( 'newuser_gender', 'string', NULL );
-param( 'pass1', 'string', '' );
-param( 'pass2', 'string', '' );
+// Activate the blog locale because all params were introduced with that locale
+activate_blog_locale( $blog );
 
 /**
  * Basic security checks:
  */
 if( ! is_logged_in() )
-{ // must be logged in!
-	bad_request_die( T_('You are not logged in.') );
-}
-
-if( $checkuser_id != $current_User->ID )
-{ // Can only edit your own profile
-	bad_request_die( 'You are not logged in under the same account you are trying to modify.' );
+{	// must be logged in!
+	bad_request_die( T_( 'You are not logged in.' ) );
 }
 
 if( $demo_mode && ( $current_User->ID <= 3 ) )
 {
-	bad_request_die( sprintf( 'Demo mode: You can\'t edit %s profile!', $current_User->login ).'<br />[<a href="javascript:history.go(-1)">'
+	bad_request_die( 'Demo mode: you can\'t edit the admin and demo users profile!<br />[<a href="javascript:history.go(-1)">'
 		. T_('Back to profile') . '</a>]' );
 }
 
+// Check that this action request is not a CSRF hacked request:
+$Session->assert_received_crumb( 'user' );
 
-// Trigger event: a Plugin could add a $category="error" message here..
-// This must get triggered before any internal validation and must pass all relevant params.
-$Plugins->trigger_event( 'ProfileFormSent', array(
-		'newuser_firstname' => & $newuser_firstname,
-		'newuser_lastname' => & $newuser_lastname,
-		'newuser_nickname' => & $newuser_nickname,
-		'newuser_idmode' => & $newuser_idmode,
-		'newuser_locale' => & $newuser_locale,
-		'newuser_icq' => & $newuser_icq,
-		'newuser_aim' => & $newuser_aim,
-		'newuser_msn' => & $newuser_msn,
-		'newuser_yim' => & $newuser_yim,
-		'newuser_url' => & $newuser_url,
-		'newuser_email' => & $newuser_email,
-		'allow_pm' => & $allow_pm,
-		'allow_email' => & $allow_email,
-		'newuser_notify' => & $newuser_notify,
-		'newuser_ctry_ID' => & $newuser_ctry_ID,
-		'newuser_showonline' => & $newuser_showonline,
-		'newuser_gender' => & $newuser_gender,
-		'pass1' => & $pass1,
-		'pass2' => & $pass2,
-		'User' => & $current_User,
-	) );
-
-
-/**
- * Additional checks:
- */
-profile_check_params( array(
-	'nickname' => $newuser_nickname,
-	'icq' => $newuser_icq,
-	'email' => $newuser_email,
-	'url' => $newuser_url,
-	'pass1' => $pass1,
-	'pass2' => $pass2,
-	'pass_required' => false ), $current_User );
-
-
-if( $Messages->has_errors() )
+switch( $action )
 {
-	headers_content_mightcache( 'text/html', 0 );		// Do NOT cache error messages! (Users would not see they fixed them)
+	case 'add_field':
+	case 'update':
+	case 'subscribe':
+		$current_User->update_from_request();
+		break;
 
-	// TODO: dh> these error should get displayed with the profile form itself, or at least there should be a "real HTML page" here (without JS-backlink)
-	$Messages->display( T_('Cannot update profile. Please correct the following errors:'),
-		'[<a href="javascript:history.go(-1)">' . T_('Back to profile') . '</a>]' );
-	exit(0);
+	case 'refresh_regional':
+		// Refresh a regions, sub-regions & cities (when JavaScript is disabled)
+		$current_User->ctry_ID = param( 'edited_user_ctry_ID', 'integer', 0 );
+		$current_User->rgn_ID = param( 'edited_user_rgn_ID', 'integer', 0 );
+		$current_User->subrg_ID = param( 'edited_user_subrg_ID', 'integer', 0 );
+		break;
+
+	case 'update_avatar':
+		$file_ID = param( 'file_ID', 'integer', NULL );
+		$current_User->update_avatar( $file_ID );
+		break;
+
+	case 'rotate_avatar_90_left':
+		$file_ID = param( 'file_ID', 'integer', NULL );
+		$current_User->rotate_avatar( $file_ID, 90 );
+		break;
+
+	case 'rotate_avatar_180':
+		$file_ID = param( 'file_ID', 'integer', NULL );
+		$current_User->rotate_avatar( $file_ID, 180 );
+		break;
+
+	case 'rotate_avatar_90_right':
+		$file_ID = param( 'file_ID', 'integer', NULL );
+		$current_User->rotate_avatar( $file_ID, 270 );
+		break;
+
+	case 'remove_avatar':
+		$current_User->remove_avatar();
+		break;
+
+	case 'delete_avatar':
+		$file_ID = param( 'file_ID', 'integer', NULL );
+		$current_User->delete_avatar( $file_ID );
+		break;
+
+	case 'upload_avatar':
+		$current_User->update_avatar_from_upload();
+		break;
+}
+
+$Blog = NULL;
+if( $blog > 0 )
+{	// Get Blog
+	$BlogCache = & get_BlogCache();
+	$Blog = $BlogCache->get_by_ID( $blog, false, false );
+}
+
+if( empty( $Blog ) )
+{	// This case should not happen, $blog must be set
+	$Messages->add( T_( 'Unable to find the selected blog' ), 'error' );
+	header_redirect( $baseurl );
+}
+
+if( param_errors_detected() || $action == 'refresh_regional' )
+{	// unable to update, store unsaved user into session
+	$Session->set( 'core.unsaved_User', $current_User );
+}
+elseif( ! param_errors_detected() )
+{	// update was successful on user profile
+	switch( $action )
+	{
+		case 'update':
+			if( $current_User->has_avatar() )
+			{	// Redirect to display user page
+				$redirect_to = url_add_param( $Blog->gen_blogurl(), 'disp=user', '&' );
+			}
+			else
+			{	// Redirect to upload avatar
+				$redirect_to = get_user_avatar_url();
+			}
+			break;
+		case 'upload_avatar':
+			// Redirect to display user profile form
+			$redirect_to = url_add_param( $Blog->gen_blogurl(), 'disp=profile', '&' );
+			break;
+	}
+	if( !empty( $redirect_to ) )
+	{
+		header_redirect( $redirect_to );
+	}
 }
 
 
-// Do the update:
-
-$updatepassword = '';
-if( !empty($pass1) )
-{
-	$newuser_pass = md5($pass1);
-	$current_User->set( 'pass', $newuser_pass );
-}
-
-$current_User->set( 'firstname', $newuser_firstname );
-$current_User->set( 'lastname', $newuser_lastname );
-$current_User->set( 'nickname', $newuser_nickname );
-$current_User->set( 'icq', $newuser_icq );
-$current_User->set_email( $newuser_email );
-$current_User->set( 'url', $newuser_url );
-$current_User->set( 'aim', $newuser_aim );
-$current_User->set( 'msn', $newuser_msn );
-$current_User->set( 'yim', $newuser_yim );
-$current_User->set( 'idmode', $newuser_idmode );
-$current_User->set( 'locale', $newuser_locale );
-// set allow_msgform: 
-// 0 - none, 
-// 1 - only private message, 
-// 2 - only email, 
-// 3 - private message and email
-$newuser_allow_msgform = 0;
-if( $allow_pm )
-{ // PM is enabled
-	$newuser_allow_msgform = 1;
-}
-if( $allow_email )
-{ // email is enabled
-	$newuser_allow_msgform = $newuser_allow_msgform + 2;
-}
-$current_User->set( 'allow_msgform', $newuser_allow_msgform );
-$current_User->set( 'notify', $newuser_notify );
-$current_User->set( 'ctry_ID', $newuser_ctry_ID );
-$current_User->set( 'showonline', $newuser_showonline );
-$current_User->set( 'gender', $newuser_gender );
-
-
-// Set Messages into user's session, so they get restored on the next page (after redirect):
-if( $current_User->dbupdate() )
-{
-	$Messages->add( T_('Your profile has been updated.'), 'success' );
+if( ! param_errors_detected() || ! isset( $disp ) )
+{	// User data is updated without errors
+	// redirect will save $Messages into Session:
+	$redirect_to = NULL;
+	if( isset( $disp ) )
+	{
+		$redirect_to = url_add_param( $Blog->gen_blogurl(), 'disp='.$disp, '&' );
+	}
+	// redirect to the corresponding display form
+	header_redirect( $redirect_to );
+	// EXITED
 }
 else
-{
-	$Messages->add( T_('Your profile has not been changed.'), 'note' );
+{	// Errors exist; Don't redirect; Display a template to save a received data from request
+	$SkinCache = & get_SkinCache();
+	$Skin = & $SkinCache->get_by_ID( $Blog->get_skin_ID() );
+	$skin = $Skin->folder;
+	$ads_current_skin_path = $skins_path.$skin.'/';
+	require $ads_current_skin_path.'index.main.php';
 }
 
-
-// redirect Will save $Messages into Session:
-header_redirect();
-
-/*
- * $Log: profile_update.php,v $
- */
 ?>

@@ -5,7 +5,7 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2004-2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
@@ -23,7 +23,7 @@
  * @author blueyed: Daniel HAHLER
  * @author fplanque: Francois PLANQUE
  *
- * @version $Id: _commentlist.class.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _commentlist.class.php 3908 2013-06-04 10:41:52Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -46,6 +46,13 @@ class CommentList2 extends DataObjectList2
 	var $CommentQuery;
 
 	/**
+	 * SQL object for the ItemQuery
+	 *
+	 * This will be used to get those item Ids which comments should be listed
+	 */
+	var $ItemQuery;
+
+	/**
 	 * Blog object this CommentList refers to
 	 */
 	var $Blog;
@@ -53,7 +60,7 @@ class CommentList2 extends DataObjectList2
 	/**
 	 * Constructor
 	 *
-	 * @param Blog
+	 * @param Blog This may be NULL only when must select comments from all Blog. Use NULL carefully, because it may generate very long queries!
 	 * @param integer|NULL Limit
 	 * @param string name of cache to be used
 	 * @param string prefix to differentiate page/order params when multiple Results appear one same page
@@ -72,10 +79,17 @@ class CommentList2 extends DataObjectList2
 		// Call parent constructor:
 		parent::DataObjectList2( get_Cache($cache_name), $limit, $param_prefix, NULL );
 
+		// Set Blog. Note: It can be NULL on ?disp=usercomments
+		$this->Blog = $Blog;
+
 		// The SQL Query object:
 		$this->CommentQuery = new CommentQuery(/* $this->Cache->dbtablename, $this->Cache->dbprefix, $this->Cache->dbIDname*/ );
+		$this->CommentQuery->Blog = $this->Blog;
 
-		$this->Blog = & $Blog;
+		// The Item filter SQL Query object:
+		$this->ItemQuery = new ItemQuery( 'T_items__item', 'post_', 'post_ID' );
+		// Blog can be NULL on ?disp=usercomments, in this case ItemQuery blog must be set to 0, which means all blog
+		$this->ItemQuery->blog = empty( $this->Blog ) ? 0 : $this->Blog->ID;
 
 		if( !empty( $filterset_name ) )
 		{	// Set the filterset_name with the filterset_name param
@@ -83,7 +97,7 @@ class CommentList2 extends DataObjectList2
 		}
 		else
 		{	// Set a generic filterset_name
-			$this->filterset_name = 'CommentList_filters_coll'.$this->Blog->ID;
+			$this->filterset_name = 'CommentList_filters_coll'.( !is_null( $this->Blog ) ? $this->Blog->ID : '0' );
 		}
 
 		$this->page_param = $param_prefix.'paged';
@@ -91,6 +105,7 @@ class CommentList2 extends DataObjectList2
 		// Initialize the default filter set:
 		$this->set_default_filters( array(
 				'filter_preset' => NULL,
+				'author_IDs' => NULL,
 				'author' => NULL,
 				'author_email' => NULL,
 				'author_url' => NULL,
@@ -107,13 +122,18 @@ class CommentList2 extends DataObjectList2
 				'phrase' => 'AND',
 				'exact' => 0,
 				'statuses' => NULL,
+				'expiry_statuses' => array( 'active' ), // Show active/expired comments
 				'types' => array( 'comment','trackback','pingback' ),
 				'orderby' => 'date',
-				'order' => $this->Blog->get_setting('orderdir'),
+				'order' => !is_null( $this->Blog ) ? $this->Blog->get_setting('orderdir') : 'DESC',
 				//'order' => 'DESC',
 				'comments' => $this->limit,
 				'page' => 1,
 				'featured' => NULL,
+				'timestamp_min' => NULL, // Do not show comments from posts before this timestamp
+				'timestamp_max' => NULL, // Do not show comments from posts after this timestamp
+				'threaded_comments' => false, // Mode to display the comment replies
+				'user_perm' => NULL,
 		) );
 	}
 
@@ -127,21 +147,11 @@ class CommentList2 extends DataObjectList2
 	{
 		// The SQL Query object:
 		$this->CommentQuery = new CommentQuery( $this->Cache->dbtablename, $this->Cache->dbprefix, $this->Cache->dbIDname );
+		$this->CommentQuery->Blog = $this->Blog;
+		$this->ItemQuery = new ItemQuery( 'T_items__item', 'post_', 'post_ID' );
+		$this->ItemQuery->blog = empty( $this->Blog ) ? 0 : $this->Blog->ID;
 
 		parent::reset();
-	}
-
-
-	/**
-	 * Set default filter values we always want to use if not individually specified otherwise:
-	 *
-	 * @param array default filters to be merged with the class defaults
-	 * @param array default filters for each preset, to be merged with general default filters if the preset is used
-	 */
-	function set_default_filters( $default_filters, $preset_filters = array() )
-	{
-		$this->default_filters = array_merge( $this->default_filters, $default_filters );
-		$this->preset_filters = $preset_filters;
 	}
 
 
@@ -179,6 +189,7 @@ class CommentList2 extends DataObjectList2
 			/*
 			 * Restrict to selected authors attribute:
 			 */
+			memorize_param( $this->param_prefix.'author_IDs', 'string', $this->default_filters['author_IDs'], $this->filters['author_IDs'] );  // List of authors ID to restrict to
 			memorize_param( $this->param_prefix.'author', 'string', $this->default_filters['author'], $this->filters['author'] );  // List of authors ID to restrict to
 			memorize_param( $this->param_prefix.'author_email', 'string', $this->default_filters['author_email'], $this->filters['author_email'] );  // List of authors email to restrict to
 			memorize_param( $this->param_prefix.'author_url', 'string', $this->default_filters['author_url'], $this->filters['author_url'] );  // List of authors url to restrict to
@@ -206,9 +217,19 @@ class CommentList2 extends DataObjectList2
 			memorize_param( $this->param_prefix.'show_statuses', 'array', $this->default_filters['statuses'], $this->filters['statuses'] );  // List of statuses to restrict to
 
 			/*
+			 * Restrict to not active/expired comments:
+			 */
+			memorize_param( $this->param_prefix.'expiry_statuses', 'array', $this->default_filters['expiry_statuses'], $this->filters['expiry_statuses'] );  // List of expiry statuses to restrict to
+
+			/*
 			 * Restrict to selected comment type:
 			 */
 			memorize_param( $this->param_prefix.'type', 'string', $this->default_filters['types'], $this->filters['types'] );  // List of comment types to restrict to
+
+			/*
+			 * Restrict to current User specific permission:
+			 */
+			memorize_param( $this->param_prefix.'user_perm', 'string', $this->default_filters['user_perm'], $this->filters['user_perm'] );  // Restrict to comments with permitted action for the current User
 
 			/*
 			 * Restrict to the statuses we want to show:
@@ -247,7 +268,7 @@ class CommentList2 extends DataObjectList2
 		if( $use_filters )
 		{
 			// Do we want to restore filters or do we want to create a new filterset
-			$filter_action = param( $this->param_prefix.'filter', 'string', 'save' );
+			$filter_action = param( /*$this->param_prefix.*/'filter', 'string', 'save' );
 			switch( $filter_action )
 			{
 				case 'restore':
@@ -279,22 +300,33 @@ class CommentList2 extends DataObjectList2
 		/*
 		 * Restrict to selected author:
 		 */
+		$this->filters['author_IDs'] = param( $this->param_prefix.'author_IDs', '/^-?[0-9]+(,[0-9]+)*$/', $this->default_filters['author_IDs'], true );      // List of authors ID to restrict to
 		$this->filters['author'] = param( $this->param_prefix.'author', '/^-?[0-9]+(,[0-9]+)*$/', $this->default_filters['author'], true );      // List of authors to restrict to
 		$this->filters['author_email'] = param( $this->param_prefix.'author_email', 'string', $this->default_filters['author_email'], true );
 		$this->filters['author_url'] = param( $this->param_prefix.'author_url', 'string', $this->default_filters['author_url'], true );
 		$this->filters['url_match'] = param( $this->param_prefix.'url_match', 'string', $this->default_filters['url_match'], true );
 		$this->filters['include_emptyurl'] = param( $this->param_prefix.'include_emptyurl', 'string', $this->default_filters['include_emptyurl'], true );
-		//$this->filters['author_IP'] = param( $this->param_prefix.'author_IP', 'string', $this->default_filters['author_IP'], true );
+		$this->filters['author_IP'] = param( $this->param_prefix.'author_IP', 'string', $this->default_filters['author_IP'], true );
 
 		/*
 		 * Restrict to selected statuses:
 		 */
-		$this->filters['statuses'] = param( $this->param_prefix.'show_statuses', 'array', $this->default_filters['statuses'], true );      // List of statuses to restrict to
+		$this->filters['statuses'] = param( $this->param_prefix.'show_statuses', 'array/string', $this->default_filters['statuses'], true );      // List of statuses to restrict to
+
+		/*
+		 * Restrict to active/expired comments:
+		 */
+		$this->filters['expiry_statuses'] = param( $this->param_prefix.'expiry_statuses', 'array/string', $this->default_filters['expiry_statuses'], true );      // List of expiry statuses to restrict to
 
 		/*
 		 * Restrict to selected types:
 		 */
-		$this->filters['types'] = param( $this->param_prefix.'types', 'array', $this->default_filters['types'], true );      // List of types to restrict to
+		$this->filters['types'] = param( $this->param_prefix.'types', 'array/string', $this->default_filters['types'], true );      // List of types to restrict to
+
+		/*
+		 * Restrict to selected user perm:
+		 */
+		$this->filters['user_perm'] = param( $this->param_prefix.'user_perm', 'string', $this->default_filters['user_perm'], true );      // A specific user perm to restrict to
 
 		/*
 		 * Restrict by keywords
@@ -306,7 +338,7 @@ class CommentList2 extends DataObjectList2
 		/*
 		 * Restrict to selected rating:
 		 */
-		$this->filters['rating_toshow'] = param( $this->param_prefix.'rating_toshow', 'array', $this->default_filters['rating_toshow'], true );      // Rating to restrict to
+		$this->filters['rating_toshow'] = param( $this->param_prefix.'rating_toshow', 'array/string', $this->default_filters['rating_toshow'], true );      // Rating to restrict to
 		$this->filters['rating_turn'] = param( $this->param_prefix.'rating_turn', 'string', $this->default_filters['rating_turn'], true );      // Rating to restrict to
 		$this->filters['rating_limit'] = param( $this->param_prefix.'rating_limit', 'integer', $this->default_filters['rating_limit'], true ); 	// Rating to restrict to
 
@@ -333,82 +365,14 @@ class CommentList2 extends DataObjectList2
 
 
 	/**
-	 * Activate preset default filters if necessary
-	 *
-	 */
-	function activate_preset_filters()
-	{
-		$filter_preset = $this->filters['filter_preset'];
-
-		if( empty( $filter_preset ) )
-		{ // No filter preset, there are no additional defaults to use:
-			return;
-		}
-
-		// Override general defaults with the specific defaults for the preset:
-		$this->default_filters = array_merge( $this->default_filters, $this->preset_filters[$filter_preset] );
-
-		// Save the name of the preset in order for is_filtered() to work properly:
-		$this->default_filters['filter_preset'] = $this->filters['filter_preset'];
-	}
-
-
-	/**
-	 * Save current filterset to session.
-	 */
-	function save_filterset()
-	{
-		/**
-		 * @var Session
-		 */
-		global $Session, $Debuglog;
-
-		$Debuglog->add( 'Saving filterset <strong>'.$this->filterset_name.'</strong>', 'filters' );
-
-		$Session->set( $this->filterset_name, $this->filters );
-	}
-
-
-	/**
-	 * Load previously saved filterset from session.
-	 *
-	 * @return boolean true if we could restore something
-	 */
-	function restore_filterset()
-	{
-	  /**
-	   * @var Session
-	   */
-		global $Session;
-	  /**
-	   * @var Request
-	   */
-
-		global $Debuglog;
-
-		$filters = $Session->get( $this->filterset_name );
-
-		if( empty($filters) )
-		{ // set_filters() expects array
-			$filters = array();
-		}
-
-		$Debuglog->add( 'Restoring filterset <strong>'.$this->filterset_name.'</strong>', 'filters' );
-
-		// Restore filters:
-		$this->set_filters( $filters );
-
-		return true;
-	}
-
-
-	/**
 	 *
 	 *
 	 * @todo count?
 	 */
 	function query_init()
 	{
+		global $DB;
+
 		if( empty( $this->filters ) )
 		{	// Filters have not been set before, we'll use the default filterset:
 			// If there is a preset filter, we need to activate its specific defaults:
@@ -425,27 +389,34 @@ class CommentList2 extends DataObjectList2
 		 * Resrict to selected blog
 		 */
 		// If we dont have specific comment or post ids, we have to restric to blog
-		if( ( $this->filters['post_ID'] == NULL || ( ! empty($this->filters['post_ID']) && substr( $this->filters['post_ID'], 0, 1 ) == '-') ) &&
+		if( !is_null( $this->Blog ) &&
+			( $this->filters['post_ID'] == NULL || ( ! empty($this->filters['post_ID']) && substr( $this->filters['post_ID'], 0, 1 ) == '-') ) &&
 			( $this->filters['comment_ID'] == NULL || ( ! empty($this->filters['comment_ID']) && substr( $this->filters['comment_ID'], 0, 1 ) == '-') ) &&
 			( $this->filters['comment_ID_list'] == NULL || ( ! empty($this->filters['comment_ID_list']) && substr( $this->filters['comment_ID_list'], 0, 1 ) == '-') ) )
 		{ // restriction for blog
-			$this->CommentQuery->blog_restrict( $this->Blog );
+			$this->ItemQuery->where_chapter( $this->Blog->ID );
 		}
 
 		/*
 		 * filtering stuff:
 		 */
-		$this->CommentQuery->where_author( $this->filters['author'] );
+		$this->CommentQuery->where_author( $this->filters['author_IDs'] );
 		$this->CommentQuery->where_author_email( $this->filters['author_email'] );
 		$this->CommentQuery->where_author_url( $this->filters['author_url'], $this->filters['url_match'], $this->filters['include_emptyurl'] );
 		$this->CommentQuery->where_author_IP( $this->filters['author_IP'] );
-		$this->CommentQuery->where_post_ID( $this->filters['post_ID'] );
+		$this->ItemQuery->where_ID( $this->filters['post_ID'] );
 		$this->CommentQuery->where_ID( $this->filters['comment_ID'], $this->filters['author'] );
 		$this->CommentQuery->where_ID_list( $this->filters['comment_ID_list'] );
 		$this->CommentQuery->where_rating( $this->filters['rating_toshow'], $this->filters['rating_turn'], $this->filters['rating_limit'] );
 		$this->CommentQuery->where_keywords( $this->filters['keywords'], $this->filters['phrase'], $this->filters['exact'] );
 		$this->CommentQuery->where_statuses( $this->filters['statuses'] );
 		$this->CommentQuery->where_types( $this->filters['types'] );
+		$this->ItemQuery->where_datestart( '', '', '', '', $this->filters['timestamp_min'], $this->filters['timestamp_max'] );
+
+		if( !is_null( $this->Blog ) && isset( $this->filters['user_perm'] ) )
+		{ // If Blog and required user permission is set, add the corresponding restriction
+			$this->CommentQuery->user_perm_restrict( $this->filters['user_perm'], $this->Blog->ID );
+		}
 
 
 		/*
@@ -453,13 +424,51 @@ class CommentList2 extends DataObjectList2
 		 */
 		$order_by = gen_order_clause( $this->filters['orderby'], $this->filters['order'], $this->Cache->dbprefix, $this->Cache->dbIDname );
 
+		if( $this->filters['threaded_comments'] )
+		{	// In mode "Threaded comments" we should get all replies in the begining of the list
+			$order_by = $this->Cache->dbprefix.'in_reply_to_cmt_ID DESC, '.$order_by;
+		}
+
 		$this->CommentQuery->order_by( $order_by );
+
+		// GET Item IDs, this way we don't have to JOIN two times the items and the categories table into the comment query
+		if( isset( $this->filters['post_statuses'] ) )
+		{ // Set post statuses by filters
+			$post_show_statuses = $this->filters['post_statuses'];
+		}
+		elseif( isset( $this->filters['post_ID'] ) && is_admin_page() )
+		{ // Allow all kind of post status ( This statuses will be filtered later by user perms )
+			$post_show_statuses = get_visibility_statuses( 'keys' );
+		}
+		else
+		{ // Allow only inskin statuses for posts
+			$post_show_statuses = get_inskin_statuses();
+		}
+		// Restrict post filters to available statuses. When blog = 0 we will check visibility statuses for each blog separately ( on the same query ).
+		$this->ItemQuery->where_visibility( $post_show_statuses );
+		$sql_item_IDs = 'SELECT DISTINCT post_ID'
+						.$this->ItemQuery->get_from()
+						.$this->ItemQuery->get_where();
+		$item_IDs = $DB->get_col( $sql_item_IDs, 0, 'Get CommentQuery Item IDs' );
+		if( empty( $item_IDs ) )
+		{ // There is no item which belongs to the given blog and user may view it, so there are no comments either
+			parent::count_total_rows( 0 );
+			$this->CommentQuery->WHERE_and( 'FALSE' );
+			return;
+		}
+		$this->CommentQuery->where_post_ID( implode( ',', $item_IDs ) );
+
+		/*
+		 * Restrict to active comments by default, show expired comments only if it was requested
+		 * Note: This condition makes the CommentQuery a lot slower!
+		 */
+		$this->CommentQuery->expiry_restrict( $this->filters['expiry_statuses'] );
 
 		/*
 		 * GET TOTAL ROW COUNT:
 		 */
 		$sql_count = '
-				SELECT COUNT( DISTINCT '.$this->Cache->dbIDname.') '
+				SELECT COUNT( '.$this->Cache->dbIDname.') '
 					.$this->CommentQuery->get_from()
 					.$this->CommentQuery->get_where();
 
@@ -513,7 +522,8 @@ class CommentList2 extends DataObjectList2
 		// in ORDER BY must appear in the query. This make que query work with PostgreSQL and
 		// other databases.
 		// fp> That can dramatically fatten the returned data. You must handle this in the postgres class (check that order fields are in select)
-		$step1_sql = 'SELECT DISTINCT '.$this->Cache->dbIDname // .', '.implode( ', ', $order_cols_to_select )
+		// asimo> Note: DISTINCT was removed from the query because we should use DISTINCT only in those cases when the same field value may occur more then one times ( This is not the case )
+		$step1_sql = 'SELECT '.$this->Cache->dbIDname // .', '.implode( ', ', $order_cols_to_select )
 									.$this->CommentQuery->get_from()
 									.$this->CommentQuery->get_where()
 									.$this->CommentQuery->get_group_by()
@@ -548,7 +558,6 @@ class CommentList2 extends DataObjectList2
 	 */
 	function get_filter_titles( $ignore = array(), $params = array() )
 	{
-		global $post_statuses;
 		$title_array = array();
 
 		if( empty ($this->filters) )
@@ -558,10 +567,12 @@ class CommentList2 extends DataObjectList2
 
 		if( isset( $this->filters['statuses'] ) )
 		{
+			$visibility_statuses = get_visibility_statuses( '', array( 'redirected' ) );
+
 			$visibility_array = array();
 			foreach( $this->filters['statuses'] as $status )
 			{
-				$visibility_array[] = T_( $post_statuses[ $status ] );
+				$visibility_array[] = $visibility_statuses[ $status ];
 			}
 			$title_array['statuses'] = T_('Visibility').': '.implode( ', ', $visibility_array );
 		}
@@ -610,8 +621,8 @@ class CommentList2 extends DataObjectList2
 
 		return parent::display_if_empty( $params );
 	}
-	
-	
+
+
 	/**
 	 * Template tag
 	 *
@@ -619,8 +630,6 @@ class CommentList2 extends DataObjectList2
 	 */
 	function page_links( $params = array() )
 	{
-		global $generating_static;
-
 		$default_params = array(
 				'block_start' => '<p class="center">',
 				'block_end' => '</p>',
@@ -636,11 +645,6 @@ class CommentList2 extends DataObjectList2
 				'list_span' => 11,
 				'scroll_list_range' => 5,
 			);
-		
-		if( !empty($generating_static) )
-		{	// When generating a static page, act as if we were currently on the blog main page:
-			$default_params['page_url'] = $this->Blog->get('url');
-		}
 
 		// Use defaults + overrides:
 		$params = array_merge( $default_params, $params );
@@ -656,7 +660,7 @@ class CommentList2 extends DataObjectList2
 			$params['links_format'] = '$prev$ $first$ $list_prev$ $list$ $list_next$ $last$ $next$';
 		}
 
- 		if( $this->Blog->get_setting( 'paged_nofollowto' ) )
+		if( !is_null( $this->Blog ) && $this->Blog->get_setting( 'paged_nofollowto' ) )
 		{	// We prefer robots not to follow to pages:
 			$this->nofollow_pagenav = true;
 		}
@@ -685,10 +689,8 @@ class CommentList2 extends DataObjectList2
 	{
 		$col_order_fields = $this->cols[$col_idx]['order'];
 
-		// pre_dump( $col_order_fields, $this->filters['orderby'], $this->filters['order'] );
-
 		// Current order:
-		if( $this->filters['orderby'] == $col_order_fields )
+		if( $this->filters['orderby'] == $col_order_fields || $this->param_prefix.$this->filters['orderby'] == $col_order_fields  )
 		{
 			$col_sort_values['current_order'] = $this->filters['order'];
 		}
@@ -733,21 +735,23 @@ class CommentList2 extends DataObjectList2
 
 
 	/**
-	 * Checks if currently selected filter contains only comments trash status
-	 * 
+	 * Checks if currently selected filter contains comments with trash status
+	 *
+	 * @param boolean set true to check if the filter contains only recycled comments, set false to check if the filter contains the recycled comments
 	 * @return boolean
 	 */
-	function is_trashfilter()
+	function is_trashfilter( $only_trash = true )
 	{
+		if( ! $only_trash )
+		{ // Check if statuses filter contains the 'trash' value
+			return in_array( 'trash', $this->filters['statuses'] );
+		}
 		if( count( $this->filters['statuses'] ) == 1 )
-		{
+		{ // Check if statuses filter contains only the 'trash' value
 			return $this->filters['statuses'][0] == 'trash';
 		}
 		return false;
 	}
 }
 
-/*
- * $Log: _commentlist.class.php,v $
- */
 ?>

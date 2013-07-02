@@ -1,17 +1,11 @@
 <?php
-// This is for www only. You don't want to include this when runnignin CLI (command line) mode
 /**
- * This file initializes everything BUT the blog!
- *
- * It is useful when you want to do very customized templates!
- * It is also called by more complete initializers.
+ * This is for www only. You don't want to include this when runnignin CLI (command line) mode
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
- * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
- * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -22,25 +16,9 @@
  *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
  * }}
  *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- *
- * Matt FOLLETT grants Francois PLANQUE the right to license
- * Matt FOLLETT's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package evocore
  *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE
- * @author blueyed: Daniel HAHLER
- * @author mfollett: Matt FOLLETT
- * @author mbruneau: Marc BRUNEAU / PROGIDISTRI
- *
- * @version $Id: _init_hit.inc.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _init_hit.inc.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page directly.' );
 
@@ -67,9 +45,9 @@ $content_type_header = NULL;
 $http_response_code = 200;
 
 /**
- * @global integer ID of featured post that is being displayed (will become an array() in the future) -- needed so we can filter it out of normal post flow
+ * @global array IDs of featured posts that are being displayed -- needed so we can filter it out of normal post flow
  */
-$featured_displayed_item_ID = NULL;
+$featured_displayed_item_IDs = array();
 
 // Initialize some variables for template functions
 $required_js = array();
@@ -100,6 +78,19 @@ $Debuglog->add( 'vars: $ReqHost: '.$ReqHost, 'request' );
 $Debuglog->add( 'vars: $ReqURI: '.$ReqURI, 'request' );
 $Debuglog->add( 'vars: $ReqPath: '.$ReqPath, 'request' );
 
+/**
+ * Same domain htsrv url.
+ *
+ * @global string
+ */
+$samedomain_htsrv_url = get_samedomain_htsrv_url();
+
+/**
+ * Secure htsrv url.
+ *
+ * @global string
+ */
+$secure_htsrv_url = get_secure_htsrv_url();
 
 // on which page are we ?
 /* old:
@@ -201,38 +192,21 @@ if( $use_session )
 	require dirname(__FILE__).'/_init_session.inc.php';
 }
 
-
+if( is_logged_in() )
+{
+	$timeout_online = $Settings->get( 'timeout_online' );
+	if( empty( $current_User->lastseen_ts ) || ( $current_User->lastseen_ts < date2mysql( $localtimenow - $timeout_online ) ) )
+	{
+		$current_User->set( 'lastseen_ts', date2mysql( $localtimenow ) );
+		$current_User->dbupdate();
+	}
+}
 
 $Timer->resume( '_init_hit' );
 
 // Init charset handling:
 init_charsets( $current_charset );
 
-
-// fp> TODO: the following was in _vars.inc -- temporaily here, b2evolution stuff needs to move out of evoCORE.
-
-// dummy var for backward compatibility with versions < 2.4.1 -- prevents "Undefined variable"
-$credit_links = array();
-
-$francois_links = array( 'fr' => array( 'http://fplanque.net/', array( array( 78, 'Fran&ccedil;ois'),  array( 100, 'Francois') ) ),
-													'' => array( 'http://fplanque.com/', array( array( 78, 'Fran&ccedil;ois'),  array( 100, 'Francois') ) )
-												);
-
-$fplanque_links = array( 'fr' => array( 'http://fplanque.net/', array( array( 78, 'Fran&ccedil;ois Planque'),  array( 100, 'Francois Planque') ) ),
-													'' => array( 'http://fplanque.com/', array( array( 78, 'Fran&ccedil;ois Planque'),  array( 100, 'Francois Planque') ) )
-												);
-
-$skin_links = array( '' => array( 'http://skinfaktory.com/', array( array( 15, 'b2evo skin'), array( 20, 'b2evo skins'), array( 35, 'b2evolution skin'), array( 40, 'b2evolution skins'), array( 55, 'Blog skin'), array( 60, 'Blog skins'), array( 75, 'Blog theme'),array( 80, 'Blog themes'), array( 95, 'Blog template'), array( 100, 'Blog templates') ) ),
-												);
-
-$skinfaktory_links = array( '' => array( array( 73, 'http://evofactory.com/', array( array( 61, 'Evo Factory'), array( 68, 'EvoFactory'), array( 73, 'Evofactory') ) ),
-														             array( 100, 'http://skinfaktory.com/', array( array( 92, 'Skin Faktory'), array( 97, 'SkinFaktory'), array( 99, 'Skin Factory'), array( 100, 'SkinFactory') ) ),
-																				)
-												);
-
 $Timer->pause( '_init_hit' );
 
-/*
- * $Log: _init_hit.inc.php,v $
- */
 ?>

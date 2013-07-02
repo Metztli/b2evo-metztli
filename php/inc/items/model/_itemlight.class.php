@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -28,7 +28,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _itemlight.class.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _itemlight.class.php 4037 2013-06-24 07:19:23Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -54,13 +54,19 @@ class ItemLight extends DataObject
 	 * @var string
 	 */
 	var $issue_date;
-	var $mod_date;
 
- 	var $title;
+	/**
+	 * Last modification date (timestamp)
+	 * This should get compared to {@link $localtimenow}.
+	 * @var integer
+	 */
+	var $datemodified;
 
- 	var $excerpt;
+	var $title;
 
- 	var $urltitle;
+	var $excerpt;
+
+	var $urltitle;
 
 	var $canonical_slug_ID;
 
@@ -138,6 +144,9 @@ class ItemLight extends DataObject
 				array( 'table'=>'T_comments', 'fk'=>'comment_post_ID', 'msg'=>T_('%d comments') ),
 				array( 'table'=>'T_items__version', 'fk'=>'iver_itm_ID', 'msg'=>T_('%d versions') ),
 				array( 'table'=>'T_slug', 'fk'=>'slug_itm_ID', 'msg'=>T_('%d slugs') ),
+				array( 'table'=>'T_items__itemtag', 'fk'=>'itag_itm_ID', 'msg'=>T_('%d links to tags') ),
+				array( 'table'=>'T_items__item_settings', 'fk'=>'iset_item_ID', 'msg'=>T_('%d items settings') ),
+				array( 'table'=>'T_items__subscriptions', 'fk'=>'isub_item_ID', 'msg'=>T_('%d items subscriptions') ),
 			);
 
 		$this->objtype = $objtype;
@@ -150,12 +159,9 @@ class ItemLight extends DataObject
 		else
 		{
 			$this->ID = $db_row->$dbIDname;
-			$this->datemodified = $db_row->post_datemodified; // Needed for history display
-			/* Tblue> Both of the next two member variables are used in
-			 *        various places, maybe we should decide on one?! */
-			$this->issue_date = $db_row->post_datestart;
-			$this->datestart = $db_row->post_datestart;
-			$this->mod_date = $db_row->post_datemodified;
+			$this->issue_date = $db_row->post_datestart;			// Publication date of a post/item
+			$this->datestart = $db_row->post_datestart;			// This is the same as issue_date, but unfortunatly both of them are used, One of them should be removed
+			$this->datemodified = $db_row->post_datemodified;			// Date of last edit of post/item
 			$this->main_cat_ID = $db_row->post_main_cat_ID;
 			$this->urltitle = $db_row->post_urltitle;
 			$this->canonical_slug_ID = $db_row->post_canonical_slug_ID;
@@ -165,6 +171,20 @@ class ItemLight extends DataObject
 			$this->ptyp_ID = $db_row->post_ptyp_ID;
 			$this->url = $db_row->post_url;
 		}
+	}
+
+
+	/**
+	 * Is this a Special post (Page, Intros, Sidebar, Advertisement)
+	 *
+	 * @return boolean
+	 */
+	function is_special()
+	{
+		global $posttypes_specialtypes;
+
+		// Check if this post type is between the special post types
+		return in_array( $this->ptyp_ID, $posttypes_specialtypes );
 	}
 
 
@@ -238,12 +258,12 @@ class ItemLight extends DataObject
 				$permalink = url_add_tail( $blogurl, mysql2date('/Y/m/d/', $this->issue_date).$urltail );
 				break;
 
- 			case 'subchap':
+			case 'subchap':
 				$main_Chapter = & $this->get_main_Chapter();
 				$permalink = url_add_tail( $blogurl, '/'.$main_Chapter->urlname.'/'.$urltail );
 				break;
 
- 			case 'chapters':
+			case 'chapters':
 				$main_Chapter = & $this->get_main_Chapter();
 				$permalink = url_add_tail( $blogurl, '/'.$main_Chapter->get_url_path().$urltail );
 				break;
@@ -327,14 +347,27 @@ class ItemLight extends DataObject
 	 */
 	function get_permanent_url( $permalink_type = '', $blogurl = '', $glue = '&amp;' )
 	{
-		global $DB, $cacheweekly, $Settings;
+		global $DB, $cacheweekly, $Settings, $posttypes_specialtypes, $posttypes_nopermanentURL, $posttypes_catpermanentURL;
 
-		if( in_array( $this->ptyp_ID, array( 1000, 1500, 1520, 1530, 1570, 1600 ) ) ) // page & intros
-		{	// force use of single url:
-			$permalink_type = 'single';
+		if( in_array( $this->ptyp_ID, $posttypes_specialtypes ) ) // page, intros, sidebar
+		{	// This is not an "in stream" post:
+			if( in_array( $this->ptyp_ID, $posttypes_nopermanentURL ) )
+			{	// This type of post is not allowed to have a permalink:
+				$permalink_type = 'none';
+			}
+			if( in_array( $this->ptyp_ID, $posttypes_catpermanentURL ) )
+			{	// This post has a permanent URL as url to main chapter:
+				$permalink_type = 'cat';
+			}
+			else
+			{ // allowed to have a permalink:
+				// force use of single url:
+				$permalink_type = 'single';
+			}
 		}
 		elseif( empty( $permalink_type ) )
-		{ // Use default from collection settings:
+		{	// Normal "in stream" post:
+			// Use default from collection settings (may be an "in stream" URL):
 			$this->get_Blog();
 			$permalink_type = $this->Blog->get_setting( 'permalinks' );
 		}
@@ -346,6 +379,17 @@ class ItemLight extends DataObject
 
 			case 'subchap':
 				return $this->get_chapter_url( $blogurl, $glue );
+
+			case 'none':
+				// This is a silent fallback when we try to permalink to an Item that cannot be addressed directly:
+				// Link to blog home:
+				$this->get_Blog();
+				return $this->Blog->gen_blogurl();
+
+			case 'cat':
+				// Link to permanent url of main chapter:
+				$this->get_main_Chapter();
+				return $this->main_Chapter->get_permanent_url( NULL, $blogurl, 1, NULL, $glue );
 
 			case 'single':
 			default:
@@ -378,6 +422,7 @@ class ItemLight extends DataObject
 				'link_categories' => true,
 				'link_title'      => '#',
 				'format'          => 'htmlbody',
+				'show_locked'     => false,
 			), $params );
 
 
@@ -423,6 +468,11 @@ class ItemLight extends DataObject
 				$cat_name = $params['before_external'].$cat_name.$params['after_external'];
 			}
 
+			if( $Chapter->lock && $params[ 'show_locked' ] )
+			{
+				$cat_name .= '<span style="padding-left:5px;" >'.get_icon( 'file_not_allowed', 'imgtag', array( 'title' => T_('Locked')) ).'</span>';
+			}
+
 			$categoryNames[] = $cat_name;
 		}
 
@@ -433,42 +483,140 @@ class ItemLight extends DataObject
 
 
 	/**
+	 * Add nav_target param into the end of the url, but only if it is necessary
+	 *
+	 * @param string the url
+	 * @param string the current blog or current skin post_navigation setting
+	 * @param integer the ID of the navigation target
+	 * @param string glue
+	 * @return string the received url or the received url extended with the navigation param
+	 */
+	function add_navigation_param( $url, $post_navigation, $nav_target, $glue = '&amp;' )
+	{
+		if( empty( $url ) || empty( $nav_target ) )
+		{ // the url or the navigation target is not set we can't modify anything
+			return $url;
+		}
+
+		switch( $post_navigation )
+		{
+			case 'same_category': // navigate through the selected category
+				if( $this->main_cat_ID != $nav_target )
+				{
+					$url = url_add_param( $url, 'cat='.$nav_target, $glue );
+				}
+				break;
+
+			// 'same_tag' should be added here, with 'tag' param
+
+			case 'same_author': // navigate through this item author's posts ( param not needed because a post always has only one author )
+			case 'same_blog': // by default don't add any param
+			default:
+				break;
+		}
+
+		return $url;
+	}
+
+
+	/**
 	 * Template function: display main category name
 	 *
 	 * @param string Output format, see {@link format_to_output()}
+	 * @param array Params
 	 */
-	function main_category( $format = 'htmlbody' )
+	function main_category( $format = 'htmlbody', $params = array() )
 	{
+		$params = array_merge( array(
+				'display_link' => false, // TRUE to display category's name as link
+				'link_class'   => ''
+			), $params );
+
 		$Chapter = & $this->get_main_Chapter();
+
+		if( $params['display_link'] )
+		{	// Display category's name as link
+
+			$link_class = '';
+			if( !empty( $params['link_class'] ) )
+			{	// Set attribute for class
+				$link_class = 'class="'.$params['link_class'].'"';
+			}
+
+			echo '<a href="'.$Chapter->get_permanent_url().'"'.$link_class.'>';
+		}
+
+		// Display category's name
 		$Chapter->disp( 'name', $format );
+
+		if( $params['display_link'] )
+		{
+			echo '</a>';
+		}
 	}
 
 
 	/**
 	 * Get list of Chapter objects.
 	 *
+	 * sam2kb> TODO: Cache item cat IDs into Item::categories property instead of global $cache_postcats
+	 *
 	 * @return array of {@link Chapter chapters} (references)
 	 */
 	function get_Chapters()
 	{
-		global $cache_postcats;
+		global $DB, $preview, $postIDlist, $cache_postcats;
+
+		if( $preview )
+		{	// Preview mode
+			global $extracats, $post_category;
+
+			param( 'extracats', 'array', array() );
+			if( !in_array( $post_category, $extracats ) )
+			{
+				$extracats[] = $post_category;
+			}
+			$categoryIDs = $extracats;
+		}
+		else
+		{
+			$search_post_ids = explode( ',', $postIDlist );
+			if( empty( $search_post_ids ) || !in_array( $this->ID, $search_post_ids ) )
+			{	// Load cats for current item
+				$categoryIDs = postcats_get_byID( $this->ID );
+			}
+			else
+			{	// Load cats for items list
+				if( ! isset($cache_postcats[$this->ID]) )
+				{	// Add to cache
+					$sql = "SELECT postcat_post_ID, postcat_cat_ID
+							FROM T_postcats
+							WHERE postcat_post_ID IN ($postIDlist)
+							ORDER BY postcat_post_ID, postcat_cat_ID";
+
+					foreach( $DB->get_results( $sql, ARRAY_A, 'Get categories for items' ) as $row )
+					{
+						$postcat_post_ID = $row['postcat_post_ID'];
+						if( ! isset( $cache_postcats[$postcat_post_ID] ) )
+						{
+							 $cache_postcats[$postcat_post_ID] = array();
+						}
+						$cache_postcats[$postcat_post_ID][] = $row['postcat_cat_ID'];
+					}
+				}
+				$categoryIDs = $cache_postcats[$this->ID];
+			}
+		}
 
 		$ChapterCache = & get_ChapterCache();
-
-		// Load cache for category associations with current posts
-		// TODO: dh> This fails, if $postIDlist is not set! (e.g. in admin)
-		cat_load_postcats_cache();
-
-		if( isset($cache_postcats[$this->ID]) )
-		{ // dh> may not be set! (demo logs)
-			$categoryIDs = $cache_postcats[$this->ID];
-		}
-		else $categoryIDs = array();
 
 		$chapters = array();
 		foreach( $categoryIDs as $cat_ID )
 		{
-			$chapters[] = & $ChapterCache->get_by_ID( $cat_ID );
+			if( $Chapter = & $ChapterCache->get_by_ID( $cat_ID, false ) )
+			{
+				$chapters[] = $Chapter;
+			}
 		}
 
 		return $chapters;
@@ -482,14 +630,86 @@ class ItemLight extends DataObject
 	 */
 	function & get_main_Chapter()
 	{
-		if( is_null($this->main_Chapter) )
+		if( is_null( $this->main_Chapter ) )
 		{
 			$ChapterCache = & get_ChapterCache();
 			/**
 			 * @var Chapter
 			 */
-			$this->main_Chapter = & $ChapterCache->get_by_ID( $this->main_cat_ID );
+			$this->main_Chapter = & $ChapterCache->get_by_ID( $this->main_cat_ID, false );
+			if( empty( $this->main_Chapter ) )
+			{	// If main chapter is broken we should get it from one of extra chapters
+				$chapters = $this->get_Chapters();
+				foreach( $chapters as $Chapter )
+				{
+					if( !empty( $Chapter ) )
+					{	// We have found a valid Chapter...
+						$this->main_Chapter = & $Chapter;
+						$this->main_cat_ID = $Chapter->ID;
+						break;
+					}
+				}
+			}
+			if( empty( $this->main_Chapter ) )
+			{	// If we still don't have a valid Chapter, display clean error and die().
+				global $admin_url, $Blog, $blog;
+				if( empty( $Blog ) )
+				{
+					if( !empty( $blog ) )
+					{
+						$BlogCache = & get_BlogCache();
+						$Blog = & $BlogCache->get_by_ID( $blog, false );
+					}
+				}
+
+				$url_to_edit_post = $admin_url.'?ctrl=items&amp;action=edit&amp;p='.$this->ID;
+
+				if( !empty( $Blog ) )
+				{
+					$url_to_edit_post .= '&amp;blog='.$Blog->ID;
+					if( is_admin_page() )
+					{	// Try to set a main category
+						$default_cat_ID = $Blog->get_setting( 'default_cat_ID' );
+						if( !empty( $default_cat_ID ) )
+						{	// If default category is set
+							$this->main_cat_ID = $default_cat_ID;
+							$this->main_Chapter = & $ChapterCache->get_by_ID( $this->main_cat_ID, false );
+						}
+						else
+						{	// Set from first chapter of the blog
+							$ChapterCache->clear();
+							$ChapterCache->load_subset( $Blog->ID );
+							if( $Chapter = & $ChapterCache->get_next() )
+							{
+								$this->main_cat_ID = $Chapter->ID;
+								$this->main_Chapter = & $Chapter;
+							}
+						}
+					}
+				}
+
+				$message = sprintf( 'Item with ID <a %s>%s</a> has an invalid main category ID %s.',
+						'href="'.$url_to_edit_post.'"',
+						$this->ID,
+						$this->main_cat_ID
+					);
+				if( empty( $Blog ) )
+				{	// No blog defined
+					$message .= ' In addition we cannot fallback to the default category because no valid blog ID has been specified.';
+				}
+
+				if( empty( $this->main_Chapter ) )
+				{	// Main chapter is not defined, because blog doesn't have the default cat ID and even blog doesn't have any categories
+					debug_die( $message );
+				}
+				else
+				{	// Main chapter is defined, we can show the page
+					global $Messages;
+					$Messages->add( $message );
+				}
+			}
 		}
+
 		return $this->main_Chapter;
 	}
 
@@ -605,10 +825,20 @@ class ItemLight extends DataObject
 				'format'      => 'htmlbody',
 				'class'       => 'flag',
 				'align'       => '',
+				'locale'      => 'item', // Possible values: 'item', 'blog', custom locale, empty string for current locale
 			), $params );
 
+		if( $params['locale'] == 'blog' )
+		{
+			$params['locale'] = $this->get_Blog()->locale;
+		}
+		elseif( $params['locale'] == 'item' )
+		{
+			$params['locale'] = $this->locale;
+		}
+
 		echo $params['before'];
-		echo locale_flag( $this->locale, $params['collection'], $params['class'], $params['align'] );
+		echo locale_flag( $params['locale'], $params['collection'], $params['class'], $params['align'] );
 		echo $params['after'];
 	}
 
@@ -634,6 +864,22 @@ class ItemLight extends DataObject
 		echo format_to_output( $locale['name'], $format );
 	}
 
+	/**
+	 * Get last mod date (datetime) of Item
+	 *
+	 * @param string date/time format: leave empty to use locale default date format
+	 * @param boolean true if you want GMT
+	 */
+	function get_mod_date( $format = '', $useGM = false )
+	{
+		if( empty($format) )
+		{
+			return mysql2date( locale_datefmt(), $this->datemodified, $useGM );
+		}
+
+		return mysql2date( $format, $this->datemodified, $useGM );
+	}
+
 
 	/**
 	 * Template function: display last mod date (datetime) of Item
@@ -643,10 +889,7 @@ class ItemLight extends DataObject
 	 */
 	function mod_date( $format = '', $useGM = false )
 	{
-		if( empty($format) )
-			echo mysql2date( locale_datefmt(), $this->mod_date, $useGM );
-		else
-			echo mysql2date( $format, $this->mod_date, $useGM );
+		echo $this->get_mod_date( $format, $useGM );
 	}
 
 
@@ -659,9 +902,9 @@ class ItemLight extends DataObject
 	function mod_time( $format = '', $useGM = false )
 	{
 		if( empty($format) )
-			echo mysql2date( locale_timefmt(), $this->mod_date, $useGM );
+			echo mysql2date( locale_timefmt(), $this->datemodified, $useGM );
 		else
-			echo mysql2date( $format, $this->mod_date, $useGM );
+			echo mysql2date( $format, $this->datemodified, $useGM );
 	}
 
 
@@ -745,7 +988,7 @@ class ItemLight extends DataObject
 	 * @param string link title
 	 * @param string class name
 	 */
-	function get_permanent_link( $text = '#', $title = '#', $class = '', $target_blog = '' )
+	function get_permanent_link( $text = '#', $title = '#', $class = '', $target_blog = '', $post_navigation = '', $nav_target = NULL )
 	{
 		global $current_User, $Blog;
 
@@ -779,6 +1022,8 @@ class ItemLight extends DataObject
 		}
 
 		$url = $this->get_permanent_url( $permalink_type, $blogurl );
+		// add navigation param if necessary
+		$url = $this->add_navigation_param( $url, $post_navigation, $nav_target );
 
 		// Display as link
 		$r = '<a href="'.$url.'" title="'.$title.'"';
@@ -840,17 +1085,27 @@ class ItemLight extends DataObject
 	 */
 	function get_title( $params = array() )
 	{
-		global $ReqURL, $Blog;
+		global $ReqURL, $Blog, $MainList;
+
+		// Set default post navigation
+		$def_post_navigation = empty( $Blog ) ? 'same_blog' : $Blog->get_setting( 'post_navigation' );
 
 		// Make sure we are not missing any param:
 		$params = array_merge( array(
-				'before'      => '',
-				'after'       => '',
-				'format'      => 'htmlbody',
-				'link_type'   => '#',
-				'max_length'  => '',
-				'target_blog' => '',
+				'before'          => '',
+				'after'           => '',
+				'format'          => 'htmlbody',
+				'link_type'       => '#',
+				'link_class'      => '#',
+				'max_length'      => '',
+				'target_blog'     => '',
+				'nav_target'      => NULL,
+				'post_navigation' => $def_post_navigation,
+				'title_field'     => 'title',
 			), $params );
+
+		// Set post navigation target
+		$nav_target = ( ( $params['nav_target'] === NULL ) && isset($MainList) && !empty( $MainList->nav_target ) ) ? $MainList->nav_target : $params['nav_target'];
 
 		$blogurl = '';
 		if( !empty($Blog) && $this->check_cross_post_nav( $params['target_blog'], $Blog->ID ) )
@@ -858,7 +1113,7 @@ class ItemLight extends DataObject
 			$blogurl = $Blog->gen_blogurl();
 		}
 
-		$title = format_to_output( $this->title, $params['format'] );
+		$title = format_to_output( $this->$params['title_field'], $params['format'] );
 
 		if( $params['max_length'] != '' )
 		{	// Crop long title
@@ -913,10 +1168,21 @@ class ItemLight extends DataObject
 			default:
 		}
 
+		if( !empty( $url ) )
+		{ // url is set, also add navigation param if it is necessary
+			$url = $this->add_navigation_param( $url, $params['post_navigation'], $nav_target );
+		}
+
+		$link_class = '';
+		if( $params['link_class'] != '#' )
+		{
+			$link_class = ' class="'.$params['link_class'].'"';
+		}
+
 		$r = $params['before'];
 		if( !empty($url) )
 		{
-			$r .= '<a href="'.$url.'">'.$title.'</a>';
+			$r .= '<a href="'.$url.'"'.$link_class.'>'.$title.'</a>';
 		}
 		else
 		{
@@ -1016,12 +1282,22 @@ class ItemLight extends DataObject
 
 			case 'issue_date':
 			case 'datestart':
-				$this->issue_date = $parvalue;
-				return $this->set_param( 'datestart', 'date', $parvalue, false );
+				// Remove seconds from issue date and start date
+				// fp> TODO: this should only be done if the date is in the future. If it's in the past there are no sideeffects to having seconds.
+				// asimo> Why do we have two parameter with the same content if only one is stored in the database?
+				// Also it doesn't make sense to remove seconds from a db date field because the database format has seconds anyway.
+				// If we remove seconds from datstart field, then datestart will be always inserted into the dbchagnes even if it was not changed.
+				// If we don't want seconds in the end of the datestart then we need to remove it in the itemlight constructor as well.
+				// asimo> We have to set seconds to '00' and not remove them, this way the posts can appear right after creating, and the format is OK as well.
+				$parvalue_empty_seconds = remove_seconds(strtotime($parvalue), 'Y-m-d H:i:s');
+				$this->issue_date = $parvalue_empty_seconds;
+				return $this->set_param( 'datestart', 'date', $parvalue_empty_seconds, false );
 
 			case 'ptyp_ID':
 			case 'canonical_slug_ID':
 			case 'tiny_slug_ID':
+			case 'dateset':
+			case 'excerpt_autogenerated':
 				return $this->set_param( $parname, 'number', $parvalue, true );
 
 			default:
@@ -1062,8 +1338,4 @@ class ItemLight extends DataObject
 
 }
 
-
-/*
- * $Log: _itemlight.class.php,v $
- */
 ?>

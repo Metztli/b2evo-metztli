@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  * Parts of this file are copyright (c)2004 by The University of North Carolina at Charlotte as
  * contributed by Jason Edgecombe {@link http://tst.uncc.edu/team/members/jason_bio.php}.
@@ -40,7 +40,7 @@
  *
  * @todo implement CategoryCache based on LinkCache
  *
- * @version $Id: _category.funcs.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _category.funcs.php 3875 2013-05-30 13:01:41Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -53,8 +53,11 @@ if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.'
  * @param string Category name
  * @param string Category ID ('NULL' as string(!) for root)
  * @param integer|NULL Blog ID (will be taken from parent cat, if empty)
+ * @param string Category description
+ * @param boolean Set to true if the new object needs to be added into the ChapterCache after it was created
+ * @param integer Category order
  */
-function cat_create( $cat_name, $cat_parent_ID, $cat_blog_ID = NULL)
+function cat_create( $cat_name, $cat_parent_ID, $cat_blog_ID = NULL, $cat_description = NULL, $add_to_cache = false, $cat_order = NULL )
 {
 	global $DB;
 
@@ -75,12 +78,22 @@ function cat_create( $cat_name, $cat_parent_ID, $cat_blog_ID = NULL)
 
 	$new_Chapter = new Chapter(NULL, $cat_blog_ID);
 	$new_Chapter->set('name', $cat_name);
-	$new_Chapter->set('urlname', strtolower($cat_name)); // TODO: should get handled by set("name")
 	$new_Chapter->set('parent_ID', $cat_parent_ID);
+	if( !empty( $cat_description ) )
+	{	// Set decription
+		$new_Chapter->set('description', $cat_description);
+	}
+	$new_Chapter->set('order', $cat_order);
 
 
 	if( ! $new_Chapter->dbinsert() )
 		return 0;
+
+	if( $add_to_cache )
+	{ // add new Category into the Cache
+		$ChapterCache = & get_ChapterCache();
+		$ChapterCache->add( $new_Chapter );
+	}
 
 	return $new_Chapter->ID;
 }
@@ -131,6 +144,20 @@ function get_catblog( $cat_ID )
 
 
 /**
+ * Get category permanent url by category ID
+ *
+ * @param integer category ID
+ */
+function get_caturl( $cat_ID )
+{
+	$ChapterCache = & get_ChapterCache();
+	$Chapter = $ChapterCache->get_by_ID($cat_ID);
+
+	return $Chapter->get_permanent_url();
+}
+
+
+/**
  * Load cache for category definitions.
  *
  * Warning: this loads all categories for ALL blogs
@@ -138,7 +165,6 @@ function get_catblog( $cat_ID )
 function cat_load_cache()
 {
 	global $DB, $cache_categories;
-	global $timestamp_min, $timestamp_max;
 	global $Settings;
 	global $Timer;
 
@@ -150,16 +176,19 @@ function cat_load_cache()
 	$Timer->resume( 'cat_load_cache' );
 
 	// echo "loading CAT cache";
-	$sql = 'SELECT cat_ID, cat_parent_ID, cat_name, cat_blog_ID
-					FROM T_categories';
 	if( $Settings->get('chapter_ordering') == 'manual' )
 	{	// Manual order
-		$sql .= ' ORDER BY cat_order';
+		$select_temp_order = ', IF( cat_order IS NULL, 999999999, cat_order ) AS temp_order';
+		$sql_order = ' ORDER BY temp_order';
 	}
 	else
 	{	// Alphabetic order
-		$sql .= ' ORDER BY cat_name';
+		$select_temp_order = '';
+		$sql_order = ' ORDER BY cat_name';
 	}
+	$sql = 'SELECT cat_ID, cat_parent_ID, cat_name, cat_blog_ID'.$select_temp_order.'
+					FROM T_categories'
+					.$sql_order;
 
 
 	foreach( $DB->get_results( $sql, ARRAY_A, 'loading CAT cache' ) as $myrow )
@@ -203,68 +232,97 @@ function cat_load_cache()
 
 
 /**
- * Load cache for category associations with current posts
+ * Get # of posts for each category in a blog
  *
- * @todo put this into main post query when MySQL 4.0 commonly available
- * @todo dh> why is this limited to the _global_ $postIDlist?!
- *           Really ridiculous, trying to get a list of category names for an Item (which is not in $postIDlist for example.. :/)
- * fp> This is legacy from a quick b2/cafelog hack. This will de deprecated.
- * dh> Only used in ItemLight::get_Chapters now - move it there for now? fp> no it should stay close to $cache_postcats handling until teh whole thing dies.
+ * @param integer Category ID
+ * @param integer Blog ID
  */
-function cat_load_postcats_cache()
+function get_postcount_in_category( $cat_ID, $blog_ID = NULL )
 {
-	global $DB, $cache_postcats, $postIDlist, $preview;
-
-	if( isset($cache_postcats) )
-	{ // already done!
-		return;
-	}
-
-	if( $preview )
-	{ // Preview mode
-		global $extracats, $post_category;
-		param( 'extracats', 'array', array() );
-		if( !in_array( $post_category, $extracats ) )
-			$extracats[] = $post_category;
-		$cache_postcats[0] = $extracats;
-		return;
-	}
-
-	if( !empty($postIDlist) )
+	if( is_null( $blog_ID ) )
 	{
-		$sql = "SELECT postcat_post_ID, postcat_cat_ID
-						FROM T_postcats
-						WHERE postcat_post_ID IN ($postIDlist)
-						ORDER BY postcat_post_ID, postcat_cat_ID";
-
-		foreach( $DB->get_results( $sql, ARRAY_A ) as $myrow )
-		{
-			$postcat_post_ID = $myrow["postcat_post_ID"];
-			if( ! isset( $cache_postcats[$postcat_post_ID] ) )
-			{
-				 $cache_postcats[$postcat_post_ID] = array();
-			}
-			$cache_postcats[$postcat_post_ID][] = $myrow["postcat_cat_ID"];
-			// echo "just cached: post=$postcat_post_ID  cat=".$myrow["postcat_cat_ID"]."<br />";
-		}
+		global $blog;
+		$blog_ID = $blog;
 	}
+
+	global $DB, $number_of_posts_in_cat;
+
+	if( !isset( $number_of_posts_in_cat[ (string) $blog_ID ] ) )
+	{
+		$SQL = new SQL( 'Get # of posts for each category in a blog' );
+		$SQL->SELECT( 'cat_ID, count( postcat_post_ID ) c' );
+		$SQL->FROM( 'T_categories' );
+		$SQL->FROM_add( 'INNER JOIN T_postcats ON postcat_cat_ID = cat_id' );
+		$SQL->FROM_add( 'INNER JOIN T_items__item ON postcat_post_ID = post_id' );
+		$SQL->WHERE( 'cat_blog_ID = '.$DB->quote( $blog_ID ) );
+		// fp> TODO: the following probably needs to be ALL except $posttypes_specialtypes
+		$SQL->WHERE_and( 'post_ptyp_ID IN ( '.$DB->quote( array( 1, 2000 ) ).' )' );
+		$SQL->WHERE_and( statuses_where_clause( get_inskin_statuses(), 'post_', $blog_ID, 'blog_post!', true ) );
+		$SQL->GROUP_BY( 'cat_ID' );
+		$number_of_posts_in_cat[ (string) $blog_ID ] = $DB->get_assoc( $SQL->get() );
+	}
+
+	return isset( $number_of_posts_in_cat[(string) $blog_ID][$cat_ID] ) ? (int) $number_of_posts_in_cat[(string) $blog_ID][$cat_ID] : 0;
 }
 
 
 /**
- * Get category associations with given post
+ * Get # of comments for each category in a blog
+ *
+ * @param integer Category ID
+ * @param integer Blog ID
+ */
+function get_commentcount_in_category( $cat_ID, $blog_ID = NULL )
+{
+	if( is_null( $blog_ID ) )
+	{
+		global $blog;
+		$blog_ID = $blog;
+	}
+
+	global $DB, $number_of_comments_in_cat;
+
+	if( !isset( $number_of_comments_in_cat[(string) $blog_ID] ) )
+	{
+		$SQL = new SQL();
+		$SQL->SELECT( 'cat_ID, COUNT( comment_ID ) c' );
+		$SQL->FROM( 'T_comments' );
+		$SQL->FROM_add( 'LEFT JOIN T_postcats ON comment_post_ID = postcat_post_ID' );
+		$SQL->FROM_add( 'LEFT JOIN T_categories ON postcat_cat_ID = cat_id' );
+		$SQL->FROM_add( 'LEFT JOIN T_items__item ON comment_post_ID = post_id' );
+		$SQL->WHERE( 'cat_blog_ID = '.$DB->quote( $blog_ID ) );
+		$SQL->WHERE_and( statuses_where_clause( get_inskin_statuses(), 'comment_', $blog_ID, 'blog_comment!', true ) );
+		// add where condition to show only those posts commetns which are visible for the current User
+		$SQL->WHERE_and( statuses_where_clause( get_inskin_statuses(), 'post_', $blog_ID, 'blog_post!', true ) );
+		$SQL->GROUP_BY( 'cat_ID' );
+
+		$number_of_comments_in_cat[(string) $blog_ID] = $DB->get_assoc( $SQL->get() );
+	}
+
+	return isset( $number_of_comments_in_cat[(string) $blog_ID][$cat_ID] ) ? (int) $number_of_comments_in_cat[(string) $blog_ID][$cat_ID] : 0;
+}
+
+
+/**
+ * Get category associations with given item
+ *
+ * sam2kb> TODO: Cache item cat IDs into Item::categories property instead of global $cache_postcats
  */
 function postcats_get_byID( $post_ID )
 {
-	global $DB;
+	global $DB, $cache_postcats;
 
-	//echo "looking up cats for post $post_ID ";
+	if( ! isset($cache_postcats[$post_ID]) )
+	{
+		$sql = 'SELECT postcat_cat_ID
+				FROM T_postcats
+				WHERE postcat_post_ID = '.$DB->quote($post_ID).'
+				ORDER BY postcat_cat_ID';
 
-	$sql = "SELECT postcat_cat_ID
-					FROM T_postcats
-					WHERE postcat_post_ID = $post_ID
-					ORDER BY postcat_cat_ID";
-	return $DB->get_col( $sql );
+		$cache_postcats[$post_ID] = $DB->get_col( $sql, 0, 'Get category associations with given item' );
+	}
+
+	return $cache_postcats[$post_ID];
 }
 
 
@@ -476,7 +534,7 @@ function cat_req( $parent_cat_ID, $level )
 
 /**
  * Get global cross posting settings -- (cross posting = 1 post in multiple blogs)
- * 
+ *
  * @return int
  * 		0 - cross posting disabled
  * 		1 - cross posting enabled for extra categories
@@ -497,7 +555,4 @@ function cat_req_dummy()
 {
 }
 
-/*
- * $Log: _category.funcs.php,v $
- */
 ?>

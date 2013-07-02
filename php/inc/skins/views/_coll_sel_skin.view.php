@@ -5,13 +5,13 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
  *
  * @package admin
  *
- * @version $Id: _coll_sel_skin.view.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _coll_sel_skin.view.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -32,13 +32,15 @@ foreach( $SkinCache->cache as $Skin )
 		continue;
 	}
 
+	$disp_params = array(
+		'function' => 'pick',
+		'select_url' => '?ctrl=collections&amp;action=new-name&amp;kind='.$kind.'&amp;skin_ID='.$Skin->ID
+	);
+
 	// Display skinshot:
-	Skin::disp_skinshot( $Skin->folder, $Skin->name, 'pick', false, '?ctrl=collections&amp;action=new-name&amp;kind='.$kind.'&amp;skin_ID='.$Skin->ID );
+	Skin::disp_skinshot( $Skin->folder, $Skin->name, $disp_params );
 }
 
 echo '<div class="clear"></div>';
 
-/*
- * $Log: _coll_sel_skin.view.php,v $
- */
 ?>

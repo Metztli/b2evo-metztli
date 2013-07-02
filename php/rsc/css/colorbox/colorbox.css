@@ -19,7 +19,7 @@
     ordered & tabbed in a way that represents the nesting of the generated HTML.
 */
 #cboxOverlay{background:url(images/overlay.png) repeat 0 0;}
-#colorbox{}
+#colorbox{font: 10px Verdana,Arial,Sans-Serif;}
     #cboxTopLeft{width:21px; height:21px; background:url(images/controls.png) no-repeat -100px 0;}
     #cboxTopRight{width:21px; height:21px; background:url(images/controls.png) no-repeat -129px 0;}
     #cboxBottomLeft{width:21px; height:21px; background:url(images/controls.png) no-repeat -100px -29px;}
@@ -42,6 +42,16 @@
         #cboxLoadingGraphic{background:url(images/loading.gif) no-repeat center center;}
         #cboxClose{position:absolute; bottom:0; right:0; background:url(images/controls.png) no-repeat -25px 0; width:25px; height:25px; text-indent:-9999px;}
         #cboxClose.hover{background-position:-25px -25px;}
+        #cboxVoting{position:absolute; bottom:25px; min-height:15px; width:100%; padding:5px 0; text-align:center; white-space:nowrap; -moz-border-radius:6px; -webkit-border-radius:6px; -khtml-border-radius:6px; border-radius:6px;}
+        #cboxVoting a{margin:0 10px 0 0; vertical-align:middle;}
+        #cboxVoting a span{margin:0; vertical-align:top;}
+        #cboxVoting span.icon{vertical-align:top;}
+        #cboxVoting span{margin:0 10px 0 0;}
+        #cboxVoting span.separator{border-right: 1px solid #000; margin-right:14px;}
+        #cboxVoting label input{vertical-align:middle; margin-right:2px;}
+        #cboxVoting label span{vertical-align:middle;}
+        #cboxOpen{position:absolute; bottom:4px; left: 0; right: 0; margin: auto; width: 130px;}
+        #cboxOpen a{color:#0092EF;}
 
 /*
   The following fixes a problem where IE7 and IE8 replace a PNG's alpha transparency with a black fill

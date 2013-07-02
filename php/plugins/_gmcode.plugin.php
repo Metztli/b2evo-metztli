@@ -6,7 +6,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package plugins
  */
@@ -25,11 +25,10 @@ class gmcode_plugin extends Plugin
 	var $code = 'b2evGMco';
 	var $name = 'GM code';
 	var $priority = 45;
-	var $apply_rendering = 'opt-out';
 	var $group = 'rendering';
 	var $short_desc;
 	var $long_desc;
-	var $version = '3.0';
+	var $version = '5.0.0';
 	var $number_of_installs = 1;
 
 
@@ -86,26 +85,44 @@ class gmcode_plugin extends Plugin
 	{
 		$content = & $params['data'];
 
-		$content = callback_on_non_matching_blocks( $content, '~<[^>]*>~s', array($this, 'replace_callback') );
+		if( stristr( $content, '<code' ) !== false || stristr( $content, '<pre' ) !== false )
+		{	// Call replace_content() on everything outside code/pre:
+			$content = callback_on_non_matching_blocks( $content,
+				'~<(code|pre)[^>]*>.*?</\1>~is',
+				array( $this, 'replace_out_tags' ) );
+		}
+		else
+		{	// No code/pre blocks, replace on the whole thing
+			$content = $this->replace_out_tags( $content );
+		}
 
 		return true;
 	}
 
 
 	/**
-	 * Replace callback
+	 * Replace text outside of html tags
+	 *
 	 * @param string
 	 * @return string
 	 */
-	function replace_callback($text)
+	function replace_out_tags( $text )
 	{
-		return preg_replace($this->search, $this->replace, $text);
+		return callback_on_non_matching_blocks( $text, '~<[^>]*>~s', array( $this, 'replace_callback' ) );
+	}
+
+
+	/**
+	 * Replace callback
+	 *
+	 * @param string
+	 * @return string
+	 */
+	function replace_callback( $text )
+	{
+		return preg_replace( $this->search, $this->replace, $text );
 	}
 
 }
 
-
-/*
- * $Log: _gmcode.plugin.php,v $
- */
 ?>

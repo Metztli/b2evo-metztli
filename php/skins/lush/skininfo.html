@@ -1,0 +1,114 @@
+<html>
+<head>
+
+<style>
+body {background:#091c09;color:#8cb49a;font-family:arial, verdana;}
+a{color:#71a46d;}
+a:hover{color:#fff;}
+code {padding-left:25px;display:block;color:#71a46d;}
+</style>
+</head>
+<body><br />
+<h3>Skin Name: Lush</h3>
+For b2evolution 1.10.x<br />
+Design by: Andrew Hreschak<br />
+Upgrade to B2evolution v2.4.1 by Afwas {@link: <a href="http://www.blog.hemminga.net">http://www.blog.hemminga.net</a>}<br />
+For Support and Updates to this skin: <a href="http://blog.thedarksighed.com/projectblog/2007/12/01/b2evolution_skin_lush">http://blog.thedarksighed.com/projectblog/2007/12/01/b2evolution_skin_lush</a><br />
+<br />
+
+<strong>About:</strong><br />
+This is an original skin design built for the 1.10.x series of b2evolution.<br />
+It is released for use under Creative Commons License v3.0: <a href="http://http://creativecommons.org/licenses/by/3.0/">http://creativecommons.org/licenses/by/3.0/</a><br /><br />
+The skin contains customized icons for delete, edit, and permalink<br />
+It contains pre-built styles for the search-cloud plugin<br />
+It contains a custom icon and styles for blockquotes<br />
+It is a 2-column, right-side sidebar, fixed-width skin, designed for 1024x768 and higher screen resolutions.<br />
+It is valid XHTML Transitional.<br /><br />
+<strong>Restrictions:</strong><br />
+Please leave the "skin design by" attribution listing contained in the page header block which specifically lists the design credit, and,<br />
+please leave the "skin design by" attribution listing contained in the page footer.<br /><br />
+For additional custom b2evolution skins, visit <a href="http://http://blog.thedarksighed.com/projectblog">http://blog.thedarksighed.com/projectblog</a><br />
+<br />
+<strong>Adjustments:</strong><br />
+This skin can be adjusted for Single-blog and Multi-blog systems as so:<br />
+<br />
+1. In _main.php, find and edit the following lines of code (at approx lines 80-90):<br />
+<br />
+For Multi-blog system:<br />
+<br />
+<code>&lt;div class=&quot;submenu&quot;&gt;<br />
+&lt;?php<br />
+// UNCOMMENT FOR MULTI-BLOG SYSTEMS<br />
+// --------------------------- BLOG LIST INCLUDED HERE -----------------------------<br />
+require dirname(__FILE__).'/_bloglist.php';<br />
+// ------------------------------- END OF BLOG LIST --------------------------------<br />
+?&gt;<br />
+&lt;!-- UNCOMMENT FOR SINGLE-BLOG SYSTEMS<br />
+&lt;h1&gt;&lt;a href=&quot;&lt;?php $Blog-&gt;disp( 'url', 'raw' ) ?&gt;&quot; title=&quot;View the main page of &lt;?php $Blog-&gt;disp( 'name', 'htmlbody' ) ?&gt;&quot;&gt;&lt;?php $Blog-&gt;disp( 'name', 'htmlbody' ) ?&gt;&lt;/a&gt;&lt;/h1&gt;<br />
+&lt;?php $Blog-&gt;disp( 'tagline', 'htmlbody' ) ?&gt;<br />
+--&gt;<br />
+&lt;/div&gt;<br /></code>
+<br />
+For Single-blog system:<br />
+<br />
+<code>&lt;div class=&quot;submenu&quot;&gt;<br />
+&lt;?php<br />
+// UNCOMMENT FOR MULTI-BLOG SYSTEMS<br />
+// --------------------------- BLOG LIST INCLUDED HERE -----------------------------<br />
+// require dirname(__FILE__).'/_bloglist.php';<br />
+// ------------------------------- END OF BLOG LIST --------------------------------<br />
+?&gt;<br />
+&lt;!-- UNCOMMENT FOR SINGLE-BLOG SYSTEMS --&gt;<br />
+&lt;h1&gt;&lt;a href=&quot;&lt;?php $Blog-&gt;disp( 'url', 'raw' ) ?&gt;&quot; title=&quot;View the main page of &lt;?php $Blog-&gt;disp( 'name', 'htmlbody' ) ?&gt;&quot;&gt;&lt;?php $Blog-&gt;disp( 'name', 'htmlbody' ) ?&gt;&lt;/a&gt;&lt;/h1&gt;<br />
+&lt;?php $Blog-&gt;disp( 'tagline', 'htmlbody' ) ?&gt;<br />
+&lt;/div&gt;<br /></code>
+<br />
+2. Additionally, adjust the relevant "submenu" entry in the stylesheet file (skinname.css):<br />
+<br />
+For Multi-blog System:<br /><br />
+<code>/*.submenu { ENABLE FOR SINGLE BLOG SYSTEMS<br />
+  font:0.9em &quot;Lucida Sans&quot;, Arial, Verdana, Tahoma, Sans-Serif;<br />
+  font-weight:bold;<br />
+  letter-spacing:0.1em;<br />
+  height:20px;<br />
+  padding:6px 0px 2px 35px;<br />
+  margin:0px 6px 30px;<br />
+  background-color:#000;<br />
+  background:url(img/lush_menu.jpg) top repeat-y;<br />
+  border-bottom:1px solid #092f13;}*/<br /><br />
+.submenu { /* ENABLE FOR MULTIBLOG SYSTEMS */<br />
+  font:0.9em &quot;Lucida Sans&quot;, Arial, Verdana, Tahoma, Sans-Serif;<br />
+  font-weight:bold;<br />
+  letter-spacing:0.1em;<br />
+  padding-top:8px;<br />
+  padding-left:10px;<br />
+  margin:0px 6px 30px;<br />
+  background-color:#000;<br />
+  background:url(img/lush_menu.jpg) top repeat-y;<br />
+  border-bottom:1px solid #092f13;}</code><br /><br />
+
+For Single-blog System:<br /><br />
+<code>.submenu { /* ENABLE FOR SINGLE BLOG SYSTEMS */<br />
+  font:0.9em &quot;Lucida Sans&quot;, Arial, Verdana, Tahoma, Sans-Serif;<br />
+  font-weight:bold;<br />
+  letter-spacing:0.1em;<br />
+  height:20px;<br />
+  padding:6px 0px 2px 35px;<br />
+  margin:0px 6px 30px;<br />
+  background-color:#000;<br />
+  background:url(img/lush_menu.jpg) top repeat-y;<br />
+  border-bottom:1px solid #092f13;}<br /><br />
+/*.submenu { ENABLE FOR MULTIBLOG SYSTEMS<br />
+  font:0.9em &quot;Lucida Sans&quot;, Arial, Verdana, Tahoma, Sans-Serif;<br />
+  font-weight:bold;<br />
+  letter-spacing:0.1em;<br />
+  padding-top:8px;<br />
+  padding-left:10px;<br />
+  margin:0px 6px 30px;<br />
+  background-color:#000;<br />
+  background:url(img/lush_menu.jpg) top repeat-y;<br />
+  border-bottom:1px solid #092f13;} */</code><br />
+
+<br /><br />
+</body>
+</html>

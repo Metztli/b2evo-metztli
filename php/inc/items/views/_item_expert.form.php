@@ -5,23 +5,13 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
  *
  * @package admin
  *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE
- * @author fsaya: Fabrice SAYA-GASNIER / PROGIDISTRI
- * @author blueyed: Daniel HAHLER
- * @author gorgeb: Bertrand GORGE / EPISTEMA
- *
- * @todo blueyed>> IMHO it's not good to use CSS class .line here (mainly white-space:nowrap),
- *                 because on a smaller screen you'll cut things off! (and not every browser
- *                 allows "marking and moving" of text then).
- *
- * @version $Id: _item_expert.form.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _item_expert.form.php 3928 2013-06-05 11:07:45Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -78,10 +68,18 @@ $Form->begin_form( '', '', $params );
 	$Form->add_crumb( 'item' );
 	$Form->hidden( 'ctrl', 'items' );
 	$Form->hidden( 'blog', $Blog->ID );
+	$Form->hidden( 'mode_editing', 'expert' ); // used by in-skin mode when we want back in a last editing mode
 	if( isset( $mode ) )   $Form->hidden( 'mode', $mode );	// used by bookmarklet
 	if( isset( $edited_Item ) )
 	{
-		$Form->hidden( 'post_ID', $edited_Item->ID );
+		if( $action == 'copy' )
+		{	// Copy post
+			$Form->hidden( 'post_ID', 0 );
+		}
+		else
+		{	// Edit post
+			$Form->hidden( 'post_ID', $edited_Item->ID );
+		}
 
 		// Here we add js code for attaching file popup window: (Yury)
 		if( !empty( $edited_Item->ID ) && ( $Session->get('create_edit_attachment') === true ) )
@@ -162,7 +160,11 @@ $Form->begin_form( '', '', $params );
 	// --------------------------- TOOLBARS ------------------------------------
 	echo '<div class="edit_toolbars">';
 	// CALL PLUGINS NOW:
-	$Plugins->trigger_event( 'AdminDisplayToolbar', array( 'target_type' => 'Item', 'edit_layout' => 'expert' ) );
+	$Plugins->trigger_event( 'AdminDisplayToolbar', array(
+			'target_type' => 'Item',
+			'edit_layout' => 'expert',
+			'Item' => $edited_Item,
+		) );
 	echo '</div>';
 
 	// ---------------------------- TEXTAREA -------------------------------------
@@ -195,7 +197,9 @@ $Form->begin_form( '', '', $params );
 	// ####################### ATTACHMENTS/LINKS #########################
 	if( isset($GLOBALS['files_Module']) )
 	{
-		attachment_iframe( $Form, $creating, $edited_Item, $Blog, $iframe_name );
+		load_class( 'links/model/_linkitem.class.php', 'LinkItem' );
+		$LinkOwner = new LinkItem( $edited_Item );
+		attachment_iframe( $Form, $LinkOwner, $iframe_name, $creating );
 	}
 	// ############################ ADVANCED #############################
 
@@ -203,23 +207,42 @@ $Form->begin_form( '', '', $params );
 
 	// CUSTOM FIELDS varchar
 	echo '<table cellspacing="0" class="compose_layout">';
-	for( $i = 1 ; $i <= 3; $i++ )
-	{	// For each custom double field:
-		if( $field_name = $Blog->get_setting('custom_varchar'.$i) )
-		{	// Field has a name: display it:
-			echo '<tr><td class="label"><label for="item_varchar'.$i.'"><strong>'.$field_name.':</strong></label></td>';
-			echo '<td class="input" width="97%">';
-			$Form->text_input( 'item_varchar'.$i, $edited_Item->{'varchar'.$i}, 20, '', '', array('maxlength'=>255, 'style'=>'width: 100%;') );
-			echo '</td><td width="1"><!-- for IE7 --></td></tr>';
-		}
+	$field_count = $Blog->get_setting( 'count_custom_varchar' );
+	for( $i = 1 ; $i <= $field_count; $i++ )
+	{ // Loop through custom varchar fields
+		$field_guid = $Blog->get_setting( 'custom_varchar'.$i );
+		$field_name = $Blog->get_setting( 'custom_varchar_'.$field_guid );
+		// Display field
+		echo '<tr><td class="label"><label for="item_varchar_'.$field_guid.'"><strong>'.$field_name.':</strong></label></td>';
+		echo '<td class="input" width="97%">';
+		$Form->text_input( 'item_varchar_'.$field_guid, $edited_Item->get_setting( 'custom_varchar_'.$field_guid ), 20, '', '', array('maxlength'=>255, 'style'=>'width: 100%;') );
+		echo '</td><td width="1"><!-- for IE7 --></td></tr>';
 	}
 
 	//add slug_changed field - needed for slug trim, if this field = 0 slug will trimmed
 	$Form->hidden( 'slug_changed', 0 );
 
-	echo '<tr><td class="label"><label for="post_urltitle" title="'.T_('&quot;slug&quot; to be used in permalinks').'"><strong>'.T_('URL title "slug"').':</strong></label></td>';
+	$edit_slug_link = '';
+	if( $edited_Item->ID > 0 && $current_User->check_perm( 'slugs', 'view' ) )
+	{	// user has permission to view slugs:
+		$edit_slug_link = '&nbsp;'.action_icon( T_('Edit slugs...'), 'edit', $admin_url.'?ctrl=slugs&amp;slug_item_ID='.$edited_Item->ID );
+	}
+
+	if( empty( $edited_Item->tiny_slug_ID ) )
+	{
+		$tiny_slug_info = T_('No Tiny URL yet.');
+	}
+	else
+	{
+		$tiny_slug_info = $edited_Item->get_tinyurl_link( array(
+				'before' => T_('Tiny URL').': ',
+				'after'  => ''
+			) );
+	}
+
+	echo '<tr><td class="label" valign="top"><label for="post_urltitle" title="'.T_('&quot;slug&quot; to be used in permalinks').'"><strong>'.T_('URL slugs').$edit_slug_link.':</strong></label></td>';
 	echo '<td class="input" width="97%">';
-	$Form->text_input( 'post_urltitle', $edited_Item->get('urltitle'), 40, '', '', array('maxlength'=>210, 'style'=>'width: 100%;') );
+	$Form->text_input( 'post_urltitle', $edited_Item->get_slugs(), 40, '', '<br />'.$tiny_slug_info, array('maxlength'=>210, 'style'=>'width: 100%;') );
 	echo '</td><td width="1"><!-- for IE7 --></td></tr>';
 
 	echo '<tr><td class="label"><label for="titletag"><strong>'.T_('&lt;title&gt; tag').':</strong></label></td>';
@@ -229,15 +252,15 @@ $Form->begin_form( '', '', $params );
 
 	echo '<tr><td class="label"><label for="metadesc" title="&lt;meta name=&quot;description&quot;&gt;"><strong>'.T_('&lt;meta&gt; desc').':</strong></label></td>';
 	echo '<td class="input" width="97%">';
-	$Form->text_input( 'metadesc', $edited_Item->get('metadesc'), 40, '', '', array('maxlength'=>255, 'style'=>'width: 100%;') );
+	$Form->text_input( 'metadesc', $edited_Item->get_setting('post_metadesc'), 40, '', '', array('maxlength'=>255, 'style'=>'width: 100%;') );
 	echo '</td><td width="1"><!-- for IE7 --></td></tr>';
 
-	echo '<tr><td class="label"><label for="metakeywords" title="&lt;meta name=&quot;keywords&quot;&gt;"><strong>'.T_('&lt;meta&gt; keywds').':</strong></label></td>';
+	echo '<tr><td class="label"><label for="custom_headers" title="&lt;meta name=&quot;keywords&quot;&gt;"><strong>'.T_('&lt;meta&gt; keywds').':</strong></label></td>';
 	echo '<td class="input" width="97%">';
-	$Form->text_input( 'metakeywords', $edited_Item->get('metakeywords'), 40, '', '', array('maxlength'=>255, 'style'=>'width: 100%;') );
+	$Form->text_input( 'custom_headers', $edited_Item->get_setting('post_custom_headers'), 40, '', '', array('maxlength'=>255, 'style'=>'width: 100%;') );
 	echo '</td><td width="1"><!-- for IE7 --></td></tr>';
 
-	echo '<tr><td class="label"><label for="item_tags"><strong>'.T_('Tags').':</strong> <span class="notes">'.T_('sep by ,').'</span></label></label></td>';
+	echo '<tr><td class="label"><label for="item_tags"><strong>'.T_('Tags').':</strong></label></td>';
 	echo '<td class="input" width="97%">';
 	$Form->text_input( 'item_tags', $item_tags, 40, '', '', array('maxlength'=>255, 'style'=>'width: 100%;') );
 	echo '</td><td width="1"><!-- for IE7 --></td></tr>';
@@ -329,16 +352,28 @@ $Form->begin_form( '', '', $params );
 <div class="right_col">
 
 	<?php
+	// ################### MODULES SPECIFIC ITEM SETTINGS ###################
+
+	modules_call_method( 'display_item_settings', array( 'Form' => & $Form, 'Blog' => & $Blog, 'edited_Item' => & $edited_Item ) );
+
 	// ################### CATEGORIES ###################
 
 	cat_select( $Form );
 
+	// ################### LOCATIONS ###################
+	echo_item_location_form( $Form, $edited_Item );
 
 	// ################### PROPERTIES ###################
 
 	$Form->begin_fieldset( T_('Properties'), array( 'id' => 'itemform_extra' ) );
 
+	$Form->switch_layout( 'linespan' );
+
 	$Form->checkbox_basic_input( 'item_featured', $edited_Item->featured, '<strong>'.T_('Featured post').'</strong>' );
+	echo "<br/>";
+
+	$Form->checkbox_basic_input( 'item_hideteaser', $edited_Item->get_setting( 'hide_teaser' ), '<strong>'.T_('Hide teaser when displaying -- more --').'</strong>' );
+	echo "<br/>";
 
 	if( $current_User->check_perm( 'blog_edit_ts', 'edit', false, $Blog->ID ) )
 	{ // ------------------------------------ TIME STAMP -------------------------------------
@@ -361,18 +396,31 @@ $Form->begin_form( '', '', $params );
 		echo '</td></tr>';
 	}
 
+	if( $Blog->get_setting( 'show_location_coordinates' ) )
+	{ // Dispaly Latitude & Longitude settings
+		echo '<tr><td><strong>'.T_('Latitude').':</strong></td><td>';
+		$Form->text( 'item_latitude', $edited_Item->get_setting( 'latitude' ), 10, '' );
+		echo '</td></tr>';
+		echo '<tr><td><strong>'.T_('Longitude').':</strong></td><td>';
+		$Form->text( 'item_longitude', $edited_Item->get_setting( 'longitude' ), 10, '' );
+		echo '</td></tr>';
+	}
+
 	// CUSTOM FIELDS double
-	for( $i = 1 ; $i <= 5; $i++ )
-	{	// For each custom double field:
-		if( $field_name = $Blog->get_setting('custom_double'.$i) )
-		{	// Field has a name: display it:
-			echo '<tr><td><strong>'.$field_name.':</strong></td><td>';
-			$Form->text( 'item_double'.$i, $edited_Item->{'double'.$i}, 10, '', T_('can be decimal') );
-			echo '</td></tr>';
-		}
+	$field_count = $Blog->get_setting( 'count_custom_double' );
+	for( $i = 1 ; $i <= $field_count; $i++ )
+	{ // Loop through custom double fields
+		$field_guid = $Blog->get_setting( 'custom_double'.$i );
+		$field_name = $Blog->get_setting( 'custom_double_'.$field_guid );
+		// Display field
+		echo '<tr><td><strong>'.$field_name.':</strong></td><td>';
+		$Form->text( 'item_double_'.$field_guid, $edited_Item->get_setting( 'custom_double_'.$field_guid ), 10, '', T_('can be decimal') );
+		echo '</td></tr>';
 	}
 
 	echo '</table>';
+
+	$Form->switch_layout( NULL );
 
 	$Form->end_fieldset();
 
@@ -393,7 +441,7 @@ $Form->begin_form( '', '', $params );
 	$Form->begin_fieldset( T_('Text Renderers'), array( 'id' => 'itemform_renderers' ) );
 
 	// fp> TODO: there should be no param call here (shld be in controller)
-	$edited_Item->renderer_checkboxes( param('renderers', 'array', NULL) );
+	$edited_Item->renderer_checkboxes( param('renderers', 'array/string', NULL) );
 
 	$Form->end_fieldset();
 
@@ -415,6 +463,11 @@ $Form->begin_form( '', '', $params );
 			<?php echo T_('Disabled') ?></label><br />
 		<?php
 
+		$Form->switch_layout( 'table' );
+		$Form->duration_input( 'expiry_delay',  $edited_Item->get_setting( 'post_expiry_delay' ), T_('Expiry delay'), 'months', 'hours',
+							array( 'minutes_step' => 1, 'required' => false, 'note' => T_( 'Older comments and ratings will no longer be displayed.' ) ) );
+		$Form->switch_layout( NULL );
+
 		$Form->end_fieldset();
 	}
 
@@ -432,7 +485,7 @@ $Form->end_form();
 echo_publishnowbutton_js();
 echo_set_is_attachments();
 echo_link_files_js();
-echo_autocomplete_tags();
+echo_autocomplete_tags( $edited_Item->get_tags() );
 if( empty( $edited_Item->ID ) )
 { // if we creating new post - we add slug autofiller JS
 	echo_slug_filler();
@@ -443,10 +496,12 @@ else
 }
 // New category input box:
 echo_onchange_newcat();
+$edited_Item->load_Blog();
+// Location
+echo_regional_js( 'item', $edited_Item->Blog->region_visible() );
+// Item type
+echo_onchange_item_type_js();
 
 // require dirname(__FILE__).'/inc/_item_form_behaviors.inc.php';
 
-/*
- * $Log: _item_expert.form.php,v $
- */
 ?>

@@ -2,11 +2,11 @@
 /**
  * This is the install file for the files module
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evocore
  *
- * @version $Id: _files.install.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _files.install.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page directly.' );
 
@@ -32,6 +32,7 @@ $schema_queries['T_files'] = array(
 			file_title     varchar(255),
 			file_alt       varchar(255),
 			file_desc      text,
+			file_hash      char(32) default NULL,
 			primary key (file_ID),
 			unique file (file_root_type, file_root_ID, file_path)
 		) ENGINE = innodb DEFAULT CHARSET = $db_storage_charset" );
@@ -49,8 +50,15 @@ $schema_queries['T_filetypes'] = array(
 			PRIMARY KEY (ftyp_ID)
 		) ENGINE = innodb DEFAULT CHARSET = $db_storage_charset" );
 
+$schema_queries['T_files__vote'] = array(
+		'Creating table for file votes',
+		"CREATE TABLE T_files__vote (
+			fvot_file_ID       int(11) UNSIGNED NOT NULL,
+			fvot_user_ID       int(11) UNSIGNED NOT NULL,
+			fvot_like          tinyint(1),
+			fvot_inappropriate tinyint(1),
+			fvot_spam          tinyint(1),
+			primary key (fvot_file_ID, fvot_user_ID)
+		) ENGINE = innodb DEFAULT CHARSET = $db_storage_charset" );
 
-/*
- * $Log: _files.install.php,v $
- */
 ?>

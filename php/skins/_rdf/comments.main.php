@@ -3,14 +3,14 @@
  * This template generates an RSS 1.0 (RDF) feed for the requested blog's latest comments
  *
  * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://manual.b2evolution.net/Skins_2.0}
+ * {@link http://b2evolution.net/man/skin-structure}
  *
  * See {@link http://web.resource.org/rss/1.0/}
  *
  * @package evoskins
  * @subpackage rdf
  *
- * @version $Id: comments.main.php 57 2011-10-26 08:18:58Z sam2kb $
+ * @version $Id: comments.main.php 3157 2013-03-06 04:34:44Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -21,6 +21,13 @@ if( $feed_content == 'none' )
 {	// We don't want to provide this feed!
 	// This will normaly have been detected earlier but just for security:
 	debug_die( 'Feeds are disabled.');
+}
+
+if( !$Blog->get_setting( 'comments_latest' ) )
+{ // The latest comments are disabled for current blog
+	// Redirect to page with text/html mime type
+	header_redirect( get_dispctrl_url( 'comments' ), 302 );
+	// will have exited
 }
 
 $post_ID = NULL;
@@ -37,7 +44,7 @@ $CommentList->set_filters( array(
 		'statuses' => array ( 'published' ),
 		'post_ID' => $post_ID,
 		'order' => 'DESC',
-		'comments' => $Blog->get_setting('posts_per_feed'),
+		'comments' => $Blog->get_setting('comments_per_feed'),
 	) );
 
 // Get ready for display (runs the query):

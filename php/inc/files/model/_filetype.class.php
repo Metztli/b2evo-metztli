@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
  * {@internal License choice
@@ -29,7 +29,7 @@
  * @author fplanque: Francois PLANQUE.
  * @author mbruneau: Marc BRUNEAU / PROGIDISTRI
  *
- * @version $Id: _filetype.class.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _filetype.class.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -111,10 +111,7 @@ class Filetype extends DataObject
 		$this->set_from_Request( 'mimetype' );
 
 		// Icon for the mime type
-		if( param( 'ftyp_icon', 'string', '' ) )
-		{
-			param_check_filename( 'ftyp_icon', T_('Please enter a file name.') );
-		}
+		param( 'ftyp_icon', 'string', '' );
 		$this->set_from_Request( 'icon' );
 
 		// View type
@@ -183,10 +180,10 @@ class Filetype extends DataObject
 		$icon = $this->icon;
 		if( empty($icon) )
 		{ // use default icon
-			$icon = 'default.png';
+			$icon = 'file_unknown';
 		}
 
-		return '<img src="'.$rsc_url.'icons/fileicons/'.$icon.'" alt="" title="'.$this->dget('name', 'htmlattr').'" class="middle" />';
+		return get_icon( $icon, 'imgtag', array( 'alt' => $this->dget('name', 'htmlattr') ) );
 	}
 
 
@@ -210,7 +207,7 @@ class Filetype extends DataObject
 	function is_allowed( $allow_locked = NULL )
 	{
 		global $current_User;
-		if( !is_logged_in() )
+		if( !is_logged_in( false ) )
 		{
 			return $this->allowed == 'any';
 		}
@@ -222,7 +219,4 @@ class Filetype extends DataObject
 	}
 }
 
-/*
- * $Log: _filetype.class.php,v $
- */
 ?>

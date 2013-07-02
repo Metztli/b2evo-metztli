@@ -8,7 +8,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package plugins
  */
@@ -22,7 +22,7 @@ class quicktags_plugin extends Plugin
 	var $code = 'b2evQTag';
 	var $name = 'Quick Tags';
 	var $priority = 30;
-	var $version = '2.4.1';
+	var $version = '5.0.0';
 	var $group = 'editor';
 	var $number_of_installs = 1;
 
@@ -47,9 +47,17 @@ class quicktags_plugin extends Plugin
 	 */
 	function AdminDisplayToolbar( & $params )
 	{
-		global $Hit;
+		global $Hit, $Blog;
 
-		$simple = ( $params['edit_layout'] == 'simple' );
+		if( !empty( $Blog ) )
+		{
+			if( !$Blog->get_setting( 'allow_html_post' ) )
+			{	// Only when HTML is allowed in post
+				return false;
+			}
+		}
+
+		$simple = ( $params['edit_layout'] == 'simple' || $params['edit_layout'] == 'inskin' );
 
 		if( $Hit->is_lynx() )
 		{ // let's deactivate quicktags on Lynx, because they don't work there.
@@ -219,15 +227,6 @@ class quicktags_plugin extends Plugin
 	<?php
 		if( !$simple )
 		{ ?>
-		b2evoButtons[b2evoButtons.length] = new b2evoButton(
-				'b2evo_noteaser'
-				,'!NT', ''
-				,'<!-'+'-noteaser-'+'->',''
-				,'t'
-				,'<?php echo T_('no teaser [Alt-T]') ?>'
-				,-1
-			);
-
 		b2evoButtons[b2evoButtons.length] = new b2evoButton(
 				'b2evo_next'
 				,'!NP', ''
@@ -419,7 +418,4 @@ class quicktags_plugin extends Plugin
 	}
 }
 
-/*
- * $Log: _quicktags.plugin.php,v $
- */
 ?>

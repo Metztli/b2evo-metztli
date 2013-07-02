@@ -7,7 +7,7 @@
  * @todo dh> Should this also handle feedback notifications (according to the "outbound_notifications_mode" setting)?
  * fp> No. The feedback notifications should have their own job.
  *
- * @version $Id: _post_notifications.job.php 817 2012-02-12 06:12:55Z sam2kb $
+ * @version $Id: _post_notifications.job.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -42,9 +42,6 @@ if( $DB->rows_affected != 1 )
 	return 4;
 }
 
-// Load required functions ( we need to load here, because in CLI mode it is not loaded )
-load_funcs( '_core/_url.funcs.php' );
-
 // Get the Item:
 $ItemCache = & get_ItemCache();
 /**
@@ -76,7 +73,4 @@ if( empty( $result_message ) )
 
 return 1; /* ok */
 
-/*
- * $Log: _post_notifications.job.php,v $
- */
 ?>

@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -29,22 +29,22 @@
  *
  * @package admin
  *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author efy-maxim: Evo Factory / Maxim.
- * @author fplanque: Francois PLANQUE
- * @author blueyed: Daniel HAHLER
- *
- * @version $Id: _user_identity.form.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _user_identity.form.php 3861 2013-05-30 09:29:39Z attila $
  */
 
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
 load_class( 'regional/model/_country.class.php', 'Country' );
+load_funcs( 'regional/model/_regional.funcs.php' );
 
 /**
  * @var instance of GeneralSettings class
  */
 global $Settings;
+/**
+ * @var instance of Plugins class
+ */
+global $Plugins;
 /**
  * @var instance of UserSettings class
  */
@@ -69,47 +69,49 @@ global $user_profile_only;
  * @var the action destination of the form (NULL for pagenow)
  */
 global $form_action;
+/**
+ * @var url of RSC folder
+ */
+global $rsc_url;
+global $is_admin_page;
 
-?>
-<script type="text/javascript">
-	// Identity shown dropdown list handler
-	// init variables
-	var idmodes = [];
-	var laquo = String.fromCharCode(171);
-	var raquo = String.fromCharCode(187);
-	idmodes["nickname"] = " " + laquo + "<?php echo T_( 'Nickname' ); ?>" + raquo;
-	idmodes["login"] = " " + laquo + "<?php echo T_( 'Login' ); ?>" + raquo;
-	idmodes["firstname"] = " " + laquo + "<?php echo T_( 'First name' ); ?>" + raquo;
-	idmodes["lastname"] = " " + laquo + "<?php echo T_( 'Last name' ); ?>" + raquo;
-	idmodes["namefl"] = " " + laquo + "<?php echo T_( 'First name' ).' '.T_( 'Last name' ); ?>" + raquo;
-	idmodes["namelf"] = " " + laquo + "<?php echo T_( 'Last name' ).' '.T_( 'First name' ); ?>" + raquo;
+// Default params:
+$default_params = array(
+		'skin_form_params' => array(),
+	);
 
-	// Identity fields on change fucntion
-	function idmodes_onchange( fieldname )
-	{
-		var fieldText = jQuery( '#edited_user_' + fieldname ).val();
-		if( fieldText == "" )
-		{
-			fieldText = "-";
-		}
-		jQuery( '#edited_user_idmode option[value="' + fieldname + '"]' ).text( fieldText + idmodes[fieldname] );
-	}
+if( isset( $params ) )
+{	// Merge with default params
+	$params = array_merge( $default_params, $params );
+}
+else
+{	// Use a default params
+	$params = $default_params;
+}
 
-	// Handle Identity shown composite fields (-First name Last name- and -Last name First name-)
-	function name_onchange()
-	{
-		var firstName = jQuery( '#edited_user_firstname' ).val();
-		var lastName = jQuery( '#edited_user_lastname' ).val();
-		jQuery( '#edited_user_idmode option[value="namefl"]' ).text( firstName + " " + lastName + idmodes["namefl"] );
-		jQuery( '#edited_user_idmode option[value="namelf"]' ).text( lastName + " " + firstName + idmodes["namelf"] );
-	}
-</script>
-<?php
+// ------------------- PREV/NEXT USER LINKS -------------------
+user_prevnext_links( array(
+		'block_start'  => '<table class="prevnext_user"><tr>',
+		'prev_start'   => '<td width="33%">',
+		'prev_end'     => '</td>',
+		'prev_no_user' => '<td width="33%">&nbsp;</td>',
+		'back_start'   => '<td width="33%" class="back_users_list">',
+		'back_end'     => '</td>',
+		'next_start'   => '<td width="33%" class="right">',
+		'next_end'     => '</td>',
+		'next_no_user' => '<td width="33%">&nbsp;</td>',
+		'block_end'    => '</tr></table>',
+		'user_tab'     => 'profile'
+	) );
+// ------------- END OF PREV/NEXT USER LINKS -------------------
 
 $has_full_access = $current_User->check_perm( 'users', 'edit' );
+$edited_user_perms = array( 'edited-user', 'edited-user-required' );
 $new_user_creating = ( $edited_User->ID == 0 );
 
 $Form = new Form( $form_action, 'user_checkchanges' );
+
+$Form->switch_template_parts( $params['skin_form_params'] );
 
 if( !$user_profile_only )
 {
@@ -126,6 +128,7 @@ if( $is_admin )
 	else
 	{
 		$form_title = get_usertab_header( $edited_User, 'profile', T_( 'Edit profile' ) );
+		$Form->title_fmt = '<span style="float:right">$global_icons$</span><div>$title$</div>'."\n";
 	}
 	$form_class = 'fform';
 }
@@ -137,12 +140,22 @@ else
 
 	$Form->begin_form( $form_class, $form_title );
 
+	// We should print out this submit "update" before all other buttons (because form is submitted by first button)
+	// It gives to update a form when we press Enter key on the form element
+	echo '<div style="position:absolute;top:-1000px;left:-1000px">';
+	$Form->button( array( 'type' => 'submit', 'name' => 'actionArray[update]' ) );
+	echo '</div>';
+
 	$Form->add_crumb( 'user' );
 	$Form->hidden_ctrl();
 	$Form->hidden( 'user_tab', 'profile' );
 	$Form->hidden( 'identity_form', '1' );
 
 	$Form->hidden( 'user_ID', $edited_User->ID );
+	if( isset( $Blog ) )
+	{
+		$Form->hidden( 'blog', $Blog->ID );
+	}
 
 if( $new_user_creating )
 {
@@ -151,16 +164,16 @@ if( $new_user_creating )
 
 	$Form->begin_fieldset( T_( 'New user' ), array( 'class' => 'fieldset clear' ) );
 
-	$chosengroup = ( $edited_User->Group === NULL ) ? $Settings->get('newusers_grp_ID') : $edited_User->Group->ID;
+	$chosengroup = ( $edited_User->Group === NULL ) ? $Settings->get( 'newusers_grp_ID' ) : $edited_User->grp_ID;
 	$GroupCache = & get_GroupCache();
 	$Form->select_object( 'edited_user_grp_ID', $chosengroup, $GroupCache, T_( 'User group' ) );
 
-	$field_note = '[0 - 10] '.sprintf( T_('See <a %s>online manual</a> for details.'), 'href="http://manual.b2evolution.net/User_levels"' );
+	$field_note = '[0 - 10]';
 	$Form->text_input( 'edited_user_level', $edited_User->get('level'), 2, T_('User level'), $field_note, array( 'required' => true ) );
 
 	$email_fieldnote = '<a href="mailto:'.$edited_User->get('email').'">'.get_icon( 'email', 'imgtag', array('title'=>T_('Send an email')) ).'</a>';
 	$Form->text_input( 'edited_user_email', $edited_User->email, 30, T_('Email'), $email_fieldnote, array( 'maxlength' => 100, 'required' => true ) );
-	$Form->checkbox( 'edited_user_validated', $edited_User->get('validated'), T_('Validated email'), T_('Has this email address been validated (through confirmation email)?') );
+	$Form->select_input_array( 'edited_user_status', $edited_User->get( 'status' ), get_user_statuses(), T_( 'Account status' ) );
 
 	$Form->end_fieldset();
 }
@@ -169,34 +182,139 @@ if( $new_user_creating )
 
 $Form->begin_fieldset( T_('Identity') );
 
-if( $action != 'view' )
-{   // We can edit the values:
+if( ($url = $edited_User->get('url')) != '' )
+{
+	if( !preg_match('#://#', $url) )
+	{
+		$url = 'http://'.$url;
+	}
+	$url_fieldnote = '<a href="'.$url.'" target="_blank">'.get_icon( 'play', 'imgtag', array('title'=>T_('Visit the site')) ).'</a>';
+}
+else
+	$url_fieldnote = '';
 
-	$Form->text_input( 'edited_user_login', $edited_User->login, 20, T_('Login'), '', array( 'required' => true, 'onchange' => 'idmodes_onchange( "login" )' ) );
-	$Form->text_input( 'edited_user_firstname', $edited_User->firstname, 20, T_('First name'), '', array( 'maxlength' => 50 ) );
-	$Form->text_input( 'edited_user_lastname', $edited_User->lastname, 20, T_('Last name'), '', array( 'maxlength' => 50 ) );
+if( $action != 'view' )
+{	// We can edit the values:
+
+	if( $action != 'new' )
+	{
+		$user_pictures = '<div class="avatartag">'.$edited_User->get_avatar_imgtag( 'crop-top-80x80', 'avatar', 'top', true, '', 'user' ).'</div>';
+
+		// Get other pictures:
+		$user_avatars = $edited_User->get_avatar_Files();
+		foreach( $user_avatars as $uFile )
+		{
+			$user_pictures .= $uFile->get_tag( '<div class="avatartag">', '', '', '</div>', 'crop-top-80x80', 'original', $edited_User->login, 'lightbox[user]' );
+		}
+
+		if( $edited_User->has_avatar() )
+		{	// Change an existing avatar
+			$user_pictures = $user_pictures.' <a href="'.get_user_settings_url( 'avatar', $edited_User->ID ).'" class="floatleft">'.T_('Change &raquo;').'</a>';
+		}
+		else
+		{	// Upload a new avatar
+			$user_pictures = $user_pictures.' <a href="'.get_user_settings_url( 'avatar', $edited_User->ID ).'" class="floatleft"> '.T_('Upload now &raquo;').'</a>';
+		}
+		$Form->info( T_('Profile picture'), $user_pictures );
+	}
+
+	$Form->text_input( 'edited_user_login', $edited_User->login, 20, T_('Login'), '', array( 'maxlength' => 60, 'required' => true ) );
+
+	$firstname_editing = $Settings->get( 'firstname_editing' );
+	if( ( in_array( $firstname_editing, $edited_user_perms ) && $edited_User->ID == $current_User->ID ) || ( $firstname_editing != 'hidden' && $has_full_access ) )
+	{
+		$Form->text_input( 'edited_user_firstname', $edited_User->firstname, 20, T_('First name'), '', array( 'maxlength' => 50, 'required' => ( $firstname_editing == 'edited-user-required' ) ) );
+	}
+
+	$lastname_editing = $Settings->get( 'lastname_editing' );
+	if( ( in_array( $lastname_editing, $edited_user_perms ) && $edited_User->ID == $current_User->ID ) || ( $lastname_editing != 'hidden' && $has_full_access ) )
+	{
+		$Form->text_input( 'edited_user_lastname', $edited_User->lastname, 20, T_('Last name'), '', array( 'maxlength' => 50, 'required' => ( $lastname_editing == 'edited-user-required' ) ) );
+	}
 
 	$nickname_editing = $Settings->get( 'nickname_editing' );
-	if( ( $nickname_editing == 'edited-user' && $edited_User->ID == $current_User->ID ) || ( $nickname_editing != 'hidden' && $has_full_access ) )
+	if( ( in_array( $nickname_editing, $edited_user_perms ) && $edited_User->ID == $current_User->ID ) || ( $nickname_editing != 'hidden' && $has_full_access ) )
 	{
-		$Form->text_input( 'edited_user_nickname', $edited_User->nickname, 20, T_('Nickname'), '', array( 'maxlength' => 50, 'required' => true, 'onchange' => 'idmodes_onchange( "nickname" )' ) );
+		$Form->text_input( 'edited_user_nickname', $edited_User->nickname, 20, T_('Nickname'), '', array( 'maxlength' => 50, 'required' => ( $nickname_editing == 'edited-user-required' ) ) );
 	}
-	else
-	{
-		$Form->hidden( 'edited_user_nickname', $edited_User->nickname );
-	}
-
-	$Form->select( 'edited_user_idmode', $edited_User->get( 'idmode' ), array( &$edited_User, 'callback_optionsForIdMode' ), T_('Identity shown') );
-
-	$CountryCache = & get_CountryCache();
-	$Form->select_input_object( 'edited_user_ctry_ID', $edited_User->ctry_ID, $CountryCache, T_('Country'), array( 'required' => !$has_full_access, 'allow_none' => $has_full_access ) );
 
 	if( $Settings->get( 'registration_require_gender' ) != 'hidden' )
 	{
 		$Form->radio( 'edited_user_gender', $edited_User->get('gender'), array(
 					array( 'M', T_('A man') ),
 					array( 'F', T_('A woman') ),
-				), T_('I am') );
+				), T_('I am'), false, '', $Settings->get( 'registration_require_gender' ) == 'required' );
+	}
+
+	$button_refresh_regional = '<button id="%s" type="submit" name="actionArray[refresh_regional]" class="action_icon refresh_button">'.get_icon( 'refresh' ).'</button>';
+	$button_refresh_regional .= '<img src="'.$rsc_url.'img/ajax-loader.gif" alt="'.T_('Loading...').'" title="'.T_('Loading...').'" style="display:none;margin:2px 0 0 5px" align="top" />';
+
+	if( user_country_visible() )
+	{	// Display a select input for Country
+		$CountryCache = & get_CountryCache();
+		$Form->select_country( 'edited_user_ctry_ID',
+				$edited_User->ctry_ID,
+				$CountryCache,
+				T_('Country'),
+				array(	// field params
+						'required' => $Settings->get( 'location_country' ) == 'required', // true if Country is required
+						'allow_none' => // Allow none value:
+						                $has_full_access || // Current user has permission to edit users
+						                empty( $edited_User->ctry_ID ) || // Country is not defined yet
+						                ( !empty( $edited_User->ctry_ID ) && $Settings->get( 'location_country' ) != 'required' ) // Country is defined but this field is not required
+					)
+			);
+	}
+
+	if( user_region_visible() )
+	{	// Display a select input for Region
+		$regions_option_list = get_regions_option_list( $edited_User->ctry_ID, $edited_User->rgn_ID, array( 'none_option_text' => T_( 'Unknown' ) ) );
+		$Form->select_input_options( 'edited_user_rgn_ID',
+				$regions_option_list,
+				T_( 'Region' ),
+				sprintf( $button_refresh_regional, 'button_refresh_region' ), // Button to refresh regions list
+				array(	// field params
+						'required' => $Settings->get( 'location_region' ) == 'required' // true if Region is required
+					)
+			);
+	}
+
+	if( user_subregion_visible() )
+	{	// Display a select input for Subregion
+		$subregions_option_list = get_subregions_option_list( $edited_User->rgn_ID, $edited_User->subrg_ID, array( 'none_option_text' => T_( 'Unknown' ) ) );
+		$Form->select_input_options( 'edited_user_subrg_ID',
+				$subregions_option_list,
+				T_( 'Sub-region' ),
+				sprintf( $button_refresh_regional, 'button_refresh_subregion' ), // Button to refresh subregions list
+				array(	// field params
+						'required' => $Settings->get( 'location_subregion' ) == 'required' // true if Subregion is required
+					)
+			);
+	}
+
+	if( user_city_visible() )
+	{	// Display a select input for City
+		$cities_option_list = get_cities_option_list( $edited_User->ctry_ID, $edited_User->rgn_ID, $edited_User->subrg_ID, $edited_User->city_ID, array( 'none_option_text' => T_( 'Unknown' ) ) );
+		$Form->select_input_options( 'edited_user_city_ID',
+				$cities_option_list,
+				T_( 'City' ),
+				sprintf( $button_refresh_regional, 'button_refresh_city' ), // Button to refresh cities list
+				array(	// field params
+						'required' => $Settings->get( 'location_city' ) == 'required' // true if City is required
+					)
+			);
+	}
+
+	$Form->interval( 'edited_user_age_min', $edited_User->age_min, 'edited_user_age_max', $edited_User->age_max, 3, T_('My age group') );
+
+	if( $new_user_creating )
+	{
+		$Form->text_input( 'edited_user_source', $edited_User->source, 30, T_('Source'), '', array( 'maxlength' => 30 ) );
+	}
+
+	if( $edited_User->get_field_url() != '' )
+	{	// At least one url field is existing for current user
+		$Form->info( T_('URL'), $edited_User->get_field_link(), T_('(This is the main URL advertised for this profile. It is automatically selected from the URLs you enter in the fields below.)') );
 	}
 }
 else
@@ -204,7 +322,7 @@ else
 
 	if( $Settings->get('allow_avatars') )
 	{
-		$Form->info( T_('Profile picture'), $edited_User->get_avatar_imgtag() );
+		$Form->info( T_('Profile picture'), $edited_User->get_avatar_imgtag( 'crop-top-64x64', 'avatar', '', true ) );
 	}
 
 	$Form->info( T_('Login'), $edited_User->get('login') );
@@ -212,17 +330,45 @@ else
 	$Form->info( T_('Last name'), $edited_User->get('lastname') );
 	$Form->info( T_('Nickname'), $edited_User->get('nickname') );
 	$Form->info( T_('Identity shown'), $edited_User->get('preferredname') );
-	$Form->info( T_('Country'), $edited_User->get_country_name() );
 
 	if( $Settings->get( 'registration_require_gender' ) != 'hidden' )
 	{
 		$user_gender = $edited_User->get( 'gender' );
 		if( ! empty( $user_gender ) )
 		{
-			$Form->info( T_('Gender'), ( $user_gender == 'M' ) ? T_( 'Male' ) : T_( 'Female' ) );
+			$Form->info( T_('Gender'), $edited_User->get_gender() );
 		}
 	}
-	$Form->info( T_('Multiple sessions'), ($UserSettings->get('login_multiple_sessions', $edited_User->ID) ? T_('Allowed') : T_('Forbidden')) );
+
+	if( ! empty( $edited_User->ctry_ID ) )
+	{	// Display country
+		load_class( 'regional/model/_country.class.php', 'Country' );
+		$Form->info( T_('Country'), $edited_User->get_country_name() );
+	}
+
+	if( ! empty( $edited_User->rgn_ID ) )
+	{	// Display region
+		load_class( 'regional/model/_region.class.php', 'Region' );
+		$Form->info( T_( 'Region' ), $edited_User->get_region_name() );
+	}
+
+	if( ! empty( $edited_User->rgn_ID ) )
+	{	// Display sub-region
+		load_class( 'regional/model/_subregion.class.php', 'Subregion' );
+		$Form->info( T_( 'Sub-region' ), $edited_User->get_subregion_name() );
+	}
+
+	if( ! empty( $edited_User->city_ID ) )
+	{	// Display city
+		load_class( 'regional/model/_city.class.php', 'City' );
+		$Form->info( T_( 'City' ), $edited_User->get_city_name() );
+	}
+
+	//$Form->info( T_('My ZIP/Postcode'), $edited_User->get('postcode') );
+	$Form->info( T_('My age group'), $edited_User->get('age_min') );
+	$Form->info( T_('to'), $edited_User->get('age_max') );
+
+	$Form->info( T_('URL'), $edited_User->get('url'), $url_fieldnote );
 }
 
 $Form->end_fieldset();
@@ -254,163 +400,98 @@ if( empty( $edited_User->ID ) && $action != 'view' )
 	}
 }
 
-	/***************  Additional info  **************/
-
-$Form->begin_fieldset( T_('Additional info') );
-
-if( ($url = $edited_User->get('url')) != '' )
-{
-	if( !preg_match('#://#', $url) )
-	{
-		$url = 'http://'.$url;
-	}
-	$url_fieldnote = '<a href="'.$url.'" target="_blank">'.get_icon( 'play', 'imgtag', array('title'=>T_('Visit the site')) ).'</a>';
-}
-else
-	$url_fieldnote = '';
-
-if( $edited_User->get('icq') != 0 )
-	$icq_fieldnote = '<a href="http://wwp.icq.com/scripts/search.dll?to='.$edited_User->get('icq').'" target="_blank">'.get_icon( 'play', 'imgtag', array('title'=>T_('Search on ICQ.com')) ).'</a>';
-else
-	$icq_fieldnote = '';
-
-if( $edited_User->get('aim') != '' )
-	$aim_fieldnote = '<a href="aim:goim?screenname='.$edited_User->get('aim').'&amp;message=Hello">'.get_icon( 'play', 'imgtag', array('title'=>T_('Instant Message to user')) ).'</a>';
-else
-	$aim_fieldnote = '';
-
-
-if( $action != 'view' )
-{ // We can edit the values:
-
-	if( $new_user_creating )
-	{
-		$Form->text_input( 'edited_user_source', $edited_User->source, 30, T_('Source'), '', array( 'maxlength' => 30 ) );
-	}
-	$Form->text_input( 'edited_user_url', $edited_User->url, 30, T_('URL'), $url_fieldnote, array( 'maxlength' => 100 ) );
-	$Form->text_input( 'edited_user_icq', $edited_User->icq, 30, T_('ICQ'), $icq_fieldnote, array( 'maxlength' => 10 ) );
-	$Form->text_input( 'edited_user_aim', $edited_User->aim, 30, T_('AIM'), $aim_fieldnote, array( 'maxlength' => 50 ) );
-	$Form->text_input( 'edited_user_msn', $edited_User->msn, 30, T_('MSN IM'), '', array( 'maxlength' => 100 ) );
-	$Form->text_input( 'edited_user_yim', $edited_User->yim, 30, T_('YahooIM'), '', array( 'maxlength' => 50 ) );
-
-}
-else
-{ // display only
-
-	$Form->info( T_('URL'), $edited_User->get('url'), $url_fieldnote );
-	$Form->info( T_('ICQ'), $edited_User->get('icq', 'formvalue'), $icq_fieldnote );
-	$Form->info( T_('AIM'), $edited_User->get('aim'), $aim_fieldnote );
-	$Form->info( T_('MSN IM'), $edited_User->get('msn') );
-	$Form->info( T_('YahooIM'), $edited_User->get('yim') );
-
-  }
-
-$Form->end_fieldset();
-
-	/***************  Experimental  **************/
-
-$Form->begin_fieldset( T_('Experimental') );
+/***************  Additional info  **************/
 
 // This totally needs to move into User object
 global $DB;
 
-// Get existing userfields:
+// Get original user id for duplicate
+if( $edited_User->ID == 0 )
+{
+	$user_id = param( 'user_ID', 'integer', 0 );
+	if( $user_id == 0 )
+	{
+		$user_id = param( 'orig_user_ID', 'integer', 0 );
+	}
+}
+else
+{
+	$user_id = $edited_User->ID;
+}
+
+// -------------------  Get existing userfields: -------------------------------
 $userfields = $DB->get_results( '
-	SELECT uf_ID, ufdf_ID, ufdf_type, ufdf_name, uf_varchar
-		FROM T_users__fields LEFT JOIN T_users__fielddefs ON uf_ufdf_ID = ufdf_ID
-	 WHERE uf_user_ID = '.$edited_User->ID.'
-	 ORDER BY uf_ID' );
+SELECT ufdf_ID, uf_ID, ufdf_type, ufdf_name, uf_varchar, ufdf_required, ufdf_options, ufgp_order, ufdf_order, ufdf_suggest, ufdf_duplicated, ufgp_ID, ufgp_name
+FROM
+	(
+		SELECT ufdf_ID, uf_ID, ufdf_type, ufdf_name, uf_varchar, ufdf_required, ufdf_options, ufgp_order, ufdf_order, ufdf_suggest, ufdf_duplicated, ufgp_ID, ufgp_name
+			FROM T_users__fields
+				LEFT JOIN T_users__fielddefs ON uf_ufdf_ID = ufdf_ID
+				LEFT JOIN T_users__fieldgroups ON ufdf_ufgp_ID = ufgp_ID
+		WHERE uf_user_ID = '.$user_id.'
 
-foreach( $userfields as $userfield )
-{
-	switch( $userfield->ufdf_ID )
-	{
-		case 10200:
-			$field_note = '<a href="aim:goim?screenname='.$userfield->uf_varchar.'&amp;message=Hello">'.get_icon( 'play', 'imgtag', array('title'=>T_('Instant Message to user')) ).'</a>';
-			break;
+		UNION
 
-		case 10300:
-			$field_note = '<a href="http://wwp.icq.com/scripts/search.dll?to='.$userfield->uf_varchar.'" target="_blank">'.get_icon( 'play', 'imgtag', array('title'=>T_('Search on ICQ.com')) ).'</a>';
-			break;
+		SELECT ufdf_ID, "0" AS uf_ID, ufdf_type, ufdf_name, "" AS uf_varchar, ufdf_required, ufdf_options, ufgp_order, ufdf_order, ufdf_suggest, ufdf_duplicated, ufgp_ID, ufgp_name
+			FROM T_users__fielddefs
+				LEFT JOIN T_users__fieldgroups ON ufdf_ufgp_ID = ufgp_ID
+		WHERE ufdf_required IN ( "recommended", "require" )
+			AND ufdf_ID NOT IN ( SELECT uf_ufdf_ID FROM T_users__fields WHERE uf_user_ID = '.$user_id.' )
+	) tfields
+ORDER BY ufgp_order, ufdf_order, uf_ID' );
 
-		default:
-			if( $userfield->ufdf_ID >= 100000 && $userfield->ufdf_ID < 200000 )
-			{
-				$url = $userfield->uf_varchar;
-				if( !preg_match('#://#', $url) )
-				{
-					$url = 'http://'.$url;
-				}
-				$field_note = '<a href="'.$url.'" target="_blank">'.get_icon( 'play', 'imgtag', array('title'=>T_('Visit the site')) ).'</a>';
+userfields_display( $userfields, $Form );
+
+if( $action != 'view' )
+{	// Edit mode
+// ------------------- Add new field: -------------------------------
+$Form->begin_fieldset( T_('Add new fields') );
+
+	// -------------------  Display new added userfields: -------------------------------
+	global $add_field_types, $Messages;
+
+	if( $Messages->has_errors() )
+	{	// Display new added fields(from submitted form) only if errors are exist
+		if( is_array( $add_field_types ) && count( $add_field_types ) > 0 )
+		{	// This case happens when user add a new required field and he doesn't fill it, then we should show all fields again
+			foreach( $add_field_types as $add_field_type )
+			{	// We use "foreach" because sometimes the user adds several fields with the same type
+				$userfields = $DB->get_results( '
+				SELECT ufdf_ID, "0" AS uf_ID, ufdf_type, ufdf_name, "" AS uf_varchar, ufdf_required, ufdf_options, ufdf_suggest, ufdf_duplicated, ufgp_ID, ufgp_name
+					FROM T_users__fielddefs
+						LEFT JOIN T_users__fieldgroups ON ufdf_ufgp_ID = ufgp_ID
+				WHERE ufdf_ID = '.intval( $add_field_type ) );
+
+				userfields_display( $userfields, $Form, 'add', false );
 			}
-			else
-			{
-				$field_note = '';
-			}
-	}
-
-	$uf_val = param( 'uf_'.$userfield->uf_ID, 'string', NULL );
-	if( is_null( $uf_val ) )
-	{	// No value submitted yet, get DB val:
-		$uf_val = $userfield->uf_varchar;
-	}
-
-	// Display existing field:
-	$Form->text_input( 'uf_'.$userfield->uf_ID, $uf_val, 50, $userfield->ufdf_name, $field_note, array( 'maxlength' => 255 ) );
-}
-
-// Get list of possible field types:
-// TODO: use userfield manipulation functions
-$userfielddefs = $DB->get_results( '
-	SELECT ufdf_ID, ufdf_type, ufdf_name
-		FROM T_users__fielddefs
-	 ORDER BY ufdf_ID' );
-// New fields:
-// TODO: JS for adding more than 3 at a time.
-for( $i=1; $i<=3; $i++ )
-{
-	$label = '<select name="new_uf_type_'.$i.'"><option value="">'.T_('Add field...').'</option><optgroup label="'.T_('Instant Messaging').'">';
-	foreach( $userfielddefs as $fielddef )
-	{
-		// check for group header:
-		switch( $fielddef->ufdf_ID )
-		{
-			case 50000:
-				$label .= "\n".'</optgroup><optgroup label="'.T_('Phone').'">';
-				break;
-			case 100000:
-				$label .= "\n".'</optgroup><optgroup label="'.T_('Web').'">';
-				break;
-			case 200000:
-				$label .= "\n".'</optgroup><optgroup label="'.T_('Organization').'">';
-				break;
-			case 300000:
-				$label .= "\n".'</optgroup><optgroup label="'.T_('Address').'">';
-				break;
 		}
-		$label .= "\n".'<option value="'.$fielddef->ufdf_ID.'"';
-		if( param( 'new_uf_type_'.$i, 'string', '' ) == $fielddef->ufdf_ID )
-		{	// We had selected this type before getting an error:
-			$label .= ' selected="selected"';
-		}
-		$label .= '>'.$fielddef->ufdf_name.'</option>';
 	}
-	$label .= '</optgroup></select>';
 
-	$Form->text_input( 'new_uf_val_'.$i, param( 'new_uf_val_'.$i, 'string', '' ), 30, $label, '', array('maxlength' => 255, 'clickable_label'=>false) );
-}
+	$button_add_field = '<button type="submit" id="button_add_field" name="actionArray[add_field]" class="action_icon">'.get_icon( 'add' ).'</button>';
+
+	$Form->select( 'new_field_type', param( 'new_field_type', 'integer', 0 ), 'callback_options_user_new_fields', T_('Add a field of type'), $button_add_field );
 
 $Form->end_fieldset();
+}
+
+$Form->hidden( 'orig_user_ID', $user_id );
+
+$Plugins->trigger_event( 'DisplayProfileFormFieldset', array(
+			'Form' => & $ProfileForm,
+			'User' => & $User,
+			'edit_layout' => 'private',
+			'is_admin_page' => $is_admin_page,
+		) );
 
 	/***************  Buttons  **************/
 
 if( $action != 'view' )
 { // Edit buttons
 	$action_buttons = array(
-		array( '', 'actionArray[update]', T_('Save !'), 'SaveButton' ),
-		array( 'reset', '', T_('Reset'), 'ResetButton' ) );
+		array( '', 'actionArray[update]', T_( $is_admin ? 'Save !' : 'Save changes' ), 'SaveButton' ) );
 	if( $is_admin )
 	{
+		$action_buttons[] = array( 'reset', '', T_('Reset'), 'ResetButton' );
 		// dh> TODO: Non-Javascript-confirm before trashing all settings with a misplaced click.
 		$action_buttons[] = array( 'type' => 'submit', 'name' => 'actionArray[default_settings]', 'value' => T_('Restore defaults'), 'class' => 'ResetButton',
 			'onclick' => "return confirm('".TS_('This will reset all your user settings.').'\n'.TS_('This cannot be undone.').'\n'.TS_('Are you sure?')."');" );
@@ -423,25 +504,196 @@ $Form->end_form();
 
 ?>
 <script type="text/javascript">
-	// handle firstname and lastname change in the Identity shown dropdown list
-	jQuery( '#edited_user_firstname' ).change( function()
+	function replace_form_params( result )
 	{
-		// change First name text
-		idmodes_onchange( "firstname" );
-		// change -First name Last name- and -Last name First name- texts
-		name_onchange();
+		return result.replace( '#fieldstart#', '<?php echo format_to_js( str_ireplace( '$id$', '', $Form->fieldstart ) ); ?>' )
+			.replace( '#fieldend#', '<?php echo format_to_js( $Form->fieldend ); ?>' )
+			.replace( '#labelstart#', '<?php echo format_to_js( $Form->labelstart ); ?>' )
+			.replace( '#labelend#', '<?php echo format_to_js( $Form->labelend ); ?>' )
+			.replace( '#inputstart#', '<?php echo format_to_js( $Form->inputstart ); ?>' )
+			.replace( '#inputend#', '<?php echo format_to_js( $Form->inputend ); ?>' );
+	}
+
+	jQuery( '#button_add_field' ).click( function ()
+	{	// Action for the button when we want to add a new field in the Additional info
+		var field_id = jQuery( this ).parent().prev().find( 'option:selected' ).val();
+
+		if( field_id == '' )
+		{	// Mark select element of field types as error
+			field_type_error( '<?php echo T_('Please select a field type.'); ?>' );
+			// We should to stop the ajax request without field_id
+			return false;
+		}
+		else
+		{	// Remove an error class from the field
+			field_type_error_clear();
+		}
+
+		var this_obj = jQuery( this );
+		jQuery.ajax({
+		type: 'POST',
+		url: '<?php echo get_samedomain_htsrv_url(); ?>anon_async.php',
+		data: 'action=get_user_new_field&user_id=<?php echo $edited_User->ID; ?>&field_id=' + field_id,
+		success: function(result)
+			{
+				result = ajax_debug_clear( result );
+				if( result == '[0]' )
+				{	// This field(not duplicated) already exists for current user
+					field_type_error( '<?php echo TS_('You already added this field, please select another.'); ?>' );
+				}
+				else
+				{
+					result = replace_form_params( result );
+					var field_duplicated = parseInt( result.replace( /^\[(\d+)\](.*)/, '$1' ) );
+					if( field_duplicated == 0 )
+					{	// This field is NOT duplicated
+						var field_id = parseInt( result.replace( /(.*)fieldset id="ffield_uf_add_(\d+)_(.*)/, '$2' ) );
+						// Remove option from select element
+						jQuery( '#new_field_type option[value='+field_id+']').remove();
+						if( jQuery( '[id^=uf_new_' + field_id + '], [id^=uf_add_' + field_id + ']' ).length > 0 )
+						{	// This field already exists(on the html form, not in DB) AND user cannot add a duplicate
+							field_type_error( '<?php echo TS_('You already added this field, please select another.'); ?>' );
+							return false;
+						}
+					}
+					// Print out new field on the form
+					jQuery( '#ffield_new_field_type' ).before( result.replace( /^\[\d+\](.*)/, '$1' ) );
+					// Show a button 'Add(+)' with new field
+					jQuery( 'span[rel^=add_ufdf_]' ).show();
+
+					bind_autocomplete( jQuery( '#ffield_new_field_type' ).prev().prev().find( 'input[id^=uf_add_][autocomplete=on]' ) );
+				}
+			}
+		});
+
+		return false;
 	} );
-	jQuery( '#edited_user_lastname' ).change( function()
-	{
-		// change Last name text
-		idmodes_onchange( "lastname" );
-		// change -First name Last name- and -Last name First name- texts
-		name_onchange();
+
+	jQuery( document ).on( 'focus', '[rel^=ufdf_]', function ()
+	{	// Auto select the value for the field of type
+		var field_id = parseInt( jQuery( this ).attr( 'rel' ).replace( /^ufdf_(\d+)$/, '$1' ) );
+		if( field_id > 0 )
+		{	// Select an option with current field type
+			jQuery( '#new_field_type' ).val( field_id );
+			field_type_error_clear();
+		}
+	} );
+
+	jQuery( '#new_field_type' ).change( function ()
+	{	// Remove all errors messages from field "Add a field of type:"
+		field_type_error_clear();
+	} );
+
+	function field_type_error( message )
+	{	// Add an error message for the "field of type" select
+		jQuery( 'select#new_field_type' ).addClass( 'field_error' );
+		var span_error = jQuery( 'select#new_field_type' ).next().find( 'span.field_error' );
+		if( span_error.length > 0 )
+		{	// Replace a content of the existing span element
+			span_error.html( message );
+		}
+		else
+		{	// Create a new span element for error message
+			jQuery( 'select#new_field_type' ).next().append( '<span class="field_error">' + message + '</span>' );
+		}
+	}
+
+	function field_type_error_clear()
+	{	// Remove an error style from the "field of type" select
+		jQuery( 'select#new_field_type' ).removeClass( 'field_error' )
+																			.next().find( 'span.field_error' ).remove();
+	}
+
+	<?php /*jQuery( 'span[rel^=add_ufdf_]' ).each( function()
+	{	// Show only last button 'Add(+)' for each field type
+		// These buttons is hidden by default to ignore browsers without javascript
+		jQuery( 'span[rel=' + jQuery( this ).attr( 'rel' ) + ']:last' ).show();
+	} );*/ ?>
+	// Show a buttons 'Add(+)' for each field
+	// These buttons is hidden by default to ignore a browsers without javascript
+	jQuery( 'span[rel^=add_ufdf_]' ).show();
+
+	jQuery( document ).on( 'click', 'span[rel^=add_ufdf_]', function()
+	{	// Click event for button 'Add(+)'
+		var this_obj = jQuery( this );
+		var field_id = this_obj.attr( 'rel' ).replace( /^add_ufdf_(\d+)$/, '$1' );
+
+		jQuery.ajax({
+		type: 'POST',
+		url: '<?php echo get_samedomain_htsrv_url(); ?>anon_async.php',
+		data: 'action=get_user_new_field&user_id=<?php echo $edited_User->ID; ?>&field_id=' + field_id,
+		success: function( result )
+			{
+				result = ajax_debug_clear( result );
+				if( result == '[0]' )
+				{	// This field(not duplicated) already exists for current user
+					field_type_error( '<?php echo TS_('You already added this field, please select another.'); ?>' );
+				}
+				else
+				{
+					result = replace_form_params( result );
+					var field_duplicated = parseInt( result.replace( /^\[(\d+)\](.*)/, '$1' ) );
+					if( field_duplicated == 0 )
+					{	// This field is NOT duplicated
+						field_type_error( '<?php echo TS_('You already added this field, please select another.'); ?>' );
+						return false;
+					}
+					var cur_fieldset_obj = this_obj.parent().parent().parent();
+					<?php /* // Remove current button 'Add(+)' and then we will show button with new added field
+					this_obj.remove();*/ ?>
+					// Print out new field on the form
+					cur_fieldset_obj.after( result.replace( /^\[\d+\](.*)/, '$1' ) )
+					// Show a button 'Add(+)' with new field
+													.next().find( 'span.icon' ).show();
+
+					var new_field = cur_fieldset_obj.next().find( 'input[id^=uf_add_]' );
+					if( new_field.attr( 'autocomplete' ) == 'on' )
+					{	// Bind autocomplete event
+						bind_autocomplete( new_field );
+					}
+					// Set auto focus on new created field
+					new_field.focus();
+				}
+			}
+		} );
+	} );
+
+	jQuery( document ).on( 'mouseover', 'span[rel^=add_ufdf_]', function()
+	{	// Grab event from input to show bubbletip
+		jQuery( this ).parent().prev().focus();
+		jQuery( this ).css( 'z-index', jQuery( this ).parent().prev().css( 'z-index' ) );
+	} );
+	jQuery( document ).on( 'mouseout', 'span[rel^=add_ufdf_]', function()
+	{	// Grab event from input to hide bubbletip
+		var input = jQuery( this ).parent().prev();
+		if( input.is( ':focus' ) )
+		{	// Don't hide bubbletip if current input is focused
+			return false;
+		}
+		input.blur();
 	} );
 </script>
-<?php
 
-/*
- * $Log: _user_identity.form.php,v $
- */
+<script type="text/javascript">
+function bind_autocomplete( field_objs )
+{	// Bind autocomplete plugin event
+	if( field_objs.length > 0 )
+	{	// If selected elements are exists
+		field_objs.autocomplete( {
+			source: function(request, response) {
+				jQuery.getJSON( '<?php echo get_samedomain_htsrv_url(); ?>anon_async.php?action=get_user_field_autocomplete', {
+					term: request.term, attr_id: this.element[0].getAttribute( 'id' )
+				}, response);
+			},
+		} );
+	}
+}
+// Plugin jQuery(...).live() doesn't work with autocomplete
+// We should assign an autocomplete event for each new added field
+bind_autocomplete( jQuery( 'input[id^=uf_][autocomplete=on]' ) );
+</script>
+<?php
+// Location
+echo_regional_js( 'edited_user', user_region_visible() );
+
 ?>

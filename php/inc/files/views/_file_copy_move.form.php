@@ -13,7 +13,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -37,7 +37,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _file_copy_move.form.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _file_copy_move.form.php 3507 2013-04-19 06:54:17Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -55,6 +55,8 @@ global $fm_source_Filelist;
  * @global array
  */
 global $new_names;
+
+global $filename_max_length;
 
 
 $Form = new Form( NULL, 'fm_copymove_checkchanges' );
@@ -79,7 +81,7 @@ $Form->begin_form( 'fform', $fm_mode == 'file_copy' ? T_('Copy') : T_('Move') );
 		}
 
 		$Form->text( 'new_names['.$loop_src_File->get_md5_ID().']', $new_names[$loop_src_File->get_md5_ID()], 32,
-									T_('New name'), $loop_src_File->dget('title'), 128 );
+									T_('New name'), $loop_src_File->dget('title'), $filename_max_length );
 
 		$Form->end_fieldset();
 	}
@@ -90,7 +92,4 @@ $Form->end_form( array( array( 'submit', 'submit', $fm_mode == 'file_copy' ? T_(
 echo '<p class="notes"><strong>'.T_('You are in copy/move mode.')
 				.'</strong> '.T_('Please navigate to the desired target location.').'</p>';
 
-/*
- * $Log: _file_copy_move.form.php,v $
- */
 ?>

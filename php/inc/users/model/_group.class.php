@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -24,7 +24,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE
  *
- * @version $Id: _group.class.php 1231 2012-04-17 05:42:06Z attila $
+ * @version $Id: _group.class.php 4031 2013-06-19 07:51:28Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -65,7 +65,6 @@ class Group extends DataObject
 	var $perm_xhtml_javascript = false;
 	var $perm_xhtml_objects = false;
 	var $perm_stats;
-	var $perm_users;
 
 	/**
 	 * Pluggable group permissions
@@ -98,7 +97,6 @@ class Group extends DataObject
 			$this->set( 'name', T_('New group') );
 			$this->set( 'perm_blogs', 'user' );
 			$this->set( 'perm_stats', 'none' );
-			$this->set( 'perm_users', 'none' );
 		}
 		else
 		{
@@ -114,7 +112,6 @@ class Group extends DataObject
 			$this->perm_xhtml_javascript        = $db_row->grp_perm_xhtml_javascript;
 			$this->perm_xhtml_objects           = $db_row->grp_perm_xhtml_objects;
 			$this->perm_stats                   = $db_row->grp_perm_stats;
-			$this->perm_users                   = $db_row->grp_perm_users;
 		}
 	}
 
@@ -136,7 +133,6 @@ class Group extends DataObject
 		param( 'edited_grp_perm_blogs', 'string', true );
 		$this->set_from_Request( 'perm_blogs', 'edited_grp_perm_blogs', true );
 
-		// Validation and Security filter Settings 
 		$apply_antispam = ( param( 'apply_antispam', 'integer', 0 ) ? 0 : 1 );
 		$perm_xhtmlvalidation = param( 'perm_xhtmlvalidation', 'string', true );
 		$perm_xhtmlvalidation_xmlrpc = param( 'perm_xhtmlvalidation_xmlrpc', 'string', true );
@@ -186,8 +182,7 @@ class Group extends DataObject
 			{ // These two permissions are represented by checkboxes, all other pluggable group permissions are represented by radiobox.
 				$value = param( 'edited_grp_'.$name, 'string', 'denied' );
 			}
-			else
-			if( ( $name == 'perm_admin' ) && ( $this->ID == 1 ) )
+			elseif( ( $name == 'perm_admin' || $name == 'perm_users' ) && ( $this->ID == 1 ) )
 			{ // Admin group has always admin perm, it can not be set or changed.
 				continue;
 			}
@@ -195,7 +190,7 @@ class Group extends DataObject
 			{
 				$value = param( 'edited_grp_'.$name, 'string', '' );
 			}
-			if( $value != '' )
+			if( ( $value != '') || ( $name == 'max_new_threads'/*allow empty*/ ) )
 			{ // if radio is not set, then doesn't change the settings
 				$GroupSettings->set( $name, $value, $this->ID );
 			}
@@ -276,7 +271,7 @@ class Group extends DataObject
 			$permvalue = false; // This will result in $perm == false always. We go on for the $Debuglog..
 		}
 
-		$pluggable_perms = array( 'admin', 'shared_root', 'spamblacklist', 'slugs', 'templates', 'options', 'files' );
+		$pluggable_perms = array( 'admin', 'shared_root', 'spamblacklist', 'slugs', 'templates', 'options', 'emails', 'files', 'users' );
 		if( in_array( $permname, $pluggable_perms ) )
 		{
 			$permname = 'perm_'.$permname;
@@ -311,7 +306,6 @@ class Group extends DataObject
 				break;
 
 			case 'stats':
-			case 'users':
 				if( ! $this->check_perm( 'admin', 'restricted' ) )
 				{
 					$perm = false;
@@ -324,15 +318,6 @@ class Group extends DataObject
 						// All permissions granted
 						$perm = true;
 						break;
-
-					case 'add':
-						// User can ask for add perm...
-						if( $permlevel == 'add' )
-						{
-							$perm = true;
-							break;
-						}
-						// ... or for any lower priority perm... (no break)
 
 					case 'view':
 						// User can ask for view perm...
@@ -356,14 +341,13 @@ class Group extends DataObject
 				}
 				break;
 
-			case 'perm_messaging':
 			case 'perm_files':
 				if( ! $this->check_perm( 'admin', 'restricted' ) )
 				{
 					$perm = false;
 					break;
 				}
-				// no break, perm_files and perm_messaging are pluggable permissions
+				// no break, perm_files is pluggable permission
 
 			default:
 
@@ -393,194 +377,61 @@ class Group extends DataObject
 	 * user is checked for privileges first, group lookup only performed on a false result
 	 *
 	 * @see User::check_perm()
-	 * @param string Permission name, can be one of the following:
+	 * @param string Permission name can be any from the blog advanced perm names. A few possible permname:
 	 *                  - blog_ismember
-	 *                  - blog_post_statuses
 	 *                  - blog_del_post
 	 *                  - blog_edit_ts
-	 *                  - blog_comments
+	 *                  - blog_post_statuses
+	 *                  - blog_edit
+	 *                  - blog_comment_statuses
+	 *                  - blog_edit_cmt
 	 *                  - blog_cats
 	 *                  - blog_properties
-	 *                  - blog_genstatic
 	 * @param string Permission level
 	 * @param integer Permission target blog ID
 	 * @param Item post that we want to edit
+	 * @param User for who we would like to check this permission
 	 * @return boolean 0 if permission denied
 	 */
-	function check_perm_bloggroups( $permname, $permlevel, $perm_target_blog, $Item = NULL, $User = NULL )
+	function check_perm_bloggroups( $permname, $permlevel, $perm_target_blog, $perm_target = NULL, $User = NULL )
 	{
-		global $DB;
-		// echo "checkin for $permname >= $permlevel on blog $perm_target_blog<br />";
-
-		$BlogCache = & get_BlogCache();
-    /**
-		 * @var Blog
-		 */
-		$Blog = & $BlogCache->get_by_ID( $perm_target_blog );
-		if( ! $Blog->advanced_perms )
-		{	// We do not abide to advanced perms
-			return false;
-		}
-
 		if( !isset( $this->blog_post_statuses[$perm_target_blog] ) )
-		{ // Allowed blog post statuses have not been loaded yet:
-			if( $this->ID == 0 )
-			{ // User not in DB, nothing to load!:
-				return false;	// Permission denied
-			}
-
-			// Load now:
-			// echo 'loading allowed statuses';
-			$query = "SELECT *
-								FROM T_coll_group_perms
-								WHERE bloggroup_blog_ID = $perm_target_blog
-								  AND bloggroup_group_ID = $this->ID";
-
-			$row = $DB->get_row( $query, ARRAY_A );
-
-			if( empty($row) )
-			{ // No rights set for this Blog/Group: remember this (in order not to have the same query next time)
-				$this->blog_post_statuses[$perm_target_blog] = array(
-						'blog_ismember' => '0',
-						'blog_post_statuses' => array(),
-						'blog_edit' => 'no',
-						'blog_del_post' => '0',
-						'blog_edit_ts' => '0',
-						'blog_comments' => '0',
-						'blog_draft_comments' => '0',
-						'blog_published_comments' => '0',
-						'blog_deprecated_comments' => '0',
-						'blog_cats' => '0',
-						'blog_properties' => '0',
-						'blog_admin' => '0',
-						'blog_page' => '0',
-						'blog_intro' => '0',
-						'blog_podcast' => '0',
-						'blog_sidebar' => '0',
-						'blog_media_upload' => '0',
-						'blog_media_browse' => '0',
-						'blog_media_change' => '0',
-					);
-			}
-			else
-			{ // OK, rights found:
-				$this->blog_post_statuses[$perm_target_blog] = array();
-
-				$this->blog_post_statuses[$perm_target_blog]['blog_ismember'] = $row['bloggroup_ismember'];
-
-				$bloggroup_perm_post = $row['bloggroup_perm_poststatuses'];
-				if( empty($bloggroup_perm_post ) )
-					$this->blog_post_statuses[$perm_target_blog]['blog_post_statuses'] = array();
-				else
-					$this->blog_post_statuses[$perm_target_blog]['blog_post_statuses'] = explode( ',', $bloggroup_perm_post );
-
-				$this->blog_post_statuses[$perm_target_blog]['blog_edit'] = $row['bloggroup_perm_edit'];
-				$this->blog_post_statuses[$perm_target_blog]['blog_del_post'] = $row['bloggroup_perm_delpost'];
-				$this->blog_post_statuses[$perm_target_blog]['blog_edit_ts'] = $row['bloggroup_perm_edit_ts'];
-				$this->blog_post_statuses[$perm_target_blog]['blog_comments'] = $row['bloggroup_perm_publ_cmts']
-					+ $row['bloggroup_perm_depr_cmts'] + $row['bloggroup_perm_draft_cmts'];
-				$this->blog_post_statuses[$perm_target_blog]['blog_draft_comments'] = $row['bloggroup_perm_draft_cmts'];
-				$this->blog_post_statuses[$perm_target_blog]['blog_published_comments'] = $row['bloggroup_perm_publ_cmts'];
-				$this->blog_post_statuses[$perm_target_blog]['blog_deprecated_comments'] = $row['bloggroup_perm_depr_cmts'];
-				$this->blog_post_statuses[$perm_target_blog]['blog_cats'] = $row['bloggroup_perm_cats'];
-				$this->blog_post_statuses[$perm_target_blog]['blog_properties'] = $row['bloggroup_perm_properties'];
-				$this->blog_post_statuses[$perm_target_blog]['blog_admin'] = $row['bloggroup_perm_admin'];
-				$this->blog_post_statuses[$perm_target_blog]['blog_page'] = $row['bloggroup_perm_page'];
-				$this->blog_post_statuses[$perm_target_blog]['blog_intro'] = $row['bloggroup_perm_intro'];
-				$this->blog_post_statuses[$perm_target_blog]['blog_podcast'] = $row['bloggroup_perm_podcast'];
-				$this->blog_post_statuses[$perm_target_blog]['blog_sidebar'] = $row['bloggroup_perm_sidebar'];
-				$this->blog_post_statuses[$perm_target_blog]['blog_media_upload'] = $row['bloggroup_perm_media_upload'];
-				$this->blog_post_statuses[$perm_target_blog]['blog_media_browse'] = $row['bloggroup_perm_media_browse'];
-				$this->blog_post_statuses[$perm_target_blog]['blog_media_change'] = $row['bloggroup_perm_media_change'];
+		{
+			$this->blog_post_statuses[$perm_target_blog] = array();
+			if( ! load_blog_advanced_perms( $this->blog_post_statuses[$perm_target_blog], $perm_target_blog, $this->ID, 'bloggroup' ) )
+			{ // Could not load blog advanced user perms
+				return false;
 			}
 		}
 
-		// Check if permission is granted:
-		switch( $permname )
-		{
-			case 'stats':
-				// Wiewing stats is the same perm as being authorized to edit properties: (TODO...)
-				if( $permlevel == 'view' )
-				{
-					return $this->blog_post_statuses[$perm_target_blog]['blog_properties'];
-				}
-				// No other perm can be granted here (TODO...)
-				return false;
-
-			case 'blog_genstatic':
-				// generate static pages is not currently a group permission.  if you are here user is denied already anyway
-				return (false);
-
-			case 'blog_post_statuses':
-				return ( count($this->blog_post_statuses[$perm_target_blog]['blog_post_statuses']) > 0 );
-
-			case 'blog_post!published':
-			case 'blog_post!protected':
-			case 'blog_post!private':
-			case 'blog_post!draft':
-			case 'blog_post!deprecated':
-			case 'blog_post!redirected':
-				// We want a specific permission:
-				$subperm = substr( $permname, 10 );
-				//$Debuglog->add( "checking : $subperm - ", implode( ',', $this->blog_post_statuses[$perm_target_blog]['blog_post_statuses']  ), 'perms' );
-				$perm = in_array( $subperm, $this->blog_post_statuses[$perm_target_blog]['blog_post_statuses'] );
-
-				// TODO: the following probably should be handled by the Item class!
-				if( $perm && $permlevel == 'edit' && !empty($Item) )
-				{	// Can we edit this specific Item?
-					switch( $this->blog_post_statuses[$perm_target_blog]['blog_edit'] )
+		$blog_perms = $this->blog_post_statuses[$perm_target_blog];
+		if( empty( $User ) )
+		{ // User is not set
+			$user_ID = NULL;
+		}
+		else
+		{ // User is set, advanced user perms must be loaded
+			$user_ID = $User->ID;
+			if( isset( $User->blog_post_statuses[$perm_target_blog] ) )
+			{ // Merge user advanced perms with group advanced perms
+				$edit_perms = array( 'no' => 0, 'own' => 1, 'anon' => 2, 'lt' => 3, 'le' => 4, 'all' => 5 );
+				foreach( $User->blog_post_statuses[$perm_target_blog] as $key => $value )
+				{ // For each collection advanced permission use the higher perm value between user and group perms
+					if( ( $key == 'blog_edit' ) || ( $key == 'blog_edit_cmt' ) )
 					{
-						case 'own':
-							// Own posts only:
-							return ($Item->creator_user_ID == $User->ID);
-
-						case 'lt':
-							// Own + Lower level posts only:
-							if( $Item->creator_user_ID == $User->ID )
-							{
-								return true;
-							}
-							$item_creator_User = & $Item->get_creator_User();
-							return ( $item_creator_User->level < $User->level );
-
-						case 'le':
-							// Own + Lower or equal level posts only:
-							if( $Item->creator_user_ID == $User->ID )
-							{
-								return true;
-							}
-							$item_creator_User = & $Item->get_creator_User();
-							return ( $item_creator_User->level <= $User->level );
-
-						case 'all':
-							return true;
-
-						case 'no':
-						default:
-							return false;
+						if( $edit_perms[$value] > $edit_perms[$blog_perms[$key]] )
+						{ // Use collection user edit permission because it is greater than the collection group perm
+							$blog_perms[$key] = $value;
+						}
+					}
+					else
+					{ // Check user and group perm as well
+						$blog_perms[$key] = (int) $value | (int) $blog_perms[$key];
 					}
 				}
-
-				return $perm;
-
-			case 'files':
-				switch( $permlevel )
-				{
-					case 'add':
-						return $this->blog_post_statuses[$perm_target_blog]['blog_media_upload'];
-					case 'view':
-						return $this->blog_post_statuses[$perm_target_blog]['blog_media_browse'];
-					case 'edit':
-						return $this->blog_post_statuses[$perm_target_blog]['blog_media_change'];
-					default:
-						return false;
-				}
-				break;
-
-			default:
-				// echo $permname, '=', $this->blog_post_statuses[$perm_target_blog][$permname], ' ';
-				return $this->blog_post_statuses[$perm_target_blog][$permname];
+			}
 		}
+		return check_blog_advanced_perm( $blog_perms, $user_ID, $permname, $permlevel, $perm_target );
 	}
 
 
@@ -651,20 +502,6 @@ class Group extends DataObject
 
 		$DB->commit();
 	}
-
-
-	/**
-	 * Check if this group users have messaging permission and have access to the admin interface
-	 *
-	 * @return boolean true if group has the necessarry permissions
-	 */
-	function check_messaging_perm()
-	{
-		return $this->check_perm( 'perm_messaging', 'write' ) && ( $this->check_perm( 'admin', 'restricted' ) );
-	}
 }
 
-/*
- * $Log: _group.class.php,v $
- */
 ?>

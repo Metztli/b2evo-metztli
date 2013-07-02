@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -32,7 +32,7 @@
  * @todo Make it a class / global object!
  *        - Provide (static) functions to extract .po files / generate _global.php files (single quoted strings!)
  *
- * @version $Id: _locale.funcs.php 57 2011-10-26 08:18:58Z sam2kb $
+ * @version $Id: _locale.funcs.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page directly.' );
 
@@ -495,53 +495,35 @@ function locale_dialing_code( $locale = '' )
  * Template function: Display locale flag
  *
  * @param string locale to use, '' for current
- * @param string collection name (subdir of img/flags)
- * @param string name of class for IMG tag
- * @param string deprecated HTML align attribute
+ * @param string DEPRECATED PARAM - NOT USED IN THE FUNCTION ANYMORE !!
+ * @param string name of class for IMG tag   !! OLD PARAM - NOT USED IN THE FUNCTION ANYMORE !!
+ * @param string deprecated HTML align attribute   !! OLD PARAM - NOT USED IN THE FUNCTION ANYMORE !!
  * @param boolean to echo or not
- * @param mixed use absolute url (===true) or path to flags directory (used in installer)
+ * @param mixed use absolute url (===true) or path to flags directory (used in installer)   !! OLD PARAM - NOT USED IN THE FUNCTION ANYMORE !!
  */
-function locale_flag( $locale = '', $collection = 'w16px', $class = 'flag', $align = '', $disp = true, $absoluteurl = true )
+function locale_flag( $locale = '', $collection = 'deprecated_param', $class = 'flag', $align = '', $disp = true, $absoluteurl = true )
 {
-	global $locales, $current_locale, $rsc_path, $rsc_url;
+	global $locales, $current_locale, $country_flags_bg;
 
-	if( empty($locale) ) $locale = $current_locale;
+	if( empty( $locale ) )
+	{
+		$locale = $current_locale;
+	}
 
 	// extract flag name:
-	$country = strtolower(substr( $locale, 3, 2 ));
+	$country_code = strtolower( substr( $locale, 3, 2 ) );
 
-	$img_attribs = array(
-		'alt' => isset($locales[$locale]['name']) ? $locales[$locale]['name'] : $locale,
+	$flag_attribs = array(
+		'class' => 'flag',
+		'title' => isset($locales[$locale]['name']) ? $locales[$locale]['name'] : $locale,
 	);
 
-	if( $absoluteurl !== true )
-	{
-		$absoluteurl = trailing_slash($absoluteurl);
-		$img_attribs['src'] = $absoluteurl.$collection.'/'.$country.'.gif';
-	}
-	else
-	{
-		// subpath below $rsc_path
-		$subpath = 'flags/'.$collection.'/'.$country.'.gif';
-
-		if( ! is_file( $rsc_path.$subpath ) )
-		{ // File does not exist
-			$country = 'default';
-			$subpath = 'flags/'.$collection.'/'.$country.'.gif';
-		}
-		$img_attribs['src'] = $rsc_url.$subpath;
-
-		// Add size, if available.
-		if( $img_wh = imgsize($rsc_path.$subpath, 'widthheight_assoc') )
-		{
-			$img_attribs += $img_wh;
-		}
+	if( isset( $country_flags_bg[ $country_code ] ) )
+	{	// Set background-position from config
+		$flag_attribs['style'] = 'background-position:'.$country_flags_bg[ $country_code ];
 	}
 
-	if( ! empty( $class ) ) $img_attribs['class'] = $class;
-	if( ! empty( $align ) ) $img_attribs['align'] = $align;
-
-	$r = '<img'.get_field_attribs_as_string($img_attribs).' />';
+	$r = '<span'.get_field_attribs_as_string( $flag_attribs ).'></span>';
 
 	if( $disp )
 		echo $r;   // echo it
@@ -738,7 +720,7 @@ function locale_overwritefromDB()
 	$priocounter = 0;
 	$query = 'SELECT
 						loc_locale, loc_charset, loc_datefmt, loc_timefmt, loc_startofweek,
-						loc_name, loc_messages, loc_priority, loc_enabled
+						loc_name, loc_messages, loc_priority, loc_transliteration_map, loc_enabled
 						FROM T_locales ORDER BY loc_priority';
 
 	foreach( $DB->get_results( $query, ARRAY_A ) as $row )
@@ -756,6 +738,13 @@ function locale_overwritefromDB()
 		//remember that we used this
 		$usedprios[] = $priocounter;
 
+		$transliteration_map = '';
+		// Try to unserialize the value
+		if( ($r = @unserialize(@base64_decode($row[ 'loc_transliteration_map' ]))) !== false )
+		{
+			$transliteration_map = $r;
+		}
+
 		$locales[ $row['loc_locale'] ] = array(
 				'charset'     => $row[ 'loc_charset' ],
 				'datefmt'     => $row[ 'loc_datefmt' ],
@@ -763,6 +752,7 @@ function locale_overwritefromDB()
 				'startofweek' => $row[ 'loc_startofweek' ],
 				'name'        => $row[ 'loc_name' ],
 				'messages'    => $row[ 'loc_messages' ],
+				'transliteration_map' => $transliteration_map,
 				'priority'    => $priocounter,
 				'enabled'     => $row[ 'loc_enabled' ],
 				'fromdb'      => 1
@@ -855,13 +845,27 @@ function locale_updateDB()
 
 	$locales = $templocales;
 
-	$query = "REPLACE INTO T_locales ( loc_locale, loc_charset, loc_datefmt, loc_timefmt, loc_startofweek, loc_name, loc_messages, loc_priority, loc_enabled ) VALUES ";
+	$query = "REPLACE INTO T_locales ( loc_locale, loc_charset, loc_datefmt, loc_timefmt, loc_startofweek, loc_name, loc_messages, loc_priority, loc_transliteration_map, loc_enabled ) VALUES ";
 	foreach( $locales as $localekey => $lval )
 	{
 		if( empty($lval['messages']) )
 		{ // if not explicit messages file is given we'll translate the locale
 			$lval['messages'] = strtr($localekey, '-', '_');
 		}
+
+		$transliteration_map = '';
+		if( !empty($lval['transliteration_map']) )
+		{
+			if( is_string($lval['transliteration_map']) )
+			{	// The value is already serialized and encoded
+				$transliteration_map = $lval['transliteration_map'];
+			}
+			else
+			{	// Encode the value
+				$transliteration_map = base64_encode( serialize($lval['transliteration_map']) );
+			}
+		}
+
 		$query .= '(
 			'.$DB->quote($localekey).',
 			'.$DB->quote($lval['charset']).',
@@ -871,6 +875,7 @@ function locale_updateDB()
 			'.$DB->quote($lval['name']).',
 			'.$DB->quote($lval['messages']).',
 			'.$DB->quote($lval['priority']).',
+			'.$DB->quote($transliteration_map).',
 			'.$DB->quote($lval['enabled']).'
 		), ';
 	}
@@ -976,7 +981,7 @@ function check_encoding($str, $encoding)
 	{
 		return mb_check_encoding($str, $encoding);
 	}
-	
+
 	return NULL;
 }
 
@@ -1087,17 +1092,27 @@ function locales_load_available_defs()
 	$locale_defs = array();
 
 	// Get all locale folder names:
-	$locale_folders = get_filenames( $locales_path, false, true, true, false, true );
+	$filename_params = array(
+			'inc_files'	=> false,
+			'recurse'	=> false,
+			'basename'	=> true,
+		);
+	$locale_folders = get_filenames( $locales_path, $filename_params );
 	// Go through all locale folders:
 	foreach( $locale_folders as $locale_folder )
 	{
 		$ad_locale_folder = $locales_path.'/'.$locale_folder;
 		// Get files in folder:
-		$locale_def_files = get_filenames( $ad_locale_folder, true, false, true, false, true );
+		$filename_params = array(
+				'inc_dirs'	=> false,
+				'recurse'	=> false,
+				'basename'	=> true,
+			);
+		$locale_def_files = get_filenames( $ad_locale_folder, $filename_params );
 		// Go through files in locale folder:
 		foreach( $locale_def_files as $locale_def_file )
 		{	// Check if it's a definition file:
-			if( preg_match( '¤[a-z0-9\-]\.locale\.php$¤i', $locale_def_file ) )
+			if( preg_match( '~[a-z0-9\-]\.locale\.php$~i', $locale_def_file ) )
 			{	// We found a definition file:
 				// pre_dump( $locale_def_file );
 				include $ad_locale_folder.'/'.$locale_def_file;
@@ -1139,7 +1154,117 @@ function locales_load_available_defs()
 
 }
 
-/*
- * $Log: _locale.funcs.php,v $
+
+/**
+ * Get a number of the messages in the .PO & .POT file
+ *
+ * @param string File name (messages.po)
+ * @param boolean TRUE - to calc a percent of translated messages
+ * @return integer Number of the messages
  */
+function locale_file_po_info( $po_file_name, $calc_percent_done = false )
+{
+	$all = 0;
+	$fuzzy = 0;
+	$this_fuzzy = false;
+	$untranslated = 0;
+	$translated = 0;
+	$status = '-';
+	$matches = array();
+
+	if( file_exists( $po_file_name ) )
+	{
+		$lines = file( $po_file_name );
+		$lines[] = '';	// Adds a blank line at the end in order to ensure complete handling of the file
+
+		foreach( $lines as $line )
+		{
+			if( trim( $line ) == '' )
+			{	// Blank line, go back to base status:
+				if( $status == 't' )
+				{	// ** End of a translation ** :
+					if( $msgstr == '' )
+					{
+						$untranslated++;
+						// echo 'untranslated: ', $msgid, '<br />';
+					}
+					else
+					{
+						$translated++;
+					}
+					if( $msgid == '' && $this_fuzzy )
+					{	// It's OK if first line is fuzzy
+						$fuzzy--;
+					}
+					$msgid = '';
+					$msgstr = '';
+					$this_fuzzy = false;
+				}
+				$status = '-';
+			}
+			elseif( ( $status == '-' ) && preg_match( '#^msgid "(.*)"#', $line, $matches ) )
+			{	// Encountered an original text
+				$status = 'o';
+				$msgid = $matches[1];
+				// echo 'original: "', $msgid, '"<br />';
+				$all++;
+			}
+			elseif( ( $status == 'o' ) && preg_match( '#^msgstr "(.*)"#', $line, $matches ) )
+			{	// Encountered a translated text
+				$status = 't';
+				$msgstr = $matches[1];
+				// echo 'translated: "', $msgstr, '"<br />';
+			}
+			elseif( preg_match( '#^"(.*)"#', $line, $matches ) )
+			{	// Encountered a followup line
+				if( $status == 'o' )
+					$msgid .= $matches[1];
+				elseif( $status == 't' )
+					$msgstr .= $matches[1];
+			}
+			elseif( strpos( $line,'#, fuzzy' ) === 0 )
+			{
+				$this_fuzzy = true;
+				$fuzzy++;
+			}
+		}
+	}
+
+	$info = array(
+			'all'          => $all,
+			'fuzzy'        => $fuzzy,
+			'translated'   => $translated,
+			'untranslated' => $untranslated
+		);
+
+	if( $calc_percent_done )
+	{
+		$info['percent'] = locale_file_po_percent_done( $info );
+	}
+
+	return $info;
+}
+
+
+/**
+ * Get a percent of translated messages in the .PO file
+ *
+ * @param array File info (see result of the function locale_file_po_info() )
+ * @return integer Percent
+ */
+function locale_file_po_percent_done( $po_file_info )
+{
+	global $messages_pot_file_info;
+
+	if( !isset( $messages_pot_file_info ) )
+	{	// Initialize a file info for the main language file if it doesn't yet set
+		global $locales_path;
+		$messages_pot_file_info = locale_file_po_info( $locales_path.'messages.pot' );
+	}
+
+	$percent_done = ( $messages_pot_file_info['all'] > 0 ) ? round( ( $po_file_info['translated'] - $po_file_info['fuzzy'] / 2 ) / $messages_pot_file_info['all'] * 100 ) : 0;
+
+	return $percent_done;
+}
+
 ?>

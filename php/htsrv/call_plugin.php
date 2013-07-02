@@ -6,7 +6,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -30,7 +30,7 @@
  * @author fplanque: Francois PLANQUE
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: call_plugin.php 57 2011-10-26 08:18:58Z sam2kb $
+ * @version $Id: call_plugin.php 3328 2013-03-26 11:44:11Z yura $
  */
 
 
@@ -90,8 +90,4 @@ if( $plugin_ID )
 	$Plugins->call_method( $Plugin->ID, 'htsrv_'.$method, $params );
 }
 
-
-/* {{{ Revision log:
- * $Log: call_plugin.php,v $
- */
 ?>

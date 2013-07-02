@@ -2,9 +2,10 @@
 /*
  * mime_parser.php
  *
- * @(#) $Id: mime_parser.php 57 2011-10-26 08:18:58Z sam2kb $
+ * @(#) $Id: mime_parser.php 1180 2012-04-05 00:48:28Z sam2kb $
  *
  */
+if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
 define('MIME_PARSER_START',        1);
 define('MIME_PARSER_HEADER',       2);
@@ -30,7 +31,7 @@ define('MIME_ADDRESS_FIRST',            2);
 
 	<package>net.manuellemos.mimeparser</package>
 
-	<version>@(#) $Id: mime_parser.php 57 2011-10-26 08:18:58Z sam2kb $</version>
+	<version>@(#) $Id: mime_parser.php 1180 2012-04-05 00:48:28Z sam2kb $</version>
 	<copyright>Copyright © (C) Manuel Lemos 2006 - 2008</copyright>
 	<title>MIME parser</title>
 	<author>Manuel Lemos</author>
@@ -296,7 +297,7 @@ class mime_parser_class
 {/metadocument}
 */
 	var $track_lines = 0;
-	
+
 /*
 {metadocument}
 	<variable>
@@ -873,7 +874,7 @@ class mime_parser_class
 		}
 		return($return_value);
 	}
-	
+
 	Function ParseBody($data, $end, $offset)
 	{
 		$success = $this->body_parser->Parse($data, $end);

@@ -4,7 +4,7 @@
  *
  * @author fplanque: Francois PLANQUE
  *
- * @version $Id: _prune_hits_sessions.job.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _prune_hits_sessions.job.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -27,7 +27,4 @@ if( empty($result_message) )
 
 return 100;
 
-/*
- * $Log: _prune_hits_sessions.job.php,v $
- */
 ?>

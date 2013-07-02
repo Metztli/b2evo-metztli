@@ -5,7 +5,7 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
  *
@@ -22,11 +22,12 @@
  * @author fplanque: Francois PLANQUE
  * @author vegarg: Vegar BERG GULDAL
  *
- * @version $Id: stats.ctrl.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: stats.ctrl.php 3508 2013-04-19 06:58:02Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
 load_class('sessions/model/_hitlist.class.php', 'Hitlist' );
+load_class('sessions/model/_internal_searches.class.php', 'Internalsearches' );
 load_funcs('sessions/model/_hitlog.funcs.php');
 
 /**
@@ -36,7 +37,8 @@ global $current_User;
 
 global $dispatcher;
 
-global $collections_Module;
+global $collections_Module, $DB;
+param_action();
 
 // Do we have permission to view all stats (aggregated stats) ?
 $perm_view_all = $current_User->check_perm( 'stats', 'view' );
@@ -45,13 +47,61 @@ $perm_view_all = $current_User->check_perm( 'stats', 'view' );
 memorize_param( 'blog', 'integer', -1 );
 
 $tab = param( 'tab', 'string', 'summary', true );
-if( $tab == 'sessions' && (!$perm_view_all || $blog != 0) )
-{	// Sessions tab is not narrowed down to blog level:
-	$tab = 'summary';
-}
 $tab3 = param( 'tab3', 'string', '', true );
 
 param( 'action', 'string' );
+
+if( ($tab=='refsearches') && ($tab3=='intsearches') ) 
+{
+
+	if( param( 'isrch_ID', 'integer', '', true) )
+	{ 
+		$ISCache = & get_InternalSearchesCache();
+		if( ($edited_intsearch = & $ISCache->get_by_ID( $isrch_ID, false )) === false )
+		{	// We could not find the internal search to edit:
+			unset( $edited_intsearch );
+			forget_param( 'isrch_ID' );
+			$Messages->add( sprintf( T_('Requested &laquo;%s&raquo; object does not exist any longer.'), T_('Internal Search') ), 'error' );
+			$action = 'nil';
+		}
+	}
+	
+	switch( $action )
+	{
+	
+		case 'delete':
+			// Delete file type:
+	
+			// Check that this action request is not a CSRF hacked request:
+			$Session->assert_received_crumb( 'internalsearches' );
+	
+			// Check permission:
+			$current_User->check_perm( 'stats', 'edit', true );
+	
+			// Make sure we got an isrch_ID:
+			param( 'isrch_ID', 'integer', true );
+			
+				
+				$msg = sprintf( T_('Internal search &laquo;%s&raquo; deleted.'), $edited_intsearch->dget('name') );
+				$edited_intsearch->dbdelete( true );
+				unset( $edited_intsearch );
+				forget_param( 'isrch_ID' );
+				$Messages->add( $msg, 'success' );
+				// Redirect so that a reload doesn't write to the DB twice:
+				header_redirect( '?ctrl=stats&tab=refsearches&tab3=intsearches', 303 ); // Will EXIT
+				// We have EXITed already at this point!!
+			break;
+	
+	}
+	
+}
+else
+{
+
+if ($tab == 'domains' && $current_User->check_perm( 'stats', 'edit' ))
+{
+	require_js( 'jquery/jquery.jeditable.js', 'rsc_url' );
+}
 
 if( $blog == 0 )
 {
@@ -84,23 +134,6 @@ switch( $action )
 		break;
 
 
-	case 'delete': // DELETE A HIT
-		// Check permission:
-		$current_User->check_perm( 'stats', 'edit', true );
-
-		param( 'hit_ID', 'integer', true ); // Required!
-
-		if( Hitlist::delete( $hit_ID ) )
-		{
-			$Messages->add( sprintf( T_('Deleted hit #%d.'), $hit_ID ), 'success' );
-		}
-		else
-		{
-			$Messages->add( sprintf( T_('Could not delete hit #%d.'), $hit_ID ), 'note' );
-		}
-		break;
-
-
 	case 'prune': // PRUNE hits for a certain date
 		// Check that this action request is not a CSRF hacked request:
 		$Session->assert_received_crumb( 'stats' );
@@ -121,22 +154,30 @@ switch( $action )
 		header_redirect( '?ctrl=stats', 303 ); // Will EXIT
 		// We have EXITed already at this point!!
 		break;
+
+	case 'reset_counters':
+
+		$current_User->check_perm( 'stats', 'edit', true );
+
+		$sql = 'UPDATE T_track__keyphrase
+				SET keyp_count_refered_searches = 0,
+					keyp_count_internal_searches = 0';
+		$DB->query( $sql, ' Reset keyphrases counters' );
+		break;
+
+}
 }
 
-if( $tab != 'sessions' )
-{ // no need to show blogs list while displaying sessions
-
-	if( isset($collections_Module) )
-	{ // Display list of blogs:
-		if( $perm_view_all )
-		{
-			$AdminUI->set_coll_list_params( 'stats', 'view', array( 'ctrl' => 'stats', 'tab' => $tab, 'tab3' => $tab3 ), T_('All'),
-							$dispatcher.'?ctrl=stats&amp;tab='.$tab.'&amp;tab3='.$tab3.'&amp;blog=0' );
-		}
-		else
-		{	// No permission to view aggregated stats:
-			$AdminUI->set_coll_list_params( 'stats', 'view', array( 'ctrl' => 'stats', 'tab' => $tab, 'tab3' => $tab3 ) );
-		}
+if( isset($collections_Module) )
+{ // Display list of blogs:
+	if( $perm_view_all )
+	{
+		$AdminUI->set_coll_list_params( 'stats', 'view', array( 'ctrl' => 'stats', 'tab' => $tab, 'tab3' => $tab3 ), T_('All'),
+						$dispatcher.'?ctrl=stats&amp;tab='.$tab.'&amp;tab3='.$tab3.'&amp;blog=0' );
+	}
+	else
+	{	// No permission to view aggregated stats:
+		$AdminUI->set_coll_list_params( 'stats', 'view', array( 'ctrl' => 'stats', 'tab' => $tab, 'tab3' => $tab3 ) );
 	}
 }
 
@@ -177,6 +218,12 @@ switch( $tab )
 		$AdminUI->breadcrumbpath_add( T_('Direct hits'), '?ctrl=stats&amp;blog=$blog$&tab='.$tab );
 		break;
 
+	case 'hits':
+		$AdminUI->breadcrumbpath_add( T_('Analytics'), '?ctrl=stats&amp;blog=$blog$' );
+		$AdminUI->breadcrumbpath_add( T_('Hits'), '?ctrl=stats&amp;blog=$blog$' );
+		$AdminUI->breadcrumbpath_add( T_('All Hits'), '?ctrl=stats&amp;blog=$blog$&tab='.$tab );
+		break;
+
 	case 'referers':
 		$AdminUI->breadcrumbpath_add( T_('Analytics'), '?ctrl=stats&amp;blog=$blog$' );
 		$AdminUI->breadcrumbpath_add( T_('Hits'), '?ctrl=stats&amp;blog=$blog$' );
@@ -204,34 +251,13 @@ switch( $tab )
 			case 'topengines':
 				$AdminUI->breadcrumbpath_add( T_('Top search engines'), '?ctrl=stats&amp;blog=$blog$&tab='.$tab.'&amp;tab3='.$tab3 );
 				break;
+				
 		}
 		break;
 
 	case 'domains':
 		$AdminUI->breadcrumbpath_add( T_('Analytics'), '?ctrl=stats&amp;blog=$blog$' );
 		$AdminUI->breadcrumbpath_add( T_('Referring domains'), '?ctrl=stats&amp;blog=$blog$&tab='.$tab );
-		break;
-
-	case 'sessions':
-		$AdminUI->breadcrumbpath_add( T_('Users'), '?ctrl=users' );
-		$AdminUI->breadcrumbpath_add( T_('Sessions'), '?ctrl=stats&amp;blog=$blog$&tab='.$tab );
-		if( empty($tab3) )
-		{
-			$tab3 = 'login';
-		}
-		switch( $tab3 )
-		{
-			case 'login':
-				$AdminUI->breadcrumbpath_add( T_('Session by user'), '?ctrl=stats&amp;blog=$blog$&tab='.$tab.'&amp;tab3='.$tab3 );
-				break;
-			case 'sessid':
-				// fp> TODO: include username in path if we have one
-				$AdminUI->breadcrumbpath_add( T_('Recent sessions'), '?ctrl=stats&amp;blog=$blog$&tab='.$tab.'&amp;tab3='.$tab3 );
-				break;
-			case 'hits':
-				$AdminUI->breadcrumbpath_add( T_('Recent hits'), '?ctrl=stats&amp;blog=$blog$&tab='.$tab.'&amp;tab3='.$tab3 );
-				break;
-		}
 		break;
 
 	case 'goals':
@@ -247,18 +273,11 @@ switch( $tab )
 
 }
 
-if( $tab == 'sessions' )
-{ // Show this sub-tab in Users tab
-	$AdminUI->set_path( 'users', $tab, $tab3 );
-	$AdminUI->title = T_('Stats');
-}
-else
-{
-	$AdminUI->set_path( 'stats', $tab, $tab3 );
-	$AdminUI->title = T_('Stats');
-}
+$AdminUI->set_path( 'stats', $tab, $tab3 );
 
-if( ( $tab3 == 'keywords' ) || ( $tab == 'goals' && $tab3 == 'hits' ) )
+if( in_array( $tab , array( 'hits', 'other', 'referers' ) ) ||
+    ( $tab == 'refsearches' && in_array( $tab3 , array( 'hits', 'keywords' ) ) ) ||
+    ( $tab == 'goals' && $tab3 == 'hits' ) )
 { // Load the data picker style for _stats_search_keywords.view.php and _stats_goalhits.view.php
 	require_css( 'ui.datepicker.css' );
 }
@@ -272,8 +291,54 @@ $AdminUI->disp_body_top();
 // Begin payload block:
 $AdminUI->disp_payload_begin();
 
-flush();
+evo_flush();
 
+if( ($tab=="refsearches") && ($tab3=="intsearches") ) 
+{
+	
+	switch( $action )
+	{
+		case 'nil':
+			// Do nothing
+			break;
+
+
+		case 'delete':
+			// We need to ask for confirmation:
+			$edited_Goal->confirm_delete(
+					sprintf( T_('Delete internal search item &laquo;%s&raquo;?'), $edited_intsearch->dget('keywords') ),
+					'internalsearch', $action, get_memorized( 'action' ) );
+			/* no break */
+		case 'new':
+		case 'copy':
+		case 'create':	// we return in this state after a validation error
+		case 'create_new':	// we return in this state after a validation error
+		case 'create_copy':	// we return in this state after a validation error
+		case 'edit':
+		case 'update':	// we return in this state after a validation error
+			$AdminUI->disp_view( 'sessions/views/_internal_search.form.php' );
+			break;
+
+
+		default:
+			// No specific request, list all file types:
+			switch( $tab3 )
+			{
+				case 'intsearches':
+					// Cleanup context:
+					forget_param( 'isrch_ID' );
+					// Display goals list:
+					$AdminUI->disp_view( 'sessions/views/_stats_internal_searches.view.php' );
+					break;
+
+			}
+
+	}
+
+} 
+else 
+{
+	
 switch( $AdminUI->get_path(1) )
 {
 	case 'summary':
@@ -299,13 +364,10 @@ switch( $AdminUI->get_path(1) )
 		break;
 
 	case 'other':
-		// Display VIEW:
-		$AdminUI->disp_view( 'sessions/views/_stats_direct.view.php' );
-		break;
-
+	case 'hits':
 	case 'referers':
-		// Display VIEW:
-		$AdminUI->disp_view( 'sessions/views/_stats_referers.view.php' );
+		// Display hits results table:
+		hits_results_block();
 		break;
 
 	case 'refsearches':
@@ -313,7 +375,8 @@ switch( $AdminUI->get_path(1) )
 		switch( $tab3 )
 		{
 			case 'hits':
-				$AdminUI->disp_view( 'sessions/views/_stats_refsearches.view.php' );
+				// Display hits results table:
+				hits_results_block();
 				break;
 
 			case 'keywords':
@@ -323,29 +386,16 @@ switch( $AdminUI->get_path(1) )
 			case 'topengines':
 				$AdminUI->disp_view( 'sessions/views/_stats_search_engines.view.php' );
 				break;
+				
+			case 'intsearches':
+				$AdminUI->disp_view( 'sessions/views/_stats_internal_searches.view.php' );
+				break;
 		}
 		break;
 
 	case 'domains':
 		// Display VIEW:
 		$AdminUI->disp_view( 'sessions/views/_stats_refdomains.view.php' );
-		break;
-
-	case 'sessions':
-		// Display VIEW:
-		switch( $tab3 )
-		{
-			case 'sessid':
-				$AdminUI->disp_view( 'sessions/views/_stats_sessions_list.view.php' );
-				break;
-
-			case 'hits':
-				$AdminUI->disp_view( 'sessions/views/_stats_hit_list.view.php' );
-				break;
-
-			case 'login':
-				$AdminUI->disp_view( 'sessions/views/_stats_sessions.view.php' );
-		}
 		break;
 
 	case 'goals':
@@ -359,6 +409,7 @@ switch( $AdminUI->get_path(1) )
 		break;
 
 }
+}
 
 // End payload block:
 $AdminUI->disp_payload_end();
@@ -366,7 +417,4 @@ $AdminUI->disp_payload_end();
 // Display body bottom, debug info and close </html>:
 $AdminUI->disp_global_footer();
 
-/*
- * $Log: stats.ctrl.php,v $
- */
 ?>

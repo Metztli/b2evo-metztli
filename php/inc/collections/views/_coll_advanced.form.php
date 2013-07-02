@@ -5,7 +5,7 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2004-2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
@@ -23,7 +23,7 @@
  * @package admin
  *
  *
- * @version $Id: _coll_advanced.form.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _coll_advanced.form.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -114,28 +114,22 @@ if( $current_User->check_perm( 'blog_admin', 'edit', false, $edited_Blog->ID ) )
 
 
 	$Form->begin_fieldset( T_('Caching').' ['.T_('Admin').']'.get_manual_link('collection_cache_settings') );
-		$Form->checkbox_input( 'ajax_form_enabled', $edited_Blog->get_setting('ajax_form_enabled'), T_('Enable AJAX forms'), array( 'note'=>T_('Comment and contacts forms will be fetched by javascript') ) );
+		$ajax_enabled = $edited_Blog->get_setting( 'ajax_form_enabled' );
+		$ajax_loggedin_params = array( 'note' => T_('Also use JS forms for logged in users') );
+		if( !$ajax_enabled )
+		{
+			$ajax_loggedin_params[ 'disabled' ] = 'disabled';
+		}
+		$Form->checkbox_input( 'ajax_form_enabled', $ajax_enabled, T_('Enable AJAX forms'), array( 'note'=>T_('Comment and contacts forms will be fetched by javascript') ) );
+		$Form->checkbox_input( 'ajax_form_loggedin_enabled', $edited_Blog->get_setting('ajax_form_loggedin_enabled'), '', $ajax_loggedin_params );
 		$Form->checkbox_input( 'cache_enabled', $edited_Blog->get_setting('cache_enabled'), T_('Enable page cache'), array( 'note'=>T_('Cache rendered blog pages') ) );
 		$Form->checkbox_input( 'cache_enabled_widgets', $edited_Blog->get_setting('cache_enabled_widgets'), T_('Enable widget cache'), array( 'note'=>T_('Cache rendered widgets') ) );
 	$Form->end_fieldset();
 
-	$Form->begin_fieldset( T_('Login').' ['.T_('Admin').']'.get_manual_link('collection_login_settings') );
+	$Form->begin_fieldset( T_('In-skin Actions').' ['.T_('Admin').']'.get_manual_link('in_skin_action_settings') );
 		$Form->checkbox_input( 'in_skin_login', $edited_Blog->get_setting( 'in_skin_login' ), T_( 'In-skin login' ), array( 'note' => T_( 'Use in-skin login form every time it\'s possible' ) ) );
+		$Form->checkbox_input( 'in_skin_editing', $edited_Blog->get_setting( 'in_skin_editing' ), T_( 'In-skin editing' ) );
 	$Form->end_fieldset();
-
-	$Form->begin_fieldset( '['. T_('Deprecated'). '] '.T_('Static file generation').' ['.T_('Admin').']'.get_manual_link('static_file_generation') );
-		$Form->text_input( 'source_file', $edited_Blog->get_setting( 'source_file' ), 25, T_('Source file'),
-												T_('.php (stub) file used to generate the static homepage.'),
-												array( 'input_prefix' => "<code>$basepath</code>", 'maxlength' => 255 ) );
-		$Form->text_input( 'static_file', $edited_Blog->get_setting( 'static_file' ), 25, T_('Destination file'),
-												T_('.html file that will be created.'),
-												array( 'input_prefix' => "<code>$basepath</code>", 'maxlength' => 255 ) );
-		if( $current_User->check_perm( 'blog_genstatic', 'any', false, $edited_Blog->ID ) )
-		{
-			$Form->info( T_('Static page'), '<a href="'.$dispatcher.'?ctrl=collections&amp;action=GenStatic&amp;blog='.$edited_Blog->ID.'&amp;redir_after_genstatic='.rawurlencode(regenerate_url( '', '', '', '&' )).'">'.T_('Generate now!').'</a>' );
-		}
-	$Form->end_fieldset();
-
 
 	$Form->begin_fieldset( T_('Media directory location').' ['.T_('Admin').']'.get_manual_link('media_directory_location') );
 	global $media_path;
@@ -175,9 +169,9 @@ $Form->begin_fieldset( T_('Meta data').get_manual_link('blog_meta_data') );
 		T_('Use &lt;br /&gt; to insert a line break. You might want to put your copyright or <a href="%s" target="_blank">creative commons</a> notice here.'),
 		'http://creativecommons.org/license/' ), 1000, 'large' );
 	$Form->textarea( 'single_item_footer_text', $edited_Blog->get_setting( 'single_item_footer_text' ), 2, T_('Single post footer'),
-		T_('This will be displayed after each post in single post view.').' '.sprintf( T_('Replacement tags: %s.'), '<b>$perm_url$</b>, <b>$title$</b>, <b>$excerpt$</b>, <b>$views$</b>, <b>$author$</b>, <b>$author_login$</b>' ), 50, 'large' );
+		T_('This will be displayed after each post in single post view.').' '.sprintf( T_('Available variables: %s.'), '<b>$perm_url$</b>, <b>$title$</b>, <b>$excerpt$</b>, <b>$views$</b>, <b>$author$</b>, <b>$author_login$</b>' ), 50, 'large' );
 	$Form->textarea( 'xml_item_footer_text', $edited_Blog->get_setting( 'xml_item_footer_text' ), 2, T_('Post footer in RSS/Atom'),
-		T_('This will be appended to each post in your RSS/Atom feeds.').' '.sprintf( T_('Replacement tags: %s.'), T_('same as above') ), 50, 'large' );
+		T_('This will be appended to each post in your RSS/Atom feeds.').' '.sprintf( T_('Available variables: %s.'), T_('same as above') ), 50, 'large' );
 	$Form->textarea( 'blog_notes', $edited_Blog->get( 'notes' ), 5, T_('Notes'),
 		T_('Additional info. Appears in the backoffice.'), 50, 'large' );
 $Form->end_fieldset();
@@ -193,6 +187,21 @@ $Form->begin_fieldset( T_('Software credits').get_manual_link('software_credits'
 $Form->end_fieldset();
 
 
+if( $current_User->check_perm( 'blog_admin', 'edit', false, $edited_Blog->ID ) )
+{	// Permission to edit advanced admin settings
+
+	$Form->begin_fieldset( T_('Skin and style').' ['.T_('Admin').']' );
+		$Form->checkbox( 'blog_allowblogcss', $edited_Blog->get( 'allowblogcss' ), T_('Allow customized blog CSS file'), T_('You will be able to customize the blog\'s skin stylesheet with a file named style.css in the blog\'s media file folder.') );
+		$Form->checkbox( 'blog_allowusercss', $edited_Blog->get( 'allowusercss' ), T_('Allow user customized CSS file for this blog'), T_('Users will be able to customize the blog and skin stylesheets with a file named style.css in their personal file folder.') );
+		$Form->textarea( 'blog_head_includes', $edited_Blog->get_setting( 'head_includes' ), 5, T_('Custom meta tag/css section (before &lt;/head&gt;)'),
+			T_('Add custom meta tags and/or css styles to the &lt;head&gt; section. Example use: website verification, Google+, favicon image...'), 50, 'large' );
+		$Form->textarea( 'blog_footer_includes', $edited_Blog->get_setting( 'footer_includes' ), 5, T_('Custom javascript section (before &lt;/body&gt;)'),
+			T_('Add custom javascript before the closing &lt;/body&gt; tag in order to avoid any issues with page loading delays for visitors with slow connection speeds.<br />Example use: tracking scripts, javascript libraries...'), 50, 'large' );
+	$Form->end_fieldset();
+
+}
+
+
 $Form->end_form( array(
 	array( 'submit', 'submit', T_('Save !'), 'SaveButton' ),
 	array( 'reset', '', T_('Reset'), 'ResetButton' ) ) );
@@ -202,9 +211,14 @@ $Form->end_form( array(
 <script type="text/javascript">
 	jQuery( '#ajax_form_enabled' ).click( function()
 	{
-		if( jQuery( '#ajax_form_enabled' ).attr( "checked" ) == false )
+		if( jQuery( '#ajax_form_enabled' ).attr( "checked" ) )
+		{
+			jQuery( '#ajax_form_loggedin_enabled' ).attr( "disabled", false );
+		}
+		else
 		{
 			jQuery( '#cache_enabled' ).attr( "checked", false );
+			jQuery( '#ajax_form_loggedin_enabled' ).attr( "disabled", true );
 		}
 	} );
 	jQuery( '#cache_enabled' ).click( function()
@@ -212,12 +226,7 @@ $Form->end_form( array(
 		if( jQuery( '#cache_enabled' ).attr( "checked" ) )
 		{
 			jQuery( '#ajax_form_enabled' ).attr( "checked", true );
+			jQuery( '#ajax_form_loggedin_enabled' ).attr( "disabled", false );
 		}
 	} );
 </script>
-<?php
-
-/*
- * $Log: _coll_advanced.form.php,v $
- */
-?>

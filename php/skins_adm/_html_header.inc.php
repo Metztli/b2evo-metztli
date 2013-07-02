@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
  * {@internal License choice
@@ -29,15 +29,16 @@
  * @author fplanque
  * @author mbruneau: Marc BRUNEAU / PROGIDISTRI
  *
- * @version $Id: _html_header.inc.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _html_header.inc.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
-global $io_charset, $rsc_url, $UserSettings, $Debuglog, $Plugins, $generating_static;
+global $io_charset, $rsc_url, $UserSettings, $Debuglog, $Plugins;
 global $month, $month_abbrev, $weekday, $weekday_abbrev; /* for localized calendar */
 global $debug, $Hit;
 
 headers_content_mightcache( 'text/html', 0 );		// Make extra sure we don't cache the admin pages!
+require_js( 'ajax.js' );	// Functions to work with AJAX response data
 ?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xml:lang="<?php locale_lang() ?>" lang="<?php locale_lang() ?>">
@@ -51,16 +52,23 @@ headers_content_mightcache( 'text/html', 0 );		// Make extra sure we don't cache
 
 	global $rsc_path, $rsc_url, $htsrv_url;
 
+	// var bgxy_expand is used by toggle_filter_area() and toggle_clickopen()
+	// var htsrv_url is used for AJAX callbacks
 	add_js_headline( "// Paths used by JS functions:
-		var imgpath_expand = '".get_icon( 'expand', 'url' )."';
-		var imgpath_collapse = '".get_icon( 'collapse', 'url' )."';
-		var htsrv_url = '$htsrv_url';" );
+		var bgxy_expand = '".get_icon( 'expand', 'xy' )."';
+		var bgxy_collapse = '".get_icon( 'collapse', 'xy' )."';
+		var htsrv_url = '$htsrv_url';
+		var blog_id = '".param( 'blog', 'integer' )."';
+		var is_backoffice = true;" );
 
 	add_js_for_toolbar();		// Registers all the javascripts needed by the toolbar menu
+	init_bubbletip_js(); // Add jQuery bubbletip plugin
+	init_scrollwide_js(); // Add jQuery Wide Scroll plugin
+	init_results_js(); // Add functions to work with Results tables
 
- 	require_js( '#jqueryUI#' );
- 	// asimo> This was permanently removed, because we didn't find any usage of this.
- 	// require_css( 'jquery/smoothness/jquery-ui.css' );
+	require_js( '#jqueryUI#' );
+	// asimo> This was permanently removed, because we didn't find any usage of this.
+	// require_css( 'jquery/smoothness/jquery-ui.css' );
 
 	require_js( 'form_extensions.js'); // script allowing to check and uncheck all boxes in forms -- TODO: jQueryfy
 
@@ -275,9 +283,3 @@ div.skin_wrapper_loggedin {
 	include_headlines(); // Add javascript and css files included by plugins and skin
 ?>
 </head>
-
-<?php
-/*
- * $Log: _html_header.inc.php,v $
- */
-?>

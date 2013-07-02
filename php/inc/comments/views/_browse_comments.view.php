@@ -5,7 +5,7 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
@@ -15,7 +15,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _browse_comments.view.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _browse_comments.view.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -42,14 +42,23 @@ global $current_User, $admin_url;
 
 $CommentList->query();
 
+// Dispay a form to mass delete the comments:
+display_comment_mass_delete( $CommentList );
+
 $block_item_Widget = new Widget( 'block_item' );
+
+if( check_comment_mass_delete( $CommentList ) )
+{	// A form for mass deleting is availabl, Display link
+	$block_item_Widget->global_icon( T_('Delete all comments!'), 'delete', regenerate_url( 'action', 'action=mass_delete' ), T_('Mass delete...'), 3, 3 );
+}
 
 if( $CommentList->is_filtered() )
 {	// List is filtered, offer option to reset filters:
 	$block_item_Widget->global_icon( T_('Reset all filters!'), 'reset_filters', '?ctrl=comments&amp;blog='.$Blog->ID.'&amp;filter=reset', T_('Reset filters'), 3, 3 );
 }
 $emptytrash_link = '';
-$opentrash_link = '';
+// Display recycle bin placeholder, because users may have rights to recycle particular comments
+$opentrash_link = '<span id="recycle_bin" class="floatright"></span>';
 if( $current_User->check_perm( 'blogs', 'editall' ) )
 {
 	if( $CommentList->is_trashfilter() )
@@ -73,8 +82,8 @@ $display_params = array(
 					'header_text_single' => T_('1 page'),
 				'header_end' => '</div>',
 				'footer_start' => '',
-					'footer_text' => '<div class="NavBar center"><strong>'.T_('Pages').'</strong>: $prev$ $first$ $list_prev$ $list$ $list_next$ $last$ $next$</div>',
-					'footer_text_single' => '',
+					'footer_text' => '<div class="NavBar center"><strong>'.T_('Pages').'</strong>: $prev$ $first$ $list_prev$ $list$ $list_next$ $last$ $next$<br />$page_size$</div>',
+					'footer_text_single' => '<div class="NavBar center">$page_size$</div>',
 						'prev_text' => T_('Previous'),
 						'next_text' => T_('Next'),
 						'list_prev_text' => T_('...'),
@@ -104,8 +113,4 @@ $CommentList->display_nav( 'footer' );
 
 $block_item_Widget->disp_template_replaced( 'block_end' );
 
-
-/*
- * $Log: _browse_comments.view.php,v $
- */
 ?>

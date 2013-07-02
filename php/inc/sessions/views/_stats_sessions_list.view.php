@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -21,35 +21,66 @@
  *
  * @package admin
  *
- * @version $Id: _stats_sessions_list.view.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _stats_sessions_list.view.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
-global $blog, $admin_url, $rsc_url;
+global $blog, $admin_url, $rsc_url, $UserSettings, $edited_User, $user_tab, $Plugins;
 
 /**
  * View funcs
  */
 require_once dirname(__FILE__).'/_stats_view.funcs.php';
 
-$user = param( 'user', 'string', '', true );
+$user_ID = param( 'user_ID', 'integer', 0, true );
 
 // Create result set:
 $SQL = new SQL();
-$SQL->SELECT( 'SQL_NO_CACHE sess_ID, user_login, sess_hitcount, sess_lastseen, sess_ipaddress' );
+$SQL->SELECT( 'SQL_NO_CACHE sess_ID, user_login, TIMESTAMPDIFF( SECOND, sess_start_ts, sess_lastseen_ts ) as sess_length, sess_lastseen_ts, sess_ipaddress' );
 $SQL->FROM( 'T_sessions LEFT JOIN T_users ON sess_user_ID = user_ID' );
 
 $Count_SQL = new SQL();
 $Count_SQL->SELECT( 'SQL_NO_CACHE COUNT(sess_ID)' );
 $Count_SQL->FROM( 'T_sessions LEFT JOIN T_users ON sess_user_ID = user_ID' );
 
-if( !empty( $user ) )
-{
-	$SQL->WHERE( 'user_login LIKE "%'.$DB->escape($user).'%"' );
-	$Count_SQL->WHERE( 'user_login LIKE "%'.$DB->escape($user).'%"' );
+if( empty( $user_ID ) )
+{ // display only this user sessions in user tab
+	$user_ID = $edited_User->ID;
 }
 
-$Results = new Results( $SQL->get(), 'sess_', 'D', 20, $Count_SQL->get() );
+$SQL->WHERE( 'user_ID = '.$user_ID );
+$Count_SQL->WHERE( 'user_ID = '.$user_ID );
+
+memorize_param( 'user_tab', 'string', '', $user_tab );
+
+// Begin payload block:
+$this->disp_payload_begin();
+
+// ------------------- PREV/NEXT USER LINKS -------------------
+user_prevnext_links( array(
+		'block_start'  => '<table class="prevnext_user"><tr>',
+		'prev_start'   => '<td width="33%">',
+		'prev_end'     => '</td>',
+		'prev_no_user' => '<td width="33%">&nbsp;</td>',
+		'back_start'   => '<td width="33%" class="back_users_list">',
+		'back_end'     => '</td>',
+		'next_start'   => '<td width="33%" class="right">',
+		'next_end'     => '</td>',
+		'next_no_user' => '<td width="33%">&nbsp;</td>',
+		'block_end'    => '</tr></table>',
+		'user_tab'     => 'sessions'
+	) );
+// ------------- END OF PREV/NEXT USER LINKS -------------------
+
+$Results = new Results( $SQL->get(), 'sess_', 'D', $UserSettings->get( 'results_per_page' ), $Count_SQL->get() );
+
+// echo user edit action icons
+echo_user_actions( $Results, $edited_User, 'edit' );
+echo '<span class="floatright">'.$Results->gen_global_icons().'</span>';
+$Results->global_icons = array();
+
+// echo user tabs
+echo '<div>'.get_usertab_header( $edited_User, $user_tab, T_( 'Sessions' ) ).'</div>';
 
 $Results->title = T_('Recent sessions');
 
@@ -58,32 +89,21 @@ $Results->title = T_('Recent sessions');
  *
  * @param Form
  */
-function filter_sessions( & $Form )
-{
-	$Form->text( 'user', get_param('user'), 20, T_('User login') );
-}
-$Results->filter_area = array(
-	'callback' => 'filter_sessions',
-	'url_ignore' => 'results_sess_page,user',
-	'presets' => array(
-		'all' => array( T_('All'), '?ctrl=stats&amp;tab=sessions&amp;tab3=sessid&amp;blog=0' ),
-		)
-	);
 
 $Results->cols[] = array(
 						'th' => T_('ID'),
 						'order' => 'sess_ID',
 						'default_dir' => 'D',
 						'td_class' => 'right',
-						'td' => '<a href="?ctrl=stats&amp;tab=sessions&amp;tab3=hits&amp;blog=0&amp;sess_ID=$sess_ID$">$sess_ID$</a>',
+						'td' => '<a href="?ctrl=stats&amp;tab=hits&amp;blog=0&amp;sess_ID=$sess_ID$">$sess_ID$</a>',
 					);
 
 $Results->cols[] = array(
 						'th' => T_('Last seen'),
-						'order' => 'sess_lastseen',
+						'order' => 'sess_lastseen_ts',
 						'default_dir' => 'D',
 						'td_class' => 'timestamp',
-						'td' => '%mysql2localedatetime_spans( #sess_lastseen# )%',
+						'td' => '%mysql2localedatetime_spans( #sess_lastseen_ts# )%',
  					);
 
 $Results->cols[] = array(
@@ -98,18 +118,55 @@ $Results->cols[] = array(
 						'td' => '$sess_ipaddress$',
 					);
 
+// Get additional columns from the Plugins
+$Plugins->trigger_event( 'GetAdditionalColumnsTable', array(
+	'table'   => 'sessions',
+	'column'  => 'sess_ipaddress',
+	'Results' => $Results ) );
+
+function display_sess_length( $sess_ID, $sess_length )
+{
+	$result = '';
+	$second = $sess_length % 60;
+	$sess_length = ( $sess_length - $second ) / 60;
+	$minute = $sess_length % 60;
+	$sess_length = ( $sess_length - $minute ) / 60;
+	$hour = $sess_length % 24;
+	$day = ( $sess_length - $hour ) / 24;
+
+	if( $day > 0 )
+	{
+		$result = sprintf( ( ( $day > 1 ) ? T_( '%d days' ) : T_( '%d day' ) ), $day ).' ';
+	}
+	if( $hour < 10 )
+	{
+		$hour = '0'.$hour;
+	}
+	if( $minute < 10 )
+	{
+		$minute = '0'.$minute;
+	}
+	if( $second < 10 )
+	{
+		$second = '0'.$second;
+	}
+
+	$result .= $hour.':'.$minute.':'.$second;
+	return stat_session_hits( $sess_ID, $result );
+}
+
 $Results->cols[] = array(
-						'th' => T_('Hit count'),
-						'order' => 'sess_hitcount',
+						'th' => T_('Session length'),
+						'order' => 'sess_length',
 						'td_class' => 'center',
 						'total_class' => 'right',
-						'td' => '%stat_session_hits( #sess_ID#, #sess_hitcount# )%',
+						'td' => '%display_sess_length( #sess_ID#, #sess_length# )%',
 					);
 
 // Display results:
 $Results->display();
 
-/*
- * $Log: _stats_sessions_list.view.php,v $
- */
+// End payload block:
+$this->disp_payload_end();
+
 ?>

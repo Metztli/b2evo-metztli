@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -21,7 +21,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _widget.class.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _widget.class.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -240,7 +240,19 @@ class ComponentWidget extends DataObject
 	 */
 	function get_param_definitions( $params )
 	{
-		$r = array(
+
+		$r = array();
+
+		if( $this->type == 'plugin' )
+		{
+			// Make sure Plugin is loaded:
+			if( $this->get_Plugin() )
+			{
+				$r = $this->Plugin->get_widget_param_definitions( $params );
+			}
+		}
+
+		$r_standart = array(
 				'widget_css_class' => array(
 					'label' => '<span class="dimmed">'.T_( 'CSS Class' ).'</span>',
 					'size' => 20,
@@ -259,15 +271,7 @@ class ComponentWidget extends DataObject
 				),
 			);
 
-		if( $this->type == 'plugin' )
-		{
-			// Make sure Plugin is loaded:
-			if( $this->get_Plugin() )
-			{
-				$r = array_merge( $r, $this->Plugin->get_widget_param_definitions( $params ) );
-			}
-		}
-		return $r;
+		return array_merge($r,$r_standart);;
 	}
 
 
@@ -340,6 +344,14 @@ class ComponentWidget extends DataObject
 
 
 	/**
+	 * Request all required css and js files for this widget
+	 */
+	function request_required_files()
+	{
+	}
+
+
+	/**
 	 * Prepare display params
 	 *
 	 * @todo Document default params and default values.
@@ -391,12 +403,15 @@ class ComponentWidget extends DataObject
 					'item_start' => '<li>',
 					'item_end' => '</li>',
 					'link_default_class' => 'default',
+					'link_selected_class' => 'selected',
 					'item_text_start' => '',
 					'item_text_end' => '',
 					'item_text' => '%s',
 					'item_selected_start' => '<li class="selected">',
 					'item_selected_end' => '</li>',
 					'item_selected_text' => '%s',
+					'item_last_start' => '<li class="last">',
+					'item_last_end' => '</li>',
 					'grid_start' => '<table cellspacing="1" class="widget_grid">',
 					'grid_end' => '</table>',
 					'grid_nb_cols' => 2,
@@ -406,7 +421,6 @@ class ComponentWidget extends DataObject
 					'grid_cellend' => '</td>',
 					'thumb_size' => 'crop-80x80',
 					// 'thumb_size' => 'fit-160x120',
-					'link_selected_class' => 'selected',
 					'link_type' => 'canonic',		// 'canonic' | 'context' (context will regenrate URL injecting/replacing a single filter)
 					'item_selected_text_start' => '',
 					'item_selected_text_end' => '',
@@ -599,7 +613,7 @@ class ComponentWidget extends DataObject
 	 *
 	 * @param array MUST contain at least the basic display params
 	 */
-	function disp_coll_list( $filter = 'public' )
+	function disp_coll_list( $filter = 'public', $order_by = 'ID', $order_dir = 'ASC' )
 	{
 		/**
 		 * @var Blog
@@ -617,11 +631,11 @@ class ComponentWidget extends DataObject
 
 		if( $filter == 'owner' )
 		{	// Load blogs of same owner
-			$blog_array = $BlogCache->load_owner_blogs( $Blog->owner_user_ID, 'ID' );
+			$blog_array = $BlogCache->load_owner_blogs( $Blog->owner_user_ID, $order_by, $order_dir );
 		}
 		else
 		{	// Load all public blogs
-			$blog_array = $BlogCache->load_public( 'ID' );
+			$blog_array = $BlogCache->load_public( $order_by, $order_dir );
 		}
 
 		// 3.3? if( $this->disp_params['list_type'] == 'list' )
@@ -746,8 +760,4 @@ class ComponentWidget extends DataObject
 
 }
 
-
-/*
- * $Log: _widget.class.php,v $
- */
 ?>

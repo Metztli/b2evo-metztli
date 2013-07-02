@@ -5,7 +5,7 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
@@ -15,7 +15,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _item_list_full.view.php 1518 2012-07-16 07:16:42Z attila $
+ * @version $Id: _item_list_full.view.php 3834 2013-05-27 13:23:34Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -35,7 +35,7 @@ global $Item;
 
 global $action, $dispatcher, $blog, $posts, $poststart, $postend, $ReqURI;
 global $edit_item_url, $delete_item_url, $htsrv_url, $p, $dummy_fields;
-global $comment_allowed_tags, $comments_use_autobr;
+global $comment_allowed_tags;
 
 if( $highlight = param( 'highlight', 'integer', NULL ) )
 {	// There are lines we want to highlight:
@@ -93,7 +93,8 @@ if( $action == 'view' )
 					'header_end' => '',
 					'footer_start' => '',
 						'footer_text_single' => '',
-					'footer_end' => ''
+					'footer_end' => '',
+					'disp_rating_summary'  => true,
 				);
 }
 else
@@ -108,8 +109,8 @@ else
 						'header_text_single' => T_('1 page'),
 					'header_end' => '</div>',
 					'footer_start' => '',
-						'footer_text' => '<div class="NavBar center"><strong>'.T_('Pages').'</strong>: $prev$ $first$ $list_prev$ $list$ $list_next$ $last$ $next$</div>',
-						'footer_text_single' => '',
+						'footer_text' => '<div class="NavBar center"><strong>'.T_('Pages').'</strong>: $prev$ $first$ $list_prev$ $list$ $list_next$ $last$ $next$<br />$page_size$</div>',
+						'footer_text_single' => '<div class="NavBar center">$page_size$</div>',
 							'prev_text' => T_('Previous'),
 							'next_text' => T_('Next'),
 							'list_prev_text' => T_('...'),
@@ -142,9 +143,27 @@ while( $Item = & $ItemList->get_item() )
 		{
 			echo 'fadeout-ffff00" id="fadeout-1';
 		}
-	 	?>">
+		?>">
 			<?php
 				echo '<div class="bSmallHeadRight">';
+				$Item->permanent_link( array(
+						'before' => '',
+						'text'   => '#text#'
+					) );
+				// Item slug control:
+				$Item->tinyurl_link( array(
+						'before' => ' - '.T_('Short').': ',
+						'after'  => ''
+					) );
+				global $admin_url;
+				if( $current_User->check_perm( 'slugs', 'view' ) )
+				{ // user has permission to view slugs:
+					echo '&nbsp;'.action_icon( T_('Edit slugs...'), 'edit', $admin_url.'?ctrl=slugs&amp;slug_item_ID='.$Item->ID,
+						NULL, NULL, NULL, array( 'class' => 'small' ) );
+				}
+				echo '<div class="bViews">';
+				$Item->views();
+				echo '</div>';
 				If( !empty( $Item->order ) )
 				{
 					echo T_('Order').': '.$Item->order;
@@ -164,20 +183,7 @@ while( $Item = & $ItemList->get_item() )
 					) );
 
 				// TRANS: backoffice: each post is prefixed by "date BY author IN categories"
-				echo ' ', T_('by'), ' <acronym title="';
-				$Item->creator_User->login();
-				echo ', '.T_('level:');
-				$Item->creator_User->level();
-				echo '"><span class="bAuthor">';
-				$Item->creator_User->preferred_name();
-				echo '</span></acronym>';
-
-				echo '<div class="bSmallHeadRight">';
-				$Item->status( array(
-						'before' => T_('Visibility').': <span class="bStatus">',
-						'after'  => '</span>',
-					) );
-				echo '</div>';
+				echo ' ', T_('by'), ' ', $Item->creator_User->get_identity_link( array( 'link_text' => 'text' ) );
 
 				echo '<br />';
 				$Item->type( T_('Type').': <span class="bType">', '</span> &nbsp; ' );
@@ -190,10 +196,6 @@ while( $Item = & $ItemList->get_item() )
 				}
 				echo '&nbsp;';
 
-				echo '<div class="bSmallHeadRight"><span class="bViews">';
-				$Item->views();
-				echo '</span></div>';
-
 				echo '<br />';
 
 				$Item->categories( array(
@@ -203,11 +205,13 @@ while( $Item = & $ItemList->get_item() )
 					'include_other'   => true,
 					'include_external'=> true,
 					'link_categories' => false,
+					'show_locked'     => true,
 				) );
 			?>
 		</div>
 
 		<div class="bContent">
+			<?php $Item->status( array( 'format' => 'styled' ) ); ?>
 			<!-- TODO: Tblue> Do not display link if item does not get displayed in the frontend (e. g. not published). -->
 			<h3 class="bTitle"><?php $Item->title( array( 'target_blog' => '' )) ?></h3>
 
@@ -227,7 +231,7 @@ while( $Item = & $ItemList->get_item() )
 
 			<div class="bText">
 				<?php
-					// Uncomment this in case you wnt to count view in backoffice:
+					// Uncomment this if you want to count views in backoffice:
 					/*
 					$Item->count_view( array(
 							'allow_multiple_counts_per_page' => false,
@@ -236,8 +240,13 @@ while( $Item = & $ItemList->get_item() )
 
 					// Display CONTENT:
 					$Item->content_teaser( array(
-							'before'      => '',
-							'after'       => '',
+							'before'              => '',
+							'after'               => '',
+							'before_image'        => '<div class="image_block">',
+							'before_image_legend' => '<div class="image_legend">',
+							'after_image_legend'  =>  '</div>',
+							'after_image'         => '</div>',
+							'image_size'          => 'fit-320x320',
 						) );
 					$Item->more_link();
 					$Item->content_extension( array(
@@ -246,7 +255,9 @@ while( $Item = & $ItemList->get_item() )
 						) );
 
 					// Links to post pages (for multipage posts):
-					$Item->page_links( '<p class="right">'.T_('Pages:').' ', '</p>', ' &middot; ' );
+					$Item->page_links( array(
+							'separator' => ' &middot; ',
+						) );
 				?>
 			</div>
 
@@ -264,54 +275,71 @@ while( $Item = & $ItemList->get_item() )
 
 		<div class="PostActionsArea">
 			<?php
-			$Item->permanent_link( array(
-					'class' => 'permalink_right',
-				) );
 
-			// Item slug control:
-			$Item->tinyurl_link( array( 'class' => 'small', 'style' => 'float: right' ) );
-			global $admin_url;
-			if( $current_User->check_perm( 'slugs', 'view' ) )
-			{ // user has permission to view slugs:
-				echo action_icon( 'Edit slugs...', 'edit', $admin_url.'?ctrl=slugs&amp;slug_item_ID='.$Item->ID,
-					NULL, NULL, NULL, array( 'class' => 'small', 'style' => 'float: right' ) );
+			echo '<span class="roundbutton_group">';
+			if( $action != 'view' )
+			{
+				echo '<a href="?ctrl=items&amp;blog='.$Blog->ID.'&amp;p='.$Item->ID.'" class="roundbutton_text">'.get_icon( 'magnifier' ).T_('View').'</a>';
 			}
-
-			echo '<a href="?ctrl=items&amp;blog='.$Blog->ID.'&amp;p='.$Item->ID.'" class="ActionButton">'.T_('View...').'</a>';
-
-			// Display edit button if current user has the rights:
-			$Item->edit_link( array( // Link to backoffice for editing
-					'before'    => ' ',
-					'after'     => ' ',
-					'class'     => 'ActionButton'
-				) );
 
 			if( isset($GLOBALS['files_Module']) && $current_User->check_perm( 'files', 'view' ) )
 			{
-				echo '<a href="'.url_add_param( $Blog->get_filemanager_link(), 'fm_mode=link_item&amp;item_ID='.$Item->ID )
-							.'" class="ActionButton">'.get_icon( 'folder', 'imgtag' ).' '.T_('Files...').'</a>';
+				echo '<a href="'.url_add_param( $Blog->get_filemanager_link(), 'fm_mode=link_object&amp;link_type=item&amp;link_object_ID='.$Item->ID )
+							.'" class="roundbutton_text">'.get_icon( 'folder' ).T_('Files').'</a>';
 			}
-
-			// Display publish NOW button if current user has the rights:
-			$Item->publish_link( ' ', ' ', '#', '#', 'PublishButton');
-
-			// Display deprecate button if current user has the rights:
-			$Item->deprecate_link( ' ', ' ', '#', '#', 'DeleteButton');
-
-			// Display delete button if current user has the rights:
-			$Item->delete_link( ' ', ' ', '#', '#', 'DeleteButton', false );
 
 			if( $Blog->get_setting( 'allow_comments' ) != 'never' )
 			{
-				echo '<a href="?ctrl=items&amp;blog='.$Blog->ID.'&amp;p='.$Item->ID.'#comments" class="ActionButton">';
+				echo '<a href="?ctrl=items&amp;blog='.$Blog->ID.'&amp;p='.$Item->ID.'#comments" class="roundbutton_text">';
 				// TRANS: Link to comments for current post
-				comments_number(T_('no comment'), T_('1 comment'), T_('%d comments'), $Item->ID );
+				$comments_number = generic_ctp_number( $Item->ID, 'comments', 'total' );
+				echo get_icon( $comments_number > 0 ? 'comments' : 'nocomment' );
+				comments_number( T_('no comment'), T_('1 comment'), T_('%d comments'), $Item->ID );
 				load_funcs('comments/_trackback.funcs.php'); // TODO: use newer call below
 				trackback_number('', ' &middot; '.T_('1 Trackback'), ' &middot; '.T_('%d Trackbacks'), $Item->ID);
 				echo '</a>';
-			} ?>
+			}
+			echo '</span>';
 
-   		<div class="clear"></div>
+			echo '<span class="roundbutton_group">';
+			// Display edit button if current user has the rights:
+			$Item->edit_link( array( // Link to backoffice for editing
+					'before' => ' ',
+					'after'  => '',
+					'class'  => 'roundbutton_text'
+				) );
+
+			// Display copy button if current user has the rights:
+			$Item->copy_link( array( // Link to backoffice for coping
+					'before' => '',
+					'after'  => ' ',
+					'text'   => '#icon#',
+					'class'  => 'roundbutton'
+				) );
+			echo '</span>';
+
+			echo '<span class="roundbutton_group">';
+			// Display the moderate buttons if current user has the rights:
+			$status_link_params = array(
+					'class'       => 'roundbutton_text',
+					'redirect_to' => regenerate_url( '', '&highlight='.$Item->ID.'#item_'.$Item->ID, '', '&' ),
+				);
+			$Item->next_status_link( $status_link_params, true );
+			$Item->next_status_link( $status_link_params, false );
+
+			$next_status_in_row = $Item->get_next_status( false );
+			if( $next_status_in_row && $next_status_in_row[0] != 'deprecated' )
+			{ // Display deprecate button if current user has the rights:
+				$Item->deprecate_link( '', '', get_icon( 'move_down_grey', 'imgtag', array( 'title' => '' ) ), '#', 'roundbutton' );
+			}
+
+			// Display delete button if current user has the rights:
+			$Item->delete_link( '', ' ', '#', '#', 'roundbutton_text', false );
+			echo '</span>';
+
+			?>
+
+			<div class="clear"></div>
 		</div>
 
 		<?php
@@ -329,9 +357,9 @@ while( $Item = & $ItemList->get_item() )
 				 * Needed by file display funcs
 				 * @var Item
 				 */
-				global $edited_Item;
-				$edited_Item = $Item;	// COPY or it will be out of scope for display funcs
-				require dirname(__FILE__).'/inc/_item_links.inc.php';
+				global $LinkOwner;
+				$LinkOwner = new LinkItem( $Item );
+				require $inc_path.'links/views/_link_list.inc.php';
 				echo '</div>';
 			}
 
@@ -349,9 +377,16 @@ while( $Item = & $ItemList->get_item() )
 			}
 			else
 			{ // show all comments
-				$statuses = array( 'published', 'draft', 'deprecated' );
+				$statuses = get_visibility_statuses( 'keys', array( 'redirected', 'trash' ) );
 				$show_comments = 'all';
 				param( 'comments_number', 'integer', $total_comments_number );
+			}
+
+			$show_comments_expiry = param( 'show_comments_expiry', 'string', 'active', false, true );
+			$expiry_statuses = array( 'active' );
+			if( $show_comments_expiry == 'all' )
+			{ // Display also the expired comments
+				$expiry_statuses[] = 'expired';
 			}
 
 			global $CommentList;
@@ -364,6 +399,7 @@ while( $Item = & $ItemList->get_item() )
 				'order' => 'ASC',
 				'post_ID' => $Item->ID,
 				'comments' => 20,
+				'expiry_statuses' => $expiry_statuses,
 			) );
 			$CommentList->query();
 
@@ -380,13 +416,21 @@ while( $Item = & $ItemList->get_item() )
 			<a id="comments"></a>
 			<h4>
 			<?php 
-				echo T_('Comments'), ', ', T_('Trackbacks'), ', ', T_('Pingbacks').' ('.$CommentList->total_rows.')';
+				echo T_('Comments'), ', ', T_('Trackbacks'), ', ', T_('Pingbacks').' ('.generic_ctp_number( $Item->ID, 'feedbacks', 'total' ).')';
 				$opentrash_link = get_opentrash_link();
 				$refresh_link = '<span class="floatright">'.action_icon( T_('Refresh comment list'), 'refresh', 'javascript:startRefreshComments('.$Item->ID.')' ).'</span> ';
 				echo $refresh_link.$opentrash_link;
 			?>:</h4>
-            
-            
+			<?php
+
+			if( $display_params['disp_rating_summary'] )
+			{	// Display a ratings summary
+				echo '<h3>'.$Item->get_feedback_title( 'comments', '#', '#', '#', 'total' ).'</h3>';
+				echo $Item->get_rating_summary();
+				echo '<br />';
+			}
+
+			?>
 			<div class="tile"><label><?php echo T_('Show').':' ?></label></div>
 			<div class="tile">
 				<input type="radio" name="show_comments" value="draft" id="only_draft" class="radio" <?php if( $show_comments == 'draft' ) echo 'checked="checked" '?> />
@@ -401,6 +445,21 @@ while( $Item = & $ItemList->get_item() )
 				<label for="show_all"><?php echo T_('All comments') ?></label>
 			</div>
 			<?php
+			$expiry_delay = $Item->get_setting( 'post_expiry_delay' );
+			if( ! empty( $expiry_delay ) )
+			{ // A filter to display even the expired comments
+			?>
+			<div class="tile">
+				&nbsp; | &nbsp;
+				<input type="radio" name="show_comments_expiry" value="expiry" id="show_expiry_delay" class="radio" <?php if( $show_comments_expiry == 'active' ) echo 'checked="checked" '?> />
+				<label for="show_expiry_delay"><?php echo get_duration_title( $expiry_delay ); ?></label>
+			</div>
+			<div class="tile">
+				<input type="radio" name="show_comments_expiry" value="all" id="show_expiry_all" class="radio" <?php if( $show_comments_expiry == 'all' ) echo 'checked="checked" '?> />
+				<label for="show_expiry_all"><?php echo T_('All comments') ?></label>
+			</div>
+			<?php
+			}
 
 			load_funcs( 'comments/model/_comment_js.funcs.php' );
 
@@ -435,17 +494,15 @@ while( $Item = & $ItemList->get_item() )
 				<fieldset>
 					<div class="label"><?php echo T_('User') ?>:</div>
 					<div class="info">
-						<strong><?php $current_User->preferred_name()?></strong>
+						<strong><?php echo $current_User->get_identity_link( array( 'link_text' => 'text' ) )?></strong>
 						<?php user_profile_link( ' [', ']', T_('Edit profile') ) ?>
 						</div>
 				</fieldset>
 			<?php
 			$Form->textarea( $dummy_fields[ 'content' ], '', 12, T_('Comment text'), '', 40, 'bComment' );
 
-			if(substr($comments_use_autobr,0,4) == 'opt-')
-			{
-				$Form->checkbox( 'comment_autobr', 1, T_('Auto-BR'), T_('(Line breaks become &lt;br&gt;)'), 'checkbox' );
-			}
+			global $Plugins;
+			$Form->info( T_('Text Renderers'), $Plugins->get_renderer_checkboxes( array( 'default') , array( 'Blog' => & $Blog, 'setting_name' => 'coll_apply_comment_rendering' ) ) );
 
 			$Form->buttons_input( array(array('name'=>'submit', 'value'=>T_('Send comment'), 'class'=>'SaveButton' )) );
 			?>
@@ -474,7 +531,4 @@ $ItemList->display_nav( 'footer' );
 
 $block_item_Widget->disp_template_replaced( 'block_end' );
 
-/*
- * $Log: _item_list_full.view.php,v $
- */
 ?>

@@ -4,17 +4,17 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * @author tor
  * @author tblue246 (Tilman BLUMENBACH)
  * @author waltercruz
  *
- * @see http://manual.b2evolution.net/MovableType_API
+ * @see http://b2evolution.net/man/movabletype-api
  *
  * @package xmlsrv
  *
- * @version $Id: _mt.api.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _mt.api.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -243,7 +243,7 @@ function mt_publishPost($m)
 		return xmlrpcs_resperror();
 	}
 	logIO( 'mt_publishPost: Login OK' );
-	
+
 	// GET POST:
 	/**
 	 * @var Item
@@ -272,7 +272,7 @@ function mt_publishPost($m)
 
 	// Execute or schedule notifications & pings:
 	logIO( 'mt_publishPost: Handling notifications...' );
-	$edited_Item->handle_post_processing( false );
+	$edited_Item->handle_post_processing( false, false );
 
 	logIO( 'mt_publishPost: OK.' );
 
@@ -316,8 +316,4 @@ $xmlrpc_procs['mt.publishPost'] = array(
 	http://www.sixapart.com/developers/xmlrpc/movable_type_api/
 */
 
-
-/*
- * $Log: _mt.api.php,v $
- */
 ?>

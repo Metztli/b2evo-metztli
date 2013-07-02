@@ -3,7 +3,7 @@
  * This is the template that displays the item block
  *
  * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://manual.b2evolution.net/Skins_2.0}
+ * {@link http://b2evolution.net/man/skin-structure}
  *
  * This is meant to be included in a page template.
  *
@@ -34,10 +34,10 @@ $params = array_merge( array(
 
 <?php
 
-	if(	$Item->is_intro() )
-	{	// Display edit link only if we're displaying an intro post:
+	if( $Item->is_intro() )
+	{ // Display edit link only if we're displaying an intro post:
 		$Item->edit_link( array( // Link to backoffice for editing
-				'before' => '<div class="floatright">',
+				'before' => '<div class="edit_intro_link">',
 				'after'  => '</div>',
 			) );
 	}
@@ -46,6 +46,10 @@ $params = array_merge( array(
 <h2 class="title"><?php $Item->title(); ?></h2>
 
 <?php
+	if( $Item->status != 'published' )
+	{
+		$Item->status( array( 'format' => 'styled' ) );
+	}
 
 	if( ! $Item->is_intro() )
 	{	// Display only if we're not displaying an intro post:

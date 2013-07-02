@@ -5,7 +5,7 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
  *
@@ -16,7 +16,7 @@
  *
  * @package admin
  *
- * @version $Id: _coll_seo.form.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _coll_seo.form.php 3423 2013-04-08 10:19:01Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -58,67 +58,6 @@ $Form->hidden_ctrl();
 $Form->hidden( 'action', 'update' );
 $Form->hidden( 'tab', 'seo' );
 $Form->hidden( 'blog', $edited_Blog->ID );
-
-$Form->begin_fieldset( T_('SEO Presets') );
-
-	$available_presets = array( 'awall' => 'Aaron Wall',
-                              'abeal' => 'Andy Beal',
-                              'mgray' => 'Michael Gray',
-                              'rfishkin' => 'Rand Fishkin',
-                              'sspencer' => 'Stephan Spencer' );
-
-  $preset_html = '';
-	foreach( $available_presets as $preset_code => $preset_name )
-	{
-		$preset_html .= '<a href="?ctrl=coll_settings&amp;tab=seo&amp;blog='.$edited_Blog->ID.'&amp;preset='
-												.$preset_code.'" title="'.$preset_name.'"';
-		if( $preset == $preset_code )
-		{
-			$preset_html .= ' class="current"';
-		}
-		$preset_html .= '><img alt="'.$preset_name.'" src="'
-												.$rsc_url.'/img/people/'.$preset_code.'.png" width="124" height="180" /></a>';
-	}
-
-
-	echo '<div class="seo_presets">'.$preset_html.'</div>';
-
-	switch( $preset )
-	{
-		case 'awall':
-			$seo_author = '<a href="http://www.seobook.com/" target="_blank">Aaron Wall</a>';
-			$seo_site = 'For more SEO tips, visit <strong><a href="http://www.seobook.com/" target="_blank">SEO Book</a></strong>.';
-			break;
-
-		case 'abeal':
-			$seo_author = '<a href="http://www.marketingpilgrim.com/" target="_blank">Andy Beal</a>';
-			$seo_site = 'For more advanced optimization, visit <strong><a href="http://www.marketingpilgrim.com/" target="_blank">Marketing Pilgrim</a></strong>.';
-			break;
-
-		case 'mgray':
-			$seo_author = '<a href="http://www.wolf-howl.com/" target="_blank">Michael Gray</a>';
-			$seo_site = 'For more advanced optimization, visit <strong><a href="http://www.wolf-howl.com/" target="_blank">Graywolf\'s SEO blog</a></strong>.';
-			break;
-
-		case 'rfishkin':
-			$seo_author = '<a href="http://www.seomoz.org/team/randfish" target="_blank">Rand Fishkin</a>';
-			$seo_site = 'For more advanced optimization, visit <strong><a href="http://www.seomoz.org/" target="_blank">SEOmoz</a></strong>.';
-			break;
-
-		case 'sspencer':
-			$seo_author = '<a href="http://www.stephanspencer.com/" target="_blank">Stephan Spencer</a>';
-			$seo_site = 'For more advanced optimization, visit <strong><a href="http://www.netconcepts.com/" target="_blank">NetConcepts</a></strong>.';
-			break;
-	}
-
-	if( !empty($seo_author) )
-	{
-	 	echo '<div class="seo_message">';
-		printf( T_('You can review the SEO settings recommended by <strong>%s</strong> below. Click the "Save!" button to apply these settings.'),
-								$seo_author );
-		echo '<br/>'.$seo_site.'</div>';
-	}
-$Form->end_fieldset();
 
 $Form->begin_fieldset( T_('Main page / post list').get_manual_link('main_page_seo') );
 	$Form->checkbox( 'default_noindex', $edited_Blog->get_setting( 'default_noindex' ), T_('Default blog page'), T_('META NOINDEX') );
@@ -174,6 +113,8 @@ $Form->begin_fieldset( T_('Single post pages / "Permalink" pages').get_manual_li
 				array( 'chapters', T_('Use extra-path: category path'), T_('E-g: ')
 								.url_add_tail( $blogurl, '<strong>/cat/subcat/post-title</strong>' ) ),
 			), T_('Permalink scheme'), true );
+
+	$Form->text_input( 'slug_limit', $edited_Blog->get_setting('slug_limit'), 3, T_('Limit slug length to'), '', array( 'input_suffix' => ' '.T_('words') ) );
 
 	$Form->checklist( array(
 		array( 'canonical_item_urls', 1, T_('301 redirect to canonical URL when possible'), $edited_Blog->get_setting( 'canonical_item_urls' ) ),
@@ -318,10 +259,17 @@ $Form->begin_fieldset( T_('Tag pages').get_manual_link('tag_pages_seo'), array('
 // Javascript juice for the tag fields.
 ?>
 <script type="text/javascript">
-jQuery("#tag_links_fieldset input[type=radio]").click( function()
+jQuery("#tag_links_fieldset input[name=tag_links][type=radio]").click( function()
 {
 	// Disable tag_prefix, if "param" is used. fp> TODO: visual feedback that this is disabled
-	jQuery('#tag_prefix').attr("disabled", this.value == 'param' ? "disabled" : "");
+	if( jQuery( this ).val() == 'param' )
+	{
+		jQuery('#tag_prefix').attr("disabled", "disabled");
+	}
+	else
+	{
+		jQuery('#tag_prefix').removeAttr("disabled");
+	}
 	// Disable tag_rel_attrib, if "prefix-only" is not used.
 	jQuery('#tag_rel_attrib').attr("disabled", this.value == 'prefix-only' ? "" : "disabled");
 
@@ -387,9 +335,4 @@ $Form->end_form( array(
 	array( 'submit', 'submit', T_('Save !'), 'SaveButton' ),
 	array( 'reset', '', T_('Reset'), 'ResetButton' ) ) );
 
-echo '<p class="note right">SEO portraits kindly provided by <a href="http://www.seomoz.org/" target="_blank">SEOmoz</a>.</p>';
-
-/*
- * $Log: _coll_seo.form.php,v $
- */
 ?>

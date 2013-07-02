@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -29,7 +29,7 @@
  * @author fplanque: Francois PLANQUE
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: _plugin_settings.form.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _plugin_settings.form.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -43,13 +43,20 @@ global $edit_Plugin;
  */
 global $admin_Plugins;
 
-global $edited_plugin_name, $edited_plugin_shortdesc, $edited_plugin_priority, $edited_plugin_code, $edited_plugin_apply_rendering;
+global $edited_plugin_name, $edited_plugin_shortdesc, $edited_plugin_priority, $edited_plugin_code;
 global $admin_url;
 
 load_funcs('plugins/_plugin.funcs.php');
 
 
 $Form = new Form( NULL, 'pluginsettings_checkchanges' );
+
+// Restore defaults button:
+$Form->global_icon( T_('Restore defaults'), 'reload', regenerate_url( 'action,plugin_class', 'action=default_settings&amp;plugin_ID=' . $edit_Plugin->ID . '&amp;crumb_plugin=' . get_crumb( 'plugin' ) ), T_('Restore defaults'),5,4,
+	array(
+			'onclick'=>'if (!confirm(\''.TS_('Are you sure you want to restore the default settings? This cannot be undone!').'\')) { cancelClick(event); }',
+		)
+	);
 
 // Info button:
 $Form->global_icon( T_('Display info'), 'info', regenerate_url( 'action,plugin_class', 'action=info&amp;plugin_class='.$edit_Plugin->classname ) );
@@ -75,7 +82,7 @@ $Form->begin_fieldset( T_('Plugin info'), array( 'class' => 'clear' ) );
 	// Links to external manual (dh> has been removed from form's global_icons before by fp, but is very useful IMHO):
 	if( $edit_Plugin->get_help_link('$help_url') )
 	{
-		$Form->info( T_('Help'), $edit_Plugin->get_help_link('$help_url').' '.$edit_Plugin->get_help_link('$readme') );
+		$Form->info( T_('Help'), $edit_Plugin->get_help_link('$help_url') );
 	}
 $Form->end_fieldset();
 
@@ -113,19 +120,13 @@ if( $edit_Plugin->Settings ) // NOTE: this triggers PHP5 autoloading through Plu
 $Form->begin_fieldset( T_('Plugin variables').' ('.T_('Advanced').')', array( 'class' => 'clear' ) );
 	$Form->text_input( 'edited_plugin_code', $edited_plugin_code, 15, T_('Code'), T_('The code to call the plugin by code. This is also used to link renderer plugins to items.'), array('maxlength'=>32) );
 	$Form->text_input( 'edited_plugin_priority', $edited_plugin_priority, 4, T_('Priority'), '', array( 'maxlength' => 4 ) );
-	$render_note = get_manual_link('Plugin/apply_rendering');
-	if( empty( $edited_plugin_code ) )
-	{
-		$render_note .= ' '.T_('Note: The plugin code is empty, so this plugin will not work as an "opt-out", "opt-in" or "lazy" renderer.');
-	}
-	$Form->select_input_array( 'edited_plugin_apply_rendering', $edited_plugin_apply_rendering,
-			$admin_Plugins->get_apply_rendering_values(), T_('Apply rendering'), $render_note );
 $Form->end_fieldset();
 
 
 // --------------------------- EVENTS ---------------------------
-$Form->begin_fieldset( T_('Plugin events').' ('.T_('Advanced')
-	.') <img src="'.get_icon('expand', 'url').'" id="clickimg_pluginevents" />', array('legend_params' => array( 'onclick' => 'toggle_clickopen(\'pluginevents\')') ) );
+$Form->begin_fieldset( T_('Plugin events').' ('.T_('Advanced').') '.get_icon('expand', 'imgtag', array( 'id' => 'clickimg_pluginevents' ) ),
+											 array('legend_params' => array( 'onclick' => 'toggle_clickopen(\'pluginevents\')') )
+											 );
 	?>
 
 	<div id="clickdiv_pluginevents">
@@ -177,15 +178,8 @@ if( $current_User->check_perm( 'options', 'edit', false ) )
 {
 	$Form->buttons_input( array(
 		array( 'type' => 'submit', 'name' => 'actionArray[update_settings]', 'value' => T_('Save !'), 'class' => 'SaveButton' ),
-		array( 'type' => 'submit', 'name' => 'actionArray[update_settings][review]', 'value' => T_('Save (and review)'), 'class' => 'SaveButton' ),
-		array( 'type' => 'reset', 'value' => T_('Reset'), 'class' => 'ResetButton' ),
-		array( 'type' => 'submit', 'name' => 'actionArray[default_settings]', 'value' => T_('Restore defaults'), 'class' => 'SaveButton' ),
 		) );
 }
 $Form->end_form();
 
-
-/*
- * $Log: _plugin_settings.form.php,v $
- */
 ?>

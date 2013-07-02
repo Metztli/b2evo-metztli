@@ -3,7 +3,7 @@
  * This is the main/default page template.
  *
  * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://manual.b2evolution.net/Skins_2.0}
+ * {@link http://b2evolution.net/man/skin-structure}
  *
  * The main page template is used to display the blog when no specific page template is available
  * to handle the request (based on $disp).
@@ -11,7 +11,7 @@
  * @package evoskins
  * @subpackage glossyblue
  *
- * @version $Id: single.main.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: single.main.php 3843 2013-05-28 10:56:18Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -72,6 +72,7 @@ skin_include( '_body_header.inc.php' );
 // Display message if no post:
 display_if_empty();
 
+echo '<div id="styled_content_block">'; // Beginning of posts display
 while( $Item = & mainlist_get_item() )
 {	// For each blog post, do everything below up to the closing curly brace "}"
 	?>
@@ -95,27 +96,38 @@ while( $Item = & mainlist_get_item() )
 					)); ?></span>
 		</div>
 		<div class="post-title">
-			<h2><?php $Item->title(); ?></h2>
-		<span class="post-cat"><?php
+			<?php
+			if( $Item->status != 'published' )
+			{
+				$Item->status( array( 'format' => 'styled' ) );
+			}
+			?>
+			<h2><?php
+				$Item->title( array(
+					'link_type' => 'permalink'
+					) );
+			?></h2>
+		<?php
 				$Item->categories( array(
-					'before'          => '',
-					'after'           => ' ',
+					'before'          => '<span class="post-cat">',
+					'after'           => '</span>',
 					'include_main'    => true,
 					'include_other'   => true,
 					'include_external'=> true,
 					'link_categories' => true,
 				) );
-			?></span> <span class="mini-add-comment"><?php // Link to comments, trackbacks, etc.:
-					$Item->feedback_link( array(
-									'link_before' => '',
-									'link_after' => '',
-									'link_text_zero' => 'Add comments',
-									'link_text_one' => 'Add comments',
-									'link_text_more' => 'Add comments',
-									'link_title' => '#',
-									'use_popup' => false,
-								) ); ?></span>
-	  </div>
+			// Link to comments, trackbacks, etc.:
+				$Item->feedback_link( array(
+					'link_before' => '<span class="mini-add-comment">',
+					'link_after' => '</span>',
+					'link_text_zero' => T_('Add comments'),
+					'link_text_one' => T_('Add comments'),
+					'link_text_more' => T_('Add comments'),
+					'link_title' => '#',
+					'use_popup' => false,
+					'show_in_single_mode' => true
+				) ); ?>
+		</div>
 
 		<?php
 			// ---------------------- POST CONTENT INCLUDED HERE ----------------------
@@ -163,6 +175,7 @@ while( $Item = & mainlist_get_item() )
 	<?php
 	locale_restore_previous();	// Restore previous locale (Blog locale)
 }
+echo '</div>'; // End of posts display
 ?>
 
 </div>

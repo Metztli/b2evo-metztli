@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -36,23 +36,27 @@ load_class( 'regional/model/_country.class.php', 'Country' );
  * Include page header:
  */
 $page_title = T_('New account creation');
-$page_icon = 'icon_register.gif';
+$page_icon = 'register';
 require dirname(__FILE__).'/_html_header.inc.php';
 
+// set secure htsrv url with the same domain as the request has
+$secure_htsrv_url = get_secure_htsrv_url();
 
-$Form = new Form( $htsrv_url_sensitive.'register.php', '', 'post', 'fieldset' );
+$Form = new Form( $secure_htsrv_url.'register.php', 'register_form', 'post', 'fieldset' );
 
 $Form->begin_form( 'fform' );
+
+$Plugins->trigger_event( 'DisplayRegisterFormBefore', array( 'Form' => & $Form, 'inskin' => false ) );
 
 $Form->add_crumb( 'regform' );
 $Form->hidden( 'action', 'register' );
 $source = param( 'source', 'string', '' );
 $Form->hidden( 'source', $source );
-$Form->hidden( 'redirect_to', url_rel_to_same_host($redirect_to, $htsrv_url_sensitive) );
+$Form->hidden( 'redirect_to', url_rel_to_same_host($redirect_to, $secure_htsrv_url) );
 
 $Form->begin_fieldset();
 
-	$Form->text_input( $dummy_fields[ 'login' ], $login, 22, T_('Login'), T_('Choose a username.'), array( 'maxlength' => 20, 'class' => 'input_text', 'required' => true ) );
+	$Form->text_input( $dummy_fields[ 'login' ], $login, 22, T_('Login'), T_('Choose an username.'), array( 'maxlength' => 20, 'class' => 'input_text', 'required' => true, 'input_suffix' => ' <span id="login_status"></span>' ) );
 
 	$Form->password_input( $dummy_fields[ 'pass1' ], '', 18, T_('Password'), array( 'note'=>T_('Choose a password.'), 'maxlength' => 70, 'class' => 'input_text', 'required'=>true ) );
 	$Form->password_input( $dummy_fields[ 'pass2' ], '', 18, '', array( 'note'=>T_('Please type your password again.'), 'maxlength' => 70, 'class' => 'input_text', 'required'=>true ) );
@@ -64,7 +68,14 @@ $Form->begin_fieldset();
 	if( $registration_require_country )
 	{
 		$CountryCache = & get_CountryCache();
-		$Form->select_input_object( 'country', $country, $CountryCache, T_('Country'), array('allow_none'=>true, 'required'=>true) );
+		$Form->select_country( 'country', param( 'country', 'integer', 0 ), $CountryCache, T_('Country'), array('allow_none'=>true, 'required'=>true) );
+	}
+
+	$registration_require_firstname = (bool)$Settings->get('registration_require_firstname');
+
+	if( $registration_require_firstname )
+	{
+		$Form->text_input( 'firstname', $firstname, 18, T_('First name'), T_('Your real first name.'), array( 'maxlength' => 50, 'class' => 'input_text', 'required' => true ) );
 	}
 
 	$registration_require_gender = $Settings->get( 'registration_require_gender' );
@@ -81,24 +92,25 @@ $Form->begin_fieldset();
 		$Form->select( 'locale', $locale, 'locale_options_return', T_('Locale'), T_('Preferred language') );
 	}
 
-	$Plugins->trigger_event( 'DisplayRegisterFormFieldset', array( 'Form' => & $Form ) );
+	$Plugins->trigger_event( 'DisplayRegisterFormFieldset', array( 'Form' => & $Form, 'inskin' => false ) );
 
 	$Form->buttons_input( array( array('name'=>'submit', 'value'=>T_('Register my account now!'), 'class'=>'ActionInput', 'style'=>'font-size: 120%' ) ) );
 
-	// $Form->info( '', '', sprintf( T_('Your IP address (%s) and the current time are being logged.'), $Hit->IP ) );
-
 $Form->end_fieldset();
 $Form->end_form(); // display hidden fields etc
+
+// Display javascript password strength indicator bar
+display_password_indicator();
+
+// Display javascript login validator
+display_login_validator();
 ?>
 
 <div style="margin-top: 1em">
-	<a href="<?php echo $htsrv_url_sensitive.'login.php?redirect_to='.rawurlencode(url_rel_to_same_host($redirect_to, $htsrv_url_sensitive)) ?>">&laquo; <?php echo T_('Already have an account... ?') ?></a>
+	<a href="<?php echo $secure_htsrv_url.'login.php?redirect_to='.rawurlencode(url_rel_to_same_host($redirect_to, $secure_htsrv_url)) ?>">&laquo; <?php echo T_('Already have an account... ?') ?></a>
 </div>
 
 <?php
 require dirname(__FILE__).'/_html_footer.inc.php';
 
-/*
- * $Log: _reg_form.main.php,v $
- */
 ?>

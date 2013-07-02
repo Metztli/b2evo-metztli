@@ -4,7 +4,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal Open Source relicensing agreement:
  * }}
@@ -13,11 +13,11 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _coll_sel_type.view.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _coll_sel_type.view.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
-echo '<h2>'.T_('What kind of blog would you like to create?').'</h2>';
+echo '<h2>'.T_('What kind of blog would you like to create?').get_manual_link('collection-type').'</h2>';
 
 echo '<table class="coll_kind">';
 
@@ -43,8 +43,4 @@ echo '</table>';
 
 echo '<p>'.T_('Your selection here will pre-configure your blog in order to optimize it for a particular use. Nothing is final though. You can change all the settings at any time and any kind of blog can be transformed into any other at any time.').'</p>';
 
-
-/*
- * $Log: _coll_sel_type.view.php,v $
- */
 ?>

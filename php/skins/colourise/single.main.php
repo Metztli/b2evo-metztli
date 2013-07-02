@@ -3,7 +3,7 @@
  * This is the main/default page template.
  *
  * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://manual.b2evolution.net/Skins_2.0}
+ * {@link http://b2evolution.net/man/skin-structure}
  *
  * The main page template is used to display the blog when no specific page template is available
  * to handle the request (based on $disp).
@@ -55,7 +55,8 @@ skin_include( '_body_header.inc.php' );
 		<?php
 		// Display message if no post:
 		display_if_empty();
-		
+
+		echo '<div id="styled_content_block">'; // Beginning of posts display
 		while( $Item = & mainlist_get_item() )
 		{	// For each blog post, do everything below up to the closing curly brace "}"
 			?>
@@ -66,7 +67,17 @@ skin_include( '_body_header.inc.php' );
 		
 			<div id="<?php $Item->anchor_id() ?>" class="post post<?php $Item->status_raw() ?>" lang="<?php $Item->lang() ?>">
 		
-				<h2><?php $Item->title(); ?></h2>
+				<?php
+				if( $Item->status != 'published' )
+				{
+					$Item->status( array( 'format' => 'styled' ) );
+				}
+				?>
+				<h2><?php
+					$Item->title( array(
+							'link_type' => 'permalink'
+						) );
+				?></h2>
 		
 				<?php
 					// ---------------------- POST CONTENT INCLUDED HERE ----------------------
@@ -84,7 +95,7 @@ skin_include( '_body_header.inc.php' );
 							$Item->author( array(
 									'link_text'    => 'avatar',
 									'link_rel'     => 'nofollow',
-									'thumb_size'   => 'crop-32x32',
+									'thumb_size'   => 'crop-top-32x32',
 									'thumb_class'  => 'leftmargin',
 								) );
 						?>
@@ -156,6 +167,7 @@ skin_include( '_body_header.inc.php' );
 			<?php
 			locale_restore_previous();	// Restore previous locale (Blog locale)
 		}
+		echo '</div>'; // End of posts display
 		?>
 	</div>
 

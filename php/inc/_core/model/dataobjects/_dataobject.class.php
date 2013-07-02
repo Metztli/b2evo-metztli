@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
@@ -35,7 +35,7 @@
  * @author blueyed: Daniel HAHLER
  * @author mbruneau: Marc BRUNEAU / PROGIDISTRI
  *
- * @version $Id: _dataobject.class.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _dataobject.class.php 3846 2013-05-29 07:33:29Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -96,6 +96,7 @@ class DataObject
 	 * @param string datetime field name
 	 * @param string User ID field name
 	 * @param string User ID field name
+	 * @param string datetime field name
 	 */
 	function DataObject( $tablename, $prefix = '', $dbIDname = 'ID', $datecreated_field = '', $datemodified_field = '', $creator_field = '', $lasteditor_field = '' )
 	{
@@ -133,7 +134,7 @@ class DataObject
 	 */
 	function dbupdate( $auto_track_modification = true )
 	{
-		global $DB, $localtimenow, $current_User;
+		global $DB, $Plugins, $localtimenow, $current_User;
 
 		if( $this->ID == 0 ) { debug_die( 'New object cannot be updated!' ); }
 
@@ -200,6 +201,8 @@ class DataObject
 		// Reset changes in object:
 		$this->dbchanges = array();
 
+		$Plugins->trigger_event( 'AfterObjectUpdate', $params = array( 'Object' => & $this, 'type' => get_class($this) ) );
+
 		return true;
 	}
 
@@ -216,7 +219,7 @@ class DataObject
 	 */
 	function dbinsert()
 	{
-		global $DB, $localtimenow, $current_User;
+		global $DB, $Plugins, $localtimenow, $current_User;
 
 		if( $this->ID != 0 && !$this->allow_ID_insert )
 		{
@@ -224,25 +227,28 @@ class DataObject
 		}
 
 		if( !empty($this->datecreated_field) )
-		{	// We want to track creation date:
+		{ // We want to track creation date:
 			$this->set_param( $this->datecreated_field, 'date', date('Y-m-d H:i:s',$localtimenow) );
 		}
 		if( !empty($this->datemodified_field) )
-		{	// We want to track modification date:
+		{ // We want to track modification date:
 			$this->set_param( $this->datemodified_field, 'date', date('Y-m-d H:i:s',$localtimenow) );
 		}
-		if( !empty($this->creator_field) )
-		{	// We want to track creator:
-			if( empty($this->creator_user_ID) )
-			{	// No creator assigned yet, use current user:
-				$this->set_param( $this->creator_field, 'number', $current_User->ID );
+		if( is_logged_in() )
+		{ // Assign user's ID only when user is logged in
+			if( !empty($this->creator_field) )
+			{ // We want to track creator:
+				if( empty($this->creator_user_ID) )
+				{ // No creator assigned yet, use current user:
+					$this->set_param( $this->creator_field, 'number', $current_User->ID );
+				}
 			}
-		}
-		if( !empty($this->lasteditor_field) )
-		{	// We want to track last editor:
-			if( empty($this->lastedit_user_ID) )
-			{	// No editor assigned yet, use current user:
-				$this->set_param( $this->lasteditor_field, 'number', $current_User->ID );
+			if( !empty($this->lasteditor_field) )
+			{ // We want to track last editor:
+				if( empty($this->lastedit_user_ID) )
+				{ // No editor assigned yet, use current user:
+					$this->set_param( $this->lasteditor_field, 'number', $current_User->ID );
+				}
 			}
 		}
 
@@ -291,6 +297,11 @@ class DataObject
 		// Reset changes in object:
 		$this->dbchanges = array();
 
+		if( !empty( $Plugins ) )
+		{
+			$Plugins->trigger_event( 'AfterObjectInsert', $params = array( 'Object' => & $this, 'type' => get_class($this) ) );
+		}
+
 		return true;
 	}
 
@@ -324,7 +335,7 @@ class DataObject
 	 */
 	function dbdelete()
 	{
-		global $DB, $Messages, $db_config;
+		global $DB, $Messages, $Plugins, $db_config;
 
 		if( $this->ID == 0 ) { debug_die( 'Non persistant object cannot be deleted!' ); }
 
@@ -341,9 +352,16 @@ class DataObject
 					continue;
 				}
 
+				// add more where condition
+				$more_restriction = '';
+				if( isset( $restriction['and_condition'] ) )
+				{
+					$more_restriction .= ' AND ( '.$restriction['and_condition'].' )';
+				}
+
 				$DB->query( '
 					DELETE FROM '.$restriction['table'].'
-					WHERE '.$restriction['fk'].' = '.$this->ID,
+					WHERE '.$restriction['fk'].' = '.$this->ID.$more_restriction,
 					'Cascaded delete' );
 			}
 		}
@@ -353,6 +371,8 @@ class DataObject
 			DELETE FROM $this->dbtablename
 			WHERE $this->dbIDname = $this->ID",
 			'Main delete' );
+
+		$Plugins->trigger_event( 'AfterObjectDelete', $params = array( 'Object' => & $this, 'type' => get_class($this) ) );
 
 		if( count($this->delete_cascades) )
 		{	// There were cascading deletes
@@ -371,17 +391,31 @@ class DataObject
 	/**
 	 * Check existence of specified value in unique field.
 	 *
-	 * @param string Name of unique field
-	 * @param mixed specified value
+	 * @param string Name of unique field  OR array of Names (for UNIQUE index with MULTIPLE fields)
+	 * @param mixed specified value        OR array of Values (for UNIQUE index with MULTIPLE fields)
 	 * @return int ID if value exists otherwise NULL/false
 	 */
-	function dbexists($unique_field, $value)
+	function dbexists( $unique_fields, $values )
 	{
 		global $DB;
 
+		if( is_array( $unique_fields ) && is_array( $values ) )
+		{	// UNIQUE index consists of MULTIPLE fields
+			$sql_where = array();
+			foreach( $unique_fields as $i => $unique_field )
+			{
+				$sql_where[] = $unique_field." = ".$DB->quote( $values[$i] );
+			}
+			$sql_where = implode( ' AND ', $sql_where );
+		}
+		else
+		{	// UNIQUE index consists of ONE field
+			$sql_where = $unique_fields." = ".$DB->quote( $values );
+		}
+
 		$sql = "SELECT $this->dbIDname
 						  FROM $this->dbtablename
-					   WHERE $unique_field = ".$DB->quote($value)."
+					   WHERE $sql_where
 						   AND $this->dbIDname != $this->ID";
 
 		return $DB->get_var( $sql );
@@ -419,10 +453,11 @@ class DataObject
 				}
 				else
 				{ // count and show how many object is connected
+					$extra_condition = ( isset( $restriction['and_condition'] ) ) ? ' AND '.$restriction['and_condition'] : '';
 					$count = $DB->get_var(
 					'SELECT COUNT(*)
 					   FROM '.$restriction['table'].'
-					  WHERE '.$restriction['fk'].' = '.$this->ID,
+					  WHERE '.$restriction['fk'].' = '.$this->ID.$extra_condition,
 					0, 0, 'restriction/cascade check' );
 					if( $count )
 					{
@@ -470,8 +505,9 @@ class DataObject
 	 * @param string crumb name
 	 * @param string "action" param value to use (hidden field)
 	 * @param array Hidden keys (apart from "action")
+	 * @param array Additional messages for restriction messages, array( '0' - message text, '1' - message type )
 	 */
-	function confirm_delete( $confirm_title, $crumb_name, $delete_action, $hiddens )
+	function confirm_delete( $confirm_title, $crumb_name, $delete_action, $hiddens, $additional_messages = array() )
 	{
 		global $Messages;
 
@@ -482,6 +518,14 @@ class DataObject
 
 		$restriction_Messages = $this->check_relations( 'delete_cascades' );
 
+		if( !empty( $additional_messages ) )
+		{ // Initialaize additional messages
+			foreach( $additional_messages as $additional_message )
+			{
+				$restriction_Messages->add( $additional_message[0], $additional_message[1] );
+			}
+		}
+
 		if( $restriction_Messages->count() )
 		{	// The will be cascading deletes, issue WARNING:
 			echo '<h3>'.T_('WARNING: Deleting this object will also delete:').'</h3>';
@@ -491,6 +535,8 @@ class DataObject
 		echo '<p class="warning">'.$confirm_title.'</p>';
 		echo '<p class="warning">'.T_('THIS CANNOT BE UNDONE!').'</p>';
 
+		$redirect_to = param( 'redirect_to', 'string', '' );
+
 		$Form = new Form( '', 'form_confirm', 'get', '' );
 
 		$Form->begin_form( 'inline' );
@@ -498,13 +544,17 @@ class DataObject
 			$Form->hiddens_by_key( $hiddens );
 			$Form->hidden( 'action', $delete_action );
 			$Form->hidden( 'confirm', 1 );
+			$Form->hidden( 'redirect_to', $redirect_to );
 			$Form->button( array( 'submit', '', T_('I am sure!'), 'DeleteButton' ) );
 		$Form->end_form();
 
-		$Form = new Form( '', 'form_cancel', 'get', '' );
+		$Form = new Form( $redirect_to, 'form_cancel', 'get', '' );
 
 		$Form->begin_form( 'inline' );
-			$Form->hiddens_by_key( $hiddens );
+			if( empty( $redirect_to ) )
+			{ // If redirect url is not defined we should go to current url after cancel action
+				$Form->hiddens_by_key( $hiddens );
+			}
 			$Form->button( array( 'submit', '', T_('CANCEL'), 'CancelButton' ) );
 		$Form->end_form();
 
@@ -830,13 +880,8 @@ class DataObject
 			$history[1] = sprintf( T_('Last mod on %s'), mysql2localedate( $this->{$this->datemodified_field} ) );
 		}
 
-		return get_icon( 'history', $what = 'imgtag', array( 'title'=>implode( ' - ', $history ) ), true );
+		return get_icon( 'history', 'imgtag', array( 'title'=>implode( ' - ', $history ) ), true );
 	}
 }
 
-
-
-/*
- * $Log: _dataobject.class.php,v $
- */
 ?>

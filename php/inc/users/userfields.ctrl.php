@@ -3,7 +3,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2009 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @copyright (c)2009-2013 by Francois PLANQUE - {@link http://fplanque.net/}
  * Parts of this file are copyright (c)2009 by The Evo Factory - {@link http://www.evofactory.com/}.
  *
  * {@internal License choice
@@ -27,7 +27,7 @@
  * @author evofactory-test
  * @author fplanque: Francois Planque.
  *
- * @version $Id: userfields.ctrl.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: userfields.ctrl.php 3638 2013-05-02 05:35:05Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -85,7 +85,7 @@ switch( $action )
 
 		// Make sure we got an ufdf_ID:
 		param( 'ufdf_ID', 'integer', true );
- 		break;
+		break;
 
 	case 'create': // Record new Userfield
 	case 'create_new': // Record Userfield and create new
@@ -133,7 +133,7 @@ switch( $action )
 				{
 					case 'create_copy':
 						// Redirect so that a reload doesn't write to the DB twice:
-						header_redirect( '?ctrl=userfields&action=new&ufdf_ID='.$entered_userfield_id, 303 ); // Will EXIT
+						header_redirect( '?ctrl=userfields&action=new&ufdf_ID='.$edited_Userfield->ID, 303 ); // Will EXIT
 						// We have EXITed already at this point!!
 						break;
 					case 'create_new':
@@ -213,6 +213,71 @@ switch( $action )
 		}
 		break;
 
+	case 'move_up':
+	case 'move_down':
+		// Move up/down user field...:
+
+		// Check that this action request is not a CSRF hacked request:
+		$Session->assert_received_crumb( 'userfield' );
+
+		// Check permission:
+		$current_User->check_perm( 'users', 'edit', true );
+
+		// Make sure we got an ufdf_ID:
+		param( 'ufdf_ID', 'integer', true );
+
+		if( $action == 'move_up' )
+		{	// Set variables for "move up" action
+			$order_condition = '<';
+			$order_direction = 'DESC';
+		}
+		else
+		{	// move down
+			$order_condition = '>';
+			$order_direction = 'ASC';
+		}
+
+		$DB->begin( 'SERIALIZABLE' );
+
+		// Get near field, We should exchange the order with this field
+		$switched_Userfield = $DB->get_row( 'SELECT ufdf_ID, ufdf_order
+			FROM T_users__fielddefs
+			WHERE ufdf_ufgp_ID = '.$edited_Userfield->group_ID.'
+				AND ufdf_order '.$order_condition.' '.$edited_Userfield->order.'
+			ORDER BY ufdf_order '.$order_direction.'
+			LIMIT 1' );
+
+		if( is_null( $switched_Userfield ) )
+		{	// Current field is first or last in group, no change ordering
+			$DB->commit(); // This is required only to not leave open transaction
+			break;
+		}
+
+		// Updare order of editing field
+		$result = $DB->query( 'UPDATE T_users__fielddefs
+			SET ufdf_order = '.$switched_Userfield->ufdf_order.'
+			WHERE ufdf_ID = '.$edited_Userfield->ID );
+
+		// Update order of near field
+		$result = ( $result !== false ) && $DB->query( 'UPDATE T_users__fielddefs
+			SET ufdf_order = '.$edited_Userfield->order.'
+			WHERE ufdf_ID = '.$switched_Userfield->ufdf_ID );
+
+		if( $result !== false )
+		{ // Update was successful
+			$DB->commit();
+			$Messages->add( T_('Order is changed.'), 'success' );
+		}
+		else
+		{ // Couldn't update successfully, probably because of concurrent modification
+			// Note: In this case we may try again to execute the same queries.
+			$DB->rollback();
+			// The message is not localized because it may appear very rarely
+			$Messages->add( 'Order could not be changed. Please try again.', 'error' );
+		}
+
+		break;
+
 }
 
 $AdminUI->breadcrumbpath_init( false );  // fp> I'm playing with the idea of keeping the current blog in the path here...
@@ -269,19 +334,4 @@ $AdminUI->disp_payload_end();
 // Display body bottom, debug info and close </html>:
 $AdminUI->disp_global_footer();
 
-/*
- * $ Log: userfields.ctrl.php,v $
- * Revision 1.5  2009/09/16 18:29:35  fplanque
- * doc
- *
- * Revision 1.4  2009/09/16 18:27:19  fplanque
- * Readded with -kkv option
- *
- * efy-sergey
- *
- * Revision 1.1  2009/09/11 18:34:06  fplanque
- * userfields editing module.
- * needs further cleanup but I think it works.
- *
- */
 ?>

@@ -5,11 +5,11 @@
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
  *
- * @version $Id: _goal_hitsummary.view.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _goal_hitsummary.view.php 3742 2013-05-20 06:56:25Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -73,13 +73,13 @@ $Table->cols[] = array(
  *
  * @param Form
  */
-function filter_hits( & $Form )
+function filter_goal_hitsummary( & $Form )
 {
 	$Form->checkbox_basic_input( 'final', get_param('final'), T_('Final') );
 	$Form->text_input( 'goal_name', get_param('goal_name'), 20, T_('Goal names starting with'), '', array( 'maxlength'=>50 ) );
 }
 $Table->filter_area = array(
-	'callback' => 'filter_hits',
+	'callback' => 'filter_goal_hitsummary',
 	'url_ignore' => 'final,goal_name',
 	'presets' => array(
 		'all' => array( T_('All'), '?ctrl=goals&amp;tab3=stats' ),
@@ -88,19 +88,33 @@ $Table->filter_area = array(
 	);
 
 
-$Table->display_init();
+echo '<div class="results">';;
 
-$Table->display_list_start();
+$Table->display_init();
 
 // TITLE / COLUMN HEADERS:
 $Table->display_head();
 
+// START OF LIST/TABLE:
+$Table->display_list_start();
+
+if( empty( $hitgroup_array ) )
+{ // No records
+	$Table->total_pages = 0;
+}
+else
+{ // Display table
+
+// DISPLAY COLUMN HEADERS:
+$Table->display_col_headers();
+
 // BODY START:
 $Table->display_body_start();
 
-foreach( $hitgroup_array as $day=>$hitday_array )
+$goal_total = array();
+foreach( $hitgroup_array as $day => $hitday_array )
 {
-	$Table->display_line_start( false, false );
+	$Table->display_line_start();
 
 	$Table->display_col_start();
 	echo $day;
@@ -109,11 +123,16 @@ foreach( $hitgroup_array as $day=>$hitday_array )
 	$line_total = 0;
 	foreach( $goal_rows as $goal_row )
 	{ // For each named goal, display count:
+		if( ! isset( $goal_total[ $goal_row->goal_ID ] ) )
+		{
+			$goal_total[ $goal_row->goal_ID ] = 0;
+		}
 		$Table->display_col_start();
 		if( isset( $hitday_array[$goal_row->goal_ID] ) )
 		{
 			echo '<a href="?blog=0&amp;ctrl=stats&amp;tab=goals&amp;tab3=hits&amp;goal_name='.rawurlencode($goal_row->goal_name).'">'.$hitday_array[$goal_row->goal_ID].'</a>';
 			$line_total += $hitday_array[$goal_row->goal_ID];
+			$goal_total[ $goal_row->goal_ID ] += $hitday_array[$goal_row->goal_ID];
 		}
 		else
 		{
@@ -129,13 +148,42 @@ foreach( $hitgroup_array as $day=>$hitday_array )
 	$Table->display_line_end();
 }
 
+// Totals row:
+echo $Table->params['total_line_start'];
+
+echo str_replace( '$class$', '', $Table->params['total_col_start_first'] );
+echo T_('Total');
+echo $Table->params['total_col_end'];
+
+$all_total = 0;
+foreach( $goal_rows as $goal_row )
+{ // For each named goal, display total of count:
+	echo str_replace( '$class_attrib$', 'class="right"', $Table->params['total_col_start'] );
+	if( ! empty( $goal_total[ $goal_row->goal_ID ] ) )
+	{
+		echo '<a href="?blog=0&amp;ctrl=stats&amp;tab=goals&amp;tab3=hits&amp;goal_name='.rawurlencode( $goal_row->goal_name ).'">'.$goal_total[ $goal_row->goal_ID ].'</a>';
+		$all_total += $goal_total[ $goal_row->goal_ID ];
+	}
+	else
+	{
+		echo '&nbsp;';
+	}
+	echo $Table->params['total_col_end'];
+}
+
+echo str_replace( '$class$', 'right', $Table->params['total_col_start_last'] );
+echo $all_total;
+echo $Table->params['total_col_end'];
+
+echo $this->params['total_line_end'];
+
 // BODY END:
 $Table->display_body_end();
 
+}
+
 $Table->display_list_end();
 
+echo '</div>';
 
-/*
- * $Log: _goal_hitsummary.view.php,v $
- */
 ?>

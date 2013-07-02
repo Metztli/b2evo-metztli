@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -29,18 +29,19 @@
  * @author blueyed: Daniel HAHLER
  * @author fplanque: Francois PLANQUE
  *
- * @version $Id: locales.ctrl.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: locales.ctrl.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
 // Check minimum permission:
 $current_User->check_perm( 'options', 'view', true );
 
-// Memorize this as the last "tab" used in the Blog Settings:
+// Memorize this as the last "tab" used in the Global Settings:
 $UserSettings->set( 'pref_glob_settings_tab', $ctrl );
+$UserSettings->set( 'pref_glob_regional_tab', $ctrl );
 $UserSettings->dbupdate();
 
-$AdminUI->set_path( 'options', 'regional' );
+$AdminUI->set_path( 'options', 'regional', 'locales' );
 
 param( 'action', 'string' );
 param( 'edit_locale', 'string' );
@@ -62,36 +63,6 @@ switch( $action )
 
 		param( 'newdefault_locale', 'string', true);
 		$Settings->set( 'default_locale', $newdefault_locale );
-
-		param( 'newtime_difference', 'string', '' );
-		$newtime_difference = trim($newtime_difference);
-		if( $newtime_difference == '' )
-		{
-			$newtime_difference = 0;
-		}
-		if( strpos($newtime_difference, ':') !== false )
-		{ // hh:mm:ss format:
-			$ntd = explode(':', $newtime_difference);
-			if( count($ntd) > 3 )
-			{
-				param_error( 'newtime_difference', T_('Invalid time format.') );
-			}
-			else
-			{
-				$newtime_difference = $ntd[0]*3600 + ($ntd[1]*60);
-
-				if( count($ntd) == 3 )
-				{ // add seconds:
-					$newtime_difference += $ntd[2];
-				}
-			}
-		}
-		else
-		{ // just hours:
-			$newtime_difference = $newtime_difference*3600;
-		}
-
-		$Settings->set( 'time_difference', $newtime_difference );
 
 		if( ! $Messages->has_errors() )
 		{
@@ -128,6 +99,7 @@ switch( $action )
 		param( 'newloc_startofweek', 'integer', true);
 		param( 'newloc_priority', 'integer', 1);
 		param( 'newloc_messages', 'string', true);
+		param( 'newloc_transliteration_map', 'string', true);
 
 		if( $action == 'updatelocale' )
 		{
@@ -148,13 +120,20 @@ switch( $action )
 			}
 			else
 			{ // old locale is not in DB yet. Insert it.
+
+				$transliteration_map = '';
+				if( isset($locales[$oldloc_locale]['transliteration_map']) && is_array($locales[$oldloc_locale]['transliteration_map']) )
+				{
+					$transliteration_map = base64_encode( serialize($locales[$oldloc_locale]['transliteration_map']) );
+				}
+
 				$query = "INSERT INTO T_locales
-									( loc_locale, loc_charset, loc_datefmt, loc_timefmt, loc_startofweek, loc_name, loc_messages, loc_priority, loc_enabled )
+									( loc_locale, loc_charset, loc_datefmt, loc_timefmt, loc_startofweek, loc_name, loc_messages, loc_priority, loc_transliteration_map, loc_enabled )
 									VALUES ( '$oldloc_locale',
 									'{$locales[$oldloc_locale]['charset']}', '{$locales[$oldloc_locale]['datefmt']}',
 									'{$locales[$oldloc_locale]['timefmt']}', '{$locales[$oldloc_locale]['startofweek']}',
 									'{$locales[$oldloc_locale]['name']}', '{$locales[$oldloc_locale]['messages']}',
-									'{$locales[$oldloc_locale]['priority']}',";
+									'{$locales[$oldloc_locale]['priority']}', '$transliteration_map'";
 				if( $oldloc_locale != $newloc_locale )
 				{ // disable old locale
 					$query .= ' 0)';
@@ -170,10 +149,11 @@ switch( $action )
 		}
 
 		$query = 'REPLACE INTO T_locales
-							( loc_locale, loc_charset, loc_datefmt, loc_timefmt, loc_startofweek, loc_name, loc_messages, loc_priority, loc_enabled )
+							( loc_locale, loc_charset, loc_datefmt, loc_timefmt, loc_startofweek, loc_name, loc_messages, loc_priority, loc_transliteration_map, loc_enabled )
 							VALUES ( '.$DB->quote($newloc_locale).', '.$DB->quote($newloc_charset).', '.$DB->quote($newloc_datefmt).', '
 								.$DB->quote($newloc_timefmt).', '.$DB->quote($newloc_startofweek).', '.$DB->quote($newloc_name).', '
-								.$DB->quote($newloc_messages).', '.$DB->quote($newloc_priority).', '.$DB->quote($newloc_enabled).' )';
+								.$DB->quote($newloc_messages).', '.$DB->quote($newloc_priority).', '.$DB->quote($newloc_transliteration_map).', '
+								.$DB->quote($newloc_enabled).' )';
 		$q = $DB->query($query);
 		$Messages->add( sprintf(T_('Saved locale &laquo;%s&raquo;.'), $newloc_locale), 'success' );
 
@@ -357,9 +337,12 @@ switch( $action )
 				$locales[ $lswitchwith ]['priority'] = $locales[ $edit_locale ]['priority'];
 				$locales[ $edit_locale ]['priority'] = $i;
 
-				$query = "REPLACE INTO T_locales ( loc_locale, loc_charset, loc_datefmt, loc_timefmt, loc_name, loc_messages, loc_priority, loc_enabled )	VALUES
-					( '$edit_locale', '{$locales[ $edit_locale ]['charset']}', '{$locales[ $edit_locale ]['datefmt']}', '{$locales[ $edit_locale ]['timefmt']}', '{$locales[ $edit_locale ]['name']}', '{$locales[ $edit_locale ]['messages']}', '{$locales[ $edit_locale ]['priority']}', '{$locales[ $edit_locale ]['enabled']}'),
-					( '$lswitchwith', '{$locales[ $lswitchwith ]['charset']}', '{$locales[ $lswitchwith ]['datefmt']}', '{$locales[ $lswitchwith ]['timefmt']}', '{$locales[ $lswitchwith ]['name']}', '{$locales[ $lswitchwith ]['messages']}', '{$locales[ $lswitchwith ]['priority']}', '{$locales[ $lswitchwith ]['enabled']}')";
+				$lswitchwith_transliteration_map = is_array($locales[ $lswitchwith ]['transliteration_map']) ? base64_encode(serialize($locales[ $lswitchwith ]['transliteration_map'])) : '';
+				$edit_transliteration_map = is_array($locales[ $edit_locale ]['transliteration_map']) ? base64_encode(serialize($locales[ $edit_locale ]['transliteration_map'])) : '';
+
+				$query = "REPLACE INTO T_locales ( loc_locale, loc_charset, loc_datefmt, loc_timefmt, loc_name, loc_messages, loc_priority, loc_transliteration_map, loc_enabled )	VALUES
+					( '$edit_locale', '{$locales[ $edit_locale ]['charset']}', '{$locales[ $edit_locale ]['datefmt']}', '{$locales[ $edit_locale ]['timefmt']}', '{$locales[ $edit_locale ]['name']}', '{$locales[ $edit_locale ]['messages']}', '{$locales[ $edit_locale ]['priority']}', '$edit_transliteration_map', '{$locales[ $edit_locale ]['enabled']}'),
+					( '$lswitchwith', '{$locales[ $lswitchwith ]['charset']}', '{$locales[ $lswitchwith ]['datefmt']}', '{$locales[ $lswitchwith ]['timefmt']}', '{$locales[ $lswitchwith ]['name']}', '{$locales[ $lswitchwith ]['messages']}', '{$locales[ $lswitchwith ]['priority']}', '$lswitchwith_transliteration_map', '{$locales[ $lswitchwith ]['enabled']}')";
 				$q = $DB->query( $query );
 
 				$Messages->add( T_('Switched priorities.'), 'success' );
@@ -375,10 +358,11 @@ switch( $action )
 		break;
 }
 
-$AdminUI->breadcrumbpath_init();
-$AdminUI->breadcrumbpath_add( T_('Global settings'), '?ctrl=settings',
+$AdminUI->breadcrumbpath_init( false );
+$AdminUI->breadcrumbpath_add( T_('System'), '?ctrl=system',
 		T_('Global settings are shared between all blogs; see Blog settings for more granular settings.') );
 $AdminUI->breadcrumbpath_add( T_('Regional settings'), '?ctrl=locales' );
+$AdminUI->breadcrumbpath_add( T_('Locales'), '?ctrl=locales' );
 
 // Display <html><head>...</head> section! (Note: should be done early if actions do not redirect)
 $AdminUI->disp_html_head();
@@ -398,8 +382,4 @@ $AdminUI->disp_payload_end();
 // Display body bottom, debug info and close </html>:
 $AdminUI->disp_global_footer();
 
-
-/*
- * $Log: locales.ctrl.php,v $
- */
 ?>

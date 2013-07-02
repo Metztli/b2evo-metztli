@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -31,7 +31,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _hit.class.php 1542 2012-07-19 08:16:55Z attila $
+ * @version $Id: _hit.class.php 3328 2013-03-26 11:44:11Z yura $
  *
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -62,16 +62,33 @@ class Hit
 	 */
 	var $referer;
 
+
+	/**
+	 * The type of hit.
+	 *
+	 * 'standard'|'rss'|'admin'|'ajax'|'service'
+	 *
+	 * @var string
+	 */
+	var $hit_type;
+
 	/**
 	 * The type of referer.
 	 *
 	 * Note: "spam" referers do not get logged.
-	 * 'search'|'blacklist'|'referer'|'direct'|'spam'|'self'
+	 * 'search'|'special'|'referer'|'direct'|'spam'|'self'
 	 *
 	 * @var string
 	 */
 	var $referer_type;
 
+
+	/**
+	 * The dom_type of the referer's base domain in T_basedomains
+	 * 'unknown'|'normal'|'searcheng'|'aggregator'|'email'
+	 * @var string
+	 */
+	var $dom_type = 'unknown';
 	/**
 	 * The ID of the referer's base domain in T_basedomains
 	 *
@@ -167,23 +184,111 @@ class Hit
 	var $_serprank = NULL;
 	var $_search_engine = NULL;
 
+	/**
+	 * Session ID
+	 */
+	 var $session_id;
+
+	 /**
+	 * Hit time
+	 */
+	 var $hit_time;
+
+	/**
+	 * Hit_response_code
+	 */
+	 var $hit_response_code = 200;
+
+	/**
+	 * Hit action
+	 */
+	 var $action;
+
+
+
+	 /**
+	  * Test mode
+	  * The mode used by geneartion of a fake statisctics. In this case test_mode = 1
+	  * fp>vitaliy what is this for?
+	  * Test what & when?
+	  *
+	  */
+	 var $test_mode;
+
+	 /**
+	  * Test rss mode
+	  * fp>vitaliy what is this for?
+	  * Test_rss is used for geneartion of fake statistics. In the normal mode
+	  * Hit class determines rss hit using $Skin->type == 'feed'. In the test mode
+	  * skin type doesn't change and that is why the new variable was needed to emulate
+	  * skin type.
+	  */
+	 var $test_rss;
+
+	 /**
+	  * Test URI
+	  */
+	 var $test_uri;
 
 	/**
 	 * Constructor
 	 *
 	 * This may INSERT a basedomain and a useragent but NOT the HIT itself!
 	 */
-	function Hit()
+	function Hit( $referer = NULL, $IP = NULL, $session_id= NULL, $hit_time = NULL, $test_mode = NULL , $test_uri = NULL, $user_agent = NULL, $test_admin = NULL, $test_rss = NULL)
 	{
 		global $debug;
 
-		// Get the first IP in the list of REMOTE_ADDR and HTTP_X_FORWARDED_FOR
-		$this->IP = get_ip_list( true );
+		if( isset($IP) )
+		{
+			$this->IP = $IP;
+		}
+		else
+		{	// Get the first IP in the list of REMOTE_ADDR and HTTP_X_FORWARDED_FOR
+			$this->IP = get_ip_list( true );
+		}
+
+		if (!empty($session_id))
+		{
+			$this->session_id = $session_id;
+		}
+
+		if (!empty($hit_time))
+		{
+			$this->hit_time = $hit_time;
+		}
+
+		if (!empty($test_mode))
+		{
+			$this->test_mode = $test_mode;
+		}
+
+		if (!empty($test_uri))
+		{
+			$this->test_uri = $test_uri;
+		}
+
+		if (!empty($user_agent))
+		{
+			$this->user_agent = $user_agent;
+		}
+
+		if (!empty($test_admin))
+		{
+			$this->test_admin = $test_admin;
+		}
+
+		if (!empty($test_rss))
+		{
+			$this->test_rss = $test_rss;
+		}
+
+		$this->hit_type = $this->get_hit_type();
 
 		// Check the REFERER and determine referer_type:
 		// TODO: dh> move this out of here, too, only if "antispam_block_spam_referers" is true,
 		//           do something about it (here or somewhere else, but early).
-		$this->detect_referer(); // May EXIT if we are set up to block referer spam.
+		$this->detect_referer( $referer ); // May EXIT if we are set up to block referer spam.
 
 		if( $debug )
 		{
@@ -202,13 +307,15 @@ class Hit
 	function detect_admin_page()
 	{
 		global $Debuglog;
-
-		if( is_admin_page() )
-		{	// We are inside of admin, this supersedes 'direct' access
-			// NOTE: this is not really a referer type but more a hit type
-			$Debuglog->add( 'Hit: Referer is admin page.', 'request' );
-			$this->referer_type = 'admin';
-			return true;
+		if (empty($this->test_mode) || (!empty($this->test_mode) && !empty($this->test_admin)))
+		{
+			if( is_admin_page() )
+			{	// We are inside of admin, this supersedes 'direct' access
+				// NOTE: this is not really a referer type but more a hit type
+				// $Debuglog->add( 'Hit: Referer is admin page.', 'request' );
+				//$this->referer_type = 'admin';
+				return true;
+			}
 		}
 		return false;
 	}
@@ -252,20 +359,36 @@ class Hit
 	 *
 	 * referer_type: enum('search', 'blacklist', 'referer', 'direct'); 'spam' gets used internally
 	 */
-	function detect_referer()
+	function detect_referer( $referer = NULL )
 	{
 		global $Debuglog, $debug;
-		global $self_referer_list, $blackList;  // used to detect $referer_type
+		global $self_referer_list, $SpecialList;  // used to detect $referer_type
 		global $skins_path;
 		global $Settings;
 
-		$this->referer = $this->get_referer();
+		if( isset($referer) )
+		{
+			$this->referer = $referer;
+		}
+		else
+		{	// Get referer from HTTP request
+			$this->referer = $this->get_referer();
+		}
+
 
 		if( empty($this->referer) )
 		{	// NO referer
 			// This type may be superseeded and set to 'admin'
 			if( ! $this->detect_admin_page() )
 			{	// Not an admin page:
+				$this->referer_type = 'direct';
+			}
+			else
+			{
+				if (empty($this->hit_type))
+				{
+					$this->hit_type = 'admin';
+				}
 				$this->referer_type = 'direct';
 			}
 			return;
@@ -291,18 +414,26 @@ class Hit
 					$Debuglog->add( 'Hit: detect_referer(): self referer ('.$self_referer.')', 'request' );
 					$this->referer_type = 'self';
 				}
+				else
+				{
+					if (empty($this->hit_type))
+					{
+						$this->hit_type = 'admin';
+					}
+					$this->referer_type = 'self';
+				}
 				return;
 			}
 		}
 
 
-		// Check blacklist, see {@link $blackList}
+		// Check Special list, see {@link $SpecialList}
 		// NOTE: This is NOT the antispam!!
 		// fplanque: we log these (again), because if we didn't we woudln't detect
 		// reloads on these... and that would be a problem!
-		foreach( $blackList as $lBlacklist )
+		foreach( $SpecialList as $lSpeciallist )
 		{
-			$pos = strpos( $this->referer, $lBlacklist );
+			$pos = strpos( $this->referer, $lSpeciallist );
 			// If not starting within in the first 12 chars it's probably an url param as in &url=http://this_blog.com
 			if( $pos !== false && $pos <= 12 )
 			{
@@ -310,8 +441,8 @@ class Hit
 				// fp> 2009-05-10: because of the 12 char limit above the following is probably no longer needed. Please enable it back if anyone has a problem with admin being detected as blacklist
 				// if( ! $this->detect_admin_page() )
 				{	// Not an admin page:
-					$Debuglog->add( 'Hit: detect_referer(): blacklist ('.$lBlacklist.')', 'request' );
-					$this->referer_type = 'blacklist';
+					$Debuglog->add( 'Hit: detect_referer(): blacklist ('.$lSpeciallist.')', 'request' );
+					$this->referer_type = 'special';
 				}
 				return;
 			}
@@ -377,11 +508,25 @@ class Hit
 				{	// This is the first time this base domain visits:
 
 					// The INSERT below can fail, probably if we get two simultaneous hits (seen in the demo logfiles)
+					if ($this->agent_type == 'robot' || $this->hit_type == 'rss')
+					{
+						$this->dom_type = 'aggregator';
+					}
+					elseif($this->referer_type == 'search')
+					{
+						$this->dom_type = 'searcheng';
+					}
+					elseif($this->referer_type == 'referer' || $this->referer_type == 'self')
+					{
+						$this->dom_type = 'normal';
+					}
+
+
 					$DB->save_error_state();
 
 					if( $DB->query( '
-						INSERT INTO T_basedomains( dom_name )
-							VALUES( '.$DB->quote($referer_basedomain).' )' ) )
+						INSERT INTO T_basedomains( dom_name, dom_type)
+							VALUES( '.$DB->quote($referer_basedomain).', '.$DB->quote($this->dom_type).' )' ) )
 					{ // INSERTed ok:
 						$this->referer_domain_ID = $DB->insert_id;
 					}
@@ -524,18 +669,8 @@ class Hit
 		$Debuglog->add( 'Hit:detect_useragent(): Agent name: '.$this->agent_name, 'request' );
 		$Debuglog->add( 'Hit:detect_useragent(): Agent platform: '.$this->agent_platform, 'request' );
 
-		/*
-		 * Detect requests for XML feeds by $skin / $tempskin param.
-		 * fp> TODO: this is WEAK! Do we really need to know before going into the skin?
-		 * dh> not necessary, but only where ->agent_type gets used (logging).
-		 */
-		if( isset( $Skin ) && $Skin->type == 'feed' )
-		{
-			$Debuglog->add( 'Hit: detect_useragent(): RSS', 'request' );
-			$this->agent_type = 'rss';
-		}
-		else
-		{ // Lookup robots
+
+		 // Lookup robots
 			$match = false;
 			foreach( $user_agents as $lUserAgent )
 			{
@@ -554,8 +689,8 @@ class Hit
 				$Debuglog->add( 'Hit:detect_useragent(): robot (through browscap)', 'request' );
 				$this->agent_type = 'robot';
 			}
+
 		}
-	}
 
 
 	/**
@@ -634,7 +769,7 @@ class Hit
 	{
 		global $Settings, $Debuglog, $is_admin_page;
 
-		if( $is_admin_page && ! $Settings->get('log_admin_hits') )
+		if( $is_admin_page && ! $Settings->get('log_admin_hits') && empty($this->test_mode))
 		{	// We don't want to log admin hits:
 			$Debuglog->add( 'Hit: Hit NOT logged, (Admin page logging is disabled)', 'request' );
 			return false;
@@ -646,7 +781,7 @@ class Hit
 			return false;
 		}
 
-		if( $this->referer_type == 'spam' && ! $Settings->get('log_spam_hits') )
+		if( ($this->referer_type == 'spam' && ! $Settings->get('log_spam_hits')) && empty($this->test_mode) )
 		{	// We don't want to log referer spam hits:
 			$Debuglog->add( 'Hit: Hit NOT logged, (Referer spam)', 'request' );
 			return false;
@@ -664,26 +799,38 @@ class Hit
 	 */
 	function record_the_hit()
 	{
-		global $DB, $Session, $ReqURI, $Blog, $blog, $localtimenow, $Debuglog;
+		global $DB, $Session, $ReqURI, $Blog, $blog, $localtimenow, $Debuglog, $disp, $ctrl, $http_response_code;
 
+		// To log current display and controller the global variables $disp and $ctrl are used. They can be setup while calling of some controller
+		// or while forming a page. In case if these variables aren't setup, NULL is recorded to the DB.
 		$Debuglog->add( 'Hit: Recording the hit.', 'request' );
 
-		if( !empty($Blog) )
+		$this->action = $this->get_action();
+
+		if(empty($this->test_uri))
 		{
-			$blog_ID = $Blog->ID;
-		}
-		elseif( !empty( $blog ) )
-		{
-			if( ! is_numeric($blog) )
-			{ // this can be anything given by URL param "blog"! (because it's called on shutdown)
-			  // see todo in param().
-				$blog = NULL;
+			if( !empty($Blog) )
+			{
+				$blog_ID = $Blog->ID;
 			}
-			$blog_ID = $blog;
+			elseif( !empty( $blog ) )
+			{
+				if( ! is_numeric($blog) )
+				{ // this can be anything given by URL param "blog"! (because it's called on shutdown)
+				  // see todo in param().
+					$blog = NULL;
+				}
+				$blog_ID = $blog;
+			}
+			else
+			{
+				$blog_ID = NULL;
+			}
 		}
 		else
 		{
-			$blog_ID = NULL;
+			$blog_ID = $this->test_uri['blog_id'];
+			$ReqURI = $this->test_uri['link'];
 		}
 
 		$hit_uri = substr($ReqURI, 0, 250); // VARCHAR(250) and likely to be longer
@@ -693,7 +840,32 @@ class Hit
 		$keyphrase = $this->get_keyphrase();
 
 		$keyp_ID = NULL;
-		if( !empty( $keyphrase ) )
+
+		if ( empty ($keyphrase) )
+		{	// No search hit
+			if ( ! empty($this->test_mode) && !empty($this->test_uri['s']))
+			{
+				$s = $this->test_uri['s'];
+			}
+			else
+			{
+				$s = get_param("s");
+			}
+			if( !empty($s) && !empty($blog_ID) )
+			{	// Record Internal Search:
+				$keyphrase  = $s;
+/*						load_class('sessions/model/_internal_searches.class.php', 'Internalsearches' );
+						$internal_searches = new InternalSearches();
+						$internal_searches->set("coll_ID" , $blog_ID);
+						$internal_searches->set("hit_ID" , $hit_ID);
+						$internal_searches->set("keywords" , get_param("s") );
+						$internal_searches->dbinsert();
+*/			}
+		}
+
+
+
+/*		if( !empty( $keyphrase ) )
 		{
 			$DB->begin();
 
@@ -710,28 +882,134 @@ class Hit
 				$keyp_ID = $DB->insert_id;
 			}
 		}
-
+*/
 		// Extract the serprank from search referers:
 		$serprank = $this->get_serprank();
 
+		if (!empty($http_response_code))
+		{	//  in some cases $http_response_code not set and we can use value by default
+			$this->hit_response_code = $http_response_code;
+		}
+
+		if (empty($this->hit_type))
+		{
+			global $Skin;
+
+			if( (isset( $Skin ) && $Skin->type == 'feed') || !empty($this->test_rss) )
+			{
+				$this->hit_type = 'rss';
+			}
+			else
+			{
+				if ( isset($_SERVER['HTTP_X_REQUESTED_WITH']) && (strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') )
+				{
+					$this->hit_type = 'ajax';
+				}
+				else
+				{
+					$this->hit_type = 'standard';
+				}
+			}
+		}
+
+
 		// insert hit into DB table:
-		$sql = "
-			INSERT INTO T_hitlog(
-				hit_sess_ID, hit_datetime, hit_uri, hit_referer_type,
-				hit_referer, hit_referer_dom_ID, hit_keyphrase_keyp_ID, hit_serprank, hit_blog_ID, hit_remote_addr, hit_agent_type )
-			VALUES( '".$Session->ID."', FROM_UNIXTIME(".$localtimenow."), '".$DB->escape($hit_uri)."', '".$this->referer_type
-				."', '".$DB->escape($hit_referer)."', ".$DB->null($this->get_referer_domain_ID()).', '.$DB->null($keyp_ID)
-				.', '.$DB->null($serprank).', '.$DB->null($blog_ID).", '".$DB->escape( $this->IP )."', '".$this->get_agent_type()."'
-			)";
+		if (empty($this->test_mode))
+		{
+			$sql = "
+				INSERT INTO T_hitlog(
+					hit_sess_ID, hit_datetime, hit_uri, hit_disp, hit_ctrl, hit_action, hit_type ,hit_referer_type,
+					hit_referer, hit_referer_dom_ID, hit_keyphrase_keyp_ID, hit_keyphrase, hit_serprank, hit_blog_ID, hit_remote_addr, hit_agent_type, hit_response_code )
+				VALUES( '".$Session->ID."', FROM_UNIXTIME(".$localtimenow."), '".$DB->escape($hit_uri)."', ".$DB->quote($disp).", ".$DB->quote($ctrl).", ".$DB->quote($this->action).", '".$this->hit_type."', '".$this->referer_type
+					."', '".$DB->escape($hit_referer)."', ".$DB->null($this->get_referer_domain_ID()).', '.$DB->null($keyp_ID).', '.$DB->quote($keyphrase)
+					.', '.$DB->null($serprank).', '.$DB->null($blog_ID).", '".$DB->escape( $this->IP )."', '".$this->get_agent_type()."', ".$DB->null($this->hit_response_code).")";
+		}
+		else
+		{
+			// Test mode
+			isset($this->test_uri['disp']) ? $test_disp = $this->test_uri['disp'] : $test_disp = NULL;
+			isset($this->test_uri['ctrl']) ? $test_ctrl = $this->test_uri['ctrl'] : $test_ctrl = NULL;
+			$this->action = NULL;
+
+			$sql = "
+				INSERT INTO T_hitlog(
+					hit_sess_ID, hit_datetime, hit_uri, hit_disp, hit_ctrl, hit_action, hit_type, hit_referer_type,
+					hit_referer, hit_referer_dom_ID, hit_keyphrase_keyp_ID, hit_keyphrase ,hit_serprank, hit_blog_ID, hit_remote_addr, hit_agent_type, hit_response_code )
+				VALUES( '".$this->session_id."', FROM_UNIXTIME(".$this->hit_time."), '".$DB->escape($hit_uri)."', ".$DB->quote($test_disp).", ".$DB->quote($test_ctrl).", ".$DB->quote($this->action).", '".$this->hit_type."', '".$this->referer_type
+					."', '".$DB->escape($hit_referer)."', ".$DB->null($this->get_referer_domain_ID()).', '.$DB->null($keyp_ID).', '.$DB->quote($keyphrase)
+					.', '.$DB->null($serprank).', '.$DB->null($blog_ID).", '".$DB->escape( $this->IP )."', '".$this->get_agent_type()."', ".$DB->null($this->hit_response_code).")";
+
+		}
+
 
 		$DB->query( $sql, 'Record the hit' );
+		$hit_ID = $DB->insert_id;
 
 		if( !empty( $keyphrase ) )
 		{
 			$DB->commit();
 		}
 
-		$this->ID = $DB->insert_id;
+		$this->ID = $hit_ID;
+	}
+
+
+	/**
+	 * Get hit type from the uri
+	 * @return mixed Hit type
+	 */
+	function get_hit_type()
+	{
+		global $ReqURI;
+		if( $this->hit_type )
+		{
+			return $this->hit_type;
+		}
+
+		$ajax_array = array('htsrv/async.php', 'htsrv/anon_async.php');
+
+		foreach ($ajax_array as $ajax)
+		{
+			if (strstr($ReqURI,$ajax))
+			{
+				return 'ajax';
+			}
+		}
+
+		if (strstr($ReqURI,'htsrv/'))
+		{
+			return 'service';
+		}
+		else
+		{
+			return NULL;
+		}
+	}
+
+	/**
+	 * Get hit action
+	 * @return mixed Hit action
+	 */
+	function get_action()
+	{
+		global $ReqURI, $action;
+		if( $this->action )
+		{
+			return $this->action;
+		}
+
+		if (strstr($ReqURI,'htsrv/getfile.php'))
+		{ // special case
+			return 'getfile';
+		}
+		if (!empty ($action))
+		{
+			return $action;
+		}
+		else
+		{
+			return NULL;
+		}
 	}
 
 
@@ -942,7 +1220,7 @@ class Hit
 		if( is_null( $this->country_codes ) )
 		{
 			// sam2kb> Save one DB query on every page load
-			// $this->country_codes = $DB->get_col('SELECT ctry_code FROM T_country', 0, 'get 2 letter ISO country codes' );
+			// $this->country_codes = $DB->get_col('SELECT ctry_code FROM T_regional__country', 0, 'get 2 letter ISO country codes' );
 
 			$countries = 'ad, ae, af, ag, ai, al, am, an, ao, aq, ar, as, at, au, aw, ax, az, ba, bb, bd, be, bf, bg, bh, bi,
 							bj, bl, bm, bn, bo, br, bs, bt, bv, bw, by, bz, ca, cc, cd, cf, cg, ch, ci, ck, cl, cm, cn, co, cr,
@@ -954,9 +1232,6 @@ class Hit
 							ph, pk, pl, pm, pn, pr, ps, pt, pw, py, qa, re, ro, rs, ru, rw, sa, sb, sc, sd, se, sg, sh, si, sj,
 							sk, sl, sm, sn, so, sr, st, sv, sy, sz, tc, td, tf, tg, th, tj, tk, tl, tm, tn, to, tr, tt, tv, tw,
 							tz, ua, ug, um, us, uy, uz, va, vc, ve, vg, vi, vn, vu, wf, ws, ye, yt, za, zm, zw';
-
-			// Extra codes not found in default b2evo countries list
-			$countries .= ', eu, uk';
 
 			$this->country_codes = array_map( 'trim', explode(',', $countries) );
 		}
@@ -1010,12 +1285,15 @@ class Hit
 			$countries = implode( '|', $this->get_country_codes() );
 		}
 
+		// Add not ISO 3166-1 country code top level domains
+		$other_ccTLDs = ', uk, eu';
+
 		return preg_replace(
 			array(
 				'/^(w+[0-9]*|search)\./',
 				'/(^|\.)m\./',
-				'/(\.(com|org|net|co|it|edu))?\.('.$countries.')(\/|$)/',
-				'/^('.$countries.')\./',
+				'/(\.(com|org|net|co|it|edu))?\.('.$countries.$other_ccTLDs.')(\/|$)/',
+				'/^('.$countries.$other_ccTLDs.')\./',
 			),
 			array(
 				'',
@@ -1109,7 +1387,7 @@ class Hit
 	 * Is this a search referer hit?
 	 *
 	 * Note: in some situations it is not possible to detect search keywords (like google redirect URLs),
-	 * and in stats you may see [n.a.] in 'Search keywords' column
+	 * and in stats you may see [n.a.] in 'Search keywords' column.
 	 *
 	 * @param string Hit referer
 	 * @param boolean true to return an array, false to return boolean
@@ -1440,6 +1718,17 @@ class Hit
 	}
 
 	/**
+	 * Is this Internet Explorer?
+	 * @return boolean
+	 */
+	function is_IE()
+	{
+		if( ! isset($this->is_IE) )
+			$this->detect_useragent();
+		return $this->is_IE;
+	}
+
+	/**
 	 * Is this Chrome?
 	 * @return boolean
 	 */
@@ -1482,10 +1771,30 @@ class Hit
 			$this->detect_useragent();
 		return $this->is_NS4;
 	}
+
+
+	/**
+	 * Is this a browser hit?
+	 * @return boolean
+	 */
+	function is_browser()
+	{
+		if( ! isset($this->is_browser) )
+			$this->is_browser = ($this->get_agent_type() == 'browser');
+		return $this->is_browser;
+	}
+
+
+	/**
+	 * Is this a robot hit?
+	 * @return boolean
+	 */
+	function is_robot()
+	{
+		if( ! isset($this->is_robot) )
+			$this->is_robot = ($this->get_agent_type() == 'robot');
+		return $this->is_robot;
+	}
 }
 
-
-/*
- * $Log: _hit.class.php,v $
- */
 ?>

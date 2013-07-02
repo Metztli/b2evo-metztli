@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -22,7 +22,7 @@
  *
  * @package evocore
  *
- * @version $Id: _pagecache.class.php 57 2011-10-26 08:18:58Z sam2kb $ }}}
+ * @version $Id: _pagecache.class.php 4073 2013-06-27 05:55:11Z yura $ }}}
  *
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -88,7 +88,7 @@ class PageCache
 		{	// Cache for "other" "genereic" "special" pages:
 			$this->ads_collcache_path = $cache_path.'general/';
 
-			if( ! $Settings->get('general_cache_enabled') )
+			if( ( ! empty( $Settings ) ) && ( ! $Settings->get('general_cache_enabled') ) )
 			{	// We do NOT want caching for this collection
 				$Debuglog->add( 'General cache not enabled.', 'pagecache' );
 			}
@@ -148,6 +148,12 @@ class PageCache
 	 */
 	function gen_filecache_path( $url )
 	{
+		global $skin;
+
+		if( !empty( $skin ) )
+		{ // add skin folder into the end of the url before creating the hash to have different cache files for different skins
+			$url .= $skin;
+		}
 		$url_hash = md5($url);	// fp> is this teh fastest way to hash this into something not too obvious to guess?
 		// echo $url_hash;
 
@@ -179,6 +185,8 @@ class PageCache
 	 */
 	function cache_create( $clear = true )
 	{
+		global $cache_path;
+
 		// Create by using the filemanager's default chmod. TODO> we may not want to make these publicly readable
 		if( ! mkdir_r( $this->ads_collcache_path, NULL ) )
 		{
@@ -186,8 +194,14 @@ class PageCache
 		}
 
 		if( $clear )
-		{	// Clear contents of folder, if any:
+		{ // Clear contents of folder, if any:
 			cleardir_r( $this->ads_collcache_path );
+		}
+
+		// Create htaccess file with deny rules
+		if( ! create_htaccess_deny( $cache_path ) )
+		{
+			return false;
 		}
 
 		return true;
@@ -227,8 +241,8 @@ class PageCache
 			return false;
 		}
 
-		if( $disp == 'login' || $disp == 'register' )
-		{	// We do NOT want caching for in-skin login and register pages
+		if( $disp == 'login' || $disp == 'register' || $disp == 'lostpassword' )
+		{	// We do NOT want caching for in-skin login, register and lostpassord pages
 			$Debuglog->add( 'Never cache the in-skin login and register pages!', 'pagecache' );
 			return false;
 		}
@@ -406,7 +420,7 @@ class PageCache
 						// pre_dump($if_none_match, gen_current_page_etag() );
 						if( $if_none_match == gen_current_page_etag() )
 						{	// Ok, this seems to be really the same:
-							header( 'HTTP/1.0 304 Not Modified' );
+							header_http_response( '304 Not Modified' );
 							exit(0);
 						}
 					}
@@ -540,6 +554,11 @@ class PageCache
 			{
 				$file_head .= 'item_IDs_on_this_page:'.implode( ',', $shutdown_count_item_views )."\n";
 			}
+			global $skin;
+			if( !empty( $skin ) )
+			{ // add current skin folder into the cache file header 
+				$file_head .= 'skin:'.$skin."\n";
+			}
 
  			$file_head .= "\n";
 
@@ -599,8 +618,8 @@ class PageCache
 		$file_name = basename($file_path);
 
 		// Note: index.html pages are in the cache to hide the contents from browsers in case the webserver whould should a listing
-		if( ( $file_name == 'index.html' ) || ( substr( $file_name, 0, 1 ) == '.' ) )
-		{ // this file is index.html or it is hidden, should not delete it.
+		if( ( $file_name == 'index.html' ) || ( substr( $file_name, 0, 1 ) == '.' ) || ( $file_name == 'sample.htaccess' ) )
+		{ // this file is index.html or sample.htaccess or it is hidden, should not delete it.
 			return false;
 		}
 
@@ -690,8 +709,4 @@ class PageCache
 	}
 }
 
-
-/*
- * $Log: _pagecache.class.php,v $
- */
 ?>

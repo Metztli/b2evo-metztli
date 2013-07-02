@@ -22,6 +22,16 @@ if( file_exists(dirname(__FILE__).'/maintenance.html') )
 	readfile(dirname(__FILE__).'/maintenance.html');
 	die();
 }
+elseif( file_exists(dirname(__FILE__).'/umaintenance.html') )
+{ // Maintenance mode with a file - "umaintenance.html" with an "u" prevents access to the site but NOT to upgrade
+	$get_ctrl = isset( $_GET['ctrl'] ) ? $_GET['ctrl'] : ( isset( $_POST['ctrl'] ) ? $_POST['ctrl'] : '' );
+	if( $get_ctrl != 'upgrade' )
+	{
+		header('HTTP/1.0 503 Service Unavailable');
+		readfile(dirname(__FILE__).'/umaintenance.html');
+		die();
+	}
+}
 
 /**
  * This makes sure the config does not get loaded twice in Windows
@@ -63,9 +73,9 @@ if( $debug == 'pwd' )
 	// Disabled until we find a reason to enable:
 	$debug = 0;
 
-	if( !empty($debug_pwd) )
+	if( !empty( $debug_pwd ) )
 	{	// We have configured a password that could enable debug mode:
-		if( isset($_GET['debug']) )
+		if( isset( $_GET['debug'] ) )
 		{	// We have submitted a ?debug=password
 			if( $_GET['debug'] == $debug_pwd )
 			{	// Password matches
@@ -77,18 +87,70 @@ if( $debug == 'pwd' )
 				setcookie( 'debug', '', $cookie_expired, $cookie_path, $cookie_domain );
 			}
 		}
-		elseif( !empty($_COOKIE['debug'])	&& $_COOKIE['debug'] == $debug_pwd )
+		elseif( !empty( $_COOKIE['debug'] ) && $_COOKIE['debug'] == $debug_pwd )
 		{	// We have a cookie with the correct debug password:
 			$debug = 1;
 		}
 	}
 }
 
+// Handle debug jslog cookie:
+if( $debug_jslog == 'pwd' )
+{	// Debug *can* be enabled/disabled by cookie:
+
+	// Disabled until we find a reason to enable:
+	$debug_jslog = 0;
+
+	if( !empty( $debug_pwd ) )
+	{	// We have configured a password that could enable debug mode:
+		if( isset( $_GET['jslog'] ) )
+		{	// We have submitted a ?jslog=password
+			if( $_GET['jslog'] == $debug_pwd )
+			{	// Password matches
+				$debug_jslog = 1;
+				setcookie( 'jslog', $debug_pwd, 0, '/' );
+			}
+			else
+			{	// Password doesn't match: turn off debug mode:
+				setcookie( 'jslog', '', $cookie_expired, '/' );
+				if( !empty( $_COOKIE['jslog_style'] ) )
+				{	// Change the saved styles to hide jslog
+					$_COOKIE['jslog_style'] = str_replace( 'display: block', 'display: none', $_COOKIE['jslog_style'] );
+					setcookie( 'jslog_style', $_COOKIE['jslog_style'], 0, '/' );
+				}
+			}
+		}
+		elseif( !empty( $_COOKIE['jslog'] ) && $_COOKIE['jslog'] == $debug_pwd )
+		{	// We have a cookie with the correct debug password:
+			$debug_jslog = 1;
+			if( !empty( $_COOKIE['jslog_style'] ) )
+			{	// Change the saved styles to show jslog
+				$_COOKIE['jslog_style'] = str_replace( 'display: none', 'display: block', $_COOKIE['jslog_style'] );
+				setcookie( 'jslog_style', $_COOKIE['jslog_style'], 0, '/' );
+			}
+		}
+	}
+}
+
+// Check compatibility. Server PHP version can't be lower then the application required PHP version.
+$php_version = phpversion();
+if( version_compare( $php_version, $required_php_version[ 'application' ], '<' ) )
+{
+	$compat = sprintf( 'You cannot use %1$s %2$s on this server because it requires PHP version %3$s or higher. You are running version %4$s.',
+				$app_name, $app_version, $required_php_version[ 'application' ], $php_version );
+
+	die('<h1>Insufficient Requirements</h1><p>'.$compat.'</p>');
+}
+
+// Check timezone setting:
+$date_timezone = ini_get( "date.timezone" );
+if( version_compare( $php_version, '5.1', '>=' ) && ( !empty( $date_default_timezone ) || empty( $date_timezone ) ) )
+{ // Set default timezone in php versions >= 5.1 but only if $date_default_timezone is set or php.ini 'date.timezone' setting was not set
+	date_default_timezone_set( empty( $date_default_timezone ) ? 'Europe/Paris' : $date_default_timezone );
+}
+
 // STUFF THAT SHOULD BE INITIALIZED (to avoid param injection on badly configured PHP)
 $use_db = true;
 $use_session = true;
 
-/*
- * $Log: _config.php,v $
- */
 ?>

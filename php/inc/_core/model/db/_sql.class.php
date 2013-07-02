@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -24,7 +24,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _sql.class.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _sql.class.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -43,6 +43,7 @@ class SQL
 	var $from = '';
 	var $where = '';
 	var $group_by = '';
+	var $having = '';
 	var $order_by = '';
 	var $limit = '';
 	var $search_field = array();
@@ -70,6 +71,7 @@ class SQL
 		$sql .= $this->get_from();
 		$sql .= $this->get_where();
 		$sql .= $this->get_group_by();
+		$sql .= $this->get_having();
 		$sql .= $this->get_order_by();
 		$sql .= $this->get_limit();
 		return $sql;
@@ -85,6 +87,7 @@ class SQL
 		echo $this->get_from( '<br />FROM ' );
 		echo $this->get_where( '<br />WHERE ' );
 		echo $this->get_group_by( '<br />GROUP BY ' );
+		echo $this->get_having( '<br />HAVING ' );
 		echo $this->get_order_by( '<br />ORDER BY ' );
 		echo $this->get_limit( '<br />LIMIT ' );
 	}
@@ -140,6 +143,20 @@ class SQL
 		if( !empty($this->group_by) )
 		{
 			return $prefix.$this->group_by;
+		}
+
+		return '';
+	}
+
+
+  /**
+	 * Get HAVING clause if there is something inside
+	 */
+	function get_having( $prefix = ' HAVING ' )
+	{
+		if( !empty($this->having) )
+		{
+			return $prefix.$this->having;
 		}
 
 		return '';
@@ -273,12 +290,38 @@ class SQL
 		$this->group_by = $group_by;
 	}
 
+	function HAVING( $having )
+	{
+		$this->having = $having;
+	}
+
+	/**
+	 * Extends the HAVING clause with AND
+	 *
+	 * @param string
+	 */
+	function HAVING_and( $having_and )
+	{
+		if( empty( $having_and ) )
+		{	// Nothing to append:
+			return false;
+		}
+
+		if( ! empty( $this->having ) )
+		{ // We already have something in the HAVING clause:
+			$this->having .= ' AND ';
+		}
+
+		// Append payload:
+		$this->having .= '('.$having_and.')';
+	}
+
 	function ORDER_BY( $order_by )
 	{
 		$this->order_by = $order_by;
 	}
 
- 	function ORDER_BY_prepend( $order_by_prepend )
+	function ORDER_BY_prepend( $order_by_prepend )
 	{
 		if( empty( $order_by_prepend ) )
 		{
@@ -409,7 +452,4 @@ class SQL
 
 }
 
-/*
- * $Log: _sql.class.php,v $
- */
 ?>

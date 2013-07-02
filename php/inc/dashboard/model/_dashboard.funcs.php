@@ -5,7 +5,7 @@
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal Open Source relicensing agreement:
  * }}
@@ -15,8 +15,9 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _dashboard.funcs.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _dashboard.funcs.php 3914 2013-06-04 11:34:47Z yura $
  */
+if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
  /**
  * Get updates from b2evolution.net
@@ -124,9 +125,9 @@ function b2evonet_get_updates( $force_short_delay = false )
 											'evo_charset' => new xmlrpcval( $system_stats['evo_charset'], 'string' ),			// Do people actually use UTF8?
 											'evo_blog_count' => new xmlrpcval( $system_stats['evo_blog_count'], 'int'),   // How many users do use multiblogging?
 											'cachedir_status' => new xmlrpcval( $system_stats['cachedir_status'], 'int'),
-                      'cachedir_size' => new xmlrpcval( $system_stats['cachedir_size'], 'int'),
-                      'general_pagecache_enabled' => new xmlrpcval( $system_stats['general_pagecache_enabled'] ? 1 : 0, 'int' ),
-                      'blog_pagecaches_enabled' => new xmlrpcval( $system_stats['blog_pagecaches_enabled'], 'int' ),
+											'cachedir_size' => new xmlrpcval( $system_stats['cachedir_size'], 'int'),
+											'general_pagecache_enabled' => new xmlrpcval( $system_stats['general_pagecache_enabled'] ? 1 : 0, 'int' ),
+											'blog_pagecaches_enabled' => new xmlrpcval( $system_stats['blog_pagecaches_enabled'], 'int' ),
 											'db_version' => new xmlrpcval( $system_stats['db_version'], 'string'),	// If a version >95% we make it the new default.
 											'db_utf8' => new xmlrpcval( $system_stats['db_utf8'] ? 1 : 0, 'int' ),	// if support >95%, we'll make it the default
 											// How many "low security" hosts still active?; we'd like to standardize security best practices... on suphp?
@@ -197,39 +198,78 @@ function b2evonet_get_updates( $force_short_delay = false )
 
 
 /**
+ * Get comments awaiting moderation number
+ *
+ * @param integer blog ID
+ * @return integer
+ */
+function get_comments_awaiting_moderation_number( $blog_ID )
+{
+	global $DB;
+
+	$BlogCache = & get_BlogCache();
+	$Blog = & $BlogCache->get_by_ID( $blog_ID, false, false );
+	$moderation_statuses = $Blog->get_setting( 'moderation_statuses' );
+	$moderation_statuses_condition = '\''.str_replace( ',', '\',\'', $moderation_statuses ).'\'';
+
+	$sql = 'SELECT COUNT(DISTINCT(comment_ID))
+				FROM T_comments
+					INNER JOIN T_items__item ON comment_post_ID = post_ID ';
+
+	$sql .= 'INNER JOIN T_postcats ON post_ID = postcat_post_ID
+				INNER JOIN T_categories othercats ON postcat_cat_ID = othercats.cat_ID ';
+
+	$sql .= 'WHERE '.$Blog->get_sql_where_aggregate_coll_IDs('othercats.cat_blog_ID');
+	$sql .= ' AND comment_type IN (\'comment\',\'trackback\',\'pingback\') ';
+	$sql .= ' AND comment_status IN ( '.$moderation_statuses_condition.' )';
+	$sql .= ' AND '.statuses_where_clause();
+
+	return $DB->get_var( $sql );
+}
+
+
+/**
  * Show comments awaiting moderation
  *
  * @todo fp> move this to a more appropriate place
  *
  * @param integer blog ID
+ * @param object CommentList
  * @param integer limit
  * @param array comment IDs to exclude
+ * @param boolean TRUE - for script
  */
-function show_comments_awaiting_moderation( $blog_ID, $limit = 5, $comment_IDs = array(), $script = true )
+function show_comments_awaiting_moderation( $blog_ID, $CommentList = NULL, $limit = 5, $comment_IDs = array(), $script = true )
 {
 	global $current_User, $dispatcher;
 
-	$BlogCache = & get_BlogCache();
-	$Blog = & $BlogCache->get_by_ID( $blog_ID, false, false );
+	if( is_null( $CommentList ) )
+	{ // Inititalize CommentList
+		$BlogCache = & get_BlogCache();
+		$Blog = & $BlogCache->get_by_ID( $blog_ID, false, false );
 
-	$CommentList = new CommentList2( $Blog );
-	$exlude_ID_list = NULL;
-	if( !empty($comment_IDs) )
-	{
-		$exlude_ID_list = '-'.implode( ",", $comment_IDs );
+		$CommentList = new CommentList2( $Blog, NULL, 'CommentCache', 'cmnt_fullview_', 'fullview' );
+		$exlude_ID_list = NULL;
+		if( !empty($comment_IDs) )
+		{
+			$exlude_ID_list = '-'.implode( ",", $comment_IDs );
+		}
+
+		$moderation_statuses = explode( ',', $Blog->get_setting( 'moderation_statuses' ) );
+
+		// Filter list:
+		$CommentList->set_filters( array(
+				'types' => array( 'comment', 'trackback', 'pingback' ),
+				'statuses' => $moderation_statuses,
+				'comment_ID_list' => $exlude_ID_list,
+				'post_statuses' => array( 'published', 'community', 'protected' ),
+				'order' => 'DESC',
+				'comments' => $limit,
+			) );
+
+		// Get ready for display (runs the query):
+		$CommentList->display_init();
 	}
-
-	// Filter list:
-	$CommentList->set_filters( array(
-			'types' => array( 'comment', 'trackback', 'pingback' ),
-			'statuses' => array ( 'draft' ),
-			'comment_ID_list' => $exlude_ID_list,
-			'order' => 'DESC',
-			'comments' => $limit,
-		) );
-
-	// Get ready for display (runs the query):
-	$CommentList->display_init();
 
 	$new_comment_IDs = array();
 	while( $Comment = & $CommentList->get_next() )
@@ -237,12 +277,20 @@ function show_comments_awaiting_moderation( $blog_ID, $limit = 5, $comment_IDs =
 		$new_comment_IDs[] = $Comment->ID;
 
 		echo '<div id="comment_'.$Comment->ID.'" class="dashboard_post dashboard_post_'.($CommentList->current_idx % 2 ? 'even' : 'odd' ).'">';
-		echo '<div class="floatright"><span class="note status_'.$Comment->status.'">';
+		echo '<div class="floatright"><span class="note status_'.$Comment->status.'"><span>';
 		$Comment->status();
-		echo '</div>';
+		echo '</span></span></div>';
 
+		if( ( $Comment->status !== 'draft' ) || ( $Comment->author_user_ID == $current_User->ID ) )
+		{// Display Comment permalink icon
+			echo '<span style="float: left; padding-right: 5px; margin-top: 4px">'.$Comment->get_permanent_link( '#icon#' ).'</span>';
+		}
 		echo '<h3 class="dashboard_post_title">';
-		echo $Comment->get_title(array('author_format'=>'<strong>%s</strong>'));
+		echo $Comment->get_title( array(
+				'author_format' => '<strong>%s</strong>',
+				'link_text'     => 'avatar',
+				'thumb_size'    => 'crop-top-15x15',
+			) );
 		$comment_Item = & $Comment->get_Item();
 		echo ' '.T_('in response to')
 				.' <a href="?ctrl=items&amp;blog='.$comment_Item->get_blog_ID().'&amp;p='.$comment_Item->ID.'"><strong>'.$comment_Item->dget('title').'</strong></a>';
@@ -251,15 +299,15 @@ function show_comments_awaiting_moderation( $blog_ID, $limit = 5, $comment_IDs =
 
 		echo '<div class="notes">';
 		$Comment->rating( array(
-				'before'      => '',
-				'after'       => ' &bull; ',
-				'star_class'  => 'top',
+				'before'      => '<div class="dashboard_rating">',
+				'after'       => '</div> &bull; ',
 			) );
 		$Comment->date();
 		$Comment->author_url_with_actions( '', true );
 		$Comment->author_email( '', ' &bull; Email: <span class="bEmail">', '</span> &bull; ' );
-		$Comment->author_ip( 'IP: <span class="bIP">', '</span> &bull; ' );
-		$Comment->spam_karma( T_('Spam Karma').': %s%', T_('No Spam Karma') );
+		$Comment->author_ip( 'IP: <span class="bIP">', '</span> ', true );
+		$Comment->ip_country();
+		$Comment->spam_karma( ' &bull; '.T_('Spam Karma').': %s%', ' &bull; '.T_('No Spam Karma') );
 		echo '</div>';
 
 		echo '<div class="small">';
@@ -274,16 +322,27 @@ function show_comments_awaiting_moderation( $blog_ID, $limit = 5, $comment_IDs =
 			global $admin_url;
 			$redirect_to = $admin_url.'?ctrl=dashboard&blog='.$blog_ID;
 		}
-		$Comment->edit_link( ' ', ' ', '#', '#', 'ActionButton', '&amp;', true, $redirect_to );
 
+		echo '<div class="floatleft">';
+
+		$Comment->edit_link( ' ', ' ', get_icon( 'edit' ), '#', 'roundbutton', '&amp;', true, $redirect_to );
+
+		echo '<span class="roundbutton_group">';
 		// Display publish NOW button if current user has the rights:
-		$Comment->publish_link( ' ', ' ', '#', '#', 'PublishButton', '&amp;', true, true );
+		$Comment->publish_link( '', '', '#', '#', 'roundbutton_text', '&amp;', true, true );
 
 		// Display deprecate button if current user has the rights:
-		$Comment->deprecate_link( ' ', ' ', '#', '#', 'DeleteButton', '&amp;', true, true );
+		$Comment->deprecate_link( '', '', '#', '#', 'roundbutton_text', '&amp;', true, true );
 
 		// Display delete button if current user has the rights:
-		$Comment->delete_link( ' ', ' ', '#', '#', 'DeleteButton', false, '&amp;', true, true );
+		$Comment->delete_link( '', '', '#', '#', 'roundbutton_text', false, '&amp;', true, true );
+		echo '</span>';
+
+		echo '</div>';
+
+		// Display Spam Voting system
+		$Comment->vote_spam( '', '', '&amp;', true, true );
+
 		echo '<div class="clear"></div>';
 		echo '</div>';
 		echo '</div>';
@@ -291,12 +350,127 @@ function show_comments_awaiting_moderation( $blog_ID, $limit = 5, $comment_IDs =
 
 	if( !$script )
 	{
-		echo '<input type="hidden" id="new_badge" value="'.get_comments_awaiting_moderation_number( $blog_ID ).'"/>';
+		echo '<input type="hidden" id="new_badge" value="'.$CommentList->total_rows.'"/>';
 	}
 }
 
 
-/*
- * $Log: _dashboard.funcs.php,v $
+/**
+ * Get a count of the records in the DB table
+ *
+ * @param string Table name
+ * @return integer A count of the records
  */
+function get_table_count( $table_name )
+{
+	global $DB;
+
+	$SQL = new SQL();
+	$SQL->SELECT( 'COUNT( * )' );
+	$SQL->FROM( $table_name );
+
+	return $DB->get_var( $SQL->get() );
+}
+
+
+/**
+ * Dispaly posts awaiting moderation with the given status
+ *
+ * @param string visibility status
+ * @param object block_item_Widget
+ * @return boolean true if items were displayed, false otherwise
+ */
+function display_posts_awaiting_moderation( $status, & $block_item_Widget )
+{
+	global $Blog, $current_User;
+
+	// Create empty List:
+	$ItemList = new ItemList2( $Blog, NULL, NULL );
+
+	// Filter list:
+	$ItemList->set_filters( array(
+			'visibility_array' => array( $status ),
+			'orderby' => 'datemodified',
+			'order' => 'DESC',
+			'posts' => 5,
+		) );
+
+	// Get ready for display (runs the query):
+	$ItemList->display_init();
+
+	if( !$ItemList->result_num_rows )
+	{ // We don't have posts awaiting moderation with the given status
+		return false;
+	}
+
+	switch( $status )
+	{
+		case 'draft':
+			$block_title = T_('Recent drafts');
+			break;
+
+		case 'review':
+			$block_title = T_('Recent posts to review');
+			break;
+
+		case 'protected':
+			$block_title = T_('Recent member posts awaiting moderation');
+			break;
+
+		case 'community':
+			$block_title = T_('Recent community posts awaiting moderation');
+			break;
+
+		default:
+			$block_title = T_('Recent posts awaiting moderation');
+			break;
+	}
+	$block_item_Widget->title = $block_title;
+	$block_item_Widget->disp_template_replaced( 'block_start' );
+
+	while( $Item = & $ItemList->get_item() )
+	{
+		echo '<div class="dashboard_post dashboard_post_'.($ItemList->current_idx % 2 ? 'even' : 'odd' ).'" lang="'.$Item->get('locale').'">';
+		// We don't switch locales in the backoffice, since we use the user pref anyway
+		// Load item's creator user:
+		$Item->get_creator_User();
+
+		$Item->status( array(
+				'before' => '<div class="floatright"><span class="note status_'.$Item->status.'"><span>',
+				'after'  => '</span></span></div>',
+			) );
+
+		echo '<div class="dashboard_float_actions">';
+		$Item->edit_link( array( // Link to backoffice for editing
+				'before'    => ' ',
+				'after'     => ' ',
+				'class'     => 'ActionButton btn'
+			) );
+		$Item->publish_link( '', '', '#', '#', 'PublishButton' );
+		echo get_icon( 'pixel' );
+		echo '</div>';
+
+		if( ( $Item->status !== 'draft' ) || ( $Item->creator_user_ID == $current_User->ID ) )
+		{ // Display Item permalink icon
+			echo '<span style="float: left; padding-right: 5px; margin-top: 4px">'.$Item->get_permanent_link( '#icon#' ).'</span>';
+		}
+		echo '<h3 class="dashboard_post_title">';
+		$item_title = $Item->dget('title');
+		if( ! strlen($item_title) )
+		{
+			$item_title = '['.format_to_output(T_('No title')).']';
+		}
+		echo '<a href="?ctrl=items&amp;blog='.$Blog->ID.'&amp;p='.$Item->ID.'">'.$item_title.'</a>';
+		echo ' <span class="dashboard_post_details">';
+		echo '</span>';
+		echo '</h3>';
+
+		echo '</div>';
+	}
+
+	$block_item_Widget->disp_template_raw( 'block_end' );
+
+	return true;
+}
+
 ?>

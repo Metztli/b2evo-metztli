@@ -7,7 +7,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  */
@@ -38,10 +38,18 @@ $params = array_merge( array(
 	</div>
 
 	<div class="head">
-		<h2><?php $Item->title(); ?></h2>
+		<h2><?php
+			$Item->title( array(
+				'link_type' => 'permalink'
+				) );
+		?></h2>
 		<div class="bSmallHead">
 			<div class="bSmallHeadMisc">
 				<?php
+					if( $Item->status != 'published' )
+					{
+						$Item->status( array( 'format' => 'styled' ) );
+					}
 					$Item->author( array(
 							'before'	=> T_('Written by:').'<strong>',
 							'after'		=> '</strong>',
@@ -131,8 +139,3 @@ $params = array_merge( array(
 	?>
 
 </div>
-<?php
-/*
- * $Log: _item_block.inc.php,v $
- */
-?>

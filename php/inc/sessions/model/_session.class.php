@@ -10,7 +10,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -40,7 +40,7 @@
  * @author jeffbearer: Jeff BEARER - {@link http://www.jeffbearer.com/}.
  * @author mfollett:  Matt FOLLETT - {@link http://www.mfollett.com/}.
  *
- * @version $Id: _session.class.php 57 2011-10-26 08:18:58Z sam2kb $
+ * @version $Id: _session.class.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -83,6 +83,19 @@ class Session
 	var $is_validated = false;
 
 	/**
+	 * Session start timestamp
+	 * @var string
+	 */
+	var $start_ts;
+
+	/**
+	 * Session last seen timestamp which was logged
+	 * Value may be off by up to 60 seconds
+	 * @var string
+	 */
+	var $lastseen_ts;
+
+	/**
 	 * Data stored for the session.
 	 *
 	 * This holds an array( expire, value ) for each data item key.
@@ -94,6 +107,12 @@ class Session
 
 	var $_session_needs_save = false;
 
+	/**
+	 * The user device from where this session was created
+	 * 
+	 * @var string
+	 */
+	var $sess_device;
 
 	/**
 	 * Constructor
@@ -140,11 +159,11 @@ class Session
 				}
 
 				$row = $DB->get_row( '
-					SELECT sess_ID, sess_key, sess_data, sess_user_ID
+					SELECT sess_ID, sess_key, sess_data, sess_user_ID, sess_start_ts, sess_lastseen_ts, sess_device
 					  FROM T_sessions
 					 WHERE sess_ID  = '.$DB->quote($session_id_by_cookie).'
 					   AND sess_key = '.$DB->quote($session_key_by_cookie).'
-					   AND UNIX_TIMESTAMP(sess_lastseen) > '.( $localtimenow - $timeout_sessions ) );
+					   AND UNIX_TIMESTAMP(sess_lastseen_ts) > '.( $localtimenow - $timeout_sessions ) );
 				if( empty( $row ) )
 				{
 					$Debuglog->add( 'Session: Session ID/key combination is invalid!', 'request' );
@@ -155,7 +174,10 @@ class Session
 					$this->ID = $row->sess_ID;
 					$this->key = $row->sess_key;
 					$this->user_ID = $row->sess_user_ID;
+					$this->start_ts = mysql2timestamp( $row->sess_start_ts );
+					$this->lastseen_ts = mysql2timestamp( $row->sess_lastseen_ts );
 					$this->is_validated = true;
+					$this->sess_device = $row->sess_device;
 
 					$Debuglog->add( 'Session: Session user_ID: '.var_export($this->user_ID, true), 'request' );
 
@@ -211,20 +233,41 @@ class Session
 
 
 		if( $this->ID )
-		{ // there was a valid session before; data needs to be updated at page exit (lastseen)
-			$this->session_needs_save( true );
+		{ // there was a valid session before
+			if( $this->lastseen_ts < $localtimenow - 60 )
+			{ // lastseen timestamp is older then a minute, it needs to be updated at page exit
+				$this->session_needs_save( true );
+			}
 		}
 		else
 		{ // create a new session! :
 			$this->key = generate_random_key(32);
 
+			// Detect user device
+			global $user_devices;
+			$this->sess_device = '';
+
+			if( !empty($_SERVER['HTTP_USER_AGENT']) )
+			{
+				foreach( $user_devices as $device_name => $device_regexp )
+				{
+					if( preg_match( '~'.$device_regexp.'~i', $_SERVER['HTTP_USER_AGENT'] ) )
+					{
+						$this->sess_device = $device_name;
+						break;
+					}
+				}
+			}
+
 			// We need to INSERT now because we need an ID now! (for the cookie)
 			$DB->query( "
-				INSERT INTO T_sessions( sess_key, sess_lastseen, sess_ipaddress )
+				INSERT INTO T_sessions( sess_key, sess_start_ts, sess_lastseen_ts, sess_ipaddress, sess_device )
 				VALUES (
 					'".$this->key."',
 					'".date( 'Y-m-d H:i:s', $localtimenow )."',
-					".$DB->quote($Hit->IP)."
+					'".date( 'Y-m-d H:i:s', $localtimenow )."',
+					".$DB->quote( $Hit->IP ).",
+					".$DB->quote( $this->sess_device )."
 				)" );
 
 			$this->ID = $DB->insert_id;
@@ -447,8 +490,7 @@ class Session
 	 	// Note: we increase the hitcoutn every time. That assumes that there will be no 2 calls for a single hit.
 	 	//       Anyway it is not a big problem if this number is approximate.
 		$sql = "UPDATE T_sessions SET
-				sess_hitcount = sess_hitcount + 1,
-				sess_lastseen = '".date( 'Y-m-d H:i:s', $localtimenow )."',
+				sess_lastseen_ts = '".date( 'Y-m-d H:i:s', $localtimenow )."',
 				sess_data = ".$DB->quote( $sess_data ).",
 				sess_ipaddress = '".$Hit->IP."',
 				sess_key = ".$DB->quote( $this->key );
@@ -545,14 +587,19 @@ class Session
 	 * The received crumb must match a crumb we previously saved less than 2 hours ago.
 	 *
 	 * @param string crumb name
+	 * @param boolean true if the script should die on error
 	 */
-	function assert_received_crumb( $crumb_name )
+	function assert_received_crumb( $crumb_name, $die = true )
 	{
 		global $servertimenow, $crumb_expires, $debug;
 
 		if( ! $crumb_received = param( 'crumb_'.$crumb_name, 'string', NULL ) )
 		{ // We did not receive a crumb!
-			bad_request_die( 'Missing crumb ['.$crumb_name.'] -- It looks like this request is not legit.' );
+			if( $die )
+			{
+				bad_request_die( 'Missing crumb ['.$crumb_name.'] -- It looks like this request is not legit.' );
+			}
+			return false;
 		}
 
 		// Retrieve latest saved crumb:
@@ -573,6 +620,11 @@ class Session
 		{	// Crumb is valid
 			// echo '<p>-<p>-<p>B';
 			return true;
+		}
+
+		if( ! $die )
+		{
+			return false;
 		}
 
 		// ERROR MESSAGE, with form/button to bypass and enough warning hopefully.
@@ -604,6 +656,28 @@ class Session
 		echo '</div>';
 
 		die();
+	}
+
+
+	/**
+	 * Was this session created from a mobile device
+	 */
+	function is_mobile_session()
+	{
+		global $mobile_user_devices;
+
+		return array_key_exists( $this->sess_device, $mobile_user_devices );
+	}
+
+
+	/**
+	 * Was this session created from a mobile device
+	 */
+	function is_tablet_session()
+	{
+		global $tablet_user_devices;
+
+		return array_key_exists( $this->sess_device, $tablet_user_devices );
 	}
 }
 
@@ -639,6 +713,10 @@ function session_unserialize_callback( $classname )
 			load_class( 'items/model/_item.class.php', 'Item' );
 			return true;
 
+		case 'itemsettings':
+			load_class( 'items/model/_itemsettings.class.php', 'ItemSettings' );
+			return true;
+
 		case 'group':
 			load_class( 'users/model/_group.class.php', 'Group' );
 			return true;
@@ -665,12 +743,9 @@ function session_unserialize_load_all_classes()
 	load_class( 'collections/model/_collsettings.class.php', 'CollectionSettings' );
 	load_class( 'comments/model/_comment.class.php', 'Comment' );
 	load_class( 'items/model/_item.class.php', 'Item' );
+	load_class( 'items/model/_itemsettings.class.php', 'ItemSettings' );
 	load_class( 'users/model/_group.class.php', 'Group' );
 	load_class( 'users/model/_user.class.php', 'User' );
 }
 
-
-/*
- * $Log: _session.class.php,v $
- */
 ?>

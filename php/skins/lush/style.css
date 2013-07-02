@@ -1,0 +1,257 @@
+/*
+Original b2evolution template: Lush
+design by Andrew Hreschak
+blog.thedarksighed.com
+*/
+
+@import url(../../rsc/css/basic.css);	/* Import basic styles */
+
+body {
+	font:86% Tahoma, "Lucida Sans", Arial, Verdana, Sans-Serif;
+	background:#183215;}
+	
+li.widget_core_coll_title, li.widget_core_coll_longdesc, li.widget_plugin_evo_Calr, li.widget_core_coll_search_form, li.widget_core_linkblog, li.widget_core_coll_category_list, li.widget_core_coll_common_links, li.widget_core_coll_xml_feeds, li.widget_core_user_tools, li.widget_core_coll_xml_feeds ul li, li.prevnext {list-style:none;}
+table.prevnext_post {margin: 20px 0;}
+div#sidebar {margin-left:-10px;}
+div#sidebar h2 {font: 1.4em Tahoma, "Lucida Sans", Arial, Verdana, Sans-Serif;color:#4b3528;}
+li.widget_core_coll_title h2 a {font-size: 1.1em; text-decoration:none;}
+li.widget_core_coll_search_form h2 {}
+
+li.widget_core_coll_xml_feeds h2 img {display:none;}
+li.widget_core_coll_xml_feeds {background:url(img/lush_rss.gif) top left no-repeat; margin-top:28px;padding-top:50px;}
+
+li.widget_core_coll_longdesc, li.widget_core_coll_search_form, li.widget_core_coll_category_list, li.widget_core_coll_common_links, li.widget_core_coll_xml_feeds {margin-bottom:20px;}
+
+/* COLOR MANAGEMENT */
+
+body, .submenu {color:#8cb49a;}
+.topicons {color:#999; visibility:hidden;}
+.topicons a {color:#444;}
+.topicons a:hover {color:#000;}
+h1, .leftside h1, div.bSmallHead, #quote, .rightside h3, .rightside h4, .rightside h4 a, .footer, .pagefoot {color:#3f5135;}
+.rightside h2 {color:#964122;}
+.subtext {color:#BBB;}
+a, .text h2 a, .leftside h2, div.rightside, .rightside a, .audio, .righttext form.search, input.SearchField, .bCommentTitle, .bCommentText, .leftside .bComment, .leftside .bComment2, .leftside h4, .bCommentform, input#d, input#f, input#g, input#i, input#o, input#u, td#bCalendarToday, blockquote, .highlight, code {color:#71a46d;}
+a:hover, ul#mainnav li a:hover, ul#mainnav a.BlogButtonCurr, .text p a:hover, .rightside a:hover, .music_outer, table.bCalendarCaption {color:#b0d5bd;}
+.subtitle {color:#091e13;}
+ul#mainnav a.BlogButton {color:#678764; text-decoration: none;}
+ul#mainnav li, .leftside h3 {color:#6a9d66;}
+.subtitle h1, .subtitle h1 a {color:#000;}
+.footer a, .footer a:hover {color:#8da78b;}
+.notes, .subtext, .dimmed {color:#35523b;}
+
+/* LINK STYLEE */
+
+.topicons a, .subtitle h1 a, .submenu h1 a, .text h2 a, div.bSmallPrint a, div.bSmallHead a, div.moderation_msg a, div.bCommentSmallPrint a, div.bCommentTitle a, ul#mainnav a:hover {text-decoration:none;}
+.topicons a:hover, a, a:hover, acronym, ul#mainnav a, .rightside a, .rightside a:hover {text-decoration:underline;}
+.topicons a img {border:none;}
+
+.searchcloud {font-size:0.9em;clear:both;margin:auto 40px 40px;text-align:center;border:1px solid #092f13;background-color:#0b1d11;padding:10px;}
+.searchcloud h3 {margin-top:0px;color:#5e836d;font-weight:bold;font-size:1.1em;}
+a.search_cloud_0 {color:#163b27;}
+a.search_cloud_1 {color:#214531;}
+a.search_cloud_2 {color:#2d523d;}
+a.search_cloud_3 {color:#3b5f4b;}
+a.search_cloud_4 {color:#4f735e;}
+a.search_cloud_5 {color:#5e836d;}
+a.search_cloud_6 {color:#6d927c;}
+a.search_cloud_7 {color:#7ca18a;}
+a.search_cloud_8 {color:#8fb49d;}
+a.search_cloud_9 {color:#9fc4ac;}
+a.search_cloud_10 {color:#b0d5bd;}
+.searchcloud a:hover {color:#fff;}
+
+#prewrap {width:912px; margin:-10px auto;}
+#prewrap ul {padding-top:20px;}
+#prewrap ul li {margin-left:0px; display:inline;}
+#wrap {width:912px; background:url(img/lush_body.gif) top repeat-y; margin:0 auto 10px auto;}
+#bannertop {width:912px; background:url(img/lush_header.jpg) top no-repeat; height:53px;}
+#bannermid {width:912px; background:url(img/lush_header.jpg) bottom no-repeat; height:104px;}
+#quote {font:1.0em "Lucida Sans";font-style:italic;margin-left:40px;margin-bottom:20px;}
+
+.topicons {font-size:0.7em; font-weight:bold; padding:0px 0px 0 0; margin:20px 18px 0 0; float:right;}
+
+.subtitle {
+	font:0.7em Verdana, Arial, "Lucida Sans", Tahoma, Sans-Serif;
+	font-weight:normal;
+	padding:12px 25px 0 0;
+	margin-left:545px;
+	text-align:left;
+	line-height:1.0em;letter-spacing:3px;}
+
+.subtitle h1 {margin-bottom:10px;text-indent:100px;}
+
+/*.submenu { ENABLE FOR SINGLE BLOG SYSTEMS
+	font:0.9em "Lucida Sans", Arial, Verdana, Tahoma, Sans-Serif;
+	font-weight:bold;
+	letter-spacing:0.1em;
+	height:20px;
+	padding:6px 0px 2px 35px;
+	margin:0px 6px 30px;
+	background-color:#000;
+	background:url(img/lush_menu.jpg) top repeat-y;
+	border-bottom:1px solid #092f13;}*/
+
+.submenu { /* ENABLE FOR MULTIBLOG SYSTEMS */
+	font:0.9em "Lucida Sans", Arial, Verdana, Tahoma, Sans-Serif;
+	font-weight:bold;
+	letter-spacing:0.1em;
+	padding-top:8px;
+	padding-left:10px;
+	margin:0px 6px 30px;
+	background-color:#000;
+	background:url(img/lush_menu.jpg) top repeat-y;
+	border-bottom:1px solid #092f13;}
+
+.submenu h1 {display:inline; padding-right:4px;}
+
+#content {width:912px; background:url(img/lush_body.gif) top repeat-y;}
+
+a img {border:0px; vertical-align:middle;}
+
+.text {margin:0px 10px 30px 40px;clear:both;width:576px;clear:both;}
+.text h1 {margin-bottom:0px;}
+
+div.head {padding-bottom:5px;}
+div.bSmallHead {font-size:0.9em; margin:-5px 0 15px 0;}
+div.bSmallHead img { padding-bottom:2px;}
+div.bSmallPrint {font-size:0.8em; padding:20px 0 5px; border-bottom:1px solid #092f13;float:left;}
+html>body div.bSmallPrint {margin-bottom:30px;padding-bottom:5px;float:left;}
+div.bSmallPrint a img {margin-bottom:0px;margin-right:4px;}
+
+a.permalink_right {float:right;}
+
+.leftmargin {float:left;}
+.leftmargin img {margin:10px 10px 10px 0;}
+img.leftmargin {float:left; margin-right:2ex; margin-top:.7ex; margin-bottom:.2ex;}
+img.rightmargin {float:right; margin-left:2ex; margin-top:.7ex; margin-bottom:.2ex;} 
+.sep {clear:both;height:0px;margin-bottom:-5px;}
+.sep2 {clear:both;margin-bottom:20px;}
+.notes {font-size:0.9em;}
+.strikeout {text-decoration:line-through;}
+.subtext {font-style:italic;}
+.videoblock{margin-bottom:20px;}
+blockquote {margin:30px 60px 30px 30px; background:url(img/lush_blockquote.gif) top left no-repeat;font-size:1.05em;}
+blockquote p {margin-left:38px;}
+code {font-size:1.2em;text-align:left;padding:0 20px;display:block;}
+
+table.invisible {width:462px;}
+table.invisible td.left {vertical-align:top; width:10px;}
+table.invisible td.right {vertical-align:top; text-align: right; width:50px; padding-left:25px;}
+
+p {line-height:1.6em; margin-bottom:1.0em;}
+p.center {text-align:center;}
+html>body p.center {padding-bottom:20px;}
+p.bMore {clear:both;margin-top:20px;}
+.righttext p.center {text-align:center;}
+
+ul#mainnav {font-size:0.9em; font-weight:bold; margin:0px 0 20px 25px; padding-left:0px;}
+ul#mainnav li {margin-right:12px; display:inline; float:left;}
+ul#mainnav a.BlogButton:hover {border-bottom:1px dotted #8c7e7e;}
+ul#mainnav a.BlogButtonCurr {border-bottom:1px dotted #8c7e7e;text-decoration:none;}
+ul.clean li {font-size:0.9em;}
+ul li {list-style: circle;}
+ol li {line-height:1.4em;margin-bottom:0.75em;}
+
+div.leftside {
+	font-size:0.9em;
+	width:610px;
+	float:left;
+	text-align:justify;}
+
+div.leftside p {padding:0;}
+
+h1 {font-size:1.1em; margin:0;}
+h2, h3, h4 {font-family:"Lucida Sans Unicode", "Lucida Sans", Arial, Verdana, sans-serif;}
+h3.blogname {padding-bottom:5px;}
+
+.leftside h1 {font-size:0.9em;}
+.leftside h2 {font-size:1.2em; font-weight:bold; margin-top:5px; letter-spacing:1px;}
+.leftside h2 a {text-align:left;}
+.leftside h3 {font-size:1.2em; font-weight:normal;}
+.leftside h4 {font-size:1.2em;}
+.leftside h4.CommentAreaTitle {font:1.1em "Lucida Sans", Arial, Verdana, Tahoma, Sans-Serif; margin-bottom:10px;}
+.leftside h4.bCommentLeaveHead {font:1.1em "Lucida Sans", Arial, Verdana, Tahoma, Sans-Serif; padding-left:3px;}
+
+/* ----------------------------- FORMS AND COMMENTS ----------------------------- */
+
+.leftside form {padding:0; margin-left:0;}
+.leftside form.bComment, fieldset {border:none;}
+
+div.bCommentTitle {background-color:#355035; margin:0px -10px; padding-left:10px; padding-bottom:5px;}
+div.bCommentTitle img {vertical-align:middle;margin-left:5px;padding-bottom:2px;}
+div.bCommentTitle a {text-decoration: underline;}
+div.bComment {padding:0 10px; margin-bottom:15px; line-height:1.5em;background-color:#0b1d11; border:1px solid #092f13;}
+div.bComment p {padding-top:10px; margin-top:0px;}
+.bComment .input {text-align:left;}
+div.bCommentSmallPrint {font-size:0.8em; padding:2px 0px 5px 0px;}
+div.bCommentSmallPrint a {padding-left:20px;}
+div.bCommentSmallPrint a img {padding-right:4px;}
+
+.bCommentTitle {line-height:1.3em; font-size:0.9em; font-weight:bold; padding:4px 0px 2px 0px;}
+.bCommentText {margin:0; padding:8px 0; text-align:justify;}
+.bCommentform, .form_textarea_input, input#d, input#f, input#g, input#i, input#o, input#u, textarea#h, .righttext form.search, input.SearchField, input#newuser_email {background-color:#0b1d11; border:1px solid #092f13;}
+
+.righttext form.search, input.SearchField {
+	padding:3px 4px;
+	font-weight:bold;
+	font-size:1.0em;}
+
+fieldset {padding-left:0;}
+
+/* --------------------------------- RIGHT SIDE --------------------------------- */
+
+div.rightside {
+	font-size:0.8em;
+	width:230px;
+	float:right;
+	padding:0 30px 25px 0;
+	text-align:left;}
+
+.rightside h2 {font-size:1.3em; letter-spacing:3px; font-variant:small-caps;}
+.rightside h3 {font-size:1.1em; margin-bottom:0; margin-top:22px; font-family:Arial;}
+.rightside h3.blogname {font-size:1.3em; letter-spacing:2px;}
+.rightside h4 {font-size:1.0em; font-family:Arial;}
+.rightside p {margin:5px 0;padding-right:0;}
+.rightside p.stats {text-align:justify;}
+.rightside div.righttext {padding-right:0;}
+.rightside div.righttext a {line-height:1.2em;}
+.rightside ol.starrating li {text-indent:-5px; margin-left:-20px;}
+.rightside ul {text-indent:0px;}
+.rightside ul.ministats {margin-top:-5px;}
+.rightside ul.ministats li.stats_last {margin-top:10px;}
+.rightside ul.recentpost li, .rightside ul#lastcomment li {margin-bottom:4px;}
+.rightside ul li {margin-left:-24px;}
+.rightside ul li.nobullet {list-style-type:none;}
+.rightside ul.skinlist {margin-left:0px;list-style-type: none;}
+html>body .rightside ul.skinlist {margin-left:-24px;list-style-type: none;}
+.rightside ul.skinlist li {margin:0px 5px 0px 0px;display:inline;}
+.rightside ul.skinlist li img {margin:5px 0px;}
+
+.bCalendarCaption {margin-top:20px;}
+table.bCalendarTable {margin:10px 0 0 15px; width:215px;}
+table.bCalendarTable td {width:30px; text-align:center; padding:4px;}
+table.bCalendarTable td#prev {text-align:right; padding-left:15px;}
+table.bCalendarTable td#next {text-align:left; padding-left:15px;}
+table.bCalendarTable tr.bCalendarRow {text-align:center;}
+td#bCalendarToday {background-color:#0d3722;}
+td.bCalendarLinkPost {background-color:#072113; font-weight:bold;}
+
+.validation a {margin-left:15px; margin-top:50px;}
+.validation img {border:none;}
+
+div.rss {background:url(img/lush_rss.gif) top left no-repeat; padding-top:40px; margin-top:25px;}
+div.powered_by {margin-left:15px;}
+
+.pagefoot {background:url(img/lush_foot.gif) bottom no-repeat; font-size:0.8em; height:90px; clear:both; text-align:center;}
+
+.footer {clear:both; text-align:center; background:none; font-size:0.7em;}
+.footer ul {border-left:none; margin:0 auto; line-height: 10px; background:none;}
+html>body .footer ul{padding:0;}
+.footer ul li {margin:0; padding:0; display:inline; font-family:Verdana, Arial, Helvetica, sans-serif; border-left:1px solid #FFF;}
+.footer ul li.first {border-left:none;}
+.footer p {margin-top:5px;}
+.footer a {padding:0 6px 0 10px; margin:0;}
+.footer a:hover {}
+
+.clear {clear:both;}

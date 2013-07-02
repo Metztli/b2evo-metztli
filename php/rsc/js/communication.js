@@ -2,7 +2,7 @@
  * Server communication functions - Ajax without the pain
  * b2evolution - http://b2evolution.net/
  * @author yabs {@link http://innervisions.org.uk/ }
- * @version $Id: communication.js 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: communication.js 1329 2012-05-02 17:37:41Z yura $
  */
 
 
@@ -48,11 +48,20 @@ function SendServerRequest( url )
 {
 	// add a & to the URL if we already have a query string, otherwise add a ?
 	url += ( url.indexOf( '?' ) != -1 ) ? '&' : '?';
+	url += 'display_mode=js'; // add flag for js display mode
+	var data = url.split( '?' );
+	url = data[0];
+	data = data[1];
 
-	var the_call = document.createElement( 'script' ); // create script element
-	the_call.src = url+'display_mode=js'; // add flag for js display mode
-	the_call.type = 'text/javascript'; // to be sure to be sure
-	document.body.appendChild( the_call ); // add script to body and let browser do the rest
+	jQuery.ajax(
+	{	// Load JavaScript via AJAX request
+		// It gives the adding a log into "JS log"
+		// The script is executed if AJAX request is completed
+		type: 'POST',
+		url: url,
+		data: data,
+		dataType: 'script'
+	} );
 }
 
 

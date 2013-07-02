@@ -7,7 +7,7 @@
  * It will also rely on default includes for specific dispays (like the comment form).
  *
  * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://manual.b2evolution.net/Skins_2.0}
+ * {@link http://b2evolution.net/man/skin-structure}
  *
  * The main page template is used to display the blog when no specific page template is available
  * to handle the request (based on $disp).
@@ -15,7 +15,7 @@
  * @package evoskins
  * @subpackage smoothe
  *
- * @version $Id: index.main.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: index.main.php 3157 2013-03-06 04:34:44Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -148,6 +148,7 @@ skin_include( '_html_header.inc.php' );
 		// Display message if no post:
 		display_if_empty();
 
+		echo '<div id="styled_content_block">'; // Beginning of posts display
 		while( $Item = & mainlist_get_item() )
 		{	// For each blog post:
 			// ---------------------- ITEM BLOCK INCLUDED HERE ------------------------
@@ -157,6 +158,7 @@ skin_include( '_html_header.inc.php' );
 				) );
 			// ----------------------------END ITEM BLOCK  ----------------------------
 		} // ---------------------------------- END OF POSTS ------------------------------------
+		echo '</div>'; // End of posts display
 	?>
 
 	<?php

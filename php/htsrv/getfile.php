@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
  * {@internal License choice
@@ -98,6 +98,18 @@ $FileRoot = & $FileRootCache->get_by_ID( $root );
 // Load file object (not the file content):
 $File = new File( $FileRoot->type, $FileRoot->in_type_ID, $path );
 
+// Check if the request has an If-Modified-Since date
+if( array_key_exists( 'HTTP_IF_MODIFIED_SINCE', $_SERVER) )
+{
+	$if_modified_since = strtotime( preg_replace('/;.*$/','',$_SERVER['HTTP_IF_MODIFIED_SINCE']) );
+	$file_lastmode_ts = $File->get_lastmod_ts();
+	if( $file_lastmode_ts <= $if_modified_since )
+	{ // file was not modified since if_modified_since ts
+		header_http_response( '304 Not Modified' );
+		exit(0);
+	}
+}
+
 if( !empty($size) && $File->is_image() )
 {	// We want a thumbnail:
 	// fp> TODO: for more efficient caching, this should probably redirect to the static file right after creating it (when $public_access_to_media=true OF COURSE)
@@ -115,8 +127,12 @@ if( !empty($size) && $File->is_image() )
 		$size_name = 'fit-80x80';
 	}
 
+	if( ! isset ( $thumbnail_sizes[$size_name][4] ) )
+	{	// Set blur percent in 0 by default
+		$thumbnail_sizes[$size_name][4] = 0;
+	}
 	// Set all params for requested size:
-	list( $thumb_type, $thumb_width, $thumb_height, $thumb_quality ) = $thumbnail_sizes[$size_name];
+	list( $thumb_type, $thumb_width, $thumb_height, $thumb_quality, $thumb_percent_blur ) = $thumbnail_sizes[$size_name];
 
 	$Filetype = & $File->get_Filetype();
 	// pre_dump( $Filetype );
@@ -150,7 +166,7 @@ if( !empty($size) && $File->is_image() )
 
 			if( empty( $err ) )
 			{
-				list( $err, $dest_imh ) = generate_thumb( $src_imh, $thumb_type, $thumb_width, $thumb_height );
+				list( $err, $dest_imh ) = generate_thumb( $src_imh, $thumb_type, $thumb_width, $thumb_height, $thumb_percent_blur );
 				if( empty( $err ) )
 				{
 					$err = $File->save_thumb_to_cache( $dest_imh, $size_name, $mimetype, $thumb_quality );
@@ -241,7 +257,4 @@ else
 	readfile( $file_path );
 }
 
-/*
- * $Log: getfile.php,v $
- */
 ?>

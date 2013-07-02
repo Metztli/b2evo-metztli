@@ -5,7 +5,7 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
@@ -15,7 +15,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _item_list_table.view.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _item_list_table.view.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -69,174 +69,10 @@ echo $ItemList->get_filter_title( '<h2>', '</h2>', '<br />', NULL, 'htmlbody' );
 
 $ItemList->title = T_('Post list');
 
-// Issue date:
-$ItemList->cols[] = array(
-		'th' => T_('Date'),
-		'order' => 'datestart',
-		'default_dir' => 'D',
-		'th_class' => 'nowrap',
-		'td_class' => 'nowrap',
-		'td' => '@get_permanent_link( get_icon(\'permalink\'), \'\', \'\', \'auto\' )@ <span class="date">@get_issue_date()@</span>',
-	);
-
-
-// Blog name:
-if( $Blog->get_setting( 'aggregate_coll_IDs' ) )
-{ // Aggregated blog: display name of blog
-	$ItemList->cols[] = array(
-			'th' => T_('Blog'),
-			'th_class' => 'nowrap',
-			'td_class' => 'nowrap',
-			'td' => '@load_Blog()@<a href="¤regenerate_url( \'blog,results_order\', \'blog=@blog_ID@\' )¤">@Blog->dget(\'shortname\')@</a>',
-		);
-}
-
-if( $tab == 'intros' )
-{ // Author:
-	$ItemList->cols[] = array(
-			'th' => T_('Type'),
-			'th_class' => 'nowrap',
-			'td_class' => 'nowrap',
-			'order' => 'ptyp_ID',
-			'td' => '@type()@',
-		);
-}
-else
-{ // Author:
-	$ItemList->cols[] = array(
-			'th' => T_('Author'),
-			'th_class' => 'nowrap',
-			'td_class' => 'nowrap',
-			'order' => 'creator_user_ID',
-			'td' => '%get_user_identity_link( NULL, #post_creator_user_ID# )%',
-		);
-}
-
-/**
- * Task title
- */
-function task_title_link( $Item )
-{
-	global $current_User;
-
-	$col = locale_flag( $Item->locale, 'w16px', 'flag', '', false ).' ';
-
-	$Item->get_Blog();
-
-	if( $Item->Blog->get_setting( 'allow_comments' ) != 'never' )
-	{	// The current blog can have comments:
-		$nb_comments = generic_ctp_number($Item->ID, 'feedback');
-		$col .= '<a href="?ctrl=items&amp;blog='.$Item->get_blog_ID().'&amp;p='.$Item->ID.'"
-						title="'.sprintf( T_('%d feedbacks'), $nb_comments ).'" class="">';
-		if( $nb_comments )
-		{
-			$col .= get_icon( 'comments' );
-		}
-		else
-		{
-			$col .= get_icon( 'nocomment' );
-		}
-		$col .= '</a> ';
-	}
-
-	$col .= '<a href="?ctrl=items&amp;blog='.$Item->get_blog_ID().'&amp;p='.$Item->ID.'" class="" title="'.
-								T_('View this post...').'">'.$Item->dget('title').'</a></strong>';
-
-	return $col;
-}
-$ItemList->cols[] = array(
-						'th' => T_('Title'),
-						'order' => 'title',
-						'td_class' => 'tskst_$post_pst_ID$',
-						'td' => '<strong lang="@get(\'locale\')@">%task_title_link( {Obj} )%</strong>',
-					);
-
-
-/**
- * Visibility:
- */
-function item_visibility( $Item )
-{
-	// Display publish NOW button if current user has the rights:
-	$r = $Item->get_publish_link( ' ', ' ', get_icon( 'publish' ), '#', '' );
-
-	// Display deprecate if current user has the rights:
-	$r .= $Item->get_deprecate_link( ' ', ' ', get_icon( 'deprecate' ), '#', '' );
-
-	if( empty($r) )
-	{	// for IE
-		$r = '&nbsp;';
-	}
-
-	return $r;
-}
-$ItemList->cols[] = array(
-						'th' => T_('Visibility'),
-						'order' => 'status',
-						'td_class' => 'shrinkwrap',
-						'td' => '%item_visibility( {Obj} )%',
-				);
-$ItemList->cols[] = array(
-						'th' => T_('Visibility'),
-						'order' => 'status',
-						'td_class' => 'tskst_$post_pst_ID$ nowrap',
-						'td' => '@get( \'t_status\' )@',
-				);
-
-$ItemList->cols[] = array(
-						'th' => T_('Ord'),
-						'order' => 'order',
-						'td_class' => 'right',
-						'td' => '$post_order$',
-				);
-
-$ItemList->cols[] = array(
-	'th' => /* TRANS: abbrev for info */ T_('i'),
-	'order' => 'datemodified',
-	'default_dir' => 'D',
-	'th_class' => 'shrinkwrap',
-	'td_class' => 'shrinkwrap',
-	'td' => '<a href="?ctrl=items&amp;p=$post_ID$&amp;action=history">@history_info_icon()@</a>',
-);
-
-
-
-/**
- * Edit Actions:
- *
- * @param Item
- */
-function item_edit_actions( $Item )
-{
-	global $Blog;
-
-	$r = '';
-
-	if( isset($GLOBALS['files_Module']) )
-	{
-		$r .= action_icon( T_('Edit linked files...'), 'folder',
-					url_add_param( $Blog->get_filemanager_link(), 'fm_mode=link_item&amp;item_ID='.$Item->ID ), T_('Files') );
-	}
-
-	// Display edit button if current user has the rights:
-	$r .= $Item->get_edit_link( array(
-		'before' => ' ',
-		'after' => ' ',
-		'text' => get_icon( 'edit' ),
-		'title' => '#',
-		'class' => '' ) );
-
-	// Display delete button if current user has the rights:
-	$r .= $Item->get_delete_link( ' ', ' ', get_icon( 'delete' ), '#', '', false );
-
-	return $r;
-}
-$ItemList->cols[] = array(
-		'th' => T_('Act.'),
-		'td_class' => 'shrinkwrap',
-		'td' => '%item_edit_actions( {Obj} )%',
-	);
-
+// Initialize Results object
+items_results( $ItemList, array(
+		'tab' => $tab,
+	) );
 
 if( $ItemList->is_filtered() )
 {	// List is filtered, offer option to reset filters:
@@ -275,6 +111,13 @@ if( $current_User->check_perm( 'blog_post_statuses', 'edit', false, $Blog->ID ) 
 			$perm = 'sidebar';
 			break;
 
+		case 'ads':
+			$label = T_('New advertisement');
+			$title = T_('Add an advertisement...');
+			$new_ptyp_ID = 4000;
+			$perm = 'sidebar';
+			break;
+
 		default:
 			$label = T_('New post');
 			$title = T_('Write a new post...');
@@ -305,8 +148,4 @@ $postIDarray = $ItemList->get_page_ID_array();
 // DISPLAY table now:
 $ItemList->display( NULL, $result_fadeout );
 
-
-/*
- * $Log: _item_list_table.view.php,v $
- */
 ?>

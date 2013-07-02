@@ -9,7 +9,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -32,7 +32,7 @@
  * @author blueyed: Daniel HAHLER
  * @author fplanque: Francois PLANQUE
  *
- * @version $Id: _messages.class.php 9 2011-10-24 22:32:00Z fplanque $ }}}
+ * @version $Id: _messages.class.php 3328 2013-03-26 11:44:11Z yura $ }}}
  *
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -104,7 +104,10 @@ class Messages
 		$this->messages_text[$this->count] = $text;
 		$this->messages_type[$this->count] = $type;
 		$this->count++;
-		$this->has_errors = ( $type == 'error' );
+		if( !$this->has_errors )
+		{
+			$this->has_errors = ( $type == 'error' );
+		}
 	}
 
 
@@ -120,7 +123,10 @@ class Messages
 		{
 			$this->messages_text[] = $p_Messages->messages_text[$i];
 			$this->messages_type[] = $p_Messages->messages_type[$i];
-			$this->has_errors = ( $p_Messages->messages_type[$i] == 'error' );
+			if( !$this->has_errors )
+			{
+				$this->has_errors = ( $p_Messages->messages_type[$i] == 'error' );
+			}
 		}
 	}
 
@@ -286,7 +292,4 @@ class Messages
 	}
 }
 
-/*
- * $Log: _messages.class.php,v $
- */
 ?>

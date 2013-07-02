@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
  * {@internal License choice
@@ -34,7 +34,7 @@
  * @author mbruneau: Marc BRUNEAU / PROGIDISTRI
  * @author efy-sergey: Evo Factory / Sergey.
  *
- * @version $Id: _itemtype.class.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _itemtype.class.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -133,7 +133,4 @@ class ItemType extends DataObject
 	}
 }
 
-/*
- * $Log: _itemtype.class.php,v $
- */
 ?>

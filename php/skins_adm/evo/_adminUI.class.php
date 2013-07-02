@@ -5,7 +5,7 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
@@ -22,7 +22,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: _adminUI.class.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _adminUI.class.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -46,8 +46,27 @@ class AdminUI extends AdminUI_general
 	 */
 	function init_templates()
 	{
+		global $Hit;
 		// This is included before controller specifc require_css() calls:
+		require_css( 'basic_styles.css', 'rsc_url' ); // the REAL basic styles
+		require_css( 'basic.css', 'rsc_url' ); // Basic styles
+		require_css( 'results.css', 'rsc_url' ); // Results/tables styles
+		require_css( 'item_base.css', 'rsc_url' ); // Default styles for the post CONTENT
+		require_css( 'fileman.css', 'rsc_url' ); // Filemanager styles
+		require_css( 'admin.global.css', 'rsc_url' ); // Basic admin styles
 		require_css( 'skins_adm/evo/rsc/css/style.css', true );
+
+		if ( $Hit->is_IE() )
+		{
+			require_css( 'admin_global_ie.css', 'rsc_url' );
+		}
+		// CSS for IE9
+		add_headline( '<!--[if IE 9 ]>' );
+		require_css( 'ie9.css', 'rsc_url' );
+		add_headline( '<![endif]-->' );
+
+		require_js( '#jquery#', 'rsc_url' );
+		require_js( 'jquery/jquery.raty.min.js', 'rsc_url' );
 	}
 
 
@@ -100,7 +119,7 @@ class AdminUI extends AdminUI_general
 
 		$r .= "</div>\n";	// Close right col.
 
-		$r .= '<img src="'.$rsc_url.'/img/blank.gif" width="1" height="1" alt="" />';
+		$r .= get_icon( 'pixel' );
 
 		return $r;
 	}
@@ -181,7 +200,4 @@ class AdminUI extends AdminUI_general
 
 }
 
-/*
- * $Log: _adminUI.class.php,v $
- */
 ?>

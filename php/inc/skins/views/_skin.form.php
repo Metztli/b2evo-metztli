@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -23,7 +23,7 @@
  *
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _skin.form.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _skin.form.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -55,6 +55,8 @@ $Form->begin_form( 'fform', T_('Skin properties') );
 									$edited_Skin->type,
 									 array(
 													array( 'normal', T_( 'Normal' ), T_( 'Normal skin for general browsing' ) ),
+													array( 'mobile', T_( 'Mobile' ), T_( 'Mobile skin for mobile phones browsers' ) ),
+													array( 'tablet', T_( 'Tablet' ), T_( 'Tablet skin for tablet browsers' ) ),
 													array( 'feed', T_( 'XML Feed' ), T_( 'Special system skin for XML feeds like RSS and Atom' ) ),
 													array( 'sitemap', T_( 'XML Sitemap' ), T_( 'Special system skin for XML sitemaps' ) ),
 												),
@@ -77,8 +79,4 @@ $Form->begin_form( 'fform', T_('Skin properties') );
 $Form->end_form( array( array( 'submit', 'submit', T_('Update'), 'SaveButton' ),
 													array( 'reset', '', T_('Reset'), 'ResetButton' ) ) );
 
-
-/*
- * $Log: _skin.form.php,v $
- */
 ?>

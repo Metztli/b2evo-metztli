@@ -5,7 +5,7 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2006 by Daniel HAHLER - {@link http://daniel.hahler.de/}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
@@ -21,7 +21,7 @@
  * @author blueyed: Daniel HAHLER
  * @author Danny Ferguson
  *
- * @version $Id: _url.funcs.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _url.funcs.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -58,7 +58,7 @@ function validate_url( $url, $context = 'posting', $antispam_check = true )
 	// Validate URL structure
 	if( $url[0] == '$' )
 	{	// This is a 'special replace code' URL (used in footers)
- 		if( ! preg_match( '¤\$([a-z_]+)\$¤', $url ) )
+ 		if( ! preg_match( '~\$([a-z_]+)\$~', $url ) )
 		{
 			return T_('Invalid URL $code$ format');
 		}
@@ -101,7 +101,7 @@ function validate_url( $url, $context = 'posting', $antispam_check = true )
 					: T_('URI scheme not allowed.');
 			}
 
-			if( ! preg_match( '¤^(clsid):([a-fA-F0-9\-]+)$¤', $url, $match) )
+			if( ! preg_match( '~^(clsid):([a-fA-F0-9\-]+)$~', $url, $match) )
 			{
 				return T_('Invalid class ID format');
 			}
@@ -118,7 +118,7 @@ function validate_url( $url, $context = 'posting', $antispam_check = true )
 					: T_('URI scheme not allowed.');
 			}
 
-			preg_match( '¤^(javascript):¤', $url, $match );
+			preg_match( '~^(javascript):~', $url, $match );
 		}
 		else
 		{
@@ -675,22 +675,52 @@ function url_rel_to_same_host( $url, $target_url )
  * Make an $url absolute according to $host, if it is not absolute yet.
  *
  * @param string URL
- * @param string Host (including protocol, e.g. 'http://example.com'); defaults to {@link $ReqHost}
+ * @param string Base (including protocol, e.g. 'http://example.com'); autodedected
  * @return string
  */
-function url_absolute( $url, $host = NULL )
+function url_absolute( $url, $base = NULL )
 {
+	load_funcs('_ext/_url_rel2abs.php');
+
 	if( is_absolute_url($url) )
-	{ // URL is already absolute
+	{	// URL is already absolute
 		return $url;
 	}
 
-	if( empty($host) )
-	{
-		global $ReqHost;
-		$host = $ReqHost;
+	if( empty($base) )
+	{	// Detect current page base
+		global $Blog, $ReqHost, $base_tag_set, $baseurl;
+
+		if( $base_tag_set )
+		{	// <base> tag is set
+			$base = $base_tag_set;
+		}
+		else
+		{
+			if( ! empty( $Blog ) )
+			{	// Get original blog skin, not passed with 'tempskin' param
+				$SkinCache = & get_SkinCache();
+				if( ($Skin = $SkinCache->get_by_ID( $Blog->get_skin_ID(), false )) !== false )
+				{
+					$base = $Blog->get_local_skins_url().$Skin->folder.'/';
+				}
+				else
+				{ // Skin not set:
+					$base = $Blog->gen_baseurl();
+				}
+			}
+			else
+			{	// We are displaying a general page that is not specific to a blog:
+				$base = $ReqHost;
+			}
+		}
 	}
-	return $host.$url;
+
+	if( ($absurl = url_to_absolute($url, $base)) === false )
+	{	// Return relative URL in case of error
+		$absurl = $url;
+	}
+	return $absurl;
 }
 
 
@@ -706,12 +736,6 @@ function url_absolute( $url, $host = NULL )
  */
 function make_rel_links_abs( $s, $host = NULL )
 {
-	if( empty($host) )
-	{
-		global $ReqHost;
-		$host = $ReqHost;
-	}
-
 	$s = preg_replace_callback( '~(<[^>]+?)\b((?:src|href)\s*=\s*)(["\'])?([^\\3]+?)(\\3)~i', create_function( '$m', '
 		return $m[1].$m[2].$m[3].url_absolute($m[4], "'.$host.'").$m[5];' ), $s );
 	return $s;
@@ -745,9 +769,18 @@ function disp_url( $url, $max_length = NULL )
  * @param string URL
  * @return boolean
  */
-function is_absolute_url($url)
+function is_absolute_url( $url )
 {
-    return (bool)preg_match('~^(?:\w+:)?//~', $url);
+	load_funcs('_ext/_url_rel2abs.php');
+
+	if( ($parsed_url = split_url($url)) !== false )
+	{
+		if( !empty($parsed_url['scheme']) || !empty($parsed_url['host']) )
+		{
+			return true;
+		}
+	}
+	return false;
 }
 
 
@@ -822,7 +855,52 @@ function idna_decode( $url )
 }
 
 
-/* {{{ Revision log:
- * $Log: _url.funcs.php,v $
+/**
+ * Get disp urls for Frontoffice part OR ctrl urls for Backoffice
+ *
+ * @param string specific sub entry url
+ * @param string additional params
  */
+function get_dispctrl_url( $dispctrl, $params = '' )
+{
+	global $Blog;
+
+	if( $params != '' )
+	{
+		$params = '&amp;'.$params;
+	}
+
+	if( is_admin_page() || empty( $Blog ) )
+	{	// Backoffice part
+		global $admin_url;
+		return url_add_param( $admin_url, 'ctrl='.$dispctrl.$params );
+	}
+
+	return url_add_param( $Blog->gen_blogurl(), 'disp='.$dispctrl.$params );
+}
+
+
+/**
+ * Get link tag
+ *
+ * @param string Url
+ * @param string Link Text
+ * @param string Link class
+ * @param integer Max length of url when url is used as link text
+ * @return string HTML link tag
+ */
+function get_link_tag( $url, $text = '', $class='', $max_url_length = 50 )
+{
+	if( empty( $text ) )
+	{ // Link text is empty, Use url
+		$text = $url;
+		if( strlen( $text ) > $max_url_length )
+		{ // Crop url text
+			$text = substr( $text, 0, $max_url_length ).'&hellip;';
+		}
+	}
+
+	return '<a class="'.$class.'" href="'.str_replace('&amp;', '&', $url ).'">'.$text.'</a>';
+}
+
 ?>

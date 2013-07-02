@@ -1,6 +1,6 @@
 <?php
 /**
- * $Id: tiny_mce_gzip.php 9 2011-10-24 22:32:00Z fplanque $
+ * $Id: tiny_mce_gzip.php 3606 2013-04-30 07:14:00Z yura $
  *
  * @author Moxiecode
  * @copyright Copyright © 2005-2006, Moxiecode Systems AB, All rights reserved.
@@ -52,7 +52,7 @@
 
 	// Setup cache info
 	if ($diskCache) {
-		if (!$cachePath || !is_readable($cachePath))
+		if (!$cachePath || !is_writable($cachePath))
 			die("alert('Compressor Real path failed. (tiny_mce_gzip.php) $cachePath');");
 
 		$cacheKey = getParam("plugins", "") . getParam("languages", "") . getParam("themes", "") . $suffix;

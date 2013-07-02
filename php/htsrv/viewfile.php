@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -31,7 +31,7 @@
  *
  * @todo skin compliant header!
  *
- * @version $Id: viewfile.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: viewfile.php 3328 2013-03-26 11:44:11Z yura $
  */
 
 /**
@@ -84,6 +84,46 @@ $FileRoot = & $FileRootCache->get_by_ID( $root );
 // Create file object
 $selected_File = new File( $FileRoot->type , $FileRoot->in_type_ID, $path, true );
 
+$action = param_action();
+switch( $action )
+{
+	case 'rotate_90_left':
+	case 'rotate_180':
+	case 'rotate_90_right':
+		// Check that this action request is not a CSRF hacked request:
+		$Session->assert_received_crumb( 'image' );
+
+		load_funcs( 'files/model/_image.funcs.php' );
+
+		switch( $action )
+		{
+			case 'rotate_90_left':
+				$degrees = 90;
+				break;
+			case 'rotate_180':
+				$degrees = 180;
+				break;
+			case 'rotate_90_right':
+				$degrees = 270;
+				break;
+		}
+
+		if( rotate_image( $selected_File, $degrees ) )
+		{	// Image was rotated successfully
+			header_redirect( regenerate_url( 'action,crumb_image', 'action=reload_parent', '', '&' ) );
+		}
+		break;
+
+	case 'reload_parent':
+		// Reload parent window to update rotated image
+		$JS_additional = 'window.opener.location.reload(true);';
+		break;
+}
+
+// Add CSS:
+require_css( 'basic_styles.css', 'rsc_url' ); // the REAL basic styles
+require_css( 'basic.css', 'rsc_url' ); // Basic styles
+require_css( 'viewfile.css', 'rsc_url' );
 
 headers_content_mightcache( 'text/html' );		// In most situations, you do NOT want to cache dynamic content!
 ?>
@@ -91,7 +131,10 @@ headers_content_mightcache( 'text/html' );		// In most situations, you do NOT wa
 <html xml:lang="<?php locale_lang() ?>" lang="<?php locale_lang() ?>">
 <head>
 	<title><?php echo $selected_File->dget('name').' ('.T_('Preview').')'; ?></title>
-	<link href="<?php echo $rsc_url ?>css/viewfile.css" rel="stylesheet" type="text/css" />
+	<?php include_headlines() /* Add javascript and css files included by plugins and skin */ ?>
+<?php if( isset( $JS_additional ) ) { ?>
+	<script type="text/javascript"><?php echo $JS_additional; ?></script>
+<?php } ?>
 </head>
 
 <body>
@@ -118,6 +161,16 @@ switch( $viewtype )
 			}
 			echo 'src="'.$selected_File->get_url().'"'
 						.' width="'.$imgSize[0].'" height="'.$imgSize[1].'" />';
+
+			$url_rotate_90_left = regenerate_url( '', 'action=rotate_90_left'.'&'.url_crumb('image') );
+			$url_rotate_180 = regenerate_url( '', 'action=rotate_180'.'&'.url_crumb('image') );
+			$url_rotate_90_right = regenerate_url( '', 'action=rotate_90_right'.'&'.url_crumb('image') );
+
+			echo '<div class="center">';
+			echo action_icon( T_('Rotate this picture 90&deg; to the left'), 'rotate_left', $url_rotate_90_left, '', 0, 0, array( 'style' => 'margin-right:4px' ) );
+			echo action_icon( T_('Rotate this picture 180&deg;'), 'rotate_180', $url_rotate_180, '', 0, 0, array( 'style' => 'margin-right:4px' ) );
+			echo action_icon( T_('Rotate this picture 90&deg; to the right'), 'rotate_right', $url_rotate_90_right, '', 0, 0 );
+			echo '</div>';
 
 			echo '<div class="subline">';
 			echo '<p><strong>'.$selected_File->dget( 'title' ).'</strong></p>';
@@ -260,9 +313,3 @@ switch( $viewtype )
 
 </body>
 </html>
-
-<?php
-/*
- * $Log: viewfile.php,v $
- */
-?>

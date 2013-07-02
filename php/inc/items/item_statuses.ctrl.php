@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
  * {@internal License choice
@@ -29,7 +29,7 @@
  * @author fplanque: Francois PLANQUE.
  * @author mbruneau: Marc BRUNEAU / PROGIDISTRI
  *
- * @version $Id: item_statuses.ctrl.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: item_statuses.ctrl.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -94,7 +94,4 @@ $GenericElementCache = new GenericCache( 'GenericElement', false, 'T_items__stat
 
 require $inc_path.'generic/inc/_generic_listeditor.php';
 
-/*
- * $Log: item_statuses.ctrl.php,v $
- */
 ?>

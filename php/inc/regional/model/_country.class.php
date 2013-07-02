@@ -3,7 +3,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2009 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @copyright (c)2009-2013 by Francois PLANQUE - {@link http://fplanque.net/}
  * Parts of this file are copyright (c)2009 by The Evo Factory - {@link http://www.evofactory.com/}.
  *
  * {@internal License choice
@@ -27,7 +27,7 @@
  * @author efy-maxim: Evo Factory / Maxim.
  * @author fplanque: Francois Planque.
  *
- * @version $Id: _country.class.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _country.class.php 3328 2013-03-26 11:44:11Z yura $
  */
 
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -43,6 +43,7 @@ class Country extends DataObject
 	var $name = '';
 	var $curr_ID = '';
 	var $enabled = 1;
+	var $preferred = 0;
 
 	/**
 	 * Constructor
@@ -52,21 +53,24 @@ class Country extends DataObject
 	function Country( $db_row = NULL )
 	{
 		// Call parent constructor:
-		parent::DataObject( 'T_country', 'ctry_', 'ctry_ID' );
+		parent::DataObject( 'T_regional__country', 'ctry_', 'ctry_ID' );
 
 		$this->delete_restrictions = array(
 				array( 'table'=>'T_users', 'fk'=>'user_ctry_ID', 'msg'=>T_('%d related users') ),
+				array( 'table'=>'T_regional__region', 'fk'=>'rgn_ctry_ID', 'msg'=>T_('%d related regions') ),
+				array( 'table'=>'T_regional__city', 'fk'=>'city_ctry_ID', 'msg'=>T_('%d related cities') ),
 			);
 
-  		$this->delete_cascades = array();
+		$this->delete_cascades = array();
 
- 		if( $db_row )
+		if( $db_row )
 		{
 			$this->ID            = $db_row->ctry_ID;
 			$this->code          = $db_row->ctry_code;
 			$this->name          = $db_row->ctry_name;
 			$this->curr_ID       = $db_row->ctry_curr_ID;
 			$this->enabled       = $db_row->ctry_enabled;
+			$this->preferred     = $db_row->ctry_preferred;
 		}
 	}
 
@@ -88,7 +92,7 @@ class Country extends DataObject
 
 		// Currency Id
 		param( 'ctry_curr_ID', 'integer' );
-		param_check_number( 'ctry_curr_ID', 'Please select a currency' );
+		param_check_number( 'ctry_curr_ID', T_('Please select a currency') );
 		$this->set_from_Request( 'curr_ID', 'ctry_curr_ID', true );
 
 		return ! param_errors_detected();
@@ -142,8 +146,4 @@ class Country extends DataObject
 	}
 }
 
-
-/*
- * $Log: _country.class.php,v $
- */
 ?>

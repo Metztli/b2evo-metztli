@@ -4,22 +4,25 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: tools.ctrl.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: tools.ctrl.php 3817 2013-05-27 08:47:00Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
 
 load_funcs('plugins/_plugin.funcs.php');
+load_funcs('tools/model/_dbmaintenance.funcs.php');
+load_funcs('tools/model/_tool.funcs.php');
 
 // load item class
 load_class( 'items/model/_item.class.php', 'Item' );
 
 param( 'tab', 'string', '', true );
+param( 'tab3', 'string', 'tools', true );
 
 $tab_Plugin = NULL;
 $tab_plugin_ID = false;
@@ -50,7 +53,7 @@ if( ! empty($tab) )
 }
 
 // Highlight the requested tab (if valid):
-$AdminUI->set_path( 'tools', $tab );
+$AdminUI->set_path( 'options', 'misc', !empty( $tab ) ? $tab : $tab3 );
 
 
 if( empty($tab) )
@@ -59,147 +62,74 @@ if( empty($tab) )
 	{
 		// Check that this action request is not a CSRF hacked request:
 		$Session->assert_received_crumb( 'tools' );
-	
+
 		// fp> TODO: have an option to only PRUNE files older than for example 30 days
 		$current_User->check_perm('options', 'edit', true);
 	}
 
+	set_max_execution_time(0);
+
+	$Plugins->trigger_event( 'AdminToolAction' );
+
 	switch( $action )
 	{
 		case 'del_itemprecache':
-			$DB->query('DELETE FROM T_items__prerendering WHERE 1=1');
+			// Clear pre-renderered item cache (DB)
+			dbm_delete_itemprecache();
+			break;
+
+		case 'del_commentprecache':
+			// Clear pre-renderered comment cache (DB)
+			$DB->query('DELETE FROM T_comments__prerendering WHERE 1=1');
 
 			$Messages->add( sprintf( T_('Removed %d cached entries.'), $DB->rows_affected ), 'success' );
 			break;
 
 		case 'del_pagecache':
 			// Delete the page cache /blogs/cache
-			global $cache_path;
-
-			// Clear general cache directory
-			if( cleardir_r( $cache_path.'general' ) )
-			{
-				$Messages->add( sprintf( T_('General cache deleted: %s'), $cache_path.'general' ), 'note' );
-			}
-			else
-			{
-				$Messages->add( sprintf( T_('Could not delete general cache: %s'), $cache_path.'general' ), 'error' );
-			}
-
-			$SQL = 'SELECT blog_ID FROM T_blogs
-					INNER JOIN T_coll_settings ON ( blog_ID = cset_coll_ID
-								AND cset_name = "cache_enabled"
-								AND cset_value = "1" )
-					WHERE 1=1';
-
-			if( $blog_array = $DB->get_col( $SQL ) )
-			{
-				foreach( $blog_array as $l_blog )
-				{	// Clear blog cache
-					if( cleardir_r( $cache_path.'c'.$l_blog ) )
-					{
-						$Messages->add( sprintf( T_('Blog %d cache deleted: %s'), $l_blog, $cache_path.'c'.$l_blog ), 'note' );
-					}
-					else
-					{
-						$Messages->add( sprintf( T_('Could not delete blog %d cache: %s'), $l_blog, $cache_path.'c'.$l_blog ), 'error' );
-					}
-				}
-			}
-
-			$Messages->add( T_('Page cache deleted.'), 'success' );
+			dbm_delete_pagecache();
 			break;
 
 		case 'del_filecache':
 			// delete the thumbnail cahces .evocache
-			// TODO> handle custom media directories dh> ??
-			// Delete any ?evocache folders:
-			$deleted_dirs = delete_cachefolders($Messages);
-			$Messages->add( sprintf( T_('Deleted %d directories.'), $deleted_dirs ), 'success' );
+			dbm_delete_filecache();
 			break;
 
 		case 'repair_cache':
-			load_funcs( 'tools/model/_system.funcs.php' );
-			$result = system_check_caches();
-			if( empty( $result ) )
-			{
-				$Messages->add( T_( 'All cache folders are working properly.' ), 'success' );
-			}
-			else
-			{
-				$error_message = T_( 'Unable to repair all cache folders becaue of file permissions' ).':<br />';
-				$Messages->add( $error_message.implode( '<br />', $result ) );
-			}
+			// Repair cache
+			dbm_repair_cache();
 			break;
 
-		case 'optimize_tables':
-			// Optimize MyISAM tables
-			global $tableprefix;
-
-			$db_optimized = false;
-			$tables = $DB->get_results( 'SHOW TABLE STATUS FROM `'.$DB->dbname.'` LIKE \''.$tableprefix.'%\'');
-
-			foreach( $tables as $table )
-			{
-				// Before MySQL 4.1.2, the "Engine" field was labeled as "Type".
-				if( ( ( isset( $table->Engine ) && $table->Engine == 'MyISAM' )
-					  || ( isset( $table->Type ) && $table->Type == 'MyISAM' ) )
-					&& $table->Data_free )
-				{	// Optimization needed
-					if( !$DB->query( 'OPTIMIZE TABLE '.$table->Name ) )
-					{
-						$Messages->add( sprintf( T_('Database table %s could not be optimized.'), '<b>'.$table->Name.'</b>' ), 'note' );
-					}
-					else
-					{
-						$db_optimized = true;
-						$Messages->add( sprintf( T_('Database table %s optimized.'), '<b>'.$table->Name.'</b>' ), 'success' );
-					}
-				}
-			}
-
-			if( !$db_optimized )
-			{
-				$Messages->add( T_('Database tables are already optimized.'), 'success' );
-			}
+		case 'optimize_tables': // Optimize MyISAM & InnoDB tables
+		case 'check_tables':    // Check ALL database tables
+		case 'analyze_tables':  // Analize ALL database tables
+			$template_action = $action;
 			break;
 
 		case 'find_broken_posts':
-			// select broken items
-			$sql = 'SELECT * FROM T_items__item
-						WHERE post_canonical_slug_ID NOT IN (
-							SELECT slug_ID FROM T_slug )';
-			$broken_items = $DB->get_results( $sql, OBJECT, 'Find broken posts' );
-			$num_deleted = 0;
-			foreach( $broken_items as $row )
-			{ // delete broken items
-				$broken_Item = new Item( $row );
-				if( $broken_Item->dbdelete() )
-				{
-					$num_deleted++;
-				}
-			}
-
-			$Messages->add( sprintf( T_('Deleted %d posts.'), $num_deleted ), 'success' );
+			// Find all broken posts that have no matching category
+			dbm_find_broken_posts();
 			break;
 
 		case 'find_broken_slugs':
-			// delete broken slugs
-			$r = $DB->query( 'DELETE FROM T_slug
-								WHERE slug_type = "item" and slug_itm_ID NOT IN (
-									SELECT post_ID FROM T_items__item )' );
-
-			if( $r !== false )
-			{
-				$Messages->add( sprintf( T_('Deleted %d slugs.'), $r ), 'success' );
-			}
+			// Find all broken slugs that have no matching target post
+			dbm_find_broken_slugs();
 			break;
 
 		case 'delete_orphan_comment_uploads':
 			// delete orphan comment upload, older than 24 hours
-			$count = remove_orphan_files( NULL, 24 );
+			dbm_delete_orphan_comment_uploads();
+			break;
 
-			$Messages->add( sprintf( T_('%d files have been deleted'), $count ), 'success' );
+		case 'delete_orphan_files':
+			// delete orphan File objects with no matching file on disk
+			$template_action = $action;
+			break;
+
+		case 'prune_hits_sessions':
+			// Prune old hits & sessions
+			load_class( 'sessions/model/_hitlist.class.php', 'Hitlist' );
+			Hitlist::dbprune(); // will prune once per day, according to Settings
 			break;
 
 		case 'create_sample_comments':
@@ -207,7 +137,7 @@ if( empty($tab) )
 			$num_comments = param( 'num_comments', 'string', 0 );
 			$num_posts = param( 'num_posts', 'string', 0 );
 
-			if ( ! ( param_check_number( 'blog_ID', T_('Blog ID must be a number'), true ) &&
+			if( ! ( param_check_number( 'blog_ID', T_('Blog ID must be a number'), true ) &&
 				param_check_number( 'num_comments', T_('Comments per post must be a number'), true ) &&
 				param_check_number( 'num_posts', T_('"How many posts" field must be a number'), true ) ) )
 			{ // param errors
@@ -225,70 +155,15 @@ if( empty($tab) )
 				break;
 			}
 
-			$curr_orderby = $selected_Blog->get_setting('orderby');
-			if( $curr_orderby == 'RAND' )
-			{
-				$curr_orderby .= '()';
-			}
-			else
-			{
-				$curr_orderby = 'post_'.$curr_orderby;
-			}
-			$curr_orderdir = $selected_Blog->get_setting('orderdir');
-
-			// find the $num_posts latest posts in blog
-			$sql = 'SELECT post_ID 
-						FROM T_items__item INNER JOIN T_categories ON post_main_cat_ID = cat_ID
-					 WHERE cat_blog_ID = '.$blog_ID.' AND post_status = '.$DB->quote( 'published' ).'
-					 ORDER BY '.$curr_orderby.' '.$curr_orderdir.', post_ID '.$curr_orderdir.'
-					 LIMIT '.$num_posts;
-			$items_result = $DB->get_results( $sql, ARRAY_A, 'Find the x latest posts in blog' );
-
-			$count = 1;
-			$fix_content = 'This is an auto generated comment for testing the moderation features.
-							http://www.test.com/test_comment_';
-			// go through on selected items
-			foreach( $items_result as $row )
-			{
-				$item_ID = $row['post_ID'];
-				// create $num_comments comments for each item
-				for( $i = 0; $i < $num_comments; $i++ )
-				{
-					$author = 'Test '.$count;
-					$email = 'test_'.$count.'@test.com';
-					$url = 'http://www.test.com/test_comment_'.$count;
-
-					$content = $fix_content.$count;
-					for( $j = 0; $j < 50; $j++ )
-					{ // create 50 random word
-						$length = rand(1, 15);
-						$word = generate_random_key( $length, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ' );
-						$content = $content.' '.$word;
-					}
-
-					// create and save a new comment
-					$Comment = new Comment();
-					$Comment->set( 'post_ID', $item_ID );
-					$Comment->set( 'status', 'draft' );
-					$Comment->set( 'author', $author );
-					$Comment->set( 'author_email', $email );
-					$Comment->set( 'author_url', $url );
-					$Comment->set( 'content', $content );
-					$Comment->set( 'date', date( 'Y-m-d H:i:s', $localtimenow ) );
-					$Comment->set( 'author_IP', $Hit->IP );
-					$Comment->dbsave();
-					$count++;
-				}
-			}
-
-			$Messages->add( sprintf( T_('Created %d comments.'), $count - 1 ), 'success' );
+			// Execute a creating of comments inside template in order to see a process
+			$template_action = 'create_sample_comments';
 			break;
 
 		case 'create_sample_posts':
 			$blog_ID = param( 'blog_ID', 'string', 0 );
 			$num_posts = param( 'num_posts', 'string', 0 );
 
-			if ( ! ( param_check_number( 'blog_ID', T_('Blog ID must be a number'), true ) &&
+			if( ! ( param_check_number( 'blog_ID', T_('Blog ID must be a number'), true ) &&
 				param_check_number( 'num_posts', T_('"How many posts" field must be a number'), true ) ) )
 			{ // param errors
 				$action = 'show_create_posts';
@@ -305,60 +180,27 @@ if( empty($tab) )
 				break;
 			}
 
-			$time = ( $localtimenow );
-			$content = T_( 'This is an auto generated post for testing moderation.' );
-			for( $i = 1; $i <= $num_posts; $i++ )
-			{
-				for( $j = 0; $j < 50; $j++ )
-				{ // create 50 random word
-					$length = rand(1, 15);
-					$word = generate_random_key( $length, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ' );
-					$content = $content.' '.$word;
-				}
-				$Item = new Item();
-				$Item->set( 'title', 'Generated post '.$i );
-				$Item->set( 'content', $content );
-				$Item->set( 'status', 'published' );
-				$Item->set( 'dateset', '1' );
-				// set post main cat ID, from selected blog
-				$Item->set( 'main_cat_ID', $selected_Blog->get_default_cat_ID() );
-				$Item->set( 'datestart', date( 'Y-m-d H:i:s', $time ) );
-				$Item->set( 'datecreated', $time );
-				$Item->dbinsert();
+			// Execute a creating of posts inside template in order to see a process
+			$template_action = 'create_sample_posts';
+			break;
+
+		case 'create_sample_users':
+			$num_users = param( 'num_users', 'string', 0 );
+			$group_ID = param( 'group_ID', 'string', 0 );
+
+			if( ! param_check_number( 'num_users', T_('"How many users" field must be a number'), true ) )
+			{ // param errors
+				$action = 'show_create_users';
+				break;
 			}
-			$Messages->add( sprintf( T_('Created %d posts.'), $num_posts ), 'success' );
+
+			// Execute a creating of users inside template in order to see a process
+			$template_action = 'create_sample_users';
 			break;
 
 		case 'recreate_itemslugs':
-			$ItemCache = get_ItemCache();
-			$ItemCache->load_where( '( post_title != "" ) AND ( post_urltitle = "title" OR post_urltitle LIKE "title-%" )');
-			$items = $ItemCache->get_ID_array();
-			$count_slugs = 0;
-
-			set_max_execution_time(0);
-
-			foreach( $items as $item_ID )
-			{
-				$Item = $ItemCache->get_by_ID($item_ID);
-
-				$prev_urltitle = $Item->get( 'urltitle' );
-				$item_title = $Item->get( 'title' );
-
-				// check if post title is not empty and urltitle was auto generated ( equals title or title-[0-9]+ )
-				// Note: urltitle will be auto generated on this form (title-[0-9]+), if post title wass empty and, urltitle was not set
-				// Note: Even if a post title was set to 'title' on purpose it's possible, that this tool will change the post urltitle
-				if( ( ! empty( $item_title ) ) && ( ( $prev_urltitle == 'title' ) || ( preg_match( '#^title-[0-9]+$#', $prev_urltitle ) ) ) )
-				{
-					// set urltitle empty, so the item update function will regenerate the item slug
-					$Item->set( 'urltitle', '' );
-					$result = $Item->dbupdate(/* do not autotrack modification */ false, /* update slug */ true, /* do not update excerpt */ false); 
-					if( ( $result ) && ( $prev_urltitle != $Item->get( 'urltitle' ) ) )
-					{ // update was successful, and item urltitle was changed
-						$count_slugs++;
-					}
-				}
-			}
-			$Messages->add( sprintf( 'Created %d new URL slugs.', $count_slugs ), 'success' );
+			// Recreate all item slugs (change title-[0-9] canonical slugs to a slug generated from current title). Old slugs will still work, but redirect to the new one.
+			dbm_recreate_itemslugs();
 			break;
 
 		case 'del_obsolete_tags':
@@ -375,12 +217,71 @@ if( empty($tab) )
 			phpinfo();
 			exit();
 			break;
+
+		case 'create_sample_hits':
+
+			$days = param( 'days', 'integer', 0 );
+			$min_interval = param( 'min_interval', 'integer', 0 );
+			$max_interval = param( 'max_interval', 'integer', 0 );
+
+			if( $days < 1 )
+			{
+				param_error( 'days', 'Please enter how many days of stats to generate' );
+				$action = 'show_create_hits';
+				break;
+			}
+
+			if( ( $min_interval > $max_interval ) || ( $min_interval < 0 ) || ( $max_interval <= 0 ) )
+			{
+				param_error( 'min_interval', 'Please enter correct interval values' );
+				param_error( 'max_interval', 'Please enter correct interval values' );
+				$action = 'show_create_hits';
+				break;
+			}
+
+			// Execute a creating of hits inside template in order to see a process
+			$template_action = 'create_sample_hits';
+			break;
+
+		case 'create_sample_messages':
+			$num_loops = param( 'num_loops', 'string', 0 );
+			$num_messages = param( 'num_messages', 'string', 0 );
+			$num_words = param( 'num_words', 'string', 0 );
+			$max_users = param( 'max_users', 'string', 0 );
+
+			if( ! ( param_check_number( 'num_loops', T_('"How many loops" field must be a number'), true ) &&
+				param_check_number( 'num_messages', T_('"How many messages in each conversation" field must be a number'), true ) &&
+				param_check_number( 'num_words', T_('"How many words in each message" field must be a number'), true ) &&
+				param_check_number( 'max_users', T_('"Max # of participants in a conversation" field must be a number'), true ) ) )
+			{ // param errors
+				$action = 'show_create_messages';
+				break;
+			}
+
+			// Execute a creating of messages inside template in order to see a process
+			$template_action = 'create_sample_messages';
+			break;
+
 	}
 }
-
 $AdminUI->breadcrumbpath_init( false );  // fp> I'm playing with the idea of keeping the current blog in the path here...
-$AdminUI->breadcrumbpath_add( T_('Tools'), '?ctrl=crontab' );
-$AdminUI->breadcrumbpath_add( T_('Miscellaneous'), '?ctrl=tools' );
+$AdminUI->breadcrumbpath_add( T_('System'), '?ctrl=system' );
+$AdminUI->breadcrumbpath_add( T_('Maintenance'), '?ctrl=tools' );
+switch( $tab3 )
+{
+	case 'import':
+		$AdminUI->breadcrumbpath_add( T_('Import'), '?ctrl=tools&amp;tab3=import' );
+		break;
+
+	case 'test':
+		$AdminUI->breadcrumbpath_add( T_('Testing'), '?ctrl=tools&amp;tab3=import' );
+		break;
+
+	case 'tools':
+	default:
+		$AdminUI->breadcrumbpath_add( T_('Tools'), '?ctrl=tools' );
+		break;
+}
 
 
 // Display <html><head>...</head> section! (Note: should be done early if actions do not redirect)
@@ -412,9 +313,44 @@ if( empty($tab) )
 		case 'show_create_posts':
 			$AdminUI->disp_view( 'tools/views/_create_posts.form.php' );
 			break;
+			break;
+
+		case 'show_create_users':
+			$AdminUI->disp_view( 'tools/views/_create_users.form.php' );
+			break;
+
+		case 'show_create_hits':
+			$AdminUI->disp_view( 'tools/views/_create_test_hit.form.php' );
+			break;
+
+		case 'show_create_messages':
+			// Get count users
+			$SQL = new SQL();
+			$SQL->SELECT( 'COUNT( user_ID )' );
+			$SQL->FROM( 'T_users' );
+			$users_count = $DB->get_var( $SQL->get() );
+			$threads_count = $users_count * $users_count - $users_count + 1;
+
+			$AdminUI->disp_view( 'tools/views/_create_messages.form.php' );
+			break;
+
 
 		default:
-			$AdminUI->disp_view( 'tools/views/_misc_tools.view.php' );
+			switch( $tab3 )
+			{
+				case 'import':
+					$AdminUI->disp_view( 'tools/views/_misc_import.view.php' );
+					break;
+
+				case 'test':
+					$AdminUI->disp_view( 'tools/views/_misc_test.view.php' );
+					break;
+
+				case 'tools':
+				default:
+					$AdminUI->disp_view( 'tools/views/_misc_tools.view.php' );
+					break;
+			}
 			break;
 	}
 }
@@ -428,8 +364,7 @@ elseif( $tab_Plugin )
 
 	<?php
 	echo $tab_Plugin->get_edit_settings_link()
-		.' '.$tab_Plugin->get_help_link('$help_url')
-		.' '.$tab_Plugin->get_help_link('$readme');
+		.' '.$tab_Plugin->get_help_link('$help_url');
 	?>
 
 	</div>
@@ -445,7 +380,4 @@ $AdminUI->disp_payload_end();
 // Display body bottom, debug info and close </html>:
 $AdminUI->disp_global_footer();
 
-/*
- * $Log: tools.ctrl.php,v $
- */
 ?>

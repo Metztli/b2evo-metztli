@@ -3,7 +3,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2009 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @copyright (c)2009-2013 by Francois PLANQUE - {@link http://fplanque.net/}
  * Parts of this file are copyright (c)2009 by The Evo Factory - {@link http://www.evofactory.com/}.
  *
  * {@internal License choice
@@ -27,7 +27,7 @@
  * @author efy-maxim: Evo Factory / Maxim.
  * @author fplanque: Francois Planque.
  *
- * @version $Id: _currency_list.view.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _currency_list.view.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -39,7 +39,7 @@ $s = param( 's', 'string', '', true );
 //Create query
 $SQL = new SQL();
 $SQL->SELECT( '*' );
-$SQL->FROM( 'T_currency' );
+$SQL->FROM( 'T_regional__currency' );
 
 if( !empty($s) )
 {	// We want to filter on search keyword:
@@ -59,18 +59,27 @@ $Results->title = T_('Currencies list').get_manual_link('currencies_list');
  */
 function curr_td_enabled( $curr_enabled, $curr_ID )
 {
+	global $dispatcher;
+
+	$r = '';
 
 	if( $curr_enabled == true )
 	{
-		return get_icon('enabled', 'imgtag', array('title'=>T_('The currency is enabled.')) );
+		$r .= action_icon( T_('Disable the currency!'), 'bullet_full',
+										regenerate_url( 'action', 'action=disable_currency&amp;curr_ID='.$curr_ID.'&amp;'.url_crumb('currency') ) );
 	}
 	else
 	{
-		return get_icon('disabled', 'imgtag', array('title'=>T_('The currency is disabled.')) );
+		$r .= action_icon( T_('Enable the currency!'), 'bullet_empty',
+										regenerate_url( 'action', 'action=enable_currency&amp;curr_ID='.$curr_ID.'&amp;'.url_crumb('currency') ) );
 	}
+
+	return $r;
+
 }
 $Results->cols[] = array(
 		'th' => /* TRANS: shortcut for enabled */ T_('En'),
+		'th_title' => T_('Enabled'),
 		'order' => 'curr_enabled',
 		'td' => '%curr_td_enabled( #curr_enabled#, #curr_ID# )%',
 		'td_class' => 'center'
@@ -170,7 +179,4 @@ if( $current_User->check_perm( 'options', 'edit', false ) )
 
 $Results->display();
 
-/*
- * $Log: _currency_list.view.php,v $
- */
 ?>

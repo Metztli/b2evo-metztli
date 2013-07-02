@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
@@ -34,7 +34,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE
  *
- * @version $Id: _dataobjectcache.class.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _dataobjectcache.class.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -96,7 +96,16 @@ class DataObjectCache
 	 * @var string SQL name field (not necessarily with the object).
 	 */
 	var $name_field;
+
+	/**
+	 * @var string SQL ORDER BY.
+	 */
 	var $order_by;
+
+	/**
+	 * @var string SQL additional SELECT fields.
+	 */
+	var $select;
 
 	/**
 	 * The text that gets used for the "None" option in the objects options list.
@@ -134,8 +143,9 @@ class DataObjectCache
 	 * @param string field names or NULL to use name field
 	 * @param string The text that gets used for the "None" option in the objects options list (Default: T_('None')).
 	 * @param mixed  The value that gets used for the "None" option in the objects options list.
+	 * @param string Additional part for SELECT clause of sql query
 	 */
-	function DataObjectCache( $objtype, $load_all, $tablename, $prefix = '', $dbIDname, $name_field = NULL, $order_by = '', $allow_none_text = NULL, $allow_none_value = '' )
+	function DataObjectCache( $objtype, $load_all, $tablename, $prefix = '', $dbIDname, $name_field = NULL, $order_by = '', $allow_none_text = NULL, $allow_none_value = '', $select = '' )
 	{
 		$this->objtype = $objtype;
 		$this->load_all = $load_all;
@@ -144,6 +154,7 @@ class DataObjectCache
 		$this->dbIDname = $dbIDname;
 		$this->name_field = $name_field;
 		$this->none_option_value = $allow_none_value;
+		$this->select = $select;
 
 		if( empty( $order_by ) )
 		{
@@ -292,8 +303,13 @@ class DataObjectCache
 	 */
 	function get_SQL_object($title = NULL)
 	{
+		$select = '';
+		if( !empty( $this->select ) )
+		{	// Additional select fields
+			$select = ', '.$this->select;
+		}
 		$SQL = new SQL( $title );
-		$SQL->SELECT( '*' );
+		$SQL->SELECT( '*'.$select );
 		$SQL->FROM( $this->dbtablename );
 		$SQL->ORDER_BY( $this->order_by );
 		return $SQL;
@@ -694,6 +710,17 @@ class DataObjectCache
 		# 	unset($this->ID_array[$k]);
 		$this->ID_array = NULL;
 		unset( $this->cache[$req_ID] );
+		// remove Obj with req_ID from DataObject_array
+		$remove_index = 0;
+		foreach( $this->DataObject_array as $DataObject )
+		{
+			if( $DataObject->ID == $req_ID )
+			{
+				break;
+			}
+			$remove_index++;
+		}
+		unset( $this->DataObject_array[$remove_index] );
 	}
 
 
@@ -778,6 +805,108 @@ class DataObjectCache
 		return $r;
 	}
 
+	/**
+	 * Returns form option list with cache contents grouped by country preference
+	 *
+	 * Load the cache if necessary
+	 *
+	 * @param integer|array selected ID(s) (list for multi-selects)
+	 * @param boolean provide a choice for "none" with ID ''
+	 * @param string Callback method name
+	 * @param array IDs to ignore.
+	 * @return string
+	 */
+	function get_group_country_option_list( $default = 0, $allow_none = false, $method = 'get_name', $ignore_IDs = array() )
+	{
+		if( !is_array( $default ) )
+		{
+			$default = array( $default );
+		}
+
+		if( ! $this->all_loaded && $this->load_all )
+		{ // We have not loaded all items so far, but we're allowed to.
+			if ( empty( $ignore_IDs ) )
+			{	// just load all items
+				$this->load_all();
+			}
+			else
+			{	// only load those items not listed in $ignore_IDs
+				$this->load_list( $ignore_IDs, true );
+			}
+		}
+
+		$r = '';
+
+		if( $allow_none )
+		{	// we set current value of a country if it is sent to function
+			$r .= '<option value="'.$this->none_option_value.'"';
+			if( empty($default) ) $r .= ' selected="selected"';
+			$r .= '>'.format_to_output($this->none_option_text).'</option>'."\n";
+		}
+
+		$pref_countries = array(); //preferred countries.
+		$rest_countries = array(); // not preffered countries (the rest)
+
+		foreach( $this->cache as $loop_Obj )
+		{
+			if ( in_array( $loop_Obj->ID, $ignore_IDs ) )
+			{	// if we have ID of countries that we have to ignore we just do not include them here. 
+				//Ignore this ID
+				continue;
+			}
+
+			if($loop_Obj->preferred == 1)
+			{  // if the country is preferred we add it to selected array.
+				$pref_countries[] = $loop_Obj;
+			}
+			$rest_countries[] = $loop_Obj;
+
+		}
+
+		if(count($pref_countries))
+		{	// if we don't have preferred countries in this case we don't have to show optgroup
+			// in option list
+			$r .= '<optgroup label="'.T_('Frequent countries').'">';
+			foreach( $pref_countries as $loop_Obj )
+			{
+				$r .=  '<option value="'.$loop_Obj->ID.'"';
+				if( in_array( $loop_Obj->ID, $default ) ) $r .= ' selected="selected"';
+				$r .= '>';
+				$r .= format_to_output( $loop_Obj->$method(), 'htmlbody' );
+				$r .=  '</option>'."\n";
+			}
+			$r .= '</optgroup>';
+
+			if(count($rest_countries))
+			{ // if we don't have rest countries we do not create optgroup for them
+				$r .= '<optgroup label="'.T_('Other countries').'">';
+				foreach( $rest_countries as $loop_Obj )
+				{
+					$r .=  '<option value="'.$loop_Obj->ID.'"';
+					if( in_array( $loop_Obj->ID, $default ) ) $r .= ' selected="selected"';
+					$r .= '>';
+					$r .= format_to_output( $loop_Obj->$method(), 'htmlbody' );
+					$r .=  '</option>'."\n";
+				}
+				$r .= '</optgroup>';
+			}
+		}
+		else
+		{	// if we have only rest countries we get here
+			foreach( $rest_countries as $loop_Obj )
+			{
+				$r .=  '<option value="'.$loop_Obj->ID.'"';
+				if( in_array( $loop_Obj->ID, $default ) ) $r .= ' selected="selected"';
+				$r .= '>';
+				$r .= format_to_output( $loop_Obj->$method(), 'htmlbody' );
+				$r .=  '</option>'."\n";
+			}
+		}
+
+		return $r;
+	}
+
+
 
 	/**
 	 * Returns option array with cache contents
@@ -819,8 +948,4 @@ class DataObjectCache
 
 }
 
-
-/*
- * $Log: _dataobjectcache.class.php,v $
- */
 ?>

@@ -7,12 +7,6 @@ Author: Free WordPress Themes
 Author URI: http://www.freewpthemes.net
 */
 
-@import url(../../rsc/css/basic.css);	/* Import basic styles */
-@import url(../../rsc/css/img.css);	/* Import standard image styles */
-@import url(../../rsc/css/blog_elements.css);	/* Import standard blog elements styles */
-@import url(../../rsc/css/forms.css);	/* Import default form styles */
-@import url(../../rsc/css/comments.css);	/* Import default comment styles */
-
 /* Default styles overriden for this skin: */
 table.prevnext_post {
 	margin-top: 30px;
@@ -143,24 +137,31 @@ hr {
 /* Wrapper */
 
 #wrapper0 {
-	background: url(rsc/img/img01.jpg) repeat-x;
+	overflow: hidden;
+	width: 100%;
+	box-shadow: 0 20px 20px -20px rgba(0, 0, 0, 0.25) inset;
 }
 
 #wrapper {
-	width: 960px;
+	width: 876px;
 	margin: 0 auto;
-	background: url(rsc/img/img02.jpg) repeat-y;
-}
-
-#wrapper2 {
-	background: url(rsc/img/img10.jpg) no-repeat left bottom;
 }
 
 /* Header */
 
+#header_wrap {
+	background:-webkit-linear-gradient(top, #0964aa, #04347e);
+	background:-moz-linear-gradient(top, #0964aa, #04347e);
+	background:-o-linear-gradient(top, #0964aa, #04347e);
+	background: -ms-linear-gradient(top, #0964aa, #04347e);
+	filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#0964aa', endColorstr='#04347e');
+	border-bottom: 8px solid #FFF;
+}
 #header {
 	height: 140px;
-	background: #087FE7 url(rsc/img/img03.jpg) no-repeat;
+	background: #087FE7 url(rsc/img/header.jpg) no-repeat;
+	margin: 0 auto;
+	width: 876px;
 }
 
 /* Logo */
@@ -232,17 +233,19 @@ div.featured_post .title {
 
 #menu {
 	float: right;
+	max-width: 630px;
 }
 
 #menu ul {
 	margin: 0;
-	padding: 78px 65px 0 0;
+	padding: 68px 65px 0 0;
 	list-style: none;
 	line-height: normal;
 }
 
 #menu li {
 	display: inline;
+	float: left;
 }
 
 #menu a {
@@ -260,7 +263,10 @@ div.featured_post .title {
 /* Page */
 
 #page {
-	background: url(rsc/img/img04.jpg) no-repeat;
+	background: #FFF url(rsc/img/pagebg.png) no-repeat center top;
+	width: 876px;
+	margin: 0 auto;
+	box-shadow: 0 0 23px 15px rgba(0, 0, 0, 0.1);
 }
 
 /* Content */
@@ -268,7 +274,7 @@ div.featured_post .title {
 #content {
 	float: left;
 	width: 555px;
-	padding: 0 0 0 76px;
+	padding: 0 0 0 36px;
 }
 
 .title {
@@ -282,6 +288,11 @@ div.featured_post .title {
 
 .title a:hover {
 	text-decoration: underline;
+}
+
+.edit_intro_link{
+	float: right;
+	margin-top: 60px;
 }
 
 /* Navigation */
@@ -344,7 +355,11 @@ content: "\00BB \0020";
 	border-left: 1px solid #A9C817;
 	border-right: 1px solid #7DAB00;
 	border-bottom: 1px solid #578900;
-	background: #6E9D00 url(rsc/img/img18.gif) repeat-x;
+	background:-webkit-linear-gradient(top, #8db600, #6e9d00);
+	background:-moz-linear-gradient(top, #8db600, #6e9d00);
+	background:-o-linear-gradient(top, #8db600, #6e9d00);
+	background: -ms-linear-gradient(top, #8db600, #6e9d00);
+	filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#8db600', endColorstr='#6e9d00');
 	font-size: 11px;
 	font-weight: bold;
 	color: #FFFFFF;
@@ -354,7 +369,6 @@ content: "\00BB \0020";
 
 #footer {
 	height: 70px;
-	background: url(rsc/img/img05.jpg) no-repeat;
 	font-size: 92%;
 }
 
@@ -372,4 +386,44 @@ content: "\00BB \0020";
 #footer a.contact_link,
 #footer a:hover {
 	text-decoration: underline;
+}
+
+div.input input, ul.ui-autocomplete {
+	font: bold 12px "Trebuchet MS",Arial,Helvetica,sans-serif;
+}
+
+div.compact_search_form input.SearchField {
+	width: 145px;
+}
+
+/* jQuery Tokeninput plugin */
+div.input ul.token-input-list-facebook {
+	width: 400px;
+	border-color: #EBEBEB;
+}
+
+
+div.comment_notification p, div.feedback_feed_msg p {
+	text-align: center;
+	padding: 0 10px;
+}
+div.messages_list {
+	margin-top: 50px;
+}
+
+/* Not published comments display */
+#styled_content_block .bComment .status_draft,
+#styled_content_block .bComment .status_review,
+#styled_content_block .bComment .status_community,
+#styled_content_block .bComment .status_protected,
+#styled_content_block .bComment .status_private {
+	left: 12px;
+}
+/* Not published posts display */
+#styled_content_block .post .status_draft,
+#styled_content_block .post .status_review,
+#styled_content_block .post .status_community,
+#styled_content_block .post .status_protected,
+#styled_content_block .post .status_private {
+	top: -20px;
 }

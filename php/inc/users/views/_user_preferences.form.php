@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -34,7 +34,7 @@
  * @author fplanque: Francois PLANQUE
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: _user_preferences.form.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _user_preferences.form.php 3328 2013-03-26 11:44:11Z yura $
  */
 
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -72,7 +72,40 @@ global $AdminUI;
  */
 global $form_action;
 
+
+// Default params:
+$default_params = array(
+		'skin_form_params' => array(),
+	);
+
+if( isset( $params ) )
+{	// Merge with default params
+	$params = array_merge( $default_params, $params );
+}
+else
+{	// Use a default params
+	$params = $default_params;
+}
+
+// ------------------- PREV/NEXT USER LINKS -------------------
+user_prevnext_links( array(
+		'block_start'  => '<table class="prevnext_user"><tr>',
+		'prev_start'   => '<td width="33%">',
+		'prev_end'     => '</td>',
+		'prev_no_user' => '<td width="33%">&nbsp;</td>',
+		'back_start'   => '<td width="33%" class="back_users_list">',
+		'back_end'     => '</td>',
+		'next_start'   => '<td width="33%" class="right">',
+		'next_end'     => '</td>',
+		'next_no_user' => '<td width="33%">&nbsp;</td>',
+		'block_end'    => '</tr></table>',
+		'user_tab'     => 'userprefs'
+	) );
+// ------------- END OF PREV/NEXT USER LINKS -------------------
+
 $Form = new Form( $form_action, 'user_checkchanges' );
+
+$Form->switch_template_parts( $params['skin_form_params'] );
 
 if( !$user_profile_only )
 {
@@ -84,6 +117,7 @@ if( $is_admin )
 {
 	$form_title = get_usertab_header( $edited_User, 'userprefs', T_( 'Edit preferences' ) );
 	$form_class = 'fform';
+	$Form->title_fmt = '<span style="float:right">$global_icons$</span><div>$title$</div>'."\n";
 }
 else
 {
@@ -100,34 +134,10 @@ $Form->begin_form( $form_class, $form_title );
 
 	$Form->hidden( 'user_ID', $edited_User->ID );
 	$Form->hidden( 'edited_user_login', $edited_User->login );
-
-$Form->begin_fieldset( T_('Email communications') );
-
-$email_fieldnote = '<a href="mailto:'.$edited_User->get('email').'">'.get_icon( 'email', 'imgtag', array('title'=>T_('Send an email')) ).'</a>';
-
-if( $action != 'view' )
-{ // We can edit the values:
-	$Form->text_input( 'edited_user_email', $edited_User->email, 30, T_('Email'), $email_fieldnote, array( 'maxlength' => 100, 'required' => true ) );
-
-	$edited_User->get_Group();
-	$pm_disabled = ( ! $edited_User->Group->check_messaging_perm() );
-	$messaging_options = array(
-		array( 'PM', 1, T_( 'Allow others to send me private messages' ), ( ( $edited_User->get( 'allow_msgform' ) % 2 == 1 ) && ( !$pm_disabled ) ), $pm_disabled ),
-		array( 'email', 2, T_( 'Allow others to send me emails through a message form (email address will never be displayed)' ),  $edited_User->get( 'allow_msgform' ) > 1 ) );
-	$Form->checklist( $messaging_options, 'edited_user_msgform', T_('Message form') );
-	$notify_options = array(
-		array( 'edited_user_notify', 1, T_( 'Notify me by email whenever a comment is published on one of <strong>my</strong> posts.' ), $edited_User->get( 'notify' ) ),
-		array( 'edited_user_notify_moderation', 2, T_( 'Notify me by email whenever a comment is awaiting moderation on one of <strong>my</strong> blogs.' ), $edited_User->get( 'notify_moderation' ) ) );
-	$Form->checklist( $notify_options, 'edited_user_notification', T_( 'Notifications' ) );
-}
-else
-{ // display only
-	$Form->info( T_('Email'), $edited_User->get('email'), $email_fieldnote );
-	$Form->info( T_('Message form'), ($edited_User->get('allow_msgform') ? T_('yes') : T_('no')) );
-	$Form->info( T_('Notifications'), ($edited_User->get('notify') ? T_('yes') : T_('no')) );
-}
-
-$Form->end_fieldset();
+	if( isset( $Blog ) )
+	{
+		$Form->hidden( 'blog', $Blog->ID );
+	}
 
 	/***************  Preferences  **************/
 
@@ -168,17 +178,18 @@ if( $action != 'view' )
 	else
 	{
 		$Form->checkbox( 'edited_user_set_login_multiple_sessions', $multiple_sessions_value, T_('Multiple sessions'),
-				T_('Check this if you want to log in from different computers/browsers at the same time. Otherwise, logging in from a new computer/browser will disconnect you on the previous one.'),
+				T_('Check this if you want to be able to log in from different computers/browsers at the same time. Otherwise, logging in from a new computer/browser will automatically disconnect you on the previous one.'),
 				'', 1, $multiple_sessions_field_disabled );
 	}
 
 	// Session time out for the current user
 	$timeout_sessions = $UserSettings->get( 'timeout_sessions', $edited_User->ID );
+	$def_timeout_session = $Settings->get( 'timeout_sessions' );
 
 	if( empty( $timeout_sessions ) )
 	{
 		$timeout_sessions_selected = 'default';
-		$timeout_sessions = $Settings->get( 'timeout_sessions', $edited_User->ID );
+		$timeout_sessions = $def_timeout_session;
 	}
 	else
 	{
@@ -190,38 +201,36 @@ if( $action != 'view' )
 		$Form->radio_input( 'edited_user_timeout_sessions', $timeout_sessions_selected, array(
 					array(
 						'value'   => 'default',
-						'label'   => T_('use default duration'),
-						'onclick' => 'jQuery("#timeout_sessions_container").hide();' ),
+						'label'   => T_('Use default duration.'),
+						'note'    => duration_format( $def_timeout_session ),
+						'onclick' => 'jQuery("[id$=timeout_sessions]").hide();' ),
 					array(
 						'value'   => 'custom',
-						'label'   => T_('use custom duration'),
-						'onclick' => 'jQuery("#timeout_sessions_container").show();' ),
+						'label'   => T_('Use custom duration...'),
+						'onclick' => 'jQuery("[id$=timeout_sessions]").show();' ),
 				), T_('Session timeout'), array( 'lines' => true ) );
 
 		// Note: jQuery is not used below ( display:none is used instead ),
 		// Note: because using jQuery leads to 'timeout_sessions_container' flash for 'default duration' on page load.
+		$fieldstart = $Form->fieldstart;
 		if( $timeout_sessions_selected == 'default' )
 		{
-			echo '<div id="timeout_sessions_container" style="display:none">';
-		}
-		else
-		{
-			echo '<div id="timeout_sessions_container">';
+			$Form->fieldstart = str_replace( '>', ' style="display:none">', $Form->fieldstart );
 		}
 		$Form->duration_input( 'timeout_sessions', $timeout_sessions, T_('Custom duration'), 'months', 'seconds', array( 'minutes_step' => 1 ) );
-		echo '</div>';
+		$Form->fieldstart = $fieldstart;
 	}
 	else
 	{
 		$Form->info( T_('Session timeout'), $timeout_sessions_selected );
 	}
 
-	$Form->checkbox( 'edited_user_showonline', $edited_User->get('showonline'), T_('Show online'), T_('Check this to be displayed as online when visiting the site.') );
+	$Form->checkbox( 'edited_user_showonline', $UserSettings->get( 'show_online', $edited_User->ID ), T_('Show online'), T_('Check this to be displayed as online when visiting the site.') );
 }
 else
 { // display only
 	$Form->info( T_('Preferred locale'), $edited_User->get('locale'), T_('Preferred locale for admin interface, notifications, etc.') );
-	$Form->info( T_('Show online'), ($edited_User->get('showonline')) ? T_('yes') : T_('no') );
+	$Form->info( T_('Show online'), ( $UserSettings->get( 'show_online', $edited_User->ID ) ) ? T_('yes') : T_('no') );
 }
 
 $Form->end_fieldset();
@@ -242,11 +251,11 @@ if( $action != 'view' )
 	$Form->buttons( $action_buttons );
 }
 
+if( ( $current_User->ID == $edited_User->ID ) && isset( $Blog ) )
+{
+	$Form->info( '', '<a href="'.url_add_param( $Blog->gen_blogurl(), 'disp=closeaccount' ).'">'.T_( 'I want to close my account...' ).'</a>' );
+}
 
 $Form->end_form();
 
-
-/*
- * $Log: _user_preferences.form.php,v $
- */
 ?>

@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -22,7 +22,7 @@
  * @author fplanque: Francois PLANQUE.
  * @author Yabba	- {@link http://www.astonishme.co.uk/}
  *
- * @version $Id: _coll_media_index.widget.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _coll_media_index.widget.php 3459 2013-04-11 12:35:09Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -58,12 +58,28 @@ class coll_media_index_Widget extends ComponentWidget
 	{
 		load_funcs( 'files/model/_image.funcs.php' );
 
+		/**
+		 * @var ItemTypeCache
+		 */
+		$ItemTypeCache = & get_ItemTypeCache();
+		$item_type_options =
+			array(
+				''  => T_('All'),
+			) + $ItemTypeCache->get_option_array() ;
+
 		$r = array_merge( array(
 			'title' => array(
 				'label' => T_('Block title'),
 				'note' => T_( 'Title to display in your skin.' ),
 				'size' => 40,
 				'defaultvalue' => T_('Recent photos'),
+			),
+			'item_type' => array(
+				'label' => T_('Item type'),
+				'note' => T_('What kind of items do you want to list?'),
+				'type' => 'select',
+				'options' => $item_type_options,
+				'defaultvalue' => '1',
 			),
 			'thumb_size' => array(
 				'label' => T_('Thumbnail size'),
@@ -78,6 +94,12 @@ class coll_media_index_Widget extends ComponentWidget
 				'type' => 'select',
 				'options' => array( 'grid' => T_( 'Grid' ), 'list' => T_( 'List' ) ),
 				'defaultvalue' => 'grid',
+			),
+			'disp_image_title' => array(
+				'label' => T_( 'Display image title' ),
+				'note' => T_( 'Check this to display image title. This falls back to post title if image title is not set.' ),
+				'type' => 'checkbox',
+				'defaultvalue' => false,
 			),
 			'grid_nb_cols' => array(
 				'label' => T_( 'Columns' ),
@@ -186,6 +208,10 @@ class coll_media_index_Widget extends ComponentWidget
 		$SQL->WHERE( 'cat_blog_ID IN ('.$list_blogs.')' ); // fp> TODO: want to restrict on images :]
 		$SQL->WHERE_and( 'post_status = "published"' );	// TODO: this is a dirty hack. More should be shown.
 		$SQL->WHERE_and( 'post_datestart <= \''.remove_seconds( $localtimenow ).'\'' );
+		if( !empty( $this->disp_params[ 'item_type' ] ) )
+		{ // Get items only with specified type
+			$SQL->WHERE_and( 'post_ptyp_ID = '.intval( $this->disp_params[ 'item_type' ] ) );
+		}
 		$SQL->GROUP_BY( 'link_ID' );
 		$SQL->LIMIT( $this->disp_params[ 'limit' ]*4 ); // fp> TODO: because we have no way of getting images only, we get 4 times more data than requested and hope that 25% at least will be images :/
 		$SQL->ORDER_BY(	gen_order_clause( $this->disp_params['order_by'], $this->disp_params['order_dir'],
@@ -240,8 +266,13 @@ class coll_media_index_Widget extends ComponentWidget
 
 			$r .= '<a href="'.$ItemLight->get_permanent_url().'">';
 			// Generate the IMG THUMBNAIL tag with all the alt, title and desc if available
-			$r .= $File->get_thumb_imgtag( $this->disp_params['thumb_size'] );
+			$r .= $File->get_thumb_imgtag( $this->disp_params['thumb_size'], '', '', $ItemLight->title );
 			$r .= '</a>';
+			if( $this->disp_params[ 'disp_image_title' ] )
+			{
+				$title = ($File->get('title')) ? $this->get('title') : $ItemLight->title;
+				$r .= '<span class="note">'.$title.'</span>';
+			}
 
 			++$count;
 
@@ -266,7 +297,7 @@ class coll_media_index_Widget extends ComponentWidget
 
 		// Display title if requested
 		$this->disp_title();
-		
+
 		if( $layout == 'grid' )
 		{
 			echo $this->disp_params[ 'grid_start' ];
@@ -275,7 +306,7 @@ class coll_media_index_Widget extends ComponentWidget
 		{
 			echo $this->disp_params[ 'list_start' ];
 		}
-		
+
 		echo $r;
 
 		if( $layout == 'grid' )
@@ -298,8 +329,4 @@ class coll_media_index_Widget extends ComponentWidget
 	}
 }
 
-
-/*
- * $Log: _coll_media_index.widget.php,v $
- */
 ?>

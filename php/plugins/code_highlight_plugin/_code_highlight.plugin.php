@@ -4,7 +4,7 @@
  *
  * This file is part of the b2evolution project - {@link http://b2evolution.net/}
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2005-2007 by Yabba/Scott - {@link http://astonishme.co.uk/contact/}.
  *
  * {@internal License choice
@@ -27,7 +27,7 @@
  * @author Yabba: Paul Jones - {@link http://astonishme.co.uk/}
  * @author Stk: Scott Kimler - {@link http://astonishme.co.uk/}
  *
- * @version $Id: _code_highlight.plugin.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _code_highlight.plugin.php 3328 2013-03-26 11:44:11Z yura $
  */
 
 /**
@@ -80,12 +80,11 @@ class code_highlight_plugin extends Plugin
 {
 	var $name = 'Code highlight';
 	var $code = 'evo_code';
-	var $priority = 80;
-	var $version = '2.0';
+	var $priority = 10;
+	var $version = '5.0.0';
 	var $author = 'Astonish Me';
 	var $group = 'rendering';
-	var $help_url = 'http://b2evo.astonishme.co.uk/';
-	var $apply_rendering = 'opt-out';
+	var $help_url = 'http://b2evolution.net/man/technical-reference/renderer-plugins/code-highlight-plugin';
 	var $number_of_installs = 1;
 
 	/**
@@ -117,7 +116,7 @@ class code_highlight_plugin extends Plugin
 	function PluginInit( & $params )
 	{
 		$this->short_desc = T_( 'Display computer code in a post.' );
-		$this->long_desc = T_( 'Display computer code easily.  This plugin renders character entities on the fly, so you can cut-and-paste normal code directly into your posts and it will always look like normal code, even when editing the post (i.e., no preprocessing of the code is required). Include line numbers (customizable starting number).  The best part about the line numbers - visitors can cut-and-paste the code from your post, leaving the line numbers behind! Accepts BBcode tags and does not render smilies.  Colouration of PHP code, plus PHP manual links for PHP functions. Easy to install and easy to use. No hacks. Degrades nicely, if the plugin is off.  Styling completely customizable via your skins CSS file.' );
+		$this->long_desc = T_( 'Display computer code easily with syntax coloring and allowing for easy copy/paste.' );
 	}
 
 
@@ -147,12 +146,6 @@ class code_highlight_plugin extends Plugin
 					'defaultvalue' => '1',
 					'note' => $this->T_( 'Display code toolbar in expert mode and on comment form (indivdual users can override this).' ),
 				),
-			'render_comments' => array(
-					'label' => $this->T_( 'Render comments' ),
-					'type' => 'checkbox',
-					'defaultvalue' => '0',
-					'note' => $this->T_( 'Render codeblocks in comments.' ),
-				),
 			);
 		return $r;
 	}
@@ -181,6 +174,19 @@ class code_highlight_plugin extends Plugin
 
 
 	/**
+	 * Define here default collection/blog settings that are to be made available in the backoffice.
+	 *
+	 * @param array Associative array of parameters.
+	 * @return array See {@link Plugin::GetDefaultSettings()}.
+	 */
+	function get_coll_setting_definitions( & $params )
+	{
+		$default_params = array_merge( $params, array( 'default_comment_rendering' => 'never' ) );
+		return parent::get_coll_setting_definitions( $default_params );
+	}
+
+
+	/**
 	 * Event handler: Called when displaying editor toolbars.
 	 *
 	 * @param array Associative array of parameters
@@ -188,7 +194,27 @@ class code_highlight_plugin extends Plugin
 	 */
 	function DisplayCommentToolbar( & $params )
 	{
-		if( $this->Settings->get( 'render_comments' )
+		if( !empty( $params['Comment'] ) )
+		{ // Comment is set, get Blog from comment
+			$Comment = & $params['Comment'];
+			if( !empty( $Comment->item_ID ) )
+			{
+				$comment_Item = & $Comment->get_Item();
+				$Blog = & $comment_Item->get_Blog();
+			}
+		}
+
+		if( empty( $Blog ) )
+		{ // Comment is not set, try global Blog
+			global $Blog;
+			if( empty( $Blog ) )
+			{ // We can't get a Blog, this way "apply_comment_rendering" plugin collection setting is not available
+				return false;
+			}
+		}
+
+		$apply_rendering = $this->get_coll_setting( 'coll_apply_comment_rendering', $Blog );
+		if( !empty( $apply_rendering ) && $apply_rendering != 'never'
 		&& ( ( is_logged_in() && $this->UserSettings->get( 'display_toolbar' ) )
 			|| ( !is_logged_in() && $this->Settings->get( 'toolbar_default' ) ) ) )
 		{
@@ -206,7 +232,25 @@ class code_highlight_plugin extends Plugin
 	 */
 	function AdminDisplayToolbar( & $params )
 	{
-		if( $params['edit_layout'] == 'simple' || !$this->UserSettings->get( 'display_toolbar' )  )
+		if( !empty( $params['Item'] ) )
+		{	// Item is set, get Blog from post
+			$edited_Item = & $params['Item'];
+			$Blog = & $edited_Item->get_Blog();
+		}
+
+		if( empty( $Blog ) )
+		{	// Item is not set, try global Blog
+			global $Blog;
+			if( empty( $Blog ) )
+			{	// We can't get a Blog, this way "apply_rendering" plugin collection setting is not available
+				return false;
+			}
+		}
+
+		$coll_setting_name = ( $params['target_type'] == 'Comment' ) ? 'coll_apply_comment_rendering' : 'coll_apply_rendering';
+		$apply_rendering = $this->get_coll_setting( $coll_setting_name, $Blog );
+		if( empty( $apply_rendering ) || $apply_rendering == 'never' ||
+		    $params['edit_layout'] == 'simple' || !$this->UserSettings->get( 'display_toolbar' ) )
 		{	// This is too complex for simple mode, or user doesn't want the toolbar, don't display it:
 			return false;
 		}
@@ -222,8 +266,10 @@ class code_highlight_plugin extends Plugin
 		echo '<input type="button" id="codespan" title="'.T_('Insert codespan').'" class="quicktags" onclick="codespan_tag(\'\');" value="'.T_('codespan').'" />';
 		echo '<input type="button" id="codeblock" title="'.T_('Insert codeblock').'" style="margin-left:8px;" class="quicktags" onclick="codeblock_tag(\'\');" value="'.T_('codeblock').'" />';
 		echo '<input type="button" id="codeblock_xml" title="'.T_('Insert XML codeblock').'" class="quicktags" onclick="codeblock_tag(\'xml\');" value="'.T_('XML').'" />';
+		echo '<input type="button" id="codeblock_html" title="'.T_('Insert HTML codeblock').'" class="quicktags" onclick="codeblock_tag(\'html\');" value="'.T_('HTML').'" />';
 		echo '<input type="button" id="codeblock_php" title="'.T_('Insert PHP codeblock').'" class="quicktags" onclick="codeblock_tag(\'php\');" value="'.T_('PHP').'" />';
 		echo '<input type="button" id="codeblock_css" title="'.T_('Insert CSS codeblock').'" class="quicktags" onclick="codeblock_tag(\'css\');" value="'.T_('CSS').'" />';
+		echo '<input type="button" id="codeblock_shell" title="'.T_('Insert Shell codeblock').'" class="quicktags" onclick="codeblock_tag(\'shell\');" value="'.T_('Shell').'" />';
 		echo '</div>';
 
 		?>
@@ -273,7 +319,7 @@ class code_highlight_plugin extends Plugin
 		// Quick and dirty escaping of inline code <codespan> || [codespan]:
 			// fp> please provide example of what the following fix does: it looks weird to me :p
 			// $content = preg_replace_callback( '#[<\[]codespan[^>\]](.*?)[<\[]/codespan[>\]]#',
-		$content = preg_replace_callback( '#[<\[]codespan[>\]](.*?)[<\[]/codespan[>\]]#',
+		$content = preg_replace_callback( '#[<\[]codespan[>\]]([\s\S]*?)[<\[]/codespan[>\]]#',
 								array( $this, 'filter_codespan_callback' ), $content );
 
 		return true;
@@ -291,7 +337,7 @@ class code_highlight_plugin extends Plugin
 	{
 		$code = $matches[1];
 
-		return '<code class="codespan">'.str_replace( array( '&', '<', '>' ), array( '&amp;', '&lt;', '&gt;' ), $code).'</code>';
+		return '<code class="codespan">'.$code.'</code>';
 	}
 
 
@@ -307,7 +353,9 @@ class code_highlight_plugin extends Plugin
 
 		// 1 - attribs : lang &| line
 		// 2 - codeblock
-		$content = preg_replace_callback( '#<\!--\s*codeblock([^-]*?)\s*--><pre><code>(.+?)</code></pre><\!--\s+/codeblock\s*-->#is', array( $this, 'format_to_edit' ), $content );
+		$content = preg_replace_callback( '#<\!--\s*codeblock([^-]*?)\s*--><pre[^>]*><code>(.+?)</code></pre><\!--\s+/codeblock\s*-->#is', array( $this, 'format_to_edit' ), $content );
+
+		$content = preg_replace_callback( '#<code class="codespan">(.+?)</code>#is', array( $this, 'format_span_to_edit' ), $content );
 
 		return true;
 	}
@@ -315,36 +363,35 @@ class code_highlight_plugin extends Plugin
 
 	function CommentFormSent( & $params )
 	{
-		if( $this->Settings->get( 'render_comments' ) )
+		$ItemCache = & get_ItemCache();
+		$comment_Item = & $ItemCache->get_by_ID( $params['comment_post_ID'], false );
+		if( !$comment_Item )
+		{	// Incorrect item
+			return false;
+		}
+
+		$item_Blog = & $comment_Item->get_Blog();
+		if( $this->get_coll_setting( 'coll_apply_comment_rendering', $item_Blog ) )
 		{	// render code blocks in comment
 			$params['content' ] = & $params['comment'];
 			$this->FilterItemContents( $params );
-			// remove <pre>
-			$params['comment'] = preg_replace( '#(<\!--\s*codeblock[^-]*?\s*-->)<pre><code>(.+?)</code></pre>(<\!--\s+/codeblock\s*-->)#is', '$1<code>$2</code>$3', $params['comment'] );
+			if( empty( $params['dont_remove_pre'] ) || !$params['dont_remove_pre'] )
+			{	// remove <pre>
+				$params['comment'] = preg_replace( '#(<\!--\s*codeblock[^-]*?\s*-->)<pre[^>]*><code>(.+?)</code></pre>(<\!--\s+/codeblock\s*-->)#is', '$1<code>$2</code>$3', $params['comment'] );
+			}
 		}
 	}
 
 
 	function BeforeCommentFormInsert( $params )
 	{
-		if( $this->Settings->get( 'render_comments' ) )
+		$Comment = & $params['Comment'];
+		$comment_Item = & $Comment->get_Item();
+		$item_Blog = & $comment_Item->get_Blog();
+		if( $this->get_coll_setting( 'coll_apply_comment_rendering', $item_Blog ) )
 		{	// render code blocks in comment
 			// add <pre> back in so highlighting is done, will be removed by highlighter
-			$params['Comment']->content =  preg_replace( '#(<\!--\s*codeblock[^-]*?\s*-->)<code>(.+?)</code>(<\!--\s+/codeblock\s*-->)#is', '$1<pre><code>$2</code></pre>$3', $params['Comment']->content );
-		}
-	}
-
-
-	/**
-	 * Render comments if required
-	 *
-	 * @param array mixed $params
-	 */
-	function FilterCommentContent( $params )
-	{
-		if( $this->Settings->get( 'render_comments' ) )
-		{	// render code blocks in comment
-			$this->RenderItemAsHtml( $params );
+			$params['Comment']->content =  preg_replace( '#(<\!--\s*codeblock[^-]*?\s*-->)<code>(.+?)</code>(<\!--\s+/codeblock\s*-->)#is', '$1<pre class="codeblock"><code>$2</code></pre>$3', $params['Comment']->content );
 		}
 	}
 
@@ -360,7 +407,7 @@ class code_highlight_plugin extends Plugin
 
 		// 2 - attribs : lang &| line
 		// 4 - codeblock
-		$content = preg_replace_callback( '#(\<p>)?\<!--\s*codeblock([^-]*?)\s*-->(\</p>)?\<pre><code>([\s\S]+?)</code>\</pre>(\<p>)?\<!--\s*/codeblock\s*-->(\</p>)?#i',
+		$content = preg_replace_callback( '#(\<p>)?\<!--\s*codeblock([^-]*?)\s*-->(\</p>)?\<pre[^>]*><code>([\s\S]+?)</code>\</pre>(\<p>)?\<!--\s*/codeblock\s*-->(\</p>)?#i',
 								array( $this, 'render_codeblock_callback' ), $content );
 
 		return true;
@@ -443,21 +490,34 @@ class code_highlight_plugin extends Plugin
 	 */
 	function filter_codeblock_callback( $block )
 	{ // if code block exists then tidy everything up for the database, otherwise just remove the pointless tag
-		return ( empty( $block[3] ) ||  !trim( $block[3] ) ? '' : '<!-- codeblock'.$block[2].' --><pre><code>'
-						.str_replace( array( '&', '<', '>' ), array( '&amp;', '&lt;', '&gt;' ), $block[3] )
+		$attributes = str_replace( array( '"', '\'' ), '', html_entity_decode( $block[2] ) );
+		return ( empty( $block[3] ) ||  !trim( $block[3] ) ? '' : '<!-- codeblock'.$attributes.' --><pre class="codeblock"><code>'
+						.$block[3]
 						.'</code></pre><!-- /codeblock -->' );
 	}
 
 
 	/**
-	 * Formats code ready for editing
+	 * Formats codeblock ready for editing
 	 *
 	 * @param array $block ( 1 - attributes, 2 - the code )
 	 * @return string formatted code
 	 */
 	function format_to_edit( $block )
 	{
-		return '[codeblock'.$block[1].']'.str_replace( array( '&lt;', '&gt;', '&amp;' ), array( '<', '>', '&' ), $block[2] ).'[/codeblock]';
+		return '[codeblock'.$block[1].']'.html_entity_decode( $block[2] ).'[/codeblock]';
+	}
+
+
+	/**
+	 * Formats codespan ready for editing
+	 *
+	 * @param array $span ( 1 - the code )
+	 * @return string formatted code
+	 */
+	function format_span_to_edit( $span )
+	{
+		return '[codespan]'.html_entity_decode( $span[1] ).'[/codespan]';
 	}
 
 
@@ -468,6 +528,8 @@ class code_highlight_plugin extends Plugin
 	 */
 	function SkinBeginHtmlHead()
 	{
+		require_js( 'functions.js', 'blog' );
+
 		add_css_headline('/* AstonishMe code plugin styles */'
 			.'.amc0,.amc1,.amc2,.amc3,.amc4,.amc5,.amc6,.amc7,.amc8,.amc9 {'
 			.'background:url('.$this->get_plugin_url().'img/numbers.gif) no-repeat; }');
@@ -541,10 +603,10 @@ class code_highlight_plugin extends Plugin
 									.$this->create_number( ++$count + $offset ).'</td><td><code>'.$line
 									// add an &nbsp; to empty lines to stop them "collapsing"
 									.( empty( $line ) ? '&nbsp;' : '' )
-									.'</code></td></tr>'."\n";
+									.'</code></td></tr>';//."\n"; yura: I commented this because Auto-P plugin creates the tags <p></p> from this symbol
 		}
 		// make "long" value a setting ? - yabs
-		return '<p class="amcode">'.$this->languageCache[ $type ]->language_title.':</p><div class="codeblock amc_'.$type.' '.( $count < 26 ? 'amc_short' : 'amc_long' ).'"><table>'.$output.'</table></div>';
+		return '<p class="codeblock_title">'.$this->languageCache[ $type ]->language_title.'</p><div class="codeblock codeblock_with_title amc_'.$type.' '.( $count < 26 ? 'amc_short' : 'amc_long' ).'"><table>'.$output.'</table></div>';
 	}
 
 
@@ -585,11 +647,11 @@ class code_highlight_plugin extends Plugin
 	function render_codeblock_callback( $block )
 	{
 		// set the offset if present - default : 0
-		preg_match( '#line=("|\')([0-9]+?)\1#', $block[2], $match );
+		preg_match( '#line=("|\'?)([0-9]+?)(["\']?)$#', $block[2], $match );
 		$offset = ( empty( $match[2] ) ? 0 : $match[2] - 1 );
 
 		// set the language if present - default : code
-		preg_match( '#lang=("|\')([^\1]+?)\1#', $block[2], $match );
+		preg_match( '#lang=("|\'?)([^\1]+?)([\s"\']+?)#', $block[2], $match );
 		$language = strtolower( ( empty( $match[2] ) ? 'code' : $match[2] ) );
 
 		if( $code = trim( $block[4] ) )
@@ -635,8 +697,4 @@ class code_highlight_plugin extends Plugin
 	}
 }
 
-
-/*
- * $Log: _code_highlight.plugin.php,v $
- */
 ?>

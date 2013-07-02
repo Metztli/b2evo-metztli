@@ -5,14 +5,14 @@
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
  *
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author evfy-asimo: Attila Simo.
  *
- * @version $Id: slugs.ctrl.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: slugs.ctrl.php 3943 2013-06-06 09:46:34Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -26,7 +26,7 @@ global $current_User;
 // Check minimum permission:
 $current_User->check_perm( 'slugs', 'view', true );
 
-$AdminUI->set_path( 'tools', 'slugs' );
+$AdminUI->set_path( 'options', 'slugs' );
 
 param_action( 'list' );
 
@@ -131,7 +131,7 @@ switch( $action )
 			forget_param( 'slug_ID' );
 			$Messages->add( $msg, 'success' );
 			// Redirect so that a reload doesn't write to the DB twice:
-			header_redirect( '?ctrl=slugs', 303 ); // Will EXIT
+			header_redirect( regenerate_url( 'action', '', '', '&' ), 303 ); // Will EXIT
 			// We have EXITed already at this point!!
 		}
 		else
@@ -143,6 +143,11 @@ switch( $action )
 		}
 		break;
 }
+
+
+$AdminUI->breadcrumbpath_init( false );
+$AdminUI->breadcrumbpath_add( T_('System'), '?ctrl=system' );
+$AdminUI->breadcrumbpath_add( T_('Slugs'), '?ctrl=slugs' );
 
 // Display <html><head>...</head> section! (Note: should be done early if actions do not redirect)
 $AdminUI->disp_html_head();
@@ -184,8 +189,4 @@ $AdminUI->disp_payload_end();
 // Display body bottom, debug info and close </html>:
 $AdminUI->disp_global_footer();
 
-
-/*
- * $Log: slugs.ctrl.php,v $
- */
 ?>

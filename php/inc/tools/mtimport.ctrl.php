@@ -16,7 +16,7 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2004-2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
  * Credits go to the WordPress team (@link http://wordpress.org), where I got the basic
  * import-mt.php script with most of the core functions. Thank you!
@@ -35,7 +35,7 @@
  * @author fplanque: Francois PLANQUE
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: mtimport.ctrl.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: mtimport.ctrl.php 3861 2013-05-30 09:29:39Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -117,7 +117,7 @@ if( ! isset($config_is_done) || ! $config_is_done )
 
 
 // Check if user is logged in and is in group #1 (admins)
-if( !is_logged_in() || $current_User->Group->ID != 1 )
+if( !is_logged_in( false ) || $current_User->grp_ID != 1 )
 {	// login failed
 	debug_die( 'You must login with an administrator (group #1) account.' );
 }
@@ -336,7 +336,7 @@ param( 'import_mode', 'string', 'normal' );
 			form_text( 'default_password2', $default_password, 20, 'Confirm password', 'please confirm the password', 30 , '', 'password' );
 			$GroupCache = & get_GroupCache();
 			form_select_object( 'default_usergroup', $Settings->get('newusers_grp_ID'), $GroupCache, T_('User group') );
-			$field_note = '[0 - 10] '.sprintf( T_('See <a %s>online manual</a> for details.'), 'href="http://manual.b2evolution.net/User_levels"' );
+			$field_note = '[0 - 10]';
 			form_text( 'default_userlevel', $Settings->get('newusers_level'), 2, T_('Level'), $field_note, 2 );
 			?>
 		</fieldset>
@@ -386,9 +386,13 @@ param( 'import_mode', 'string', 'normal' );
 
 			if( $import_mode != 'easy' )
 			{ // we'll use 'default' when importing
+				// Autoselect a blog from where to get renderer settings
+				$autoselect_blog = autoselect_blog( 'blog_post_statuses', 'edit' );
+				$BlogCache = & get_BlogCache();
+				$setting_Blog = & $BlogCache->get_by_ID( $autoselect_blog );
 				?>
 				<div class="label">Renderers:</div>
-				<div class="input"><?php renderer_list() ?></div>
+				<div class="input"><?php renderer_list( $setting_Blog ) ?></div>
 			<?php } ?>
 		</fieldset>
 
@@ -609,7 +613,13 @@ param( 'import_mode', 'string', 'normal' );
 		else
 		{
 			global $Plugins;
-			$default_renderers = $Plugins->validate_renderer_list( array('default') );
+			// Autoselect a blog to validate renderer list
+			$autoselect_blog = autoselect_blog( 'blog_post_statuses', 'edit' );
+			$BlogCache = & get_BlogCache();
+			$setting_Blog = & $BlogCache->get_by_ID( $autoselect_blog );
+
+			$renderer_params = isset( $setting_Blog ) ? array( 'Blog' => & $setting_Blog, 'setting_name' => 'coll_apply_rendering' ) : array();
+			$default_renderers = $Plugins->validate_renderer_list( array('default'), $renderer_params );
 			$autop = 1;
 		}
 
@@ -985,14 +995,14 @@ param( 'import_mode', 'string', 'normal' );
 				{
 					$old_content = $post_content;
 					// convert tags to lowercase
-					$post_content = stripslashes( preg_replace( "¤(</?)(\w+)([^>]*>)¤e", "'\\1'.strtolower('\\2').'\\3'", $post_content ) );
+					$post_content = stripslashes( preg_replace( "~(</?)(\w+)([^>]*>)~e", "'\\1'.strtolower('\\2').'\\3'", $post_content ) );
 
 					// close br, hr and img tags
-					$post_content = preg_replace( array('¤<(br)>¤', '¤<(hr\s?.*?)>¤', '¤<(img\s.*?)>¤'), '<\\1 />', $post_content );
+					$post_content = preg_replace( array('~<(br)>~', '~<(hr\s?.*?)>~', '~<(img\s.*?)>~'), '<\\1 />', $post_content );
 
 
 					// add quotes for href tags that don't have them
-					$post_content = preg_replace( '¤href=([^"\'][^\s>"\']+)["\']?¤', 'href="$1"', $post_content );
+					$post_content = preg_replace( '~href=([^"\'][^\s>"\']+)["\']?~', 'href="$1"', $post_content );
 
 					if( $post_content != $old_content )
 					{
@@ -1075,10 +1085,10 @@ param( 'import_mode', 'string', 'normal' );
 						{
 							$DB->query( "INSERT INTO T_comments( comment_post_ID, comment_type, comment_author_ID, comment_author,
 																										comment_author_email, comment_author_url, comment_author_IP,
-																										comment_date, comment_content)
+																										comment_date, comment_content, comment_renderers )
 												VALUES( $post_ID, 'comment', NULL, ".$DB->quote($comment_author).",
 																".$DB->quote($comment_email).",	".$DB->quote($comment_url).",
-																".$DB->quote($comment_ip).", '$comment_date', ".$DB->quote($comment_content)." )" );
+																".$DB->quote($comment_ip).", '$comment_date', ".$DB->quote($comment_content).", 'default' )" );
 						}
 
 						$message .= '<li>Comment from '.$comment_author.' added.</li>';
@@ -1122,10 +1132,10 @@ param( 'import_mode', 'string', 'normal' );
 						{
 							$DB->query( "INSERT INTO T_comments
 								(comment_post_ID, comment_type, comment_author, comment_author_email, comment_author_url,
-								comment_author_IP, comment_date, comment_content )
+								comment_author_IP, comment_date, comment_content, comment_renderers )
 								VALUES
 								($post_ID, 'trackback', ".$DB->quote($comment_author).", ".$DB->quote($comment_email).", ".$DB->quote($comment_url).",
-								".$DB->quote($comment_ip).", ".$DB->quote($comment_date).", ".$DB->quote($comment_content)." )" );
+								".$DB->quote($comment_ip).", ".$DB->quote($comment_date).", ".$DB->quote($comment_content).", 'default' )" );
 						}
 						$message .= '<li>Trackback from '.$comment_url.' added.</li>';
 						$count_trackbackscreated++;
@@ -1135,7 +1145,7 @@ param( 'import_mode', 'string', 'normal' );
 			}
 
 			echo "</li>\n";
-			flush();
+			evo_flush();
 		}
 		?>
 		</ol>
@@ -1494,7 +1504,7 @@ function import_data_extract_authors_cats()
 /**
  * Outputs a list of available renderers (not necessarily installed).
  */
-function renderer_list()
+function renderer_list( & $Blog )
 {
 	global $renderers;
 
@@ -1510,8 +1520,10 @@ function renderer_list()
 		{ // No unique code!
 			continue;
 		}
-		if( $loop_RendererPlugin->apply_rendering == 'stealth'
-			|| $loop_RendererPlugin->apply_rendering == 'never' )
+
+		$apply_rendering = $loop_RendererPlugin->get_coll_setting( 'coll_apply_rendering', $Blog );
+		if( $apply_rendering == 'stealth'
+			|| $apply_rendering == 'never' )
 		{	// This is not an option.
 			continue;
 		}
@@ -1536,7 +1548,7 @@ function renderer_list()
 			<input type="checkbox" class="checkbox" name="renderers[]"
 				value="<?php echo $loop_RendererPlugin->code ?>" id="<?php echo $loop_RendererPlugin->code ?>"
 				<?php
-				switch( $loop_RendererPlugin->apply_rendering )
+				switch( $apply_rendering )
 				{
 					case 'always':
 						// echo 'FORCED';
@@ -1668,7 +1680,4 @@ function tidypostdata( $string )
 	return str_replace( array('&quot;', '&#039;', '&lt;', '&gt;'), array('"', "'", '<', '>'), remove_magic_quotes( $string ) );
 }
 
-/*
- * $Log: mtimport.ctrl.php,v $
- */
 ?>

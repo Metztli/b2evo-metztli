@@ -4,7 +4,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * @author fplanque: Francois PLANQUE.
  * @author gorgeb: Bertrand GORGE / EPISTEMA
@@ -29,8 +29,7 @@ class smilies_plugin extends Plugin
 	 * fp> There is... I can't remember the exact problem thouh. Probably some interaction with the code highlight or the video plugins.
 	 */
 	var $priority = 15;
-	var $version = '4.0.5';
-	var $apply_rendering = 'opt-in';
+	var $version = '5.0.0';
 	var $group = 'rendering';
 	var $number_of_installs = 3; // QUESTION: dh> why 3?
 
@@ -80,12 +79,6 @@ class smilies_plugin extends Plugin
 					'defaultvalue' => 0,
 					'type' => 'checkbox',
 					'note' => T_('This is the default setting. Users can override it in their profile.'),
-				),
-				'render_comments' => array(	// fp> Note: this is not a default in this version, it's an 'always' :]
-					'label' => $this->T_('Render comments'),
-					'note' => $this->T_('Check to also render smilies in comments.'),
-					'defaultvalue' => 0,
-					'type' => 'checkbox',
 				),
 				// TODO (yabs) : Display these as images and individual inputs
 				'smiley_list' => array(
@@ -166,6 +159,19 @@ XX(      graydead.gif
 
 
 	/**
+	 * Define here default collection/blog settings that are to be made available in the backoffice.
+	 *
+	 * @param array Associative array of parameters.
+	 * @return array See {@link Plugin::get_coll_setting_definitions()}.
+	 */
+	function get_coll_setting_definitions( & $params )
+	{
+		$default_params = array_merge( $params, array( 'default_post_rendering' => 'opt-in' ) );
+		return parent::get_coll_setting_definitions( $default_params );
+	}
+
+
+	/**
 	 * Display a toolbar in admin
 	 *
 	 * @param array Associative array of parameters
@@ -189,7 +195,26 @@ XX(      graydead.gif
 	 */
 	function DisplayCommentToolbar( & $params )
 	{
-		if( $this->Settings->get( 'render_comments' )
+		if( !empty( $params['Comment'] ) )
+		{ // Comment is set, get Blog from comment
+			$Comment = & $params['Comment'];
+			if( !empty( $Comment->item_ID ) )
+			{
+				$comment_Item = & $Comment->get_Item();
+				$Blog = & $comment_Item->get_Blog();
+			}
+		}
+
+		if( empty( $Blog ) )
+		{ // Comment is not set, try global Blog
+			global $Blog;
+			if( empty( $Blog ) )
+			{ // We can't get a Blog, this way "apply_comment_rendering" plugin collection setting is not available
+				return false;
+			}
+		}
+
+		if( $this->get_coll_setting( 'coll_apply_comment_rendering', $Blog )
 		&& ( ( is_logged_in() && $this->UserSettings->get( 'use_toolbar' ) )
 			|| ( !is_logged_in() && $this->Settings->get( 'use_toolbar_default' ) ) ) )
 		{
@@ -232,21 +257,6 @@ XX(      graydead.gif
 	/**
 	 * Perform rendering
 	 *
-	 * @see Plugin::FilterCommentContent()
-	 */
-	function FilterCommentContent( & $params )
-	{
-		if( $this->Settings->get( 'render_comments' ) )
-		{
-			$this->RenderItemAsHtml( $params );
-		}
-	}
-
-
-
-	/**
-	 * Perform rendering
-	 *
 	 * @see Plugin::RenderItemAsHtml()
 	 */
 	function RenderItemAsHtml( & $params )
@@ -281,13 +291,13 @@ XX(      graydead.gif
 
 		// Lazy-check first, using stristr() (stripos() is only available since PHP5):
 		if( stristr( $content, '<code' ) !== false || stristr( $content, '<pre' ) !== false )
-		{ // Call ReplaceTagSafe() on everything outside <pre></pre> and <code></code>:
+		{ // Call ReplaceTagSafe() on everything outside code/pre:
 			$content = callback_on_non_matching_blocks( $content,
 					'~<(code|pre)[^>]*>.*?</\1>~is',
 					array( & $this, 'ReplaceTagSafe' ) );
 		}
 		else
-		{ // No CODE or PRE blocks, replace on the whole thing
+		{ // No code/pre blocks, replace on the whole thing
 			$content = $this->ReplaceTagSafe($content);
 		}
 
@@ -422,7 +432,4 @@ XX(      graydead.gif
 }
 
 
-/*
- * $Log: _smilies.plugin.php,v $
- */
 ?>

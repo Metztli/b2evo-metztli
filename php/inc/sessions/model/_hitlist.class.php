@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -29,7 +29,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _hitlist.class.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _hitlist.class.php 3328 2013-03-26 11:44:11Z yura $
  *
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -120,13 +120,15 @@ class Hitlist
 		 */
 		global $DB;
 		global $Debuglog, $Settings, $localtimenow;
-		global $Plugins;
+		global $Plugins, $Messages;
 
 		// Prune when $localtime is a NEW day (which will be the 1st request after midnight):
 		$last_prune = $Settings->get( 'auto_prune_stats_done' );
 		if( $last_prune >= date('Y-m-d', $localtimenow) && $last_prune <= date('Y-m-d', $localtimenow+86400) )
 		{ // Already pruned today (and not more than one day in the future -- which typically never happens)
-			return T_('Pruning has already been done today');
+			$message = T_('Pruning has already been done today');
+			$Messages->add( $message, 'error' );
+			return $message;
 		}
 
 		$time_prune_before = ($localtimenow - ($Settings->get('auto_prune_stats') * 86400)); // 1 day = 86400 seconds
@@ -136,13 +138,27 @@ class Hitlist
 			WHERE hit_datetime < '".date('Y-m-d', $time_prune_before)."'", 'Autopruning hit log' );
 		$Debuglog->add( 'Hitlist::dbprune(): autopruned '.$rows_affected.' rows from T_hitlog.', 'request' );
 
+/*		// Prune for internal searches
+		$rows_affected = $DB->query( "
+			DELETE FROM T_logs__internal_searches 
+			WHERE isrch_hit_ID not in 
+				(
+					SELECT hit_ID from T_hitlog
+				)" );
+		$Debuglog->add( 'Hitlist::dbprune(): autopruned '.$rows_affected.' rows from T_logs__internal_searches.', 'request' );
+
+		// Optimizing tables
+		// fp> TODO see if we want to do this here
+		$DB->query('OPTIMIZE TABLE T_logs__internal_searches');
+*/
+		
 		// Prune sessions that have timed out and are older than auto_prune_stats
 		$sess_prune_before = ($localtimenow - $Settings->get( 'timeout_sessions' ));
 		$smaller_time = min( $sess_prune_before, $time_prune_before );
 		// allow plugins to prune session based data
 		$Plugins->trigger_event( 'BeforeSessionsDelete', $temp_array = array( 'cutoff_timestamp' => $smaller_time ) );
 
-		$rows_affected = $DB->query( 'DELETE FROM T_sessions WHERE sess_lastseen < '.$DB->quote(date('Y-m-d H:i:s', $smaller_time)), 'Autoprune sessions' );
+		$rows_affected = $DB->query( 'DELETE FROM T_sessions WHERE sess_lastseen_ts < '.$DB->quote(date('Y-m-d H:i:s', $smaller_time)), 'Autoprune sessions' );
 		$Debuglog->add( 'Hitlist::dbprune(): autopruned '.$rows_affected.' rows from T_sessions.', 'request' );
 
 		// Prune non-referrered basedomains (where the according hits got deleted)
@@ -165,11 +181,9 @@ class Hitlist
 		$Settings->set( 'auto_prune_stats_done', date('Y-m-d H:i:s', $localtimenow) ); // save exact datetime
 		$Settings->dbupdate();
 
+		$Messages->add( T_('The old hits & sessions have been pruned.'), 'success' );
 		return ''; /* ok */
 	}
 }
 
-/*
- * $Log: _hitlist.class.php,v $
- */
 ?>

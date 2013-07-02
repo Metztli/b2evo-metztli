@@ -8,7 +8,7 @@
  * @package skins
  * @subpackage custom
  *
- * @version $Id: _skin.class.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _skin.class.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -38,7 +38,4 @@ class _rss2_Skin extends Skin
 	}
 }
 
-/*
- * $Log: _skin.class.php,v $
- */
 ?>

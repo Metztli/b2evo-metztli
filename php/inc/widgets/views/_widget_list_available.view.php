@@ -5,13 +5,13 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
  *
  * @package admin
  *
- * @version $Id: _widget_list_available.view.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _widget_list_available.view.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -42,6 +42,7 @@ $core_componentwidget_defs = array(
 			'coll_search_form',
 			'coll_xml_feeds',
 			'menu_link',
+			'msg_menu_link',
 		'*'.T_('Meta info for the blog'),
 			'coll_title',
 			'coll_tagline',
@@ -50,6 +51,10 @@ $core_componentwidget_defs = array(
 			'colls_list_public',
 			'colls_list_owner',
 			'user_tools',
+			'user_login',
+			'user_avatars',
+			'online_users',
+			'mobile_skin_switcher',
 	);
 $i = 0;
 foreach( $core_componentwidget_defs as $code )
@@ -114,8 +119,4 @@ if( ! empty($Plugin_array) )
 }
 echo '</ul>';
 
-
-/*
- * $Log: _widget_list_available.view.php,v $
- */
 ?>

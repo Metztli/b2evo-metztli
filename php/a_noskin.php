@@ -12,7 +12,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  * @subpackage noskin
@@ -29,14 +29,6 @@ $skin = '';
 # This setting retricts posts to those published, thus hiding drafts.
 # You should not have to change this.
 $show_statuses = array();
-
-# Here you can set a limit before which posts will be ignored
-# You can use a unix timestamp value or 'now' which will hide all posts in the past
-$timestamp_min = '';
-
-# Here you can set a limit after which posts will be ignored
-# You can use a unix timestamp value or 'now' which will hide all posts in the future
-$timestamp_max = 'now';
 
 # Additionnaly, you can set other values (see URL params in the manual)...
 # $order = 'ASC'; // This for example would display the blog in chronological order...
@@ -74,8 +66,19 @@ if( ! $PageCache->check() )
 // Do inits depending on current $disp:
 skin_init( $disp );
 
+// Add CSS:
+require_css( 'basic_styles.css', 'rsc_url' ); // the REAL basic styles
+require_css( 'basic.css', 'rsc_url' ); // Basic styles
+require_css( 'blog_base.css', 'rsc_url' ); // Default styles for the blog navigation
+require_css( 'item_base.css', 'rsc_url' ); // Default styles for the post CONTENT
+require_css( 'fp02.css', 'rsc_url' );
+
 add_js_for_toolbar();		// Registers all the javascripts needed by the toolbar menu
 
+// Functions to work with AJAX response data
+require_js( '#jquery#', 'rsc_url' );
+require_js( '#jqueryUI#', 'rsc_url' );
+require_js( 'ajax.js', 'rsc_url' );
 ?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="<?php locale_lang() ?>" lang="<?php locale_lang() ?>"><!-- InstanceBegin template="/Templates/Standard.dwt" codeOutsideHTMLIsLocked="false" -->
@@ -89,7 +92,6 @@ add_js_for_toolbar();		// Registers all the javascripts needed by the toolbar me
 		// ------------------------------ END OF REQUEST TITLE -----------------------------
 	?></title>
 <!-- InstanceEndEditable -->
-<link rel="stylesheet" href="rsc/css/fp02.css" type="text/css" />
 <!-- InstanceBeginEditable name="head" -->
 	<?php skin_content_meta(); /* Charset for static pages */ ?>
 	<?php $Plugins->trigger_event( 'SkinBeginHtmlHead' ); ?>
@@ -109,7 +111,7 @@ add_js_for_toolbar();		// Registers all the javascripts needed by the toolbar me
 	require $skins_path.'_toolbar.inc.php';
 	// ------------------------------- END OF TOOLBAR --------------------------------
 	echo "\n";
-	if( is_logged_in() )
+	if( show_toolbar() )
 	{
 		echo '<div id="skin_wrapper" class="skin_wrapper_loggedin">';
 	}

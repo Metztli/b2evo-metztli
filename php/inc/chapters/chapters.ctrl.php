@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -18,7 +18,7 @@
  *
  * @package admin
  *
- * @version $Id: chapters.ctrl.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: chapters.ctrl.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -32,15 +32,6 @@ else
 {
 	$action = 'nil';
 }
-
-/**
- * Delete restrictions
- */
-$delete_restrictions = array(
-		array( 'table'=>'T_categories', 'fk'=>'cat_parent_ID', 'msg'=>T_('%d sub categories') ),
-		array( 'table'=>'T_items__item', 'fk'=>'post_main_cat_ID', 'msg'=>T_('%d posts within category through main cat') ),
-		array( 'table'=>'T_postcats', 'fk'=>'postcat_cat_ID', 'msg'=>T_('%d posts within category through extra cat') ),
-	);
 
 $restrict_title = T_('Cannot delete category');	 //&laquo;%s&raquo;
 
@@ -118,6 +109,85 @@ if( !empty( $locked_IDs )
 	$action = 'list';
 }
 
+// Check that action request is not a CSRF hacked request and user has permission for the action
+switch( $action )
+{
+	case 'create':
+	case 'update':
+	case 'delete':
+	case 'make_default':
+	case 'set_meta':
+	case 'unset_meta':
+	case 'lock':
+	case 'unlock':
+		// Check that this action request is not a CSRF hacked request:
+		$Session->assert_received_crumb( 'element' );
+		/* NO BREAK */
+	case 'new':
+	case 'move':
+	case 'edit':
+		if( ! $permission_to_edit )
+		{
+			debug_die( 'No permission to edit' );
+		}
+		break;
+}
+
+
+/**
+ * Get url to redirect after chapter editing
+ *
+ * @param string Redirect Page: 'front', 'manual', 'list'
+ * @param integer Parent ID
+ * @param integer Chapter ID
+ * @return string URL
+ */
+function get_chapter_redirect_url( $redirect_page, $parent_ID, $chapter_ID = 0 )
+{
+	global $admin_url, $blog;
+
+	if( $redirect_page == 'front' )
+	{ // Get Chapter for front page redirect
+		if( empty( $chapter_ID ) )
+		{ // Chapter ID is invalid, redirect to chapters list
+			$redirect_page = 'list';
+		}
+		else
+		{
+			$ChapterCache = & get_ChapterCache();
+			$Chapter = & $ChapterCache->get_by_ID( $chapter_ID, false, false );
+			if( $Chapter === false )
+			{ // Chapter doesn't exist anymore, redirect to chapters list
+				$redirect_page = 'list';
+			}
+		}
+	}
+
+	switch( $redirect_page )
+	{
+		case 'front':
+			// Redirect to front-office
+			$redirect_url = $Chapter->get_permanent_url( NULL, NULL, 1, NULL, '&' );
+			break;
+
+		case 'manual':
+			// Redirect to manual pages
+			$redirect_url = $admin_url.'?ctrl=items&blog='.$blog.'&tab=manual';
+			if( !empty( $parent_ID ) )
+			{ // Open parent category to display new created category
+				$redirect_url .= '&cat_ID='.$parent_ID;
+			}
+			break;
+
+		default: // 'list'
+			// Redirect to chapters list
+			$redirect_url = $admin_url.'?ctrl=chapters&blog='.$blog;
+			break;
+	}
+
+	return $redirect_url;
+}
+
 
 /**
  * Perform action:
@@ -126,11 +196,6 @@ switch( $action )
 {
 	case 'new':
 		// New action
-
-		if( ! $permission_to_edit )
-		{
-			debug_die( 'No permission to edit' );
-		}
 
 		$edited_GenericCategory = & $GenericCategoryCache->new_obj( NULL, $subset_ID );
 		$edited_GenericCategory->blog_ID = $edited_Blog->ID;
@@ -159,11 +224,6 @@ switch( $action )
 		// Make sure we got an ID:
 		param( $GenericCategoryCache->dbIDname, 'integer', true );
 
-		if( ! $permission_to_edit )
-		{
-			debug_die( 'No permission to edit' );
-		}
-
 		// Get the page number we come from:
 		$previous_page = param( 'results'.$GenericCategoryCache->dbprefix.'page', 'integer', 1, true );
 
@@ -173,14 +233,6 @@ switch( $action )
 	case 'create':
 		// Insert new element...:
 
-		// Check that this action request is not a CSRF hacked request:
-		$Session->assert_received_crumb( 'element' );
-
-		if( ! $permission_to_edit )
-		{
-			debug_die( 'No permission to edit' );
-		}
-
 		$edited_GenericCategory = & $GenericCategoryCache->new_obj( NULL, $subset_ID );
 
 		// load data from request
@@ -189,7 +241,7 @@ switch( $action )
 			// Insert in DB:
 			if( $edited_GenericCategory->dbinsert() !== false )
 			{
-				$Messages->add( T_('New category created.'), 'success' );
+				$Messages->add( T_('New chapter created.'), 'success' );
 				// Add the ID of the new element to the result fadeout
 				$result_fadeout[$edited_GenericCategory->dbIDname][] = $edited_GenericCategory->ID;
 				$action = 'list';
@@ -197,7 +249,8 @@ switch( $action )
 				$Session->set( 'fadeout_array', array($edited_GenericCategory->ID) );
 
 				// Redirect so that a reload doesn't write to the DB twice:
-				header_redirect( '?ctrl=chapters&blog='.$blog, 303 ); // Will EXIT
+				$redirect_to = get_chapter_redirect_url( param( 'redirect_page', 'string', '' ), $edited_GenericCategory->parent_ID, $edited_GenericCategory->ID );
+				header_redirect( $redirect_to, 303 ); // Will EXIT
 				// We have EXITed already at this point!!
 			}
 		}
@@ -207,15 +260,7 @@ switch( $action )
 	case 'update':
 		// Make sure we got an ID:
 
-		// Check that this action request is not a CSRF hacked request:
-		$Session->assert_received_crumb( 'element' );
-
 		param( $GenericCategoryCache->dbIDname, 'integer', true );
-
-		if( ! $permission_to_edit )
-		{
-			debug_die( 'No permission to edit' );
-		}
 
 		// LOAD FORM DATA:
 		if( $edited_GenericCategory->load_from_Request() )
@@ -223,17 +268,17 @@ switch( $action )
 			// Update in DB:
 			if( $edited_GenericCategory->dbupdate() !== false )
 			{
-				$Messages->add( T_('Element updated.'), 'success' ); //ToDO change htis
+				$Messages->add( T_('Chapter updated.'), 'success' ); //ToDO change htis
 			}
 			// Add the ID of the updated element to the result fadeout
 			$result_fadeout[$edited_GenericCategory->dbIDname][] = $edited_GenericCategory->ID;
 
 			// We want to highlight the edited object on next list display:
- 			$Session->set( 'fadeout_array', array($edited_GenericCategory->ID));
+			$Session->set( 'fadeout_array', array($edited_GenericCategory->ID));
 
-			$action = 'list';
 			// Redirect so that a reload doesn't write to the DB twice:
-			header_redirect( '?ctrl=chapters&blog='.$blog, 303 ); // Will EXIT
+			$redirect_to = get_chapter_redirect_url( param( 'redirect_page', 'string', '' ), $edited_GenericCategory->parent_ID, $edited_GenericCategory->ID );
+			header_redirect( $redirect_to, 303 ); // Will EXIT
 			// We have EXITed already at this point!!
 		}
 		else
@@ -249,8 +294,8 @@ switch( $action )
 		$Session->assert_received_crumb( 'element' );
 
 		// EXTENSION
- 		if( ! $Settings->get('allow_moving_chapters') )
- 		{
+		if( ! $Settings->get('allow_moving_chapters') )
+		{
 			debug_die( 'Moving of chapters is disabled' );
 		}
 
@@ -258,14 +303,14 @@ switch( $action )
 		param( $GenericCategoryCache->dbIDname, 'integer', true );
 
 		// Control permission to edit source blog:
-   	$edited_Blog = & $edited_GenericCategory->get_Blog();
+		$edited_Blog = & $edited_GenericCategory->get_Blog();
 		if( ! $current_User->check_perm( 'blog_cats', '', false, $edited_Blog->ID ) )
 		{
 			debug_die( 'No permission to edit source collection.' );
 			/* die */
 		}
 
- 		// Control permission to edit destination blog:
+		// Control permission to edit destination blog:
 		param( 'cat_coll_ID', 'integer', true );
 		if( ! $current_User->check_perm( 'blog_cats', '', false, $cat_coll_ID ) )
 		{
@@ -299,29 +344,20 @@ switch( $action )
 	case 'delete':
 		// Delete entry:
 
-		// Check that this action request is not a CSRF hacked request:
-		$Session->assert_received_crumb( 'element' );
-
 		param( $GenericCategoryCache->dbIDname, 'integer', true );
-
-		if( ! $permission_to_edit )
-		{
-			debug_die( 'No permission to edit' );
-		}
-
-		// Set restrictions for element
-		$edited_GenericCategory->delete_restrictions = $delete_restrictions;
 
 		if( param( 'confirm', 'integer', 0 ) )
 		{ // confirmed, Delete from DB:
-			$msg = sprintf( T_('Element &laquo;%s&raquo; deleted.'), $edited_GenericCategory->dget( 'name' ) );
+			$parent_ID = $edited_GenericCategory->parent_ID;
+			$msg = sprintf( T_('Chapter &laquo;%s&raquo; deleted.'), $edited_GenericCategory->dget( 'name' ) );
 			$GenericCategoryCache->dbdelete_by_ID( $edited_GenericCategory->ID );
 			unset($edited_GenericCategory);
 			forget_param( $GenericCategoryCache->dbIDname );
 			$Messages->add( $msg, 'success' );
-			$action = 'list';
+
 			// Redirect so that a reload doesn't write to the DB twice:
-			header_redirect( '?ctrl=chapters&blog='.$blog, 303 ); // Will EXIT
+			$redirect_to = get_chapter_redirect_url( param( 'redirect_page', 'string', '' ), $parent_ID );
+			header_redirect( $redirect_to, 303 ); // Will EXIT
 			// We have EXITed already at this point!!
 		}
 		else
@@ -337,17 +373,91 @@ switch( $action )
 		break;
 
 	case 'make_default':
-		// Check that this action request is not a CSRF hacked request:
-		$Session->assert_received_crumb( 'element' );
-
-		if( ! $permission_to_edit )
-		{
-			debug_die( 'No permission to edit' );
-		}
+		// Make category as default
 
 		$edited_Blog->set_setting( 'default_cat_ID', $edited_GenericCategory->ID );
 		$edited_Blog->dbsave();
+		break;
 
+	case 'set_meta':
+		// Make category as meta category
+
+		// Start serializable transaction because a category can be meta only if it has no posts
+		$DB->begin( 'SERIALIZABLE' );
+
+		// Category can be set as meta if it has no posts
+		$result = !$edited_GenericCategory->has_posts();
+		$edited_GenericCategory->set( 'meta', '1' );
+
+		// Save category
+		if( $result && $edited_GenericCategory->dbsave() )
+		{ // Category has no posts and it was saved successful
+			$Messages->add( sprintf( T_('The category &laquo;%s&raquo; was made as meta category.'), $edited_GenericCategory->dget('name') ), 'success' );
+			$DB->commit();
+		}
+		else
+		{
+			$Messages->add( sprintf( T_('The category &laquo;%s&raquo; cannot be set as meta category. You must remove the posts it contains first.'), $edited_GenericCategory->dget('name') ) );
+			$DB->rollback();
+		}
+
+		// Redirect so that a reload doesn't write to the DB twice:
+		header_redirect( '?ctrl=chapters&blog='.$blog, 303 ); // Will EXIT
+		// We have EXITed already at this point!!
+		break;
+
+	case 'unset_meta':
+		// Revert to simple category
+
+		$edited_GenericCategory->set( 'meta', '0' );
+		if( $edited_GenericCategory->dbsave() )
+		{
+			$Messages->add( sprintf( T_('The category &laquo;%s&raquo; was reverted from meta category.'), $edited_GenericCategory->dget('name') ), 'success' );
+		}
+		else
+		{
+			$Messages->add( sprintf( T_('The category &laquo;%s&raquo; couldn\'t be reverted from meta category.'), $edited_GenericCategory->dget('name') ), 'error' );
+		}
+
+		// Redirect so that a reload doesn't write to the DB twice:
+		header_redirect( '?ctrl=chapters&blog='.$blog, 303 ); // Will EXIT
+		// We have EXITed already at this point!!
+		break;
+
+	case 'lock':
+		// Lock category
+
+		$edited_GenericCategory->set( 'lock', '1' );
+		if( $edited_GenericCategory->dbsave() )
+		{
+			$Messages->add( sprintf( T_('The category &laquo;%s&raquo; was locked.'), $edited_GenericCategory->dget('name') ), 'success' );
+		}
+		else
+		{
+			$Messages->add( sprintf( T_('The category &laquo;%s&raquo; couldn\t be locked.'), $edited_GenericCategory->dget('name') ), 'error' );
+		}
+
+		// Redirect so that a reload doesn't write to the DB twice:
+		header_redirect( '?ctrl=chapters&blog='.$blog, 303 ); // Will EXIT
+		// We have EXITed already at this point!!
+		break;
+
+	case 'unlock':
+		// Unlock category
+
+		$edited_GenericCategory->set( 'lock', '0' );
+		if( $edited_GenericCategory->dbsave() )
+		{
+			$Messages->add( sprintf( T_('The category &laquo;%s&raquo; was unlocked.'), $edited_GenericCategory->dget('name') ), 'success' );
+		}
+		else
+		{
+			$Messages->add( sprintf( T_('The category &laquo;%s&raquo; couldn\t be unlocked.'), $edited_GenericCategory->dget('name') ), 'error' );
+		}
+
+		// Redirect so that a reload doesn't write to the DB twice:
+		header_redirect( '?ctrl=chapters&blog='.$blog, 303 ); // Will EXIT
+		// We have EXITed already at this point!!
 		break;
 }
 
@@ -413,6 +523,8 @@ switch( $action )
 		// Begin payload block:
 		$AdminUI->disp_payload_begin();
 
+		param( 'redirect_page', 'string', '', true );
+
 		if( $action == 'delete' )
 		{	// We need to ask for confirmation:
 			$edited_GenericCategory->confirm_delete(
@@ -471,8 +583,4 @@ switch( $action )
 // Display body bottom, debug info and close </html>:
 $AdminUI->disp_global_footer();
 
-
-/*
- * $Log: chapters.ctrl.php,v $
- */
 ?>

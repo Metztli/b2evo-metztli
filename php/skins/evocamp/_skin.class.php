@@ -8,7 +8,7 @@
  * @package skins
  * @subpackage evocamp
  *
- * @version $Id: _skin.class.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _skin.class.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -52,7 +52,19 @@ class evocamp_Skin extends Skin
 					'note' => T_('Check to enable javascript zooming on images (using the colorbox script)'),
 					'defaultvalue' => 1,
 					'type'	=>	'checkbox',
-				),				
+				),
+				'gender_colored' => array(
+					'label' => T_('Display gender'),
+					'note' => T_('Use colored usernames to differentiate men & women.'),
+					'defaultvalue' => 0,
+					'type' => 'checkbox',
+				),
+				'bubbletip' => array(
+					'label' => T_('Username bubble tips'),
+					'note' => T_('Check to enable bubble tips on usernames'),
+					'defaultvalue' => 0,
+					'type' => 'checkbox',
+				),
 			), parent::get_param_definitions( $params )	);
 
 		return $r;
@@ -69,16 +81,20 @@ class evocamp_Skin extends Skin
 		// call parent:
 		parent::display_init();
 
+		// Add CSS:
+		require_css( 'basic_styles.css', 'blog' ); // the REAL basic styles
+		require_css( 'basic.css', 'blog' ); // Basic styles
+		require_css( 'blog_base.css', 'blog' ); // Default styles for the blog navigation
+		require_css( 'item_base.css', 'blog' ); // Default styles for the post CONTENT
+		require_css( 'item.css', 'relative' );
+
 		// Colorbox (a lightweight Lightbox alternative) allows to zoom on images and do slideshows with groups of images:
 		if($this->get_setting("colorbox")) 
 		{
-			require_js_helper( 'colorbox' );
+			require_js_helper( 'colorbox', 'blog' );
 		}
 	}
 
 }
 
-/*
- * $Log: _skin.class.php,v $
- */
 ?>

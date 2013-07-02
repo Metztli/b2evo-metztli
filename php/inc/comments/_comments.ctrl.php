@@ -4,7 +4,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal Open Source relicensing agreement:
  * }}
@@ -14,7 +14,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _comments.ctrl.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _comments.ctrl.php 3924 2013-06-05 07:28:33Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -37,7 +37,9 @@ switch( $action )
 {
 	case 'edit':
 	case 'update':
+	case 'switch_view':
 	case 'publish':
+	case 'restrict':
 	case 'deprecate':
 	case 'delete_url':
 	case 'update_publish':
@@ -50,8 +52,34 @@ switch( $action )
 		$BlogCache = & get_BlogCache();
 		$Blog = & $BlogCache->get_by_ID( $blog );
 
+		// Some users can delete & change a status of comments in their own posts, set corresponding permlevel
+		if( $action == 'publish' || $action == 'update_publish' )
+		{ // Load the new comment status from publish request and set perm check values
+			$publish_status = param( 'publish_status', 'string', '' );
+			$check_permname = 'comment!'.$publish_status;
+			$check_permlevel = ( $action == 'publish' ) ? 'moderate' : 'edit';
+		}
+		elseif( $action == 'deprecate' )
+		{ // set perm check values
+			$check_permname = 'comment!deprecated';
+			$check_permlevel = 'moderate';
+		}
+		else
+		{ // set default perm check values
+			$comment_status = param( 'comment_status', 'string', 'CURSTATUS' );
+			$check_permname = 'comment!'.$comment_status;
+			$check_permlevel = ( $action == 'delete' ) ? 'delete' : 'edit';
+		}
 		// Check permission:
-		$current_User->check_perm( $edited_Comment->blogperm_name(), 'edit', true, $blog );
+		$current_User->check_perm( $check_permname, $check_permlevel, true, $edited_Comment );
+
+		$comment_title = '';
+		$comment_content = htmlspecialchars_decode( $edited_Comment->content );
+
+		// Format content for editing, if we were not already in editing...
+		$Plugins_admin = & get_Plugins_admin();
+		$params = array( 'object_type' => 'Comment', 'object_Blog' => & $Blog );
+		$Plugins_admin->unfilter_contents( $comment_title /* by ref */, $comment_content /* by ref */, $edited_Comment_Item->get_renderers_validated(), $params );
 
 		// Where are we going to redirect to?
 		param( 'redirect_to', 'string', url_add_param( $admin_url, 'ctrl=items&blog='.$blog.'&p='.$edited_Comment_Item->ID, '&' ) );
@@ -84,7 +112,13 @@ switch( $action )
 		break;
 
 	case 'list':
-	  // Check permission:
+	case 'mass_delete':
+		if( $action == 'mass_delete' )
+		{ // Check permission:
+			$current_User->check_perm( 'blogs', 'all', true );
+		}
+
+		// Check permission:
 		$selected = autoselect_blog( 'blog_comments', 'edit' );
 		if( ! $selected )
 		{ // No blog could be selected
@@ -92,20 +126,65 @@ switch( $action )
 			$action = 'nil';
 		}
 		elseif( set_working_blog( $selected ) )	// set $blog & memorize in user prefs
-		{	// Selected a new blog:
+		{ // Selected a new blog:
 			$BlogCache = & get_BlogCache();
 			$Blog = & $BlogCache->get_by_ID( $blog );
 		}
+		break;
+
+	case 'spam':
+		// Used for quick SPAM vote of comments
+		// Check that this action request is not a CSRF hacked request:
+		$Session->assert_received_crumb( 'comment' );
+
+		param( 'comment_ID', 'integer', true );
+		$edited_Comment = & Comment_get_by_ID( $comment_ID );
+
+		$edited_Comment_Item = & $edited_Comment->get_Item();
+		set_working_blog( $edited_Comment_Item->get_blog_ID() );
+		$BlogCache = & get_BlogCache();
+		$Blog = & $BlogCache->get_by_ID( $blog );
+
+		// Check permission for spam voting
+		$current_User->check_perm( 'blog_vote_spam_comments', 'edit', true, $Blog->ID );
+
+		if( $edited_Comment !== false )
+		{ // The comment still exists
+			if( $current_User->ID != $edited_Comment->author_user_ID )
+			{ // Do not allow users to vote on their own comments
+				$edited_Comment->set_vote( 'spam', param( 'value', 'string' ) );
+				$edited_Comment->dbupdate();
+			}
+		}
+
+		// Where are we going to redirect to?
+		param( 'redirect_to', 'string', url_add_param( $admin_url, 'ctrl=comments&blog='.$blog.'&filter=restore', '&' ) );
+
+		// Redirect so that a reload doesn't write to the DB twice:
+		header_redirect( $redirect_to, 303 ); // Will EXIT
+		// We have EXITed already at this point!!
 		break;
 
 	default:
 		debug_die( 'unhandled action 1' );
 }
 
+// Set the third level tab
+param( 'tab3', 'string', '', true );
 
 $AdminUI->breadcrumbpath_init();
 $AdminUI->breadcrumbpath_add( T_('Contents'), '?ctrl=items&amp;blog=$blog$&amp;tab=full&amp;filter=restore' );
 $AdminUI->breadcrumbpath_add( T_('Comments'), '?ctrl=comments&amp;blog=$blog$&amp;filter=restore' );
+switch( $tab3 )
+{
+	case 'listview':
+		$AdminUI->breadcrumbpath_add( T_('List view'), '?ctrl=comments&amp;blog=$blog$&amp;tab3='.$tab3.'&amp;filter=restore' );
+		break;
+
+	case 'fullview':
+		$AdminUI->breadcrumbpath_add( T_('Full text view'), '?ctrl=comments&amp;blog=$blog$&amp;tab3='.$tab3.'&amp;filter=restore' );
+		break;
+}
 
 $AdminUI->set_path( 'items' );	// Sublevel may be attached below
 
@@ -114,18 +193,34 @@ $AdminUI->set_path( 'items' );	// Sublevel may be attached below
  */
 switch( $action )
 {
- 	case 'nil':
+	case 'nil':
 		// Do nothing
 		break;
 
 
 	case 'edit':
-		$AdminUI->title = $AdminUI->title_titlearea = T_('Editing comment').' #'.$edited_Comment->ID;
+		$AdminUI->title_titlearea = T_('Editing comment').' #'.$edited_Comment->ID;
+
+		// Generate available blogs list:
+		$AdminUI->set_coll_list_params( 'blog_comments', 'edit',
+						array( 'ctrl' => 'comments', 'filter' => 'restore' ), NULL, '' );
+
+		/*
+		 * Add sub menu entries:
+		 * We do this here instead of _header because we need to include all filter params into regenerate_url()
+		 */
+		attach_browse_tabs( false );
+
+		$AdminUI->set_path( 'items', 'comments' );
+
+		$AdminUI->breadcrumbpath_add( sprintf( T_('Comment #%s'), $edited_Comment->ID ), '?ctrl=comments&amp;comment_ID='.$edited_Comment->ID.'&amp;action=edit' );
+		$AdminUI->breadcrumbpath_add( T_('Edit'), '?ctrl=comments&amp;comment_ID='.$edited_Comment->ID.'&amp;action=edit' );
 		break;
 
 
 	case 'update_publish':
 	case 'update':
+	case 'switch_view':
 		// fp> TODO: $edited_Comment->load_from_Request( true );
 
 		// Check that this action request is not a CSRF hacked request:
@@ -184,11 +279,38 @@ switch( $action )
 			}
 		}
 
-		// Content:
-		param( 'content', 'html' );
-		param( 'post_autobr', 'integer', ($comments_use_autobr == 'always') ? 1 : 0 );
+		$edited_Comment_Item = $edited_Comment->get_Item();
+		$edited_Comment_Item->load_Blog();
+		if( $edited_Comment_Item->Blog->get_setting( 'allow_html_comment' ) )
+		{	// HTML is allowed for this comment
+			$text_format = 'html';
+		}
+		else
+		{	// HTML is disallowed for this comment
+			$text_format = 'htmlspecialchars';
+		}
 
-		param_check_html( 'content', T_('Invalid comment text.'), '#', $post_autobr );	// Check this is backoffice content (NOT with comment rules)
+		// Content:
+		param( 'content', $text_format );
+
+		// Renderers:
+		if( param( 'renderers_displayed', 'integer', 0 ) )
+		{ // use "renderers" value only if it has been displayed (may be empty)
+			global $Plugins;
+			$renderers = $Plugins->validate_renderer_list( param( 'renderers', 'array/string', array() ), array( 'Comment' => & $edited_Comment ) );
+			$edited_Comment->set_renderers( $renderers );
+		}
+
+		// Trigger event: a Plugin could add a $category="error" message here..
+		// This must get triggered before any internal validation and must pass all relevant params.
+		// The OpenID plugin will validate a given OpenID here (via redirect and coming back here).
+		$Plugins->trigger_event( 'CommentFormSent', array(
+				'dont_remove_pre' => true,
+				'comment_post_ID' => $edited_Comment_Item->ID,
+				'comment' => & $content,
+			) );
+
+		param_check_html( 'content', T_('Invalid comment text.') );	// Check this is backoffice content (NOT with comment rules)
 		$edited_Comment->set( 'content', get_param( 'content' ) );
 
 		if( $current_User->check_perm( 'blog_edit_ts', 'edit', false, $Blog->ID ) )
@@ -207,7 +329,7 @@ switch( $action )
 		$comment_status = param( 'comment_status', 'string', 'published' );
 		if( $action == 'update_publish' )
 		{
-			$comment_status = 'published';
+			$comment_status = $publish_status;
 		}
 		$old_comment_status = $edited_Comment->get( 'status' );
 		$edited_Comment->set( 'status', $comment_status );
@@ -221,22 +343,26 @@ switch( $action )
 		}
 
 		if( $old_comment_status != $comment_status )
-		{ // Comment moderation is done, don't keep "secret" moderation access
-			$edited_Comment->set( 'secret', NULL );
+		{ // Comment moderation is done, handle moderation "secret"
+			$edited_Comment->handle_qm_secret();
 		}
 
-		// UPDATE DB:
-		$edited_Comment->dbupdate();	// Commit update to the DB
+		// If action is switch_view then don't save the edited Comment yet, only change the edit view
+		if( $action != 'switch_view' )
+		{ // UPDATE DB:
+			$edited_Comment->dbupdate();	// Commit update to the DB
 
-		if( $edited_Comment->status == 'published' )
-		{ // comment status was set to published or it was already published, needs to handle notifications
-			$edited_Comment->handle_notifications();
+			if( $edited_Comment->status == 'published' )
+			{ // comment status was set to published or it was already published, needs to handle notifications
+				$edited_Comment->handle_notifications( false, $current_User->ID );
+			}
+	
+			$Messages->add( T_('Comment has been updated.'), 'success' );	
+
+			header_redirect( $redirect_to );
+			/* exited */
 		}
 
-		$Messages->add( T_('Comment has been updated.'), 'success' );
-
-		header_redirect( $redirect_to );
-		/* exited */
 		break;
 
 
@@ -244,16 +370,52 @@ switch( $action )
 		// Check that this action request is not a CSRF hacked request:
 		$Session->assert_received_crumb( 'comment' );
 
-		$edited_Comment->set('status', 'published' );
-		// Comment moderation is done, don't keep "secret" moderation access
-		$edited_Comment->set( 'secret', NULL );
+		$edited_Comment->set( 'status', $publish_status );
+		// Comment moderation is done, handle moderation "secret"
+		$edited_Comment->handle_qm_secret();
 
 		$edited_Comment->dbupdate();	// Commit update to the DB
 
 		// comment status was set to published, needs to handle notifications
-		$edited_Comment->handle_notifications();
+		$edited_Comment->handle_notifications( false, $current_User->ID );
 
-		$Messages->add( T_('Comment has been published.'), 'success' );
+		// Set the success message corresponding for the new status
+		switch( $edited_Comment->status )
+		{
+			case 'published':
+				$success_message = T_('Comment has been published.');
+				break;
+			case 'community':
+				$success_message = T_('The comment is now visible by the community.');
+				break;
+			case 'protected':
+				$success_message = T_('The comment is now visible by the members.');
+				break;
+			case 'review':
+				$success_message = T_('The comment is now visible by moderators.');
+				break;
+			default:
+				$success_message = T_('Comment has been updated.');
+				break;
+		}
+		$Messages->add( $success_message, 'success' );
+
+		header_redirect( $redirect_to );
+		/* exited */
+		break;
+
+
+	case 'restrict':
+		// Check that this action request is not a CSRF hacked request:
+		$Session->assert_received_crumb( 'comment' );
+
+		$edited_Comment->set( 'status', $comment_status );
+		// Comment moderation is done, handle moderation "secret"
+		$edited_Comment->handle_qm_secret();
+
+		$edited_Comment->dbupdate();	// Commit update to the DB
+
+		$Messages->add( T_('Comment has been restricted.'), 'success' );
 
 		header_redirect( $redirect_to );
 		/* exited */
@@ -265,8 +427,8 @@ switch( $action )
 		$Session->assert_received_crumb( 'comment' );
 
 		$edited_Comment->set('status', 'deprecated' );
-		// Comment moderation is done, don't keep "secret" moderation access
-		$edited_Comment->set( 'secret', NULL );
+		// Comment moderation is done, handle moderation "secret"
+		$edited_Comment->handle_qm_secret();
 
 		$edited_Comment->dbupdate();	// Commit update to the DB
 
@@ -297,11 +459,12 @@ switch( $action )
 		$Session->assert_received_crumb( 'comment' );
 
 		// fp> TODO: non JS confirm
+		$success_message = ( $edited_Comment->status == 'trash' ) ? T_('Comment has been deleted.') : T_('Comment has been recycled.');
 
 		// Delete from DB:
 		$edited_Comment->dbdelete();
 
-		$Messages->add( T_('Comment has been deleted.'), 'success' );
+		$Messages->add( $success_message, 'success' );
 
 		header_redirect( $redirect_to );
 		break;
@@ -355,7 +518,17 @@ switch( $action )
 		/*
 		 * Trash comments:
 		 */
-		$AdminUI->title = $AdminUI->title_titlearea = T_('Comment recycle bins');
+		$AdminUI->title_titlearea = T_('Comment recycle bins');
+
+		/*
+		 * Add sub menu entries:
+		 * We do this here instead of _header because we need to include all filter params into regenerate_url()
+		 */
+		attach_browse_tabs( false );
+
+		$AdminUI->set_path( 'items', 'comments' );
+
+		$AdminUI->breadcrumbpath_add( T_('Comment recycle bins'), '?ctrl=comments&amp;action=emptytrash' );
 		break;
 
 	case 'elevate':
@@ -383,10 +556,11 @@ switch( $action )
 		break;
 
 	case 'list':
+	case 'mass_delete':
 		/*
 		 * Latest comments:
 		 */
-		$AdminUI->title = $AdminUI->title_titlearea = T_('Latest comments');
+		$AdminUI->title_titlearea = T_('Latest comments');
 
 		// Generate available blogs list:
 		$AdminUI->set_coll_list_params( 'blog_comments', 'edit',
@@ -400,25 +574,57 @@ switch( $action )
 
 		$AdminUI->append_path_level( 'comments' );
 
-		// Set the third level tab
-		param( 'tab3', 'string', 'fullview', true );
+		if( empty( $tab3 ) )
+		{
+			$tab3 = 'fullview';
+		}
+
 		$AdminUI->set_path( 'items', 'comments', $tab3 );
 
+		$comments_list_param_prefix = 'cmnt_';
+		if( !empty( $tab3 ) )
+		{	// Use different param prefix for each tab
+			$comments_list_param_prefix .= $tab3.'_';
+		}
 		/*
 		 * List of comments to display:
 		 */
-		$CommentList = new CommentList2( $Blog );
+		$CommentList = new CommentList2( $Blog, NULL, 'CommentCache', $comments_list_param_prefix, $tab3 );
 
 		// Filter list:
 		$CommentList->set_default_filters( array(
-				'statuses' => array( 'published', 'draft', 'deprecated' ),
-				'comments' => $UserSettings->get( 'results_per_page', $current_User->ID ),
+				'statuses' => get_visibility_statuses( 'keys', array( 'redirected', 'trash' ) ),
+				//'comments' => $UserSettings->get( 'results_per_page' ),
 			) );
 
 		$CommentList->load_from_Request();
 
-		break;
+		/**
+		 * Mass delete comments
+		 */
+		param( 'mass_type', 'string', '' );
+		if( $action == 'mass_delete' && !empty( $mass_type ) )
+		{
+			// Check that this action request is not a CSRF hacked request:
+			$Session->assert_received_crumb( 'comment' );
 
+			// Init the comment list query, but don't execute it
+			$CommentList->query_init();
+			// Set sql query to get deletable comment ids
+			$deletable_comments_query = 'SELECT DISTINCT '.$CommentList->Cache->dbIDname.' '
+					.$CommentList->CommentQuery->get_from()
+					.$CommentList->CommentQuery->get_where();
+
+			// Set an action param to display a correct template
+			$process_action = $action;
+			unset( $_POST['actionArray'] );
+			set_param( 'action', 'list' );
+
+			// Try to obtain some serious time to do some serious processing (15 minutes)
+			set_max_execution_time( 10000 );
+		}
+
+		break;
 
 	default:
 		debug_die( 'unhandled action 2' );
@@ -436,8 +642,10 @@ if( ( $action == 'edit' ) || ( $action == 'update_publish' ) || ( $action == 'up
 	require_css( 'ui.datepicker.css' );
 }
 
-require_css( 'rsc/css/blog_base.css', true );
+require_css( 'rsc/css/blog_base.css', true ); // Default styles for the blog navigation
 require_js( 'communication.js' ); // auto requires jQuery
+// Colorbox (a lightweight Lightbox alternative) allows to zoom on images and do slideshows with groups of images:
+require_js_helper( 'colorbox' );
 
 // Display <html><head>...</head> section! (Note: should be done early if actions do not redirect)
 $AdminUI->disp_html_head();
@@ -459,6 +667,7 @@ switch( $action )
 	case 'elevate':
 	case 'update_publish':
 	case 'update':	// on error
+	case 'switch_view':
 		// Begin payload block:
 		$AdminUI->disp_payload_begin();
 
@@ -488,6 +697,13 @@ switch( $action )
 
 		echo '<table class="browse" cellspacing="0" cellpadding="0" border="0"><tr>';
 		echo '<td class="browse_left_col">';
+
+		if( ! empty( $process_action ) && $process_action == 'mass_delete' && !empty( $mass_type ) )
+		{ // Mass deleting of the comments
+			comment_mass_delete_process( $mass_type, $deletable_comments_query );
+			$CommentList->reset();
+		}
+
 		// Display VIEW:
 		if( $tab3 == 'fullview' )
 		{
@@ -514,8 +730,4 @@ switch( $action )
 // Display body bottom, debug info and close </html>:
 $AdminUI->disp_global_footer();
 
-
-/*
- * $Log: _comments.ctrl.php,v $
- */
 ?>

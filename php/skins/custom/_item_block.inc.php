@@ -7,7 +7,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  */
@@ -23,6 +23,7 @@ $params = array_merge( array(
 		'image_size'	    => 'fit-400x320',
 	), $params );
 
+echo '<div id="styled_content_block">'; // Beginning of post display
 ?>
 
 <div id="<?php $Item->anchor_id() ?>" class="<?php $Item->div_classes( $params ) ?>" lang="<?php $Item->lang() ?>">
@@ -33,6 +34,10 @@ $params = array_merge( array(
 
 	<div class="bSmallHead">
 	<?php
+		if( $Item->status != 'published' )
+		{
+			$Item->status( array( 'format' => 'styled' ) );
+		}
 		// Permalink:
 		$Item->permanent_link( array(
 				'text' => '#icon#',
@@ -79,7 +84,11 @@ $params = array_merge( array(
 	?>
 	</div>
 
-	<h3 class="bTitle"><?php $Item->title(); ?></h3>
+	<h3 class="bTitle linked"><?php
+		$Item->title( array(
+				'link_type' => 'permalink'
+			) );
+	?></h3>
 
 	<?php
 		// ---------------------- POST CONTENT INCLUDED HERE ----------------------
@@ -154,7 +163,6 @@ $params = array_merge( array(
 
 <?php
 
-/*
- * $Log: _item_block.inc.php,v $
- */
+echo '</div>'; // End of post display 
+
 ?>

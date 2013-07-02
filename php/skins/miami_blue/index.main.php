@@ -3,14 +3,14 @@
  * This is the main/default page template.
  *
  * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://manual.b2evolution.net/Skins_2.0}
+ * {@link http://b2evolution.net/man/skin-structure}
  *
  * It is used to display the blog when no specific page template is available to handle the request.
  *
  * @package evoskins
  * @subpackage custom
  *
- * @version $Id: index.main.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: index.main.php 3843 2013-05-28 10:56:18Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -150,6 +150,7 @@ skin_include( '_html_header.inc.php' );
 		// Display message if no post:
 		display_if_empty();
 
+		echo '<div id="styled_content_block">'; // Beginning of posts display
 		while( $Item = & mainlist_get_item() )
 		{	// For each blog post:
 			// ---------------------- ITEM BLOCK INCLUDED HERE ------------------------
@@ -159,6 +160,7 @@ skin_include( '_html_header.inc.php' );
 				) );
 			// ----------------------------END ITEM BLOCK  ----------------------------
 		} // ---------------------------------- END OF POSTS ------------------------------------
+		echo '</div>'; // End of posts display
 
 	?>
 
@@ -228,6 +230,7 @@ skin_include( '_html_header.inc.php' );
 			) );
 	?>
 
+	<div class="bSideBarBg"></div>
 </div>
 
 </div>
@@ -274,6 +277,7 @@ skin_include( '_html_header.inc.php' );
 		?>
 	</p>
 </div>
+<div id="pageFooterBg"><div></div></div>
 </div>
 </div>
 <?php

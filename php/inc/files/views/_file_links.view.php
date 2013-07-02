@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -24,15 +24,15 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _file_links.view.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _file_links.view.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
 
 /**
- * @var Item
+ * @var LinkOwner
  */
-global $edited_Item;
+global $LinkOwner;
 
 global $mode;
 
@@ -46,20 +46,17 @@ if( $mode != 'upload' )
 
 	$Form->hidden_ctrl();
 
-	$SQL = new SQL();
-	$SQL->SELECT( 'link_ID, link_ltype_ID, T_files.*' );
-	$SQL->FROM( 'T_links INNER JOIN T_files ON link_file_ID = file_ID' );
-	$SQL->WHERE( 'link_itm_ID = ' . $edited_Item->ID );
+	$SQL = $LinkOwner->get_SQL();
 
 	$Results = new Results( $SQL->get(), 'link_' );
 
+	$view_link_title = $LinkOwner->T_( 'View this owner...' );
 	$Results->title = sprintf( T_('Files linked to &laquo;%s&raquo;'),
-					'<a href="?ctrl=items&amp;blog='.$edited_Item->get_blog_ID().'&amp;p='.$edited_Item->ID.'" title="'
-					.T_('View this post...').'">'.$edited_Item->dget('title').'</a>' );
+					'<a href="'.$LinkOwner->get_view_url().'" title="'.$view_link_title.'">'.$LinkOwner->get( 'title' ).'</a>' );
 
-	if( $current_User->check_perm( 'item_post!CURSTATUS', 'edit', false, $edited_Item ) )
-	{ // User has permission to edit this post
-		$Results->global_icon( T_('Edit this post...'), 'edit', '?ctrl=items&amp;action=edit&amp;p='.$edited_Item->ID, T_('Edit') );
+	if( $LinkOwner->check_perm( 'edit', false ) )
+	{
+		$Results->global_icon( $LinkOwner->T_( 'Edit this owner...' ), 'edit', $LinkOwner->get_edit_url(), T_('Edit') );
 	}
 
 	// Close link mode and continue in File Manager (remember the Item_ID though):
@@ -94,13 +91,13 @@ if( $mode != 'upload' )
 		 * @global File
 		 */
 		global $current_File, $current_User;
-		global $edited_Item;
+		global $LinkOwner;
 
 		$r = T_( 'You don\'t have permission to access this file root' );
 		if( $current_User->check_perm( 'files', 'view', false, $current_File->get_FileRoot() ) )
 		{
 			// File relative path & name:
-			$r = $current_File->get_linkedit_link( '&amp;fm_mode=link_item&amp;item_ID='.$edited_Item->ID );
+			$r = $current_File->get_linkedit_link( $LinkOwner->type, $LinkOwner->get_ID() );
 		}
 		return $r;
 	}
@@ -120,54 +117,30 @@ if( $mode != 'upload' )
 							'td' => '$file_title$',
 						);
 
-
 	// ACTIONS COLUMN:
-	function file_actions( $link_ID )
-	{
-		global $current_File, $edited_Item, $current_User;
-
-		$r = '';
-		if( $current_User->check_perm( 'files', 'view', false, $current_File->get_FileRoot() ) )
-		{
-			if( $current_File->is_dir() )
-				$title = T_('Locate this directory!');
-			else
-				$title = T_('Locate this file!');
-	
-	
-			$r = $current_File->get_linkedit_link( '&amp;fm_mode=link_item&amp;item_ID='.$edited_Item->ID,
-							get_icon( 'locate', 'imgtag', array( 'title'=>$title ) ), $title );
-		}
-		if( $current_User->check_perm( 'item_post!CURSTATUS', 'edit', false, $edited_Item ) )
-		{	// Check that we have permission to edit item:
-			$r .= action_icon( T_('Delete this link!'), 'unlink',
-	                      regenerate_url( 'action', 'link_ID='.$link_ID.'&amp;action=unlink&amp;'.url_crumb('link') ) );
-		}
-
-		return $r;
-	}
 	$Results->cols[] = array(
 							'th' => T_('Actions'),
 							'th_class' => 'shrinkwrap',
 							'td_class' => 'shrinkwrap',
-							'td' => '%file_actions( #link_ID# )%',
+							'td' => '%link_actions( #link_ID#, {CUR_IDX}, {TOTAL_ROWS} )%',
 						);
+
+	// POSITION COLUMN:
+	$Results->cols[] = array(
+						'th' => T_('Position'),
+						'td_class' => 'shrinkwrap',
+						'td' => '%display_link_position( {row} )%',
+					);
 
 	$Results->display();
 
 	$Form->end_form( );
 }
 
-if( $current_User->check_perm( 'item_post!CURSTATUS', 'edit', false, $edited_Item ) )
+if( $LinkOwner->check_perm( 'edit' ) )
 {	// Check that we have permission to edit item:
-	echo '<div>', sprintf( T_('Click on link %s icons below to link additional files to the post %s.'),
-							get_icon( 'link', 'imgtag', array('class'=>'top') ),
-							'&laquo;<strong>'.$edited_Item->dget( 'title' ).'</strong>&raquo;' ), '</div>';
+	echo '<div>', $LinkOwner->T_( 'Click on link %s icons below to link additional files to $ownerTitle$.',
+							get_icon( 'link', 'imgtag', array('class'=>'top') ) ), '</div>';
 }
 
-
-
-/*
- * $Log: _file_links.view.php,v $
- */
 ?>

@@ -5,7 +5,7 @@
  * This file is part of b2evolution - {@link http://b2evolution.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2009 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @copyright (c)2009-2013 by Francois PLANQUE - {@link http://fplanque.net/}
  * Parts of this file are copyright (c)2009 by The Evo Factory - {@link http://www.evofactory.com/}.
  *
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
@@ -22,7 +22,7 @@
  * @author efy-maxim: Evo Factory / Maxim.
  * @author fplanque: Francois Planque.
  *
- * @version $Id: backup.ctrl.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: backup.ctrl.php 3508 2013-04-19 06:58:02Z yura $
  */
 
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -39,7 +39,7 @@ $current_User->check_perm( 'perm_maintenance', 'backup', true );
 load_class( 'maintenance/model/_backup.class.php', 'Backup' );
 
 // Set options path:
-$AdminUI->set_path( 'tools', 'backup' );
+$AdminUI->set_path( 'options', 'misc', 'backup' );
 
 // Get action parameter from request:
 param_action( 'start' );
@@ -55,7 +55,8 @@ if( $action == 'backup' && !$current_Backup->load_from_Request() )
 
 
 $AdminUI->breadcrumbpath_init( false );  // fp> I'm playing with the idea of keeping the current blog in the path here...
-$AdminUI->breadcrumbpath_add( T_('Tools'), '?ctrl=crontab' );
+$AdminUI->breadcrumbpath_add( T_('System'), '?ctrl=system' );
+$AdminUI->breadcrumbpath_add( T_('Maintenance'), '?ctrl=tools' );
 $AdminUI->breadcrumbpath_add( T_('Backup'), '?ctrl=backup' );
 
 
@@ -92,15 +93,15 @@ switch( $action )
 		// Interactive / flush() backup should start here
 		$Form->begin_form( 'fform', T_('System backup is in progress...') );
 
-		flush();
+		evo_flush();
 
 		$success = true;
 		if( $maintenance_mode = param( 'bk_maintenance_mode', 'boolean' ) )
 		{	// Enable maintenance mode
-			$success = switch_maintenance_mode( true, T_( 'System backup is in progress. Please reload this page in a few minutes.' ) );
+			$success = switch_maintenance_mode( true, 'all', T_( 'System backup is in progress. Please reload this page in a few minutes.' ) );
 
 			// Make sure we exit the maintenance mode if PHP dies
-			register_shutdown_function( 'switch_maintenance_mode', false );
+			register_shutdown_function( 'switch_maintenance_mode', false, '', true );
 		}
 
 		if( $success )
@@ -111,7 +112,7 @@ switch( $action )
 
 		if( $maintenance_mode )
 		{	// Disable maintenance mode
-			switch_maintenance_mode( false );
+			switch_maintenance_mode( false, 'all' );
 		}
 
 		$Form->end_form();
@@ -123,8 +124,4 @@ $AdminUI->disp_payload_end();
 // Display body bottom, debug info and close </html>:
 $AdminUI->disp_global_footer();
 
-
-/*
- * $Log: backup.ctrl.php,v $
- */
 ?>

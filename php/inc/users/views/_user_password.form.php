@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -34,7 +34,7 @@
  * @author fplanque: Francois PLANQUE
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: _user_password.form.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _user_password.form.php 3328 2013-03-26 11:44:11Z yura $
  */
 
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -59,8 +59,49 @@ global $user_profile_only;
  * @var the action destination of the form (NULL for pagenow)
  */
 global $form_action;
+/**
+ * @var instance of User class
+ */
+global $current_User;
+
+global $Session;
+
+// Default params:
+$default_params = array(
+		'skin_form_params' => array(),
+	);
+
+if( isset( $params ) )
+{	// Merge with default params
+	$params = array_merge( $default_params, $params );
+}
+else
+{	// Use a default params
+	$params = $default_params;
+}
+
+// ------------------- PREV/NEXT USER LINKS -------------------
+user_prevnext_links( array(
+		'block_start'  => '<table class="prevnext_user"><tr>',
+		'prev_start'   => '<td width="33%">',
+		'prev_end'     => '</td>',
+		'prev_no_user' => '<td width="33%">&nbsp;</td>',
+		'back_start'   => '<td width="33%" class="back_users_list">',
+		'back_end'     => '</td>',
+		'next_start'   => '<td width="33%" class="right">',
+		'next_end'     => '</td>',
+		'next_no_user' => '<td width="33%">&nbsp;</td>',
+		'block_end'    => '</tr></table>',
+		'user_tab'     => 'pwdchange'
+	) );
+// ------------- END OF PREV/NEXT USER LINKS -------------------
+
+// check if reqID exists. If exists it means that this form is displayed because a password change request by email.
+$reqID = param( 'reqID', 'string', '' );
 
 $Form = new Form( $form_action, 'user_checkchanges' );
+
+$Form->switch_template_parts( $params['skin_form_params'] );
 
 if( !$user_profile_only )
 {
@@ -72,6 +113,7 @@ if( $is_admin )
 {
 	$form_title = get_usertab_header( $edited_User, 'pwdchange', T_( 'Change password' ) );
 	$form_class = 'fform';
+	$Form->title_fmt = '<span style="float:right">$global_icons$</span><div>$title$</div>'."\n";
 }
 else
 {
@@ -79,15 +121,23 @@ else
 	$form_class = 'bComment';
 }
 
+$has_full_access = $current_User->check_perm( 'users', 'edit' );
+
+
 $Form->begin_form( $form_class, $form_title );
 
 	$Form->add_crumb( 'user' );
 	$Form->hidden_ctrl();
 	$Form->hidden( 'user_tab', 'pwdchange' );
 	$Form->hidden( 'password_form', '1' );
+	$Form->hidden( 'reqID', $reqID );
 
 	$Form->hidden( 'user_ID', $edited_User->ID );
 	$Form->hidden( 'edited_user_login', $edited_User->login );
+	if( isset( $Blog ) )
+	{
+		$Form->hidden( 'blog', $Blog->ID );
+	}
 
 	/***************  Password  **************/
 
@@ -95,6 +145,14 @@ if( $action != 'view' )
 { // We can edit the values:
 
 	$Form->begin_fieldset( $is_admin ? T_('Password') : '', array( 'class'=>'fieldset clear' ) );
+
+		// current password is not required:
+		//   - current user has full access and not editing his own pasword
+		//   - password change requested by email
+		if( !( ( $has_full_access && $edited_User->ID != $current_User->ID ) || ( !empty( $reqID ) && $reqID == $Session->get( 'core.changepwd.request_id' ) ) ) )
+		{
+			$Form->password_input( 'current_user_pass', '', 20, T_('Current password'), array( 'maxlength' => 50, 'required' => ($edited_User->ID == 0), 'autocomplete'=>'off' ) );
+		}
 		$Form->password_input( 'edited_user_pass1', '', 20, T_('New password'), array( 'note' => sprintf( T_('Minimum length: %d characters.'), $Settings->get('user_minpwdlen') ), 'maxlength' => 50, 'required' => ($edited_User->ID == 0), 'autocomplete'=>'off' ) );
 		$Form->password_input( 'edited_user_pass2', '', 20, T_('Confirm new password'), array( 'maxlength' => 50, 'required' => ($edited_User->ID == 0), 'autocomplete'=>'off' ) );
 
@@ -113,8 +171,12 @@ if( $action != 'view' )
 
 $Form->end_form();
 
+// Display javascript password strength indicator bar
+display_password_indicator( array(
+			'pass1-id'    => 'edited_user_pass1',
+			'pass2-id'    => 'edited_user_pass2',
+			'login-id'    => 'edited_user_login',
+			'field-width' => 165,
+	) );
 
-/*
- * $Log: _user_password.form.php,v $
- */
 ?>

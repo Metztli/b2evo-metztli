@@ -6,11 +6,11 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package xmlsrv
  *
- * @version $Id: xmlrpc.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: xmlrpc.php 3328 2013-03-26 11:44:11Z yura $
  */
 
 // use xmlrpc_debugmsg() to add debug messages to responses or logIO() to
@@ -19,6 +19,12 @@
 /**
  * Initialize everything:
  */
+
+if( isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] !== 'POST' )
+{
+	header('Content-Type: text/plain');
+	die('XML-RPC server accepts POST requests only.');
+}
 
 // Disable Cookies
 $_COOKIE = array();
@@ -79,8 +85,4 @@ $s->response_charset_encoding = 'auto';
 // DO THE SERVING:
 $s->service();
 
-
-/*
- * $Log: xmlrpc.php,v $
- */
 ?>

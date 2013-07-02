@@ -4,7 +4,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package plugins
  */
@@ -22,11 +22,10 @@ class videoplug_plugin extends Plugin
 	var $code = 'evo_videoplug';
 	var $name = 'Video Plug';
 	var $priority = 65;
-	var $apply_rendering = 'opt-out';
 	var $group = 'rendering';
 	var $short_desc;
 	var $long_desc;
-	var $version = '2.3';
+	var $version = '5.0.0';
 	var $number_of_installs = 1;
 
 
@@ -54,24 +53,24 @@ class videoplug_plugin extends Plugin
 		// fp> removed some embeds to make it xhtml compliant, using only object. (Hari style ;)
 		// anyone, feel free to clean up the ones that have no object tag at all.
 
-		// Youtube:
-		$content = preg_replace( '#\[video:youtube:(.+?)]#', '<div class="videoblock"><object data="http://www.youtube.com/v/\\1" type="application/x-shockwave-flash" wmode="transparent" width="425" height="350"><param name="movie" value="http://www.youtube.com/v/\\1"></param><param name="wmode" value="transparent"></param></object></div>', $content );
+		$search_list = array(
+				'#\[video:youtube:(.+?)]#',     // Youtube
+				'#\[video:dailymotion:(.+?)]#', // Dailymotion
+				'#\[video:google:(.+?)]#',      // Google video
+				'#\[video:livevideo:(.+?)]#',   // LiveVideo
+				'#\[video:ifilm:(.+?)]#',       // iFilm
+				'#\[video:vimeo:(.+?)]#',       // vimeo // blueyed> TODO: might want to use oEmbed (to get title etc separately and display it below video): http://vimeo.com/api/docs/oembed
+			);
+		$replace_list = array(
+				'<div class="videoblock"><object data="http://www.youtube.com/v/\\1" type="application/x-shockwave-flash" wmode="transparent" width="425" height="350"><param name="movie" value="http://www.youtube.com/v/\\1"></param><param name="wmode" value="transparent"></param></object></div>',
+				'<div class="videoblock"><object data="http://www.dailymotion.com/swf/\\1" type="application/x-shockwave-flash" width="425" height="335" allowfullscreen="true"><param name="movie" value="http://www.dailymotion.com/swf/\\1"></param><param name="allowfullscreen" value="true"></param></object></div>',
+				'<div class="videoblock"><embed style="width:400px; height:326px;" id="VideoPlayback" type="application/x-shockwave-flash" src="http://video.google.com/googleplayer.swf?docId=\\1&hl=en" flashvars=""></embed></div>',
+				'<div class="videoblock"><object src="http://www.livevideo.com/flvplayer/embed/\\1" type="application/x-shockwave-flash" wmode="transparent" width="425" height="350"><param name="movie" value="http://www.livevideo.com/flvplayer/embed/\\1"></param><param name="wmode" value="transparent"></param></object></div>',
+				'<div class="videoblock"><embed width="425" height="350" src="http://www.ifilm.com/efp" quality="high" bgcolor="000000" name="efp" align="middle" type="application/x-shockwave-flash" pluginspage="http://www.macromedia.com/go/getflashplayer" flashvars="flvbaseclip=\\1"> </embed></div>',
+				'<div class="videoblock"><object data="http://vimeo.com/moogaloop.swf?clip_id=$1&amp;server=vimeo.com&amp;show_title=1&amp;show_byline=1&amp;show_portrait=0&amp;color=&amp;fullscreen=1" width="400" height="225" type="application/x-shockwave-flash">	<param name="allowfullscreen" value="true" />	<param name="allowscriptaccess" value="always" />	<param name="movie" value="http://vimeo.com/moogaloop.swf?clip_id=$1&amp;server=vimeo.com&amp;show_title=1&amp;show_byline=1&amp;show_portrait=0&amp;color=&amp;fullscreen=1" /></object></div>',
+			);
 
-		// Dailymotion:
-		$content = preg_replace( '#\[video:dailymotion:(.+?)]#', '<div class="videoblock"><object data="http://www.dailymotion.com/swf/\\1" type="application/x-shockwave-flash" width="425" height="335" allowfullscreen="true"><param name="movie" value="http://www.dailymotion.com/swf/\\1"></param><param name="allowfullscreen" value="true"></param></object></div>', $content );
-
-		// Google video:
-		$content = preg_replace( '#\[video:google:(.+?)]#', '<div class="videoblock"><embed style="width:400px; height:326px;" id="VideoPlayback" type="application/x-shockwave-flash" src="http://video.google.com/googleplayer.swf?docId=\\1&hl=en" flashvars=""></embed></div>', $content );
-
-		// LiveVideo
-		$content = preg_replace( '#\[video:livevideo:(.+?)]#', '<div class="videoblock"><object src="http://www.livevideo.com/flvplayer/embed/\\1" type="application/x-shockwave-flash" wmode="transparent" width="425" height="350"><param name="movie" value="http://www.livevideo.com/flvplayer/embed/\\1"></param><param name="wmode" value="transparent"></param></object></div>', $content );
-
-		// iFilm
-		$content = preg_replace( '#\[video:ifilm:(.+?)]#', '<div class="videoblock"><embed width="425" height="350" src="http://www.ifilm.com/efp" quality="high" bgcolor="000000" name="efp" align="middle" type="application/x-shockwave-flash" pluginspage="http://www.macromedia.com/go/getflashplayer" flashvars="flvbaseclip=\\1"> </embed></div>', $content );
-
-		// vimeo
-		// blueyed> TODO: might want to use oEmbed (to get title etc separately and display it below video): http://vimeo.com/api/docs/oembed
-		$content = preg_replace( '#\[video:vimeo:(.+?)]#', '<div class="videoblock"><object data="http://vimeo.com/moogaloop.swf?clip_id=$1&amp;server=vimeo.com&amp;show_title=1&amp;show_byline=1&amp;show_portrait=0&amp;color=&amp;fullscreen=1" width="400" height="225" type="application/x-shockwave-flash">	<param name="allowfullscreen" value="true" />	<param name="allowscriptaccess" value="always" />	<param name="movie" value="http://vimeo.com/moogaloop.swf?clip_id=$1&amp;server=vimeo.com&amp;show_title=1&amp;show_byline=1&amp;show_portrait=0&amp;color=&amp;fullscreen=1" /></object></div>', $content );
+		$content = replace_content_outcode( $search_list, $replace_list, $content );
 
 		return true;
 	}
@@ -96,7 +95,25 @@ class videoplug_plugin extends Plugin
 	 */
 	function AdminDisplayToolbar( & $params )
 	{
-		if( $params['edit_layout'] == 'simple' )
+		if( !empty( $params['Item'] ) )
+		{	// Item is set, get Blog from post
+			$edited_Item = & $params['Item'];
+			$Blog = & $edited_Item->get_Blog();
+		}
+
+		if( empty( $Blog ) )
+		{	// Item is not set, try global Blog
+			global $Blog;
+			if( empty( $Blog ) )
+			{	// We can't get a Blog, this way "apply_rendering" plugin collection setting is not available
+				return false;
+			}
+		}
+
+		$coll_setting_name = ( $params['target_type'] == 'Comment' ) ? 'coll_apply_comment_rendering' : 'coll_apply_rendering';
+		$apply_rendering = $this->get_coll_setting( $coll_setting_name, $Blog );
+		if( empty( $apply_rendering ) || $apply_rendering == 'never' ||
+		    $params['edit_layout'] == 'simple' || $params['edit_layout'] == 'inskin' )
 		{	// This is too complex for simple mode, don't display it:
 			return false;
 		}
@@ -177,8 +194,4 @@ class videoplug_plugin extends Plugin
 	}
 }
 
-
-/*
- * $Log: _videoplug.plugin.php,v $
- */
 ?>

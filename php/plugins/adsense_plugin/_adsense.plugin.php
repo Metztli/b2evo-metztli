@@ -4,7 +4,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package plugins
  */
@@ -22,12 +22,11 @@ class adsense_plugin extends Plugin
 	var $code = 'evo_adsense';
 	var $name = 'AdSense';
 	var $priority = 10;
-	var $apply_rendering = 'opt-out';
 	var $group = 'rendering';
 	var $help_url = 'http://b2evolution.net/blog-ads/adsense-plugin.php';
 	var $short_desc;
 	var $long_desc;
-	var $version = '4.0.0';
+	var $version = '5.0.0';
 	var $number_of_installs = 1;
 
 	/**
@@ -85,7 +84,6 @@ class adsense_plugin extends Plugin
 	}
 
 
-
 	/**
 	 * Define here default collection/blog settings that are to be made available in the backoffice.
 	 *
@@ -112,7 +110,7 @@ class adsense_plugin extends Plugin
 				),
 			);
 
-		return $r;
+		return array_merge( parent::get_coll_setting_definitions( $params ), $r );
 	}
 
 
@@ -125,7 +123,7 @@ class adsense_plugin extends Plugin
 	{
 		$content = & $params['content'];
 
-		$content = preg_replace( '¤\[(adsense:)\]¤', '<!-- [$1] -->', $content );
+		$content = preg_replace( '~\[(adsense:)\]~', '<!-- [$1] -->', $content );
 
 		return true;
 	}
@@ -140,7 +138,7 @@ class adsense_plugin extends Plugin
 	{
 		$content = & $params['content'];
 
-		$content = preg_replace( '¤<!-- \[(adsense:)\] -->¤', '[$1]', $content );
+		$content = preg_replace( '~<!-- \[(adsense:)\] -->~', '[$1]', $content );
 
 		return true;
 	}
@@ -178,7 +176,7 @@ class adsense_plugin extends Plugin
 	{
 		$content = & $params['data'];
 
-		$content = preg_replace_callback( '¤<!-- \[adsense:\] -->¤', array( $this, 'DisplayItem_callback' ), $content );
+		$content = replace_content_outcode( '~<!-- \[adsense:\] -->~', array( $this, 'DisplayItem_callback' ), $content, 'replace_content_callback' );
 
 		return true;
 	}
@@ -190,7 +188,7 @@ class adsense_plugin extends Plugin
 	function DisplayItem_callback( $matches )
 	{
 		global $Blog;
-		
+
 	  	/**
 		 * How many blocks already displayed?
 		 */
@@ -216,7 +214,7 @@ class adsense_plugin extends Plugin
 	{
 		$content = & $params['data'];
 
-		$content = preg_replace( '¤\[adsense:\]¤', '', $content );
+		$content = preg_replace( '~\[adsense:\]~', '', $content );
 
 		return true;
 	}
@@ -243,8 +241,4 @@ class adsense_plugin extends Plugin
 
 }
 
-
-/*
- * $Log: _adsense.plugin.php,v $
- */
 ?>

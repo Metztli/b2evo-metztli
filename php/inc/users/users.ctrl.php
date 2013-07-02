@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -31,7 +31,7 @@
  *
  * @todo separate object inits and permission checks
  *
- * @version $Id: users.ctrl.php 1231 2012-04-17 05:42:06Z attila $
+ * @version $Id: users.ctrl.php 4048 2013-06-25 11:18:25Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -44,7 +44,9 @@ param( 'user_ID', 'integer', NULL );	// Note: should NOT be memorized (would kil
 
 param_action( 'list' );
 
-$AdminUI->set_path( 'users', 'users' );
+$tab = param( 'tab', 'string', '' );
+
+$AdminUI->set_path( 'users', $tab == 'stats' ? 'stats' : 'users' );
 
 if( !$current_User->check_perm( 'users', 'view' ) )
 { // User has no permissions to view: he can only edit his profile
@@ -168,10 +170,10 @@ if( !$Messages->has_errors() )
 			/*
 			 * Delete user
 			 */
-			
+
 			// Check that this action request is not a CSRF hacked request:
 			$Session->assert_received_crumb( 'user' );
-			
+
 			if( !isset($edited_User) )
 				debug_die( 'no User set' );
 
@@ -188,6 +190,14 @@ if( !$Messages->has_errors() )
 				break;
 			}
 
+			if( param( 'deltype', 'string', '', true ) == 'spammer' )
+			{ // If we delete user as spammer we also should remove the comments and the messages
+				$edited_User->delete_cascades = array_merge( $edited_User->delete_cascades, array(
+						array( 'table'=>'T_comments', 'fk'=>'comment_author_ID', 'msg'=>T_('%d comments by this user') ),
+						array( 'table'=>'T_messaging__message', 'fk'=>'msg_author_user_ID', 'msg'=>T_('%d private messages sent by this user') ),
+					) );
+			}
+
 			$fullname = $edited_User->dget( 'fullname' );
 			if( param( 'confirm', 'integer', 0 ) )
 			{ // confirmed, Delete from DB:
@@ -200,10 +210,20 @@ if( !$Messages->has_errors() )
 					$msg = sprintf( T_('User &laquo;%s&raquo; deleted.'), $edited_User->dget( 'login' ) );
 				}
 
+				$deleted_user_ID = $edited_User->ID;
+				$deleted_user_email = $edited_User->get( 'email' );
 				$edited_User->dbdelete( $Messages );
 				unset($edited_User);
 				forget_param('user_ID');
 				$Messages->add( $msg, 'success' );
+
+				// Find other users with the same email address
+				$message_same_email_users = find_users_with_same_email( $deleted_user_ID, $deleted_user_email, T_('Note: the same email address (%s) is still in use by: %s') );
+				if( $message_same_email_users !== false )
+				{
+					$Messages->add( $message_same_email_users, 'note' );
+				}
+
 				$action = 'list';
 				// Redirect so that a reload doesn't write to the DB twice:
 				header_redirect( '?ctrl=users', 303 ); // Will EXIT
@@ -222,7 +242,7 @@ if( !$Messages->has_errors() )
 				}
 
 				if( ! $edited_User->check_delete( $msg ) )
-				{	// There are restrictions:
+				{ // There are restrictions:
 					$action = 'view';
 				}
 			}
@@ -265,9 +285,73 @@ if( !$Messages->has_errors() )
 			$action = 'edit';
 
 			break;
+
+		case 'search':
+			// Quick search
+
+			// Check that this action request is not a CSRF hacked request:
+			$Session->assert_received_crumb( 'user' );
+
+			param( 'user_search', 'string', '' );
+			set_param( 'keywords', $user_search );
+			set_param( 'filter', 'new' );
+
+			load_class( 'users/model/_userlist.class.php', 'UserList' );
+			$UserList = new UserList( 'admin', $UserSettings->get('results_per_page'), 'users_', array( 'join_city' => false ) );
+			$UserList->load_from_Request();
+			// Make query to get a count of users
+			$UserList->query();
+
+			if( $UserList->total_rows == 1 )
+			{	// If we find only one user by quick search we do a redirect to user's edit page
+				$User = $UserList->rows[0];
+				if( !empty( $User ) )
+				{
+					header_redirect( '?ctrl=user&user_tab=profile&user_ID='.$User->user_ID );
+				}
+			}
+
+			// Unset the filter to avoid the step 1 in the function $UserList->query() on the users list
+			set_param( 'filter', '' );
+
+			break;
+
+		case 'remove_sender_customization':
+			// Check that this action request is not a CSRF hacked request:
+			$Session->assert_received_crumb( 'users' );
+
+			// Check required permission
+			$current_User->check_perm( 'users', 'edit', true );
+
+			// get the type of the removable sender customization
+			$type = param( 'type', 'string', true );
+
+			// Set remove custom settings query
+			$remove_query = 'DELETE FROM T_users__usersettings WHERE uset_name = "%s" AND uset_value != %s';
+			if( $type == 'sender_email' )
+			{ // Remove custom sender emails
+				$DB->query( sprintf( $remove_query, 'notification_sender_email', $DB->quote( $Settings->get( 'notification_sender_email' ) ) ) );
+			}
+			elseif( $type == 'sender_name' )
+			{ // Remove custom sender names
+				$DB->query( sprintf( $remove_query, 'notification_sender_name', $DB->quote( $Settings->get( 'notification_sender_name' ) ) ) );
+			}
+			else
+			{ // The customization param is not valid
+				debug_die('Invalid remove sender customization action!');
+			}
+
+			$Messages->add( T_('Customizations have been removed!' ), 'success' );
+			$redirect_to = param( 'redirect_to', 'string', regenerate_url( 'action' ) );
+			// Redirect so that a reload doesn't write to the DB twice:
+			header_redirect( $redirect_to );
+			/* EXITED */
+			break;
 	}
 }
 
+// require css for jQuery UI
+require_css( $rsc_url.'css/jquery/smoothness/jquery-ui.css' );
 
 // We might delegate to this action from above:
 /*if( $action == 'edit' )
@@ -279,6 +363,20 @@ if( !$Messages->has_errors() )
 
 $AdminUI->breadcrumbpath_init( false );  // fp> I'm playing with the idea of keeping the current blog in the path here...
 $AdminUI->breadcrumbpath_add( T_('Users'), '?ctrl=users' );
+if( $tab == 'stats' )
+{	// Users stats
+	$AdminUI->breadcrumbpath_add( T_('Stats'), '?ctrl=users&amp;tab=stats' );
+}
+else
+{	// Users list
+	$AdminUI->breadcrumbpath_add( T_('List'), '?ctrl=users' );
+	$AdminUI->top_block = get_user_quick_search_form();
+	if( $current_User->check_perm( 'users', 'edit', false ) )
+	{	// Include to edit user level
+		require_js( 'jquery/jquery.jeditable.js', 'rsc_url' );
+	}
+	load_funcs( 'regional/model/_regional.funcs.php' );
+}
 
 
 // Display <html><head>...</head> section! (Note: should be done early if actions do not redirect)
@@ -297,6 +395,8 @@ switch( $action )
 		break;
 
 	case 'delete':
+		$deltype = param( 'deltype', 'string', '' ); // spammer
+
 		$AdminUI->disp_payload_begin();
 
 		// We need to ask for confirmation:
@@ -310,7 +410,21 @@ switch( $action )
 			$msg = sprintf( T_('Delete user &laquo;%s&raquo;?'), $edited_User->dget( 'login' ) );
 		}
 
-		$edited_User->confirm_delete( $msg, 'user', $action, get_memorized( 'action' ) );
+		$confirm_messages = array();
+		if( $deltype != 'spammer' )
+		{ // Display this note for standard deleting
+			$confirm_messages[] = array( T_('Note: this will not automatically delete private messages sent/received by this user. However, this will delete any new orphan private messages (which no longer have any existing sender or recipient).'), 'note' );
+			$confirm_messages[] = array( T_('Note: this will not delete comments made by this user. Instead it will transform them from member to visitor comments.'), 'note' );
+		}
+
+		// Find other users with the same email address
+		$message_same_email_users = find_users_with_same_email( $edited_User->ID, $edited_User->get( 'email' ), T_('Note: this user has the same email address (%s) as: %s') );
+		if( $message_same_email_users !== false )
+		{
+			$confirm_messages[] = array( $message_same_email_users, 'note' );
+		}
+
+		$edited_User->confirm_delete( $msg, 'user', $action, get_memorized( 'action' ), $confirm_messages );
 
 		// Display user identity form:
 		$AdminUI->disp_view( 'users/views/_user_identity.form.php' );
@@ -322,7 +436,14 @@ switch( $action )
 		// Display user list:
 		// NOTE: we don't want this (potentially very long) list to be displayed again and again)
 		$AdminUI->disp_payload_begin();
-		$AdminUI->disp_view( 'users/views/_user_list.view.php' );
+		if( $tab == 'stats' )
+		{
+			$AdminUI->disp_view( 'users/views/_user_stats.view.php' );
+		}
+		else
+		{
+			$AdminUI->disp_view( 'users/views/_user_list.view.php' );
+		}
 		$AdminUI->disp_payload_end();
 }
 
@@ -330,7 +451,4 @@ switch( $action )
 // Display body bottom, debug info and close </html>:
 $AdminUI->disp_global_footer();
 
-/*
- * $Log: users.ctrl.php,v $
- */
 ?>

@@ -5,7 +5,7 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
  *
@@ -14,7 +14,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE
  *
- * @version $Id: _comment.form.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _comment.form.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -31,21 +31,30 @@ global $edited_Comment;
  */
 global $Plugins;
 
-global $comments_use_autobr, $mode, $month, $tab, $redirect_to;
+global $mode, $month, $tab, $redirect_to, $comment_content;
 
 $Form = new Form( NULL, 'comment_checkchanges', 'post' );
 
+$link_attribs = array( 'style' => 'margin-right: 3ex;' ); // Avoid misclicks by all means!
 if( $current_User->check_perm( 'blog_post!draft', 'edit', false, $Blog->ID ) )
 {
 	$Form->global_icon( T_( 'Elevate this comment into a post' ), '', '?ctrl=comments&amp;action=elevate&amp;comment_ID='.$edited_Comment->ID.'&amp;'.url_crumb('comment'),
-				T_( 'Elevate into a post' ), 4, 3, array( 'style' => 'margin-right: 3ex;' ) );
+				T_( 'Elevate into a post' ), 4, 3, $link_attribs );
 }
 
-$Form->global_icon( T_('Delete this comment'), 'delete', '?ctrl=comments&amp;action=delete&amp;comment_ID='.$edited_Comment->ID.'&amp;'.url_crumb('comment'),
-			T_('delete'), 4, 3, array(
-				 'onclick' => 'return confirm(\''.TS_('You are about to delete this comment!\\nThis cannot be undone!').'\')',
-				 'style' => 'margin-right: 3ex;',	// Avoid misclicks by all means!
-		) );
+$delete_url = '?ctrl=comments&amp;action=delete&amp;comment_ID='.$edited_Comment->ID.'&amp;'.url_crumb('comment');
+if( $edited_Comment->status == 'trash' )
+{
+	$delete_title = T_('Delete this comment');
+	$delete_text = T_('delete');
+	$link_attribs['onclick'] = 'return confirm(\''.TS_('You are about to delete this comment!\\nThis cannot be undone!').'\')';
+}
+else
+{
+	$delete_title = T_('Recycle this comment');
+	$delete_text = T_('recycle');
+}
+$Form->global_icon( $delete_title, 'delete', $delete_url, $delete_text, 4, 3, $link_attribs );
 
 $Form->global_icon( T_('Cancel editing!'), 'close', str_replace( '&', '&amp;', $redirect_to), T_('cancel'), 4, 1 );
 
@@ -128,28 +137,26 @@ $Form->hidden( 'comment_ID', $edited_Comment->ID );
 	<div class="edit_toolbars">
 	<?php // --------------------------- TOOLBARS ------------------------------------
 		// CALL PLUGINS NOW:
-		$Plugins->trigger_event( 'AdminDisplayToolbar', array( 'target_type' => 'Comment', 'edit_layout' => NULL ) );
+		$Plugins->trigger_event( 'AdminDisplayToolbar', array(
+				'target_type' => 'Comment',
+				'edit_layout' => NULL,
+				'Comment' => $edited_Comment,
+			) );
 	?>
 	</div>
 
 	<?php // ---------------------------- TEXTAREA -------------------------------------
-	$content = $edited_Comment->content;
-	if( $comments_use_autobr == 'always' || $comments_use_autobr == 'opt-out' )
-	{
-		// echo 'unBR:',htmlspecialchars(str_replace( ' ', '*', $content) );
-		$content = unautobrize($content);
-	}
-
+	$content = $comment_content;
 	$Form->fieldstart = '<div class="edit_area">';
 	$Form->fieldend = "</div>\n";
-	$Form->textarea( 'content', $content, 16, '', '', 40 , '' );
+	$Form->textarea_input( 'content', $content, 16, '', array( 'cols' => 40 , 'id' => 'commentform_post_content' ) );
 	$Form->fieldstart = '<div class="tile">';
 	$Form->fieldend = '</div>';
 	?>
 	<script type="text/javascript">
 		<!--
 		// This is for toolbar plugins
-		var b2evoCanvas = document.getElementById('content');
+		var b2evoCanvas = document.getElementById('commentform_post_content');
 		//-->
 	</script>
 
@@ -174,6 +181,14 @@ $Form->hidden( 'comment_ID', $edited_Comment->ID );
 	<?php
 	$Form->end_fieldset();
 
+	// -------------------------- ATTACHMENTS/LINKS --------------------------
+	if( isset($GLOBALS['files_Module']) )
+	{
+		load_class( 'links/model/_linkcomment.class.php', 'LinkComment' );
+		$LinkOwner = new LinkComment( $edited_Comment );
+		attachment_iframe( $Form, $LinkOwner );
+	}
+
 	$Form->begin_fieldset( T_('Advanced properties') );
 
  	$Form->switch_layout( 'linespan' );
@@ -187,21 +202,6 @@ $Form->hidden( 'comment_ID', $edited_Comment->ID );
 		echo '</div>';
 	}
 
-	// --------------------------- AUTOBR --------------------------------------
-	// fp> TODO: this should be Auto-P and handled by the Auto-P plugin
-	?>
-	<input type="checkbox" class="checkbox" name="post_autobr" value="1"
-	<?php
-	if( $comments_use_autobr == 'always' || $comments_use_autobr == 'opt-out' )
-	{
-		echo ' checked="checked"';
-	}
-	?>
-		id="autobr" tabindex="6" />
-	<label for="autobr"><strong><?php echo T_('Auto-BR'); ?></strong></label>
-	<br />
-
-	<?php
 	// --------------------------- ALLOW MESSAGE FORM ---------------------------
 	if( ! $edited_Comment->get_author_User() )
 	{	// Not a member comment
@@ -240,11 +240,7 @@ $Form->hidden( 'comment_ID', $edited_Comment->ID );
 		$Form->begin_fieldset( T_('Rating') );
 
 		echo '<p>';
-		$edited_Comment->rating_input();
-		echo '</p>';
-
-		echo '<p>';
-		$edited_Comment->rating_none_input();
+		$edited_Comment->rating_input( array( 'reset' => true ) );
 		echo '</p>';
 
  		$Form->end_fieldset();
@@ -264,10 +260,15 @@ $Form->hidden( 'comment_ID', $edited_Comment->ID );
 
 		$Form->begin_fieldset( T_('Visibility'), array( 'id' => 'commentform_visibility' ) );
 
-		$sharing_options[] = array( 'published', T_('Published (Public)') );
-		$sharing_options[] = array( 'draft', T_('Draft (Not published!)') );
-		$sharing_options[] = array( 'deprecated', T_('Deprecated (Not published!)') );
+		$Form->switch_layout( 'linespan' );
+
+		// Get those statuses which are not allowed for the current User to create comments in this blog
+		$exclude_statuses = array_merge( get_restricted_statuses( $Blog->ID, 'blog_comment!', 'edit' ), array( 'redirected', 'trash' ) );
+		// Get allowed visibility statuses
+		$sharing_options = get_visibility_statuses( 'radio-options', $exclude_statuses );
 		$Form->radio( 'comment_status', $edited_Comment->status, $sharing_options, '', true );
+
+		$Form->switch_layout( NULL );
 
 		$Form->end_fieldset();
 
@@ -284,10 +285,18 @@ $Form->hidden( 'comment_ID', $edited_Comment->ID );
 	<p><strong><?php echo T_('Type') ?>:</strong> <?php echo $edited_Comment->type; ?></p>
 	<p><strong><?php echo T_('IP address') ?>:</strong> <?php
 		// Display IP address and allow plugins to filter it, e.g. the DNSBL plugin will add a link to check the IP:
-		echo $Plugins->get_trigger_event( 'FilterIpAddress', array('format'=>'htmlbody', 'data'=>$edited_Comment->author_IP), 'data' ); ?></p>
+		echo $Plugins->get_trigger_event( 'FilterIpAddress', array('format'=>'htmlbody', 'data'=>$edited_Comment->author_IP), 'data' ); ?>
+		<?php $edited_Comment->ip_country(); ?>
+	</p>
 	<p><strong><?php echo T_('Spam Karma') ?>:</strong> <?php $edited_Comment->spam_karma(); ?></p>
 
 	<?php
+		$Form->end_fieldset();
+
+		// ####################### TEXT RENDERERS #########################
+		global $Plugins;
+		$Form->begin_fieldset( T_('Text Renderers'), array( 'id' => 'itemform_renderers' ) );
+		$edited_Comment->renderer_checkboxes();
 		$Form->end_fieldset();
 	?>
 </div>
@@ -300,8 +309,4 @@ $Form->end_form();
 // ####################### JS BEHAVIORS #########################
 echo_comment_publishbt_js();
 
-
-/*
- * $Log: _comment.form.php,v $
- */
 ?>

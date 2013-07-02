@@ -7,7 +7,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  */
@@ -42,8 +42,4 @@ skin_widget( array(
 // ---------------------------------- END OF CLOUD TAG ---------------------------------
 echo '</div>';
 
-
-/*
- * $Log: _404_not_found.disp.php,v $
- */
 ?>

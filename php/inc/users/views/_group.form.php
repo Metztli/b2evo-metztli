@@ -7,7 +7,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -31,7 +31,7 @@
  * @author fplanque: Francois PLANQUE
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: _group.form.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _group.form.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -63,19 +63,19 @@ global $action;
 			jQuery('#edited_grp_perm_shared_root_radio_4').attr('disabled', 'disabled');
 			break;
 		case "view":
-			jQuery('#edited_grp_perm_shared_root_radio_2').attr('disabled', '');
+			jQuery('#edited_grp_perm_shared_root_radio_2').removeAttr('disabled');
 			jQuery('#edited_grp_perm_shared_root_radio_3').attr('disabled', 'disabled');
 			jQuery('#edited_grp_perm_shared_root_radio_4').attr('disabled', 'disabled');
 			break;
 		case "add":
-			jQuery('#edited_grp_perm_shared_root_radio_2').attr('disabled', '');
-			jQuery('#edited_grp_perm_shared_root_radio_3').attr('disabled', '');
+			jQuery('#edited_grp_perm_shared_root_radio_2').removeAttr('disabled');
+			jQuery('#edited_grp_perm_shared_root_radio_3').removeAttr('disabled');
 			jQuery('#edited_grp_perm_shared_root_radio_4').attr('disabled', 'disabled');
 			break;
 		default:
-			jQuery('#edited_grp_perm_shared_root_radio_2').attr('disabled', '');
-			jQuery('#edited_grp_perm_shared_root_radio_3').attr('disabled', '');
-			jQuery('#edited_grp_perm_shared_root_radio_4').attr('disabled', '');
+			jQuery('#edited_grp_perm_shared_root_radio_2').removeAttr('disabled');
+			jQuery('#edited_grp_perm_shared_root_radio_3').removeAttr('disabled');
+			jQuery('#edited_grp_perm_shared_root_radio_4').removeAttr('disabled');
 		}
 	}
 </script>
@@ -128,6 +128,10 @@ function display_pluggable_permissions( &$Form, $perm_block )
 						case 'info':
 							$Form->info( $perm['label'], $perm['info'] );
 						break;
+
+						case 'text_input':
+							$Form->text_input( 'edited_grp_'.$perm_name, $GroupSettings->permission_values[$perm_name], 5, $perm['label'], $perm['note'], array( 'maxlength' => $perm['maxlength'] ) );
+						break;
 					}
 				}
 			}
@@ -137,7 +141,7 @@ function display_pluggable_permissions( &$Form, $perm_block )
 
 $Form = new Form( NULL, 'group_checkchanges' );
 
-$Form->global_icon( T_('Cancel editing!'), 'close', regenerate_url( 'ctrl,grp_ID,action', 'ctrl=users' ) );
+$Form->global_icon( T_('Cancel editing!'), 'close', regenerate_url( 'ctrl,grp_ID,action', 'ctrl=groups' ) );
 
 if( $edited_Group->ID == 0 )
 {
@@ -227,26 +231,23 @@ $Form->end_fieldset();
 
 $Form->begin_fieldset( T_('System admin permissions').get_manual_link('group_properties_system_permissions') );
 
-	display_pluggable_permissions( $Form, 'core');
-
-	if( $edited_Group->ID != 1 )
-	{	// Groups others than #1 can be prevented from editing users
-		$Form->radio( 'edited_grp_perm_users', $edited_Group->get('perm_users'),
-				array(	$perm_none_option,
-								$perm_view_option,
-								$perm_edit_option
-							), T_('Users & Groups') );
-	}
-	else
-	{	// Group #1 always has user management right:
-		$Form->info( T_('Users & Groups'), T_('Full Access') );
-	}
-
-	// asimo>After perm_users will be converted to pluggable permission 'core2' can be changed to 'core' 
-	display_pluggable_permissions( $Form, 'core2' );
-
 	// Display pluggable permissions:
+	display_pluggable_permissions( $Form, 'core' );
+
+	// show Settings children permissions only if this user group has at least "View details" rights on global System Settings
+	echo '<div id="perm_options_children"'.( $edited_Group->check_perm( 'options', 'view' ) ? '' : ' style="display:none"' ).'>';
+	display_pluggable_permissions( $Form, 'core2' );
 	display_pluggable_permissions( $Form, 'system' );
+	echo '</div>';
+
+	display_pluggable_permissions( $Form, 'core3' );
+
+$Form->end_fieldset();
+
+$Form->begin_fieldset( T_( 'Notification options') );
+
+	// Display pluggale notification options
+	display_pluggable_permissions( $Form, 'notifications');
 
 $Form->end_fieldset();
 
@@ -262,14 +263,20 @@ $Form->end_form();
 // set shared root permission availability, when form was loaded and when file perms was changed
 ?>
 <script type="text/javascript">
-		file_perm_changed();
-		jQuery( '[name="edited_grp_perm_files"]' ).click(function() {
-			file_perm_changed();
-		});
-</script>
-<?php
+file_perm_changed();
+jQuery( '[name="edited_grp_perm_files"]' ).click( function() {
+	file_perm_changed();
+} );
 
-/*
- * $Log: _group.form.php,v $
- */
-?>
+jQuery( 'input[name=edited_grp_perm_options]' ).click( function()
+{	// Show/Hide the children permissions of the Settings permission
+	if( jQuery( this ).val() == 'none' )
+	{
+		jQuery( 'div#perm_options_children' ).hide();
+	}
+	else
+	{
+		jQuery( 'div#perm_options_children' ).show();
+	}
+} );
+</script>

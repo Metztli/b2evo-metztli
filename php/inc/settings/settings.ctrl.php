@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -29,7 +29,7 @@
  * @author blueyed: Daniel HAHLER
  * @author fplanque: Francois PLANQUE
  *
- * @version $Id: settings.ctrl.php 1097 2012-03-28 06:45:06Z sam2kb $
+ * @version $Id: settings.ctrl.php 3462 2013-04-12 04:37:35Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -55,40 +55,18 @@ switch( $action )
 		// Check permission:
 		$current_User->check_perm( 'options', 'edit', true );
 
-		if( param( 'default_blog_ID', 'integer', NULL ) !== NULL )
+		// Lock system
+		if( $current_User->check_perm( 'users', 'edit' ) )
 		{
-			$Settings->set( 'default_blog_ID', $default_blog_ID );
+			$system_lock = param( 'system_lock', 'integer', 0 );
+			if( $Settings->get( 'system_lock' ) && ( ! $system_lock ) && ( ! $Messages->has_errors() ) && ( 1 == $Messages->count() ) )
+			{ // System lock was turned off and there was no error, remove the warning about the system lock
+				$Messages->clear();
+			}
+			$Settings->set( 'system_lock', $system_lock );
 		}
 
-		// Session timeout
-		$timeout_sessions = param_duration( 'timeout_sessions' );
-
-		if( $timeout_sessions < $crumb_expires )
-		{ // lower than $crumb_expires: not allowed
-			param_error( 'timeout_sessions', sprintf( T_( 'You cannot set a session timeout below %d minutes.' ), floor($crumb_expires/60) ) );
-		}
-		elseif( $timeout_sessions < 300 )
-		{ // lower than 5 minutes: not allowed
-			param_error( 'timeout_sessions', sprintf( T_( 'You cannot set a session timeout below %d minutes.' ), 5 ) );
-		}
-		elseif( $timeout_sessions < 86400 )
-		{ // lower than 1 day: notice/warning
-			$Messages->add( sprintf( T_( 'Warning: your session timeout is just %d minutes. Your users may have to re-login often!' ), floor($timeout_sessions/60) ), 'note' );
-		}
-		$Settings->set( 'timeout_sessions', $timeout_sessions );
-
-		// Reload page timeout
-		$reloadpage_timeout = param_duration( 'reloadpage_timeout' );
-
-		if( $reloadpage_timeout > 99999 )
-		{
-			param_error( 'reloadpage_timeout', sprintf( T_( 'Reload-page timeout must be between %d and %d seconds.' ), 0, 99999 ) );
-		}
-		$Settings->set( 'reloadpage_timeout', $reloadpage_timeout );
-
-		// Smart hit count
-		$Settings->set( 'smart_hit_count', param( 'smart_hit_count', 'integer', 0 ) );
-
+		// General cache
 		$new_cache_status = param( 'general_cache_enabled', 'integer', 0 );
 		if( ! $Messages->has_errors() )
 		{
@@ -101,8 +79,24 @@ switch( $action )
 			}
 		}
 
-		$Settings->set( 'newblog_cache_enabled', param( 'newblog_cache_enabled', 'integer', 0 ) );
-		$Settings->set( 'newblog_cache_enabled_widget', param( 'newblog_cache_enabled_widget', 'integer', 0 ) );
+		// fp> Restore defaults has been removed because it's extra maintenance work and no real benefit to the user.
+
+		// Online help
+		param( 'webhelp_enabled', 'integer', 0 );
+		$Settings->set( 'webhelp_enabled', $webhelp_enabled );
+
+		// Hit & Session logs
+		$Settings->set( 'log_public_hits', param( 'log_public_hits', 'integer', 0 ) );
+		$Settings->set( 'log_admin_hits', param( 'log_admin_hits', 'integer', 0 ) );
+		$Settings->set( 'log_spam_hits', param( 'log_spam_hits', 'integer', 0 ) );
+
+		param( 'auto_prune_stats_mode', 'string', true );
+		$Settings->set( 'auto_prune_stats_mode',  get_param('auto_prune_stats_mode') );
+
+		// TODO: offer to set-up cron job if mode == 'cron' and to remove cron job if mode != 'cron'
+
+		param( 'auto_prune_stats', 'integer', $Settings->get_default('auto_prune_stats'), false, false, true, false );
+		$Settings->set( 'auto_prune_stats', get_param('auto_prune_stats') );
 
 		if( ! $Messages->has_errors() )
 		{
@@ -113,11 +107,42 @@ switch( $action )
 			// We have EXITed already at this point!!
 		}
 		break;
+
+	case 'update_tools':
+		// UPDATE general settings from tools:
+
+		// Check that this action request is not a CSRF hacked request:
+		$Session->assert_received_crumb( 'globalsettings' );
+
+		// Check permission:
+		$current_User->check_perm( 'options', 'edit', true );
+
+		// Lock system
+		if( $current_User->check_perm( 'users', 'edit' ) )
+		{
+			$system_lock = param( 'system_lock', 'integer', 0 );
+			if( $Settings->get( 'system_lock' ) && ( ! $system_lock ) && ( ! $Messages->has_errors() ) && ( 1 == $Messages->count() ) )
+			{ // System lock was turned off and there was no error, remove the warning about the system lock
+				$Messages->clear();
+			}
+			$Settings->set( 'system_lock', $system_lock );
+		}
+
+		if( ! $Messages->has_errors() )
+		{
+			$Settings->dbupdate();
+			$Messages->add( T_('General settings updated.'), 'success' );
+		}
+
+		// Redirect so that a reload doesn't write to the DB twice:
+		header_redirect( '?ctrl=tools', 303 ); // Will EXIT
+		// We have EXITed already at this point!!
+		break;
 }
 
 
-$AdminUI->breadcrumbpath_init();
-$AdminUI->breadcrumbpath_add( T_('Global settings'), '?ctrl=settings',
+$AdminUI->breadcrumbpath_init( false );
+$AdminUI->breadcrumbpath_add( T_('System'), '?ctrl=system',
 		T_('Global settings are shared between all blogs; see Blog settings for more granular settings.') );
 $AdminUI->breadcrumbpath_add( T_('General'), '?ctrl=gensettings' );
 
@@ -140,8 +165,4 @@ $AdminUI->disp_payload_end();
 // Display body bottom, debug info and close </html>:
 $AdminUI->disp_global_footer();
 
-
-/*
- * $Log: settings.ctrl.php,v $
- */
 ?>

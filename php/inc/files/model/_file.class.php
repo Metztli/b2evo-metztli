@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -29,7 +29,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _file.class.php 57 2011-10-26 08:18:58Z sam2kb $
+ * @version $Id: _file.class.php 3471 2013-04-12 09:32:05Z attila $
  *
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -74,6 +74,12 @@ class File extends DataObject
 	 * @var string
 	 */
 	var $desc;
+
+	/**
+	 * Meta data: Hash value of file path
+	 * @var string
+	 */
+	var $hash;
 
 	/**
 	 * FileRoot of this file
@@ -235,8 +241,13 @@ class File extends DataObject
 		parent::DataObject( 'T_files', 'file_', 'file_ID', '', '', '', '' );
 
 		$this->delete_restrictions = array(
-				array( 'table'=>'T_links', 'fk'=>'link_file_ID', 'msg'=>T_('%d linked items') ),
+				array( 'table'=>'T_links', 'fk'=>'link_file_ID', 'field' => 'link_itm_ID', 'msg'=>T_('%d linked items') ),
+				array( 'table'=>'T_links', 'fk'=>'link_file_ID', 'field' => 'link_cmt_ID', 'msg'=>T_('%d linked comments') ),
 				array( 'table'=>'T_users', 'fk'=>'user_avatar_file_ID', 'msg'=>T_('%d linked users (profile pictures)') ),
+			);
+
+		$this->delete_cascades = array(
+				array( 'table'=>'T_files__vote', 'fk'=>'fvot_file_ID', 'msg'=>T_('%d votes') ),
 			);
 
 		// Memorize filepath:
@@ -297,6 +308,10 @@ class File extends DataObject
 				$this->title = $row->file_title;
 				$this->alt   = $row->file_alt;
 				$this->desc  = $row->file_desc;
+				if( isset( $row->file_hash ) )
+				{
+					$this->hash  = $row->file_hash;
+				}
 
 				// Store this in the FileCache:
 				$FileCache = & get_FileCache();
@@ -337,7 +352,7 @@ class File extends DataObject
 		}
 		else
 		{ // Create an empty file:
-			$success = touch( $this->_adfp_full_path );
+			$success = @touch( $this->_adfp_full_path );
 			$this->_is_dir = false; // used by chmod
 		}
 		$this->chmod( $chmod ); // uses $Settings for NULL
@@ -1010,6 +1025,10 @@ class File extends DataObject
 	 * @param string
 	 * @param string
 	 * @param string rel attribute of link, usefull for jQuery libraries selecting on rel='...', e-g: lighbox
+	 * @param string image class
+	 * @param string image align
+	 * @param string image rel
+	 * @param string image caption/description
 	 */
 	function get_tag( $before_image = '<div class="image_block">',
 	                  $before_image_legend = '<div class="image_legend">', // can be NULL
@@ -1019,7 +1038,10 @@ class File extends DataObject
 	                  $image_link_to = 'original',
 	                  $image_link_title = '',	// can be text or #title# or #desc#
 	                  $image_link_rel = '',
-	                  $image_class = '' )
+	                  $image_class = '',
+	                  $image_align = '',
+	                  $image_alt = '',
+	                  $image_desc = '#' )
 	{
 		if( $this->is_dir() )
 		{	// We can't reference a directory
@@ -1037,7 +1059,19 @@ class File extends DataObject
 				$image_class = ' class="'.$image_class.'"';
 			}
 
-			$img = '<img'.get_field_attribs_as_string($this->get_img_attribs($size_name)).$image_class.' />';
+			if( $image_align != '' )
+			{
+				$image_align =' align="'.$image_align.'"';
+			}
+
+			$img_attribs = $this->get_img_attribs($size_name);
+
+			if( $img_attribs['alt'] == '' )
+			{
+				$img_attribs['alt'] = $image_alt;
+			}
+
+			$img = '<img'.get_field_attribs_as_string($img_attribs).$image_class.$image_align.' />';
 
 			if( $image_link_to == 'original' )
 			{	// special case
@@ -1060,15 +1094,19 @@ class File extends DataObject
 				{
 					$a .= ' rel="'.htmlspecialchars($image_link_rel).'"';
 				}
+				$a .= ' id="f'.$this->ID.'"';
 				$img = $a.'>'.$img.'</a>';
 			}
 			$r .= $img;
 
-			$desc = $this->dget('desc');
-			if( !empty($desc) && !is_null($before_image_legend) )
+			if( $image_desc == '#' )
+			{
+				$image_desc = $this->dget('desc');
+			}
+			if( !empty( $image_desc ) && !is_null( $before_image_legend ) )
 			{
 				$r .= $before_image_legend
-							.$this->dget('desc')		// If this needs to be changed, please document.
+							.$image_desc		// If this needs to be changed, please document.
 							.$after_image_legend;
 			}
 			$r .= $after_image;
@@ -1083,6 +1121,181 @@ class File extends DataObject
 		}
 
 		return $r;
+	}
+
+
+	/*
+	 * Get gallery for code for a directory
+	 *
+	 * @param array of params
+	 * @return string gallery HTML code
+	 */
+	function get_gallery( $params )
+	{
+		$params = array_merge( array(
+				'before_gallery'        => '<div class="bGallery">',
+				'after_gallery'         => '</div>',
+				'gallery_image_size'    => 'crop-80x80',
+				'gallery_image_limit'   => 1000,
+				'gallery_colls'         => 5,
+				'gallery_order'			=> '', // 'ASC', 'DESC', 'RAND'
+			), $params );
+
+		if( ! $this->is_dir() )
+		{	// Not a directory
+			return '';
+		}
+		if( ! $FileList = $this->get_gallery_images( $params['gallery_image_limit'], $params['gallery_order'] ) )
+		{	// No images in this directory
+			return '';
+		}
+
+		$r = $params['before_gallery'];
+		$r .= '<table cellpadding="0" cellspacing="3" border="0" class="image_index">';
+
+		$count = 0;
+		foreach( $FileList as $l_File )
+		{
+			// We're linking to the original image, let lighbox (or clone) quick in:
+			$link_title = '#title#'; // This title will be used by lightbox (colorbox for instance)
+			$link_rel = 'lightbox[g'.$this->ID.']'; // Make one "gallery" per directory.
+
+			$img_tag = $l_File->get_tag( '', NULL, '', '', $params['gallery_image_size'], 'original', $link_title, $link_rel );
+
+			if( $count % $params['gallery_colls'] == 0 ) $r .= "\n<tr>";
+			$count++;
+			$r .= "\n\t".'<td valign="top">';
+			// ======================================
+			// Individual table cell
+
+			$r .= '<div class="bGallery-thumbnail">'.$img_tag.'</div>';
+
+			// ======================================
+			$r .= '</td>';
+			if( $count % $params['gallery_colls'] == 0 ) $r .= "\n</tr>";
+		}
+		if( $count && ( $count % $params['gallery_colls'] != 0 ) ) $r .= "\n</tr>";
+
+		$r .= '</table>';
+		$r .= $params['after_gallery'];
+
+		return $r;
+	}
+
+
+	/*
+	 * Get all images in a directory (no recursion)
+	 *
+	 * @param integer how many images to return
+	 * @param string filenames order ASC DESC RAND or empty string
+	 * @return array of instantiated File objects or false
+	 */
+	function get_gallery_images( $limit = 1000, $order = '' )
+	{
+		if( $filenames = $this->get_directory_files('relative') )
+		{
+			$FileCache = & get_FileCache();
+
+			switch( strtoupper($order) )
+			{
+				case 'ASC':
+					sort($filenames);
+					break;
+
+				case 'DESC':
+					rsort($filenames);
+					break;
+
+				case 'RAND':
+					shuffle($filenames);
+					break;
+			}
+
+			$i = 1;
+			foreach( $filenames as $filename )
+			{
+				if( $i > $limit )
+				{	// We've got enough images
+					break;
+				}
+
+				/*
+				sam2kb> TODO: we may need to filter files by extension first, it doesn't make sence
+						to query the database for every single .txt or .zip file.
+						The best solution would be to have file MIME type field in DB
+				*/
+				$l_File = & $FileCache->get_by_root_and_path( $this->_FileRoot->type, $this->_FileRoot->in_type_ID, $filename );
+				$l_File->load_meta();
+
+				if( ! $l_File->is_image() )
+				{	// Not an image
+					continue;
+				}
+				$Files[] = $l_File;
+
+				$i++;
+			}
+			if( !empty($Files) )
+			{
+				return $Files;
+			}
+		}
+		return false;
+	}
+
+
+	/*
+	 * Get all files in a directory (no recursion)
+	 *
+	 * @param string what part of file name to return
+	 *		'basename' return file name only e.g. 'bus-stop-ahead.jpg'
+	 * 		'ralative' file path relative to '_adfp_full_path' e.g. 'monument-valley/bus-stop-ahead.jpg'
+	 *		'absolute' full file path e.g. '/home/user/html/media/shared/global/monument-valley/bus-stop-ahead.jpg'
+	 * @return array of files
+	 */
+	function get_directory_files( $path_type = 'relative' )
+	{
+		global $Settings;
+
+		$path = trailing_slash( $this->_adfp_full_path );
+
+		if( $dir = @opendir($path) )
+		{	// Scan directory and list all files
+			$filenames = array();
+			while( ($file = readdir($dir)) !== false )
+			{
+				if( $file == '.' || $file == '..' || $file == $Settings->get('evocache_foldername') )
+				{	// Invalid file
+					continue;
+				}
+
+				// sam2kb> TODO: Do we need to process directories recursively?
+				if( ! is_dir($path.$file) )
+				{
+					switch( $path_type )
+					{
+						case 'basename':
+							$filenames[] = $file;
+							break;
+
+						case 'relative':
+							$filenames[] = trailing_slash($this->_rdfp_rel_path).$file;
+							break;
+
+						case 'absolute':
+							$filenames[] = $path.$file;
+							break;
+					}
+				}
+			}
+			closedir($dir);
+
+			if( !empty($filenames) )
+			{
+				return $filenames;
+			}
+		}
+		return false;
 	}
 
 
@@ -1189,7 +1402,7 @@ class File extends DataObject
 
 			while ( $temp_File = $temp_Filelist->get_next() )
 			{
-				$temp_File->modify_path ( $rel_dir, $full_dir, $paths );
+				$temp_File->modify_path ( $rel_dir, $full_dir );
 			}
 		}
 
@@ -1470,6 +1683,10 @@ class File extends DataObject
 		$this->set_param( 'root_type', 'string', $this->_FileRoot->type );
 		$this->set_param( 'root_ID', 'number', $this->_FileRoot->in_type_ID );
 		$this->set_param( 'path', 'string', $this->_rdfp_rel_path );
+		if( ! $this->is_dir() )
+		{ // create hash value only for files but not for folders
+			$this->set_param( 'hash', 'string', md5_file( $this->get_full_path() ) );
+		}
 
 		// Let parent do the insert:
 		$r = parent::dbinsert();
@@ -1493,8 +1710,33 @@ class File extends DataObject
 			debug_die( 'cannot update File if meta data has not been checked before' );
 		}
 
+		global $DB;
+
+		$DB->begin();
+
 		// Let parent do the update:
-		return parent::dbupdate();
+		if( ( $r = parent::dbupdate() ) !== false )
+		{
+			// Update field 'last_touched_ts' of each item that has a link with this edited file
+			$LinkCache = & get_LinkCache();
+			$links = $LinkCache->get_by_file_ID( $this->ID );
+			foreach( $links as $Link )
+			{
+				$LinkOwner = & $Link->get_LinkOwner();
+				if( $LinkOwner != NULL )
+				{
+					$LinkOwner->item_update_last_touched_date();
+				}
+			}
+
+			$DB->commit();
+		}
+		else
+		{
+			$DB->rollback();
+		}
+
+		return $r;
 	}
 
 
@@ -1598,13 +1840,14 @@ class File extends DataObject
 	/**
 	 * Get link to edit linked file.
 	 *
-	 * @param integer ID of item to link to => will open the FM in link mode
+	 * @param string link type ( item, comment )
+	 * @param integer ID of the object to link to => will open the FM in link mode
 	 * @param string link text
 	 * @param string link title
 	 * @param string text to display if access denied
 	 * @param string page url for the edit action
 	 */
-	function get_linkedit_link( $link_itm_ID = NULL, $text = NULL, $title = NULL, $no_access_text = NULL,
+	function get_linkedit_link( $link_type = NULL, $link_obj_ID = NULL, $text = NULL, $title = NULL, $no_access_text = NULL,
 											$actionurl = '#', $target = '' )
 	{
 		global $dispatcher;
@@ -1630,7 +1873,7 @@ class File extends DataObject
 			$no_access_text = $text;
 		}
 
-		$url = $this->get_linkedit_url( $link_itm_ID, $actionurl );
+		$url = $this->get_linkedit_url( $link_type, $link_obj_ID, $actionurl );
 
 		if( !empty($target) )
 		{
@@ -1642,10 +1885,13 @@ class File extends DataObject
 
 
 	/**
-	 * @param integer ID of item to link to => will open the FM in link mode
+	 * Get link edit url for a link object
+	 *
+	 * @param string link type ( item, comment )
+	 * @param integer ID of link object to link to => will open the FM in link mode
 	 * @return string
 	 */
-	function get_linkedit_url( $link_itm_ID = NULL, $actionurl = '#' )
+	function get_linkedit_url( $link_type = NULL, $link_obj_ID = NULL, $actionurl = '#' )
 	{
 		global $dispatcher;
 
@@ -1665,9 +1911,9 @@ class File extends DataObject
 
 		$url_params = 'root='.$this->_FileRoot->ID.'&amp;path='.$rdfp_path.'/';
 
-		if( ! is_null($link_itm_ID) )
+		if( ! is_null($link_obj_ID) )
 		{	// We want to open the filemanager in link mode:
-			$url_params .= '&amp;fm_mode=link_item&amp;item_ID='.$link_itm_ID;
+			$url_params .= '&amp;fm_mode=link_object&amp;link_type='.$link_type.'&amp;link_object_ID='.$link_obj_ID;
 		}
 
 		// Add param to make the file list highlight this (via JS).
@@ -1703,6 +1949,7 @@ class File extends DataObject
 					// Let's point directly into the cache:
 					global $Settings;
 					$url = $this->_FileRoot->ads_url.dirname($this->_rdfp_rel_path).'/'.$Settings->get( 'evocache_foldername' ).'/'.$this->_name.'/'.$size_name.'.'.$this->get_ext().'?mtime='.$this->get_lastmod_ts();
+					$url = str_replace( '\/', '', $url ); // Fix incorrect path
 					return $url;
 				}
 			}
@@ -1735,7 +1982,7 @@ class File extends DataObject
 	 * Generate the IMG THUMBNAIL tag with all the alt & title if available.
 	 * @return string
 	 */
-	function get_thumb_imgtag( $size_name = 'fit-80x80', $class = '', $align = '' )
+	function get_thumb_imgtag( $size_name = 'fit-80x80', $class = '', $align = '', $title = '' )
 	{
 		global $use_strict;
 
@@ -1744,7 +1991,7 @@ class File extends DataObject
 			return '';
 		}
 
-		$img_attribs = $this->get_img_attribs($size_name);
+		$img_attribs = $this->get_img_attribs($size_name, $title);
 		// pre_dump( $img_attribs );
 
 		if( $class )
@@ -1817,20 +2064,28 @@ class File extends DataObject
 	 * Displays a preview thumbnail which is clickable and opens a view popup
 	 *
 	 * @param string what do do with files that are not images? 'fulltype'
+	 * @param boolean TRUE - to init colorbox plugin for images
 	 * @return string HTML to display
 	 */
-	function get_preview_thumb( $format_for_non_images = '' )
+	function get_preview_thumb( $format_for_non_images = '', $preview_image = false )
 	{
 		if( $this->is_image() )
 		{	// Ok, it's an image:
 			$type = $this->get_type();
 			$img_attribs = $this->get_img_attribs( 'fit-80x80', $type, $type );
-			$img = '<img'.get_field_attribs_as_string($img_attribs).' />';
+			$img = '<img'.get_field_attribs_as_string( $img_attribs ).' />';
 
-			// Get link to view the file (fallback to no view link - just the img):
-			$link = $this->get_view_link( $img );
+			if( $preview_image )
+			{	// Create link to preview image by colorbox plugin
+				$link = '<a href="'.$this->get_url().'" rel="lightbox" id="f'.$this->ID.'">'.$img.'</a>';
+			}
+			else
+			{	// Get link to view the file (fallback to no view link - just the img):
+				$link = $this->get_view_link( $img );
+			}
+
 			if( ! $link )
-			{ // no view link available:
+			{	// no view link available:
 				$link = $img;
 			}
 
@@ -1965,6 +2220,8 @@ class File extends DataObject
 			  'mimetype' => & $thumb_mimetype,
 			  'quality' => & $thumb_quality,
 			  'File' => & $this,
+			  'root_type' => $this->_FileRoot->type,
+			  'root_type_ID' => $this->_FileRoot->in_type_ID,
 		  ) );
 
 		$af_thumb_path = $this->get_af_thumb_path( $size_name, $thumb_mimetype, true );
@@ -1987,6 +2244,8 @@ class File extends DataObject
 	 */
 	function output_cached_thumb( $size_name, $thumb_mimetype, $mtime = NULL )
 	{
+		global $servertimenow;
+
 		$af_thumb_path = $this->get_af_thumb_path( $size_name, $thumb_mimetype, false );
 		//pre_dump($af_thumb_path);
 		if( $af_thumb_path[0] != '!' )
@@ -2004,10 +2263,13 @@ class File extends DataObject
 
 			header('Content-Type: '.$thumb_mimetype );
 			header('Content-Length: '.filesize( $af_thumb_path ) );
+			header('Last-Modified: ' . date("r",$this->get_lastmod_ts()));
 
 			// dh> if( $mtime && $mtime == $this->get_lastmod_ts() )
 			// fp> I don't think mtime changes anything to the cacheability of the data
-			header_noexpire(); // Static image
+			//header_noexpire(); // Static image
+			// attila> set expires on 30 days
+			header('Expires: ' . date("r", $servertimenow + 2592000/* 60*60*24*30 = 30 days */ ));
 
 			// Output the content of the file
 			readfile( $af_thumb_path );
@@ -2019,45 +2281,26 @@ class File extends DataObject
 
 
 	/**
-	 * @param Item
+	 * @param LinkOwner
 	 */
-	function link_to_Item( & $edited_Item )
+	function link_to_Object( & $LinkOwner )
 	{
 		global $DB;
 
 		// Automatically determine default position.
 		// First image becomes "teaser", otherwise "aftermore".
-		$LinkCache = & get_LinkCache();
-		$existing_Links = $LinkCache->get_by_item_ID($edited_Item->ID);
 
 		$order = 1;
-
-		if( $existing_Links )
-		{
-			$position = NULL;
-			$last_Link = array_pop($existing_Links);
-			$last_File = & $last_Link->get_File();
-
-			if( $last_File && $this->is_image() && $last_File->is_image() && ! count($existing_Links) )
-			{ // there's only one image attached yet, the second becomes "aftermore"
-				$position = 'aftermore';
-			}
-			else
-			{ // default: use position of previous link/attachment
-				$position = $last_Link->get('position');
-			}
-
-			// Re-add popped link.
-			$existing_Links[] = $last_Link;
-		}
-		else
-		{ // no attachment yet
-			$position = $this->is_image() ? 'teaser' : 'aftermore';
-		}
+		$position =  $LinkOwner->get_default_position( $this->is_image() );
+		$existing_Links = & $LinkOwner->get_Links();
 
 		// Find highest order
 		foreach( $existing_Links as $loop_Link )
 		{
+			if( $loop_Link->file_ID == $this->ID )
+			{ // The file is already linked to this owner
+				return;
+			}
 			$existing_order = $loop_Link->get('order');
 			if( $existing_order >= $order )
 				$order = $existing_order+1;
@@ -2068,15 +2311,10 @@ class File extends DataObject
 		// Load meta data AND MAKE SURE IT IS CREATED IN DB:
 		$this->load_meta( true );
 
-		// Let's make the link!
-		$edited_Link = new Link();
-		$edited_Link->set( 'itm_ID', $edited_Item->ID );
-		$edited_Link->set( 'file_ID', $this->ID );
-		$edited_Link->set( 'position', $position );
-		$edited_Link->set( 'order', $order );
-		$edited_Link->dbinsert();
-
 		$DB->commit();
+
+		// Let's make the link!
+		$LinkOwner->add_link( $this->ID, $position, $order );
 	}
 
 
@@ -2095,19 +2333,41 @@ class File extends DataObject
 		switch( $restriction['table'] )
 		{ // can be restricted to different tables
 			case 'T_links':
-				$object_ID = 'post_ID';			// related table object ID
-				$object_name = 'post_title';	// related table object name
+				switch( $restriction['field'] )
+				{
+					case 'link_itm_ID': // Items
+						$object_ID = 'post_ID';			// related table object ID
+						$object_name = 'post_title';	// related table object name
 
-				// link to object
-				$link = '<a href="'.$admin_url.'?ctrl=items&action=edit&p=%d">%s</a>';
-				$object_query = 'SELECT post_ID, post_title FROM T_items__item'
-									.' WHERE post_ID IN'
-									.' (SELECT link_Itm_ID'
-									.' FROM '.$restriction['table']
-									.' WHERE '.$restriction['fk'].' = '.$this->ID.')';
-				break;
+						// link to object
+						$link = '<a href="'.$admin_url.'?ctrl=items&action=edit&p=%d">%s</a>';
+						$object_query = 'SELECT post_ID, post_title FROM T_items__item'
+											.' WHERE post_ID IN'
+											.' (SELECT '.$restriction['field']
+											.' FROM '.$restriction['table']
+											.' WHERE '.$restriction['fk'].' = '.$this->ID.')';
+						break;
 
-			case 'T_users':
+					case 'link_cmt_ID': // Comments
+						$object_ID = 'comment_ID';			// related table object ID
+						$object_name = 'comment_ID';	// related table object name
+
+						// link to object
+						$link = '<a href="'.$admin_url.'?ctrl=comments&action=edit&comment_ID=%d">'.T_('Comment ').'#%s</a>';
+						$object_query = 'SELECT comment_ID, comment_ID FROM T_comments'
+											.' WHERE comment_ID IN'
+											.' (SELECT '.$restriction['field']
+											.' FROM '.$restriction['table']
+											.' WHERE '.$restriction['fk'].' = '.$this->ID.')';
+						break;
+
+					default:
+						// not defined restriction
+						debug_die ( 'unhandled restriction field:' . htmlspecialchars ( $restriction['table'].' - '.$restriction['field'] ) );
+				}
+			break;
+
+			case 'T_users': // Users
 				$object_ID = 'user_ID';			// related table object ID
 				$object_name = 'user_login';	// related table object name
 
@@ -2136,10 +2396,34 @@ class File extends DataObject
 		// no restriction
 		return '';
 	}
+
+
+	/**
+	 * Get icon with link to go to file browser where this file is highlighted
+	 *
+	 * @return string Link
+	 */
+	function get_target_icon()
+	{
+		global $current_User;
+
+		$r = '';
+		if( $current_User->check_perm( 'files', 'view', false, $this->get_FileRoot() ) )
+		{	// Check permission
+			if( $this->is_dir() )
+			{	// Dir
+				$title = T_('Locate this directory!');
+			}
+			else
+			{	// File
+				$title = T_('Locate this file!');
+			}
+			$url = $this->get_linkedit_url();
+			$r .= '<a href="'.$url.'" title="'.$title.'">'.get_icon( 'locate', 'imgtag', array( 'title' => $title ) ).'</a> ';
+		}
+
+		return $r;
+	}
 }
 
-
-/*
- * $Log: _file.class.php,v $
- */
 ?>

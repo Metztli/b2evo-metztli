@@ -7,7 +7,7 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
@@ -26,7 +26,7 @@
  *
  * @todo dh> Refactor to allow easier contributions!
  *
- * @version $Id: _adminUI_general.class.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _adminUI_general.class.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -134,6 +134,14 @@ class AdminUI_general extends Menu
 	 */
 	var $breadcrumbpath = array();
 
+
+	/**
+	 * Titles of bread crumb paths
+	 *
+	 * Used to build a html <title> tag
+	 */
+	var $breadcrumb_titles = array();
+
 	/**
 	 * Constructor.
 	 */
@@ -153,6 +161,8 @@ class AdminUI_general extends Menu
 	 */
 	function init_templates()
 	{
+		require_js( '#jquery#', 'rsc_url' );
+		require_js( 'jquery/jquery.raty.min.js', 'rsc_url' );
 	}
 
 	/**
@@ -194,6 +204,7 @@ class AdminUI_general extends Menu
 		}
 
 		$this->breadcrumbpath[] = $html;
+		$this->breadcrumb_titles[] = strip_tags( $text );
 	}
 
 
@@ -203,7 +214,7 @@ class AdminUI_general extends Menu
 
 		if( $count = count($this->breadcrumbpath) )
 		{
-			$r = '<div class="breadcrumbpath">&bull; <strong>You are here:</strong> ';
+			$r = '<div class="breadcrumbpath">&bull; <strong>'.T_('You are here').':</strong> ';
 
 			for( $i=0; $i<$count-1; $i++ )
 			{
@@ -249,18 +260,23 @@ class AdminUI_general extends Menu
 	 */
 	function get_title( $reversedDefault = false )
 	{
-		if( isset($this->title) )
-		{ // Explicit title has been set:
+		if( isset( $this->title ) )
+		{	// Explicit title has been set:
 			return $this->title;
 		}
 		else
-		{ // Fallback: implode title/text properties of the path
-			$titles = $this->get_properties_for_path( $this->path, array( 'title', 'text' ) );
+		{	// Fallback: implode title/text properties of the path
+			/*$titles = $this->get_properties_for_path( $this->path, array( 'title', 'text' ) );
 			if( $reversedDefault )
 			{ // We have asked for reverse order of the path elements:
 				$titles = array_reverse($titles);
+			}*/
+			$titles = $this->breadcrumb_titles;
+			if( count( $titles ) > 1 )
+			{	// Remove 'Dashboard' text from the title
+				array_shift( $titles );
 			}
-			return implode( $this->pathSeparator, $titles );
+			return implode( ' &gt; ', $titles );
 		}
 	}
 
@@ -318,7 +334,7 @@ class AdminUI_general extends Menu
 		global $app_shortname;
 
 		if( $htmltitle = $this->get_prop_for_node( $this->path, array( 'htmltitle' ) ) )
-		{ // Explicit htmltitle set:
+		{	// Explicit htmltitle set:
 			$r = $htmltitle;
 		}
 		else
@@ -417,6 +433,11 @@ class AdminUI_general extends Menu
 	 */
 	function disp_html_head()
 	{
+		if( is_ajax_content() )
+		{	// Don't display this content on AJAX request
+			return;
+		}
+
 		global $adminskins_path;
 		require $adminskins_path.'_html_header.inc.php';
 	}
@@ -431,6 +452,11 @@ class AdminUI_general extends Menu
 	 */
 	function disp_body_top( $display_messages = true )
 	{
+		if( is_ajax_content() )
+		{	// Don't display this content on AJAX request
+			return;
+		}
+
 		global $skins_path, $mode;
 
 		/**
@@ -445,7 +471,7 @@ class AdminUI_general extends Menu
 		{
 			global $Messages;
 
-			$mode = preg_replace( '¤[^a-z]¤', '', $mode );	// sanitize
+			$mode = preg_replace( '~[^a-z]~', '', $mode );	// sanitize
 			echo '<div id="'.$mode.'_wrapper">';
 
 			if( $display_messages )
@@ -484,6 +510,11 @@ class AdminUI_general extends Menu
 	 */
 	function disp_global_footer()
 	{
+		if( is_ajax_content() )
+		{	// Don't display this content on AJAX request
+			return;
+		}
+
 		global $adminskins_path, $mode;
 
 		require $adminskins_path.'_html_footer.inc.php';
@@ -500,6 +531,11 @@ class AdminUI_general extends Menu
 	 */
 	function disp_payload_begin()
 	{
+		if( is_ajax_content() )
+		{	// Don't display this content on AJAX request
+			return;
+		}
+
 		global $Plugins;
 
 		if( empty($this->displayed_sub_begin) )
@@ -540,6 +576,11 @@ class AdminUI_general extends Menu
 	 */
 	function disp_payload_end()
 	{
+		if( is_ajax_content() )
+		{	// Don't display this content on AJAX request
+			return;
+		}
+
 		if( empty($this->displayed_sub_end) )
 		{
 			$name = 'sub';
@@ -772,7 +813,7 @@ class AdminUI_general extends Menu
 							."\n<li><!-- Yes, this empty UL is needed! It's a DOUBLE hack for correct CSS display --></li>"
 							// TODO: this hack MAY NOT be needed when not using pixels instead of decimal ems or exs in the CSS
 							."\n</ul>"
-							."\n".'<div class="panelblocktabs">'
+							."\n".'<div class="panelblocktabs">$top_block$'
 							."\n".'<ul class="tabs">',
 						'after' => "</ul>\n"
 							.'<span style="float:right">$global_icons$</span>'
@@ -790,7 +831,7 @@ class AdminUI_general extends Menu
 			case 'menu3':
 				// level 3 submenu:
 				return array(
-							'before' => '<div class="menu3">&raquo;',
+							'before' => '<div class="menu3">',
 							'after' => '</div>',
 							'empty' => '',
 							'beforeEach' => '<span class="option3">',
@@ -829,29 +870,26 @@ class AdminUI_general extends Menu
 				return array(
 					'page_url' => '', // All generated links will refer to the current page
 					'before' => '<div class="results">',
+					'content_start' => '<div id="$prefix$ajax_content">',
 					'header_start' => '<div class="results_nav">',
 						'header_text' => '<strong>'.T_('Pages').'</strong>: $prev$ $first$ $list_prev$ $list$ $list_next$ $last$ $next$',
 						'header_text_single' => '',
 					'header_end' => '</div>',
-					'list_start' => '<table class="grouped" cellspacing="0">'."\n\n",
+					'head_title' => '<div class="table_title"><span style="float:right">$global_icons$</span>$title$</div>'."\n",
+					'filters_start' => '<div class="filters">',
+					'filters_end' => '</div>',
+					'list_start' => '<div class="table_scroll">'."\n"
+					               .'<table class="grouped" cellspacing="0">'."\n",
 						'head_start' => "<thead>\n",
-							'head_title' => '<tr><th colspan="$nb_cols$" class="title"><span style="float:right">$global_icons$</span>$title$</th>'
-							                ."\n</tr>\n",
-							'filters_start' => '<tr class="filters"><td colspan="$nb_cols$">',
-							'filters_end' => '</td></tr>',
 							'line_start_head' => '<tr>',  // TODO: fusionner avec colhead_start_first; mettre a jour admin_UI_general; utiliser colspan="$headspan$"
 							'colhead_start' => '<th $class_attrib$>',
 							'colhead_start_first' => '<th class="firstcol $class$">',
 							'colhead_start_last' => '<th class="lastcol $class$">',
 							'colhead_end' => "</th>\n",
-							'sort_asc_off' => '<img src="../admin/img/grey_arrow_up.gif" alt="A" title="'.T_('Ascending order')
-							                    .'" height="12" width="11" />',
-							'sort_asc_on' => '<img src="../admin/img/black_arrow_up.gif" alt="A" title="'.T_('Ascending order')
-							                    .'" height="12" width="11" />',
-							'sort_desc_off' => '<img src="../admin/img/grey_arrow_down.gif" alt="D" title="'.T_('Descending order')
-							                    .'" height="12" width="11" />',
-							'sort_desc_on' => '<img src="../admin/img/black_arrow_down.gif" alt="D" title="'.T_('Descending order')
-							                    .'" height="12" width="11" />',
+							'sort_asc_off' => get_icon( 'sort_asc_off' ),
+							'sort_asc_on' => get_icon( 'sort_asc_on' ),
+							'sort_desc_off' => get_icon( 'sort_desc_off' ),
+							'sort_desc_on' => get_icon( 'sort_desc_on' ),
 							'basic_sort_off' => '',
 							'basic_sort_asc' => get_icon( 'ascending' ),
 							'basic_sort_desc' => get_icon( 'descending' ),
@@ -884,13 +922,13 @@ class AdminUI_general extends Menu
 							'total_col_start_last' => '<td class="lastcol $class$">',
 							'total_col_end' => "</td>\n",
 						'total_line_end' => "</tr>\n\n",
-					'list_end' => "</table>\n\n",
-					'footer_start' => '<div class="results_nav">',
-					'footer_text' => '<strong>'.T_('Pages').'</strong>: $prev$ $first$ $list_prev$ $list$ $list_next$ $last$ $next$'
+					'list_end' => "</table></div>\n\n",
+					'footer_start' => '<div class="results_nav nav_footer">',
+					'footer_text' => '<strong>'.T_('Pages').'</strong>: $prev$ $first$ $list_prev$ $list$ $list_next$ $last$ $next$<br />$page_size$'
 					                  /* T_('Page $scroll_list$ out of $total_pages$   $prev$ | $next$<br />'. */
 					                  /* '<strong>$total_pages$ Pages</strong> : $prev$ $list$ $next$' */
 					                  /* .' <br />$first$  $list_prev$  $list$  $list_next$  $last$ :: $prev$ | $next$') */,
-					'footer_text_single' => '',
+					'footer_text_single' => '$page_size$',
 					'footer_text_no_limit' => '', // Text if theres no LIMIT and therefor only one page anyway
 						'prev_text' => T_('Previous'),
 						'next_text' => T_('Next'),
@@ -901,11 +939,10 @@ class AdminUI_general extends Menu
 						'list_span' => 11,
 						'scroll_list_range' => 5,
 					'footer_end' => "</div>\n\n",
-					'no_results_start' => '<table class="grouped" cellspacing="0">'."\n\n"
-								                .'<tr><th class="title"><span style="float:right">$global_icons$</span>'
-								                .'$title$</th></tr>'."\n",
+					'no_results_start' => '<table class="grouped" cellspacing="0">'."\n",
 					'no_results_end'   => '<tr class="lastline"><td class="firstcol lastcol">$no_results$</td></tr>'
 								                .'</table>'."\n\n",
+				'content_end' => '</div>',
 				'after' => '</div>',
 				'sort_type' => 'basic'
 				);
@@ -925,18 +962,14 @@ class AdminUI_general extends Menu
 							'filters_start' => '<tr class="filters"><td colspan="$nb_cols$">',
 							'filters_end' => '</td></tr>',
 							'line_start_head' => '<tr>',  // TODO: fusionner avec colhead_start_first; mettre a jour admin_UI_general; utiliser colspan="$headspan$"
-							'colhead_start' => '<th $class_attrib$>',
-							'colhead_start_first' => '<th class="firstcol $class$">',
-							'colhead_start_last' => '<th class="lastcol $class$">',
+							'colhead_start' => '<th $class_attrib$ $title_attrib$>',
+							'colhead_start_first' => '<th class="firstcol $class$" $title_attrib$>',
+							'colhead_start_last' => '<th class="lastcol $class$" $title_attrib$>',
 							'colhead_end' => "</th>\n",
-							'sort_asc_off' => '<img src="../admin/img/grey_arrow_up.gif" alt="A" title="'.T_('Ascending order')
-							                    .'" height="12" width="11" />',
-							'sort_asc_on' => '<img src="../admin/img/black_arrow_up.gif" alt="A" title="'.T_('Ascending order')
-							                    .'" height="12" width="11" />',
-							'sort_desc_off' => '<img src="../admin/img/grey_arrow_down.gif" alt="D" title="'.T_('Descending order')
-							                    .'" height="12" width="11" />',
-							'sort_desc_on' => '<img src="../admin/img/black_arrow_down.gif" alt="D" title="'.T_('Descending order')
-							                    .'" height="12" width="11" />',
+							'sort_asc_off' => get_icon( 'sort_asc_off' ),
+							'sort_asc_on' => get_icon( 'sort_asc_on' ),
+							'sort_desc_off' => get_icon( 'sort_desc_off' ),
+							'sort_desc_on' => get_icon( 'sort_desc_on' ),
 							'basic_sort_off' => '',
 							'basic_sort_asc' => get_icon( 'ascending' ),
 							'basic_sort_desc' => get_icon( 'descending' ),
@@ -1001,6 +1034,9 @@ class AdminUI_general extends Menu
 					'formstart' => '',
 					'title_fmt' => '$title$'."\n", // TODO: icons
 					'no_title_fmt' => '',          //           "
+					'fieldset_begin' => '<fieldset $fieldset_attribs$>'."\n"
+															.'<legend $title_attribs$>$fieldset_title$</legend>'."\n",
+					'fieldset_end' => '</fieldset>'."\n",
 					'fieldstart' => '<span class="block" $ID$>',
 					'labelstart' => '',
 					'labelend' => "\n",
@@ -1011,6 +1047,8 @@ class AdminUI_general extends Menu
 					'fieldend' => '</span>'.get_icon( 'pixel' )."\n",
 					'buttonsstart' => '',
 					'buttonsend' => "\n",
+					'customstart' => '',
+					'customend' => "\n",
 					'formend' => '',
 				);
 
@@ -1022,7 +1060,7 @@ class AdminUI_general extends Menu
 					'formstart' => '',
 					'title_fmt' => '<span style="float:right">$global_icons$</span><h2>$title$</h2>'."\n",
 					'no_title_fmt' => '<span style="float:right">$global_icons$</span>'."\n",
-					'fieldset_begin' => '<div class="fieldset_wrapper$class$" id="fieldset_wrapper_$id$"><fieldset $fieldset_attribs$>'."\n"
+					'fieldset_begin' => '<div class="fieldset_wrapper $class$" id="fieldset_wrapper_$id$"><fieldset $fieldset_attribs$>'."\n"
 															.'<legend $title_attribs$>$fieldset_title$</legend>'."\n",
 					'fieldset_end' => '</fieldset></div>'."\n",
 					'fieldstart' => '<fieldset $ID$>'."\n",
@@ -1035,6 +1073,8 @@ class AdminUI_general extends Menu
 					'fieldend' => "</fieldset>\n\n",
 					'buttonsstart' => '<fieldset><div class="input">',
 					'buttonsend' => "</div></fieldset>\n\n",
+					'customstart' => '<div class="custom_content">',
+					'customend' => "</div>\n",
 					'formend' => '',
 				);
 
@@ -1047,7 +1087,7 @@ class AdminUI_general extends Menu
 			case 'block_item':
 			case 'dash_item':
 				return array(
-					'block_start' => '<div class="block_item"><h3><span style="float:right">$global_icons$</span>$title$</h3>',
+					'block_start' => '<div class="block_item" id="styled_content_block"><h3><span style="float:right">$global_icons$</span>$title$</h3>',
 					'block_end' => '</div>',
 				);
 
@@ -1308,12 +1348,13 @@ class AdminUI_general extends Menu
 	{
 		global $app_shortname, $app_version, $current_User, $htsrv_url_sensitive, $admin_url, $baseurl, $rsc_url;
 
+		$secure_htsrv_url = get_secure_htsrv_url();
 		$r = '
 		<div id="header">
 			<div id="headinfo">
 				<span id="headfunctions">'
 					// Note: if we log in with another user, we may not have the perms to come back to the same place any more, thus: redirect to admin home.
-					.'<a href="'.$htsrv_url_sensitive.'login.php?action=logout&amp;redirect_to='.rawurlencode(url_rel_to_same_host($admin_url, $htsrv_url_sensitive)).'">'.T_('Logout').'</a>
+					.'<a href="'.$secure_htsrv_url.'login.php?action=logout&amp;redirect_to='.rawurlencode(url_rel_to_same_host($admin_url, $secure_htsrv_url)).'">'.T_('Logout').'</a>
 					<img src="'.$rsc_url.'icons/close.gif" width="14" height="14" border="0" class="top" alt="" title="'
 					.T_('Logout').'" /></a>
 				</span>
@@ -1401,8 +1442,4 @@ class AdminUI_general extends Menu
 	}
 }
 
-
-/*
- * $Log: _adminUI_general.class.php,v $
- */
 ?>

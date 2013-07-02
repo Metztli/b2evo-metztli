@@ -8,7 +8,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
@@ -33,13 +33,7 @@
  *
  * @package evocore
  *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE
- * @author blueyed: Daniel HAHLER
- * @author mfollett: Matt FOLLETT
- * @author mbruneau: Marc BRUNEAU / PROGIDISTRI
- *
- * @version $Id: _init_session.inc.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _init_session.inc.php 4096 2013-06-28 10:39:15Z attila $
  */
 if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page directly.' );
 
@@ -83,8 +77,8 @@ $Plugins->trigger_event( 'SessionLoaded' );
 
 
 // Trigger a page content caching plugin. This would either return the cached content here or start output buffering
-if( empty($generating_static) )
-{
+/* fp> if you still need this, please let me know which plugin uses that.
+
 	if( $Session->get( 'core.no_CachePageContent' ) )
 	{ // The event is disabled for this request:
 		$Session->delete('core.no_CachePageContent');
@@ -97,13 +91,14 @@ if( empty($generating_static) )
 		// Note: we should not use debug_info() here, because the plugin has probably sent a Content-Length header.
 		exit(0);
 	}
-}
 
 
-// TODO: we need an event hook here for the transport_optimizer_plugin, which must get called, AFTER another plugin might have started an output buffer for caching already.
+// TODO: we need an event hook here for the transport_optimizer_plugin, which must get called,
+//       AFTER another plugin might have started an output buffer for caching already.
 //       Plugin priority is no option, because CachePageContent is a trigger_event_first_true event, for obvious reasons.
 //       Name?
 //       This must not be exactly here, but before any output.
+*/
 
 
 // The following is needed during login, not sure that's right :/
@@ -143,13 +138,15 @@ if( is_logged_in() && $current_User->get('locale') != $current_locale && ! $loca
 	{
 		$Debuglog->add( 'Login: locale from user profile could not be activated: '.$current_User->get('locale'), 'locale' );
 	}
+	// Init charset based on the selected locale
+	if( init_charsets( $current_charset ) )
+	{ // Charset was changed reload current User from db to make sure that all of it's data is in the current charset
+		$UserCache = & get_UserCache();
+		$UserCache->clear();
+		$current_User = & $UserCache->get_by_ID( $current_User->ID );
+	}
 }
 
 
 $Timer->pause( '_init_session' );
-
-
-/*
- * $Log: _init_session.inc.php,v $
- */
 ?>

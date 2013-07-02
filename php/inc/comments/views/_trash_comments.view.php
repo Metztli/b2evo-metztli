@@ -5,7 +5,7 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
  *
@@ -14,7 +14,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author efy-asimo: Attila Simo.
  *
- * @version $Id: _trash_comments.view.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _trash_comments.view.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -34,7 +34,7 @@ $SQL->WHERE( 'comment_status = "trash"');
 $SQL->GROUP_BY( 'blog_ID' );
 
 // Create result set:
-$Results = new Results( $SQL->get() );
+$Results = new Results( $SQL->get(), 'emptytrash_' );
 
 $Results->title = T_('Comment recycle bins').' ('.$Results->total_rows.')';
 
@@ -70,12 +70,8 @@ $Results->cols[] = array(
 
 $Results->global_icon( T_('Cancel empty recycle bin'), 'close', regenerate_url( 'action', 'action=list&filter=reset'), 3, 4  );
 
-echo '<p>[<a href="'.regenerate_url( 'action,blog_ID', 'action=trash_delete' ).'&amp;'.url_crumb('comment').'">'.T_( 'Empty all blog\'s recycle bin' ).'</a>]</p>';
+echo '<p>[<a href="'.regenerate_url( 'action,blog_ID', 'action=trash_delete' ).'&amp;'.url_crumb('comment').'">'.T_( 'Empty all blogs\' recycle bin' ).'</a>]</p>';
 
 $Results->display();
 
-
-/*
- * $Log: _trash_comments.view.php,v $
- */
 ?>

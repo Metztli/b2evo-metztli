@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
  * {@internal License choice
@@ -29,7 +29,7 @@
  * @author fplanque: Francois PLANQUE.
  * @author mbruneau: Marc BRUNEAU / PROGIDISTRI
  *
- * @version $Id: _filetype.form.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _filetype.form.php 3446 2013-04-10 11:24:40Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -59,13 +59,13 @@ $Form->begin_form( 'fform', $creating ?  T_('New file type') : T_('File type') )
 
 	if( ! $creating ) $Form->hidden( 'ftyp_ID', $edited_Filetype->ID );
 
-	$Form->text_input( 'ftyp_extensions', $edited_Filetype->extensions, 40, T_('Extensions'), '', array( 'maxlength'=>80, 'required'=>true, 'note'=>sprintf('E.g. &laquo;%s&raquo;'.', '.T_('separated by whitespace'), 'html') ) );
+	$Form->text_input( 'ftyp_extensions', $edited_Filetype->extensions, 40, T_('Extensions'), '', array( 'maxlength'=>30, 'required'=>true, 'note'=>sprintf('E.g. &laquo;%s&raquo;'.', '.T_('separated by whitespace'), 'html') ) );
 
-	$Form->text_input( 'ftyp_name', $edited_Filetype->name, 40, T_('File type name'), sprintf('E.g. &laquo;%s&raquo;', 'HTML file'), array( 'maxlength'=> 80, 'required'=>true ) );
+	$Form->text_input( 'ftyp_name', $edited_Filetype->name, 40, T_('File type name'), sprintf('E.g. &laquo;%s&raquo;', 'HTML file'), array( 'maxlength'=> 30, 'required'=>true ) );
 
-	$Form->text_input( 'ftyp_mimetype', $edited_Filetype->mimetype, 40, T_('Mime type'), sprintf('E.g. &laquo;%s&raquo;', 'text/html'), array( 'maxlength'=> 80, 'required'=>true ) );
+	$Form->text_input( 'ftyp_mimetype', $edited_Filetype->mimetype, 40, T_('Mime type'), sprintf('E.g. &laquo;%s&raquo;', 'text/html'), array( 'maxlength'=> 50, 'required'=>true ) );
 
-	$Form->text( 'ftyp_icon', $edited_Filetype->icon, 20, T_('Icon'), sprintf( /* TRANS: %s is a filesystem path */T_('File name of the icon, must be in %s.'), rel_path_to_base($rsc_path.'icons/fileicons/') ), 40 );
+	$Form->select_input_array( 'ftyp_icon', $edited_Filetype->icon, get_available_filetype_icons(), T_('Icon') );
 
 	$Form->radio( 'ftyp_viewtype',
 								$edited_Filetype->viewtype,
@@ -113,8 +113,4 @@ else
 													array( 'reset', '', T_('Reset'), 'ResetButton' ) ) );
 }
 
-
-/*
- * $Log: _filetype.form.php,v $
- */
 ?>

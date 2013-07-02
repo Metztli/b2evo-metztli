@@ -3,14 +3,14 @@
  * This is the main/default page template.
  *
  * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://manual.b2evolution.net/Skins_2.0}
+ * {@link http://b2evolution.net/man/skin-structure}
  *
  * It is used to display the blog when no specific page template is available to handle the request.
  *
  * @package evoskins
  * @subpackage nifty_corners
  *
- * @version $Id: index.main.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: index.main.php 3157 2013-03-06 04:34:44Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -25,25 +25,7 @@ skin_init( $disp );
 
 // -------------------------- HTML HEADER INCLUDED HERE --------------------------
 // Initializations:
-require_css( 'rsc/nifty_corners.css', true, 'Nifty Corners' );
-require_css( 'rsc/nifty_print.css', true, 'Print', 'print' );
-require_js( 'rsc/nifty_corners.js', true );
-$custom_js = <<<HEREDOC
-	<script type="text/javascript">
-		<!--
-		window.onload=function()
-		{
-			if(!NiftyCheck())
-					return;
-			Rounded("div.outerwrap","all","transparent","#fff","");
-			Rounded("div.posts","all","transparent","#fff","");
-			Rounded("div.bSideBar","all","transparent","#fff","");
-			Rounded("div.bTitle","top","#fff","#06a3c4","smooth");
-		}
-		// -->
-	</script>
-HEREDOC;
-add_headline( $custom_js );
+add_headline( '<!--[if IE]><link rel="stylesheet" type="text/css" href="ie.css" /><![endif]-->' );
 
 // Include the HTML HEAD:
 skin_include( '_html_header.inc.php' );
@@ -118,6 +100,7 @@ skin_include( '_html_header.inc.php' );
 		// ----------------------------- END OF "Menu" CONTAINER -----------------------------
 	?>
 	</ul>
+	<div class="clear"></div>
 </div>
 
 <?php
@@ -176,6 +159,7 @@ if( $Item = & get_featured_Item() )
 	// Display message if no post:
 	display_if_empty();
 
+	echo '<div id="styled_content_block">'; // Beginning of posts display
 	while( $Item = & mainlist_get_item() )
 	{	// For each blog post, do everything below up to the closing curly brace "}"
 	?>
@@ -195,7 +179,9 @@ if( $Item = & get_featured_Item() )
 		) );
 	// ----------------------------END ITEM BLOCK  ----------------------------
 
-	} // ---------------------------------- END OF POSTS ------------------------------------ ?>
+	} // ---------------------------------- END OF POSTS ------------------------------------
+	echo '</div>'; // End of posts display
+	?>
 
 	<?php
 		// -------------------- PREV/NEXT PAGE LINKS (POST LIST MODE) --------------------
@@ -272,7 +258,7 @@ if( $Item = & get_featured_Item() )
 </div>
 </div>
 
-<div class="clear"><img src="<?php echo $rsc_url; ?>img/blank.gif" width="1" height="1" alt="" /></div>
+<div class="clear"><?php echo get_icon( 'pixel' ); ?></div>
 
 <?php
 // ------------------------- BODY FOOTER INCLUDED HERE --------------------------

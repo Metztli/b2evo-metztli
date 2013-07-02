@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -24,7 +24,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE
  *
- * @version $Id: _dataobjectlist2.class.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _dataobjectlist2.class.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -46,6 +46,15 @@ class FilteredResults extends Results
 	 */
 	var $filters = array();
 
+	/**
+	* Constructor
+	* 
+	* @param string Filterset name
+	*/
+	function FilteredResults( $filterset_name )
+	{
+		$this->filterset_name = $filterset_name;
+	}
 
 	/**
 	 * Check if the Result set is filtered or not
@@ -121,6 +130,113 @@ class FilteredResults extends Results
 			}
 		}
 	}
+
+
+	/**
+	 * Set default filter values we always want to use if not individually specified otherwise:
+	 *
+	 * @param array default filters to be merged with the class defaults
+	 * @param array default filters for each preset, to be merged with general default filters if the preset is used
+	 */
+	function set_default_filters( $default_filters, $preset_filters = array() )
+	{
+		$this->default_filters = array_merge( $this->default_filters, $default_filters );
+		$this->preset_filters = $preset_filters;
+	}
+
+
+	/**
+	 * Activate preset default filters if necessary
+	 *
+	 */
+	function activate_preset_filters()
+	{
+		if( empty( $this->filters['filter_preset'] ) )
+		{ // No filter preset, there are no additional defaults to use:
+			return;
+		}
+
+		// Override general defaults with the specific defaults for the preset:
+		$this->default_filters = array_merge( $this->default_filters, $this->preset_filters[$this->filters['filter_preset']] );
+
+		// Save the name of the preset in order for is_filtered() to work properly:
+		$this->default_filters['filter_preset'] = $this->filters['filter_preset'];
+	}
+
+
+	/**
+	 * Save current filterset to session.
+	 */
+	function save_filterset()
+	{
+		/**
+		 * @var Session
+		 */
+		global $Session, $Debuglog, $localtimenow;
+
+		$Debuglog->add( 'Saving filterset <strong>'.$this->filterset_name.'</strong>', 'filters' );
+
+		$Session->set( $this->filterset_name, $this->filters );
+		$Session->set( $this->filterset_name.'_refresh_time', floor( $localtimenow / 3600 ) * 3600 );
+	}
+
+
+	/**
+	 * Load previously saved filterset from session.
+	 *
+	 * @return boolean true if we could restore something
+	 */
+	function restore_filterset()
+	{
+		/**
+		 * @var Session
+		 */
+			global $Session;
+		/**
+		 * @var Request
+		 */
+
+		global $Debuglog;
+
+		$filters = $Session->get( $this->filterset_name );
+
+		/*
+		fp> 2007-09-26> even if there are no filters, we need to "set" them in order to set global variables like $show_statuses
+		if( empty($filters) )
+		{ // We have no saved filters:
+			return false;
+		}
+		*/
+
+		if( empty($filters) )
+		{ // set_filters() expects array
+			$filters = array();
+		}
+
+		$Debuglog->add( 'Restoring filterset <strong>'.$this->filterset_name.'</strong>', 'filters' );
+
+		// Restore filters:
+		$this->set_filters( $filters );
+
+		return true;
+	}
+
+
+	/**
+	 * Set/Activate filterset.
+	 *
+	 * @param array
+	 */
+	function set_filters( $filters )
+	{
+		if( !empty( $filters ) )
+		{ // Activate the filterset (fallback to default filter when a value is not set):
+			$this->filters = array_merge( $this->default_filters, $filters );
+		}
+
+		// Activate preset filters if necessary:
+		$this->activate_preset_filters();
+	}
 }
 
 
@@ -178,6 +294,45 @@ class DataObjectList2 extends FilteredResults
 	function & get_by_idx( $idx )
 	{
 		return $this->Cache->instantiate( $this->rows[$idx] ); // pass by reference: creates $rows[$idx]!
+	}
+
+
+	/**
+	 * Instantiate an object for requested row by field and cache it:
+	 *
+	 * @param string DB field name
+	 * @param string Value
+	 * @return object
+	 */
+	function & get_by_field( $field_name, $field_value )
+	{
+		$obj_ID = 0;
+		$null_Obj = NULL;
+
+		foreach( $this->rows as $row )
+		{	// Find object ID by field value
+			if( $row->$field_name == $field_value )
+			{
+				$obj_ID = $row->{$this->ID_col};
+				break;
+			}
+		}
+
+		if( $obj_ID == 0 )
+		{	// No object ID found, Exit here
+			return $null_Obj;
+		}
+
+		$this->restart();
+		while( $Obj = & $this->get_next() )
+		{	// Find Object by ID
+			if( $Obj->ID == $obj_ID )
+			{
+				return $Obj;
+			}
+		}
+
+		return $null_Obj;
 	}
 
 
@@ -334,7 +489,4 @@ class DataObjectList2 extends FilteredResults
 	}
 }
 
-/*
- * $Log: _dataobjectlist2.class.php,v $
- */
 ?>

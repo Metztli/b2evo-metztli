@@ -3,14 +3,14 @@
  * This is the main/default page template.
  *
  * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://manual.b2evolution.net/Skins_2.0}
+ * {@link http://b2evolution.net/man/skin-structure}
  *
  * It is used to display the blog when no specific page template is available to handle the request.
  *
  * @package evoskins
  * @subpackage basic
  *
- * @version $Id: index.main.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: index.main.php 3157 2013-03-06 04:34:44Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -22,6 +22,8 @@ if( version_compare( $app_version, '2.4.1' ) < 0 )
 // This is the main template; it may be used to display very different things.
 // Do inits depending on current $disp:
 skin_init( $disp );
+
+require_js( 'ajax.js', 'blog' );	// Functions to work with AJAX response data
 
 // ----------------------------- HEADER BEGINS HERE ------------------------------
 ?>
@@ -142,7 +144,11 @@ skin_init( $disp );
 			<h3>
 				<?php $Item->issue_time(); ?>
 				<a href="<?php $Item->permanent_url() ?>" title="<?php echo T_('Permanent link to full entry') ?>"><img src="img/icon_minipost.gif" alt="Permalink" width="12" height="9" border="0" align="absmiddle" /></a>
-				<?php $Item->title(); ?>
+				<?php
+					$Item->title( array(
+							'link_type' => 'permalink'
+						) );
+				?>
 			</h3>
 
 			<blockquote>
@@ -156,6 +162,11 @@ skin_init( $disp );
 						'include_external'=> true,
 						'link_categories' => true,
 					) );
+
+					if( $Item->status != 'published' )
+					{
+						$Item->status( array( 'before' => ' &bull; <small>'.T_('Status').': ', 'after' => '</small>' ) );
+					}
 				?>
 
 				<?php
@@ -260,8 +271,8 @@ skin_init( $disp );
 		?>
 
 		<?php
-			user_login_link( ' [', '] ' );
-			user_register_link( ' [', '] ' );
+			user_login_link( ' [', '] ', '', '#', 'sidebar login link' );
+			user_register_link( ' [', '] ', '', '#', false, 'sidebar register link' );
 			user_admin_link( ' [', '] ' );
 			user_logout_link( ' [', '] ' );
 		?>

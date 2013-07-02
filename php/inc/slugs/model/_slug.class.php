@@ -5,7 +5,7 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
 *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
  *
@@ -20,7 +20,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author asimo: Evo Factory / Attila Simo
  *
- * @version $Id: _slug.class.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _slug.class.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -243,7 +243,7 @@ class Slug extends DataObject
 				// TODO: dh> should use ItemCache altogether
 				// was: $object_query = 'SELECT post_ID, post_title FROM T_items__item WHERE '.$fk.' = '.$this->ID;
 				$ItemCache = & get_ItemCache();
-				return $ItemCache->get_by_ID( $this->itm_ID, false );
+				return $ItemCache->get_by_ID( $this->itm_ID, false, false );
 
 			case 'help':
 				return false;
@@ -286,8 +286,4 @@ class Slug extends DataObject
 	}
 }
 
-
-/*
- * $Log: _slug.class.php,v $
- */
 ?>

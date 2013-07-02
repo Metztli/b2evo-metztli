@@ -4,7 +4,7 @@
  *
  * @author fplanque: Francois PLANQUE
  *
- * @version $Id: _antispam_poll.job.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _antispam_poll.job.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -23,7 +23,4 @@ $result_message = $Messages->get_string( '', '', "\n" );
 
 return $job_ret;
 
-/*
- * $Log: _antispam_poll.job.php,v $
- */
 ?>

@@ -4,7 +4,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004 by Vegar BERG GULDAL - {@link http://funky-m.com/}
  * Parts of this file are copyright (c)2005 by Jason EDGECOMBE
  *
@@ -37,7 +37,7 @@
  * @author edgester: Jason EDGECOMBE.
  * @author mfollett: Matt Follett.
  *
- * @version $Id: _functions_create.php 1559 2012-07-20 08:25:25Z attila $
+ * @version $Id: _functions_create.php 3846 2013-05-29 07:33:29Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -66,8 +66,10 @@ function create_tables()
  */
 function create_default_data()
 {
-	global $Group_Admins, $Group_Privileged, $Group_Bloggers, $Group_Users;
-	global $DB, $locales, $current_locale;
+	global $Group_Admins, $Group_Privileged, $Group_Bloggers, $Group_Users, $Group_Suspect, $Group_Spam;
+	global $DB, $locales, $current_locale, $baseurl;
+	// This will install all sorts of additional things... for testing purposes:
+	global $test_install_all_features;
 
 	// Inserting sample data triggers events: instead of checking if $Plugins is an object there, just use a fake one..
 	load_class('plugins/model/_plugins_admin_no_db.class.php', 'Plugins_admin_no_DB' );
@@ -75,89 +77,136 @@ function create_default_data()
 	$Plugins = new Plugins_admin_no_DB(); // COPY
 
 	// added in 0.8.7
-	echo 'Creating default blacklist entries... ';
+	task_begin( 'Creating default blacklist entries... ' );
 	// This string contains antispam information that is obfuscated because some hosting
 	// companies prevent uploading PHP files containing "spam" strings.
 	// pre_dump(get_antispam_query());
 	$query = get_antispam_query();
 	$DB->query( $query );
-	echo "OK.<br />\n";
+	task_end();
 
+	task_begin( 'Creating default antispam IP ranges... ' );
+	$DB->query( '
+		INSERT INTO T_antispam__iprange ( aipr_IPv4start, aipr_IPv4end, aipr_status )
+		VALUES ( '.$DB->quote( ip2int( '127.0.0.0' ) ).', '.$DB->quote( ip2int( '127.0.0.255' ) ).', "trusted" ),
+			( '.$DB->quote( ip2int( '10.0.0.0' ) ).', '.$DB->quote( ip2int( '10.255.255.255' ) ).', "trusted" ),
+			( '.$DB->quote( ip2int( '172.16.0.0' ) ).', '.$DB->quote( ip2int( '172.31.255.255' ) ).', "trusted" ),
+			( '.$DB->quote( ip2int( '192.168.0.0' ) ).', '.$DB->quote( ip2int( '192.168.255.255' ) ).', "trusted" )
+		' );
+	task_end();
 
 	// added in 0.8.9
-	echo 'Creating default groups... ';
+	task_begin( 'Creating default groups... ' );
 	$Group_Admins = new Group(); // COPY !
 	$Group_Admins->set( 'name', 'Administrators' );
 	$Group_Admins->set( 'perm_blogs', 'editall' );
 	$Group_Admins->set( 'perm_stats', 'edit' );
-	$Group_Admins->set( 'perm_users', 'edit' );
 	$Group_Admins->set( 'perm_xhtml_css_tweaks', 1 );
 	$Group_Admins->dbinsert();
 
 	$Group_Privileged = new Group(); // COPY !
-	$Group_Privileged->set( 'name', 'Privileged Bloggers' );
+	$Group_Privileged->set( 'name', 'Moderators' );
 	$Group_Privileged->set( 'perm_blogs', 'viewall' );
 	$Group_Privileged->set( 'perm_stats', 'user' );
-	$Group_Privileged->set( 'perm_users', 'view' );
 	$Group_Privileged->set( 'perm_xhtml_css_tweaks', 1 );
 	$Group_Privileged->dbinsert();
 
 	$Group_Bloggers = new Group(); // COPY !
-	$Group_Bloggers->set( 'name', 'Bloggers' );
+	$Group_Bloggers->set( 'name', 'Trusted Users' );
 	$Group_Bloggers->set( 'perm_blogs', 'user' );
 	$Group_Bloggers->set( 'perm_stats', 'none' );
-	$Group_Bloggers->set( 'perm_users', 'none' );
 	$Group_Bloggers->set( 'perm_xhtml_css_tweaks', 1 );
 	$Group_Bloggers->dbinsert();
 
 	$Group_Users = new Group(); // COPY !
-	$Group_Users->set( 'name', 'Basic Users' );
+	$Group_Users->set( 'name', 'Normal Users' );
 	$Group_Users->set( 'perm_blogs', 'user' );
 	$Group_Users->set( 'perm_stats', 'none' );
-	$Group_Users->set( 'perm_users', 'none' );
 	$Group_Users->dbinsert();
-	echo "OK.<br />\n";
 
-	echo 'Creating user field definitions... ';
+	$Group_Suspect = new Group(); // COPY !
+	$Group_Suspect->set( 'name', 'Misbehaving/Suspect Users' );
+	$Group_Suspect->set( 'perm_blogs', 'user' );
+	$Group_Suspect->set( 'perm_stats', 'none' );
+	$Group_Suspect->dbinsert();
+
+	$Group_Spam = new Group(); // COPY !
+	$Group_Spam->set( 'name', 'Spammers/Restricted Users' );
+	$Group_Spam->set( 'perm_blogs', 'user' );
+	$Group_Spam->set( 'perm_stats', 'none' );
+	$Group_Spam->dbinsert();
+	task_end();
+
+	task_begin( 'Creating groups for user field definitions... ' );
+	$DB->query( "
+		INSERT INTO T_users__fieldgroups ( ufgp_name, ufgp_order )
+		VALUES ( 'Instant Messaging', '1' ),
+					 ( 'Phone', '2' ),
+					 ( 'Web', '3' ),
+					 ( 'Organization', '4' ),
+					 ( 'Address', '5' ),
+					 ( 'Other', '6' )" );
+	task_end();
+
+	task_begin( 'Creating user field definitions... ' );
 	// fp> Anyone, please add anything you can think of. It's better to start with a large list that update it progressively.
 	$DB->query( "
-    INSERT INTO T_users__fielddefs (ufdf_ID, ufdf_type, ufdf_name)
-		 VALUES ( 10000, 'email',    'MSN/Live IM'),
-						( 10100, 'word',     'Yahoo IM'),
-						( 10200, 'word',     'AOL AIM'),
-						( 10300, 'number',   'ICQ ID'),
-						( 40000, 'phone',    'Skype'),
-						( 50000, 'phone',    'Main phone'),
-						( 50100, 'phone',    'Cell phone'),
-						( 50200, 'phone',    'Office phone'),
-						( 50300, 'phone',    'Home phone'),
-						( 60000, 'phone',    'Office FAX'),
-						( 60100, 'phone',    'Home FAX'),
-						(100000, 'url',      'Website'),
-						(100100, 'url',      'Blog'),
-						(110000, 'url',      'Linkedin'),
-						(120000, 'url',      'Twitter'),
-						(130100, 'url',      'Facebook'),
-						(130200, 'url',      'Myspace'),
-						(140000, 'url',      'Flickr'),
-						(150000, 'url',      'YouTube'),
-						(160000, 'url',      'Digg'),
-						(160100, 'url',      'StumbleUpon'),
-						(200000, 'text',     'Role'),
-						(200100, 'text',     'Organization'),
-						(200200, 'text',     'Division'),
-						(211000, 'text',     'VAT ID'),
-						(300000, 'text',     'Main address'),
-						(300300, 'text',     'Home address');" );
-	echo "OK.<br />\n";
+		INSERT INTO T_users__fielddefs (ufdf_ufgp_ID, ufdf_type, ufdf_name, ufdf_options, ufdf_required, ufdf_duplicated, ufdf_order, ufdf_suggest)
+		 VALUES ( 1, 'email',  'MSN/Live IM',   '', 'optional',    'allowed',   '1',  '0'),
+						( 1, 'word',   'Yahoo IM',      '', 'optional',    'allowed',   '2',  '0'),
+						( 1, 'word',   'AOL AIM',       '', 'optional',    'allowed',   '3',  '0'),
+						( 1, 'number', 'ICQ ID',        '', 'optional',    'allowed',   '4',  '0'),
+						( 1, 'phone',  'Skype',         '', 'optional',    'allowed',   '5',  '0'),
+						( 2, 'phone',  'Main phone',    '', 'optional',    'forbidden', '1',  '0'),
+						( 2, 'phone',  'Cell phone',    '', 'optional',    'allowed',   '2',  '0'),
+						( 2, 'phone',  'Office phone',  '', 'optional',    'allowed',   '3',  '0'),
+						( 2, 'phone',  'Home phone',    '', 'optional',    'allowed',   '4',  '0'),
+						( 2, 'phone',  'Office FAX',    '', 'optional',    'allowed',   '5',  '0'),
+						( 2, 'phone',  'Home FAX',      '', 'optional',    'allowed',   '6',  '0'),
+						( 3, 'url',    'Website',       '', 'recommended', 'allowed',   '1',  '0'),
+						( 3, 'url',    'Blog',          '', 'optional',    'allowed',   '2',  '0'),
+						( 3, 'url',    'Linkedin',      '', 'optional',    'forbidden', '3',  '0'),
+						( 3, 'url',    'Twitter',       '', 'recommended', 'forbidden', '4',  '0'),
+						( 3, 'url',    'Facebook',      '', 'recommended', 'forbidden', '5',  '0'),
+						( 3, 'url',    'Myspace',       '', 'optional',    'forbidden', '6',  '0'),
+						( 3, 'url',    'Flickr',        '', 'optional',    'forbidden', '7',  '0'),
+						( 3, 'url',    'YouTube',       '', 'optional',    'forbidden', '8',  '0'),
+						( 3, 'url',    'Digg',          '', 'optional',    'forbidden', '9',  '0'),
+						( 3, 'url',    'StumbleUpon',   '', 'optional',    'forbidden', '10', '0'),
+						( 4, 'word',   'Role',          '', 'optional',    'list',      '1',  '1'),
+						( 4, 'word',   'Organization',  '', 'optional',    'forbidden', '2',  '1'),
+						( 4, 'word',   'Division',      '', 'optional',    'forbidden', '3',  '1'),
+						( 4, 'word',   'VAT ID',        '', 'optional',    'forbidden', '4',  '0'),
+						( 5, 'text',   'Main address',  '', 'optional',    'forbidden', '1',  '0'),
+						( 5, 'text',   'Home address',  '', 'optional',    'forbidden', '2',  '0'),
+						( 6, 'text',   'About me',      '', 'recommended', 'forbidden', '1',  '0'),
+						( 6, 'word',   'I like',        '', 'recommended', 'list',      '2',  '1'),
+						( 6, 'word',   'I don\'t like', '', 'recommended', 'list',      '3',  '1');" );
+	task_end();
 
 
-	echo 'Creating admin user... ';
-	global $timestamp, $admin_email, $default_locale, $install_password;
+	// don't change order of the following two functions as countries has relations to currencies
+	create_default_currencies();
+	create_default_countries();
+
+	create_default_regions();
+	create_default_subregions();
+
+
+	task_begin( 'Creating admin user... ' );
+	global $timestamp, $admin_email, $default_locale, $default_country, $install_password;
 	global $random_password;
 
-	$User_Admin = new User();
-	$User_Admin->set( 'login', 'admin' );
+	// Set default country from locale code
+	$country_code = explode( '-', $default_locale );
+	if( isset( $country_code[1] ) )
+	{
+		$default_country = $DB->get_var( '
+			SELECT ctry_ID
+			  FROM T_regional__country
+			 WHERE ctry_code = '.$DB->quote( strtolower( $country_code[1] ) ) );
+	}
+
 	if( !isset( $install_password ) )
 	{
 		$random_password = generate_random_passwd(); // no ambiguous chars
@@ -166,30 +215,37 @@ function create_default_data()
 	{
 		$random_password = $install_password;
 	}
-	$User_Admin->set( 'pass', md5($random_password) );	// random
-	$User_Admin->set( 'nickname', 'admin' );
-	$User_Admin->set_email( $admin_email );
-	$User_Admin->set( 'validated', 1 ); // assume it's validated
-	$User_Admin->set( 'ip', '127.0.0.1' );
-	$User_Admin->set( 'domain', 'localhost' );
-	$User_Admin->set( 'level', 10 );
-	$User_Admin->set( 'locale', $default_locale );
-	$User_Admin->set_datecreated( $timestamp++ );
-	// Note: NEVER use database time (may be out of sync + no TZ control)
-	$User_Admin->set_Group( $Group_Admins );
-	$User_Admin->dbinsert();
-	echo "OK.<br />\n";
 
-	// Activating multiple sessions for administrator
-	echo 'Activating multiple sessions for administrator... ';
+	create_user( array(
+			'login'  => 'admin',
+			'level'  => 10,
+			'gender' => 'M',
+			'Group'  => $Group_Admins,
+		) );
+	task_end();
+
+	// Activating multiple sessions and email message form for administrator, and set other user settings
+	task_begin( 'Set settings for administrator user... ' );
 	$DB->query( "
 		INSERT INTO T_users__usersettings ( uset_user_ID, uset_name, uset_value )
-		VALUES ( 1, 'login_multiple_sessions', '1' )" );
-	echo "OK.<br />\n";
+		VALUES ( 1, 'login_multiple_sessions', '1' ),
+				( 1, 'enable_email', '1' ),
+				( 1, 'created_fromIPv4', '".ip2int( '127.0.0.1' )."' ),
+				( 1, 'user_domain', 'localhost' )" );
+	task_end();
+
+	// Creating a default additional info for administrator
+	task_begin( 'Creating default additional info for administrator... ' );
+	$DB->query( "
+		INSERT INTO T_users__fields ( uf_user_ID, uf_ufdf_ID, uf_varchar )
+		VALUES ( 1, 22, 'Site administrator' ),
+					 ( 1, 22, 'Moderator' ),
+					 ( 1, 12, '".$baseurl."' )" );
+	task_end();
 
 
 	// added in Phoenix-Alpha
-	echo 'Creating default Post Types... ';
+	task_begin( 'Creating default Post Types... ' );
 	$DB->query( "
 		INSERT INTO T_items__type ( ptyp_ID, ptyp_name )
 		VALUES ( 1, 'Post' ),
@@ -201,72 +257,55 @@ function create_default_data()
 					 ( 1600, 'Intro-All' ),
 					 ( 2000, 'Podcast' ),
 					 ( 3000, 'Sidebar link' ),
-					 ( 4000, 'Reserved' ),
+					 ( 4000, 'Advertisement' ),
 					 ( 5000, 'Reserved' ) " );
-	echo "OK.<br />\n";
+	task_end();
 
 
 	// added in Phoenix-Beta
-	echo 'Creating default file types... ';
+	task_begin( 'Creating default file types... ' );
 	// Contribs: feel free to add more types here...
 	// TODO: dh> shouldn't they get localized to the app's default locale? fp> ftyp_name, yes
 	$DB->query( "INSERT INTO T_filetypes
 			(ftyp_ID, ftyp_extensions, ftyp_name, ftyp_mimetype, ftyp_icon, ftyp_viewtype, ftyp_allowed)
 		VALUES
-			(1, 'gif', 'GIF image', 'image/gif', 'image2.png', 'image', 'any'),
-			(2, 'png', 'PNG image', 'image/png', 'image2.png', 'image', 'any'),
-			(3, 'jpg jpeg', 'JPEG image', 'image/jpeg', 'image2.png', 'image', 'any'),
-			(4, 'txt', 'Text file', 'text/plain', 'document.png', 'text', 'registered'),
-			(5, 'htm html', 'HTML file', 'text/html', 'html.png', 'browser', 'admin'),
-			(6, 'pdf', 'PDF file', 'application/pdf', 'pdf.png', 'browser', 'registered'),
-			(7, 'doc', 'Microsoft Word file', 'application/msword', 'doc.gif', 'external', 'registered'),
-			(8, 'xls', 'Microsoft Excel file', 'application/vnd.ms-excel', 'xls.gif', 'external', 'registered'),
-			(9, 'ppt', 'Powerpoint', 'application/vnd.ms-powerpoint', 'ppt.gif', 'external', 'registered'),
-			(10, 'pps', 'Slideshow', 'pps', 'pps.gif', 'external', 'registered'),
-			(11, 'zip', 'ZIP archive', 'application/zip', 'zip.gif', 'external', 'registered'),
-			(12, 'php php3 php4 php5 php6', 'PHP script', 'application/x-httpd-php', 'php.gif', 'text', 'admin'),
+			(1, 'gif', 'GIF image', 'image/gif', 'file_image', 'image', 'any'),
+			(2, 'png', 'PNG image', 'image/png', 'file_image', 'image', 'any'),
+			(3, 'jpg jpeg', 'JPEG image', 'image/jpeg', 'file_image', 'image', 'any'),
+			(4, 'txt', 'Text file', 'text/plain', 'file_document', 'text', 'registered'),
+			(5, 'htm html', 'HTML file', 'text/html', 'file_www', 'browser', 'admin'),
+			(6, 'pdf', 'PDF file', 'application/pdf', 'file_pdf', 'browser', 'registered'),
+			(7, 'doc docx', 'Microsoft Word file', 'application/msword', 'file_doc', 'external', 'registered'),
+			(8, 'xls xlsx', 'Microsoft Excel file', 'application/vnd.ms-excel', 'file_xls', 'external', 'registered'),
+			(9, 'ppt pptx', 'Powerpoint', 'application/vnd.ms-powerpoint', 'file_ppt', 'external', 'registered'),
+			(10, 'pps', 'Slideshow', 'pps', 'file_pps', 'external', 'registered'),
+			(11, 'zip', 'ZIP archive', 'application/zip', 'file_zip', 'external', 'registered'),
+			(12, 'php php3 php4 php5 php6', 'PHP script', 'application/x-httpd-php', 'file_php', 'text', 'admin'),
 			(13, 'css', 'Style sheet', 'text/css', '', 'text', 'registered'),
-			(14, 'mp3', 'MPEG audio file', 'audio/mpeg', '', 'browser', 'registered'),
-			(15, 'm4a', 'MPEG audio file', 'audio/x-m4a', '', 'browser', 'registered'),
-			(16, 'mp4', 'MPEG video', 'video/mp4', '', 'browser', 'registered'),
-			(17, 'mov', 'Quicktime video', 'video/quicktime', '', 'browser', 'registered'),
-			(18, 'm4v', 'MPEG video file', 'video/x-m4v', '', 'browser', 'registered')
+			(14, 'mp3', 'MPEG audio file', 'audio/mpeg', 'file_sound', 'browser', 'registered'),
+			(15, 'm4a', 'MPEG audio file', 'audio/x-m4a', 'file_sound', 'browser', 'registered'),
+			(16, 'mp4 f4v', 'MPEG video', 'video/mp4', 'file_video', 'browser', 'registered'),
+			(17, 'mov', 'Quicktime video', 'video/quicktime', 'file_video', 'browser', 'registered'),
+			(18, 'm4v', 'MPEG video file', 'video/x-m4v', 'file_video', 'browser', 'registered'),
+			(19, 'flv', 'Flash video file', 'video/x-flv', 'file_video', 'browser', 'registered'),
+			(20, 'swf', 'Flash video file', 'application/x-shockwave-flash', 'file_video', 'browser', 'registered')
 		" );
-	echo "OK.<br />\n";
+	task_end();
 
-	if( ! empty( $current_locale ) )
-	{	// Make sure the user sees his new system localized.
-		echo 'Activating selected default locale... ';
-		$DB->query( 'INSERT INTO T_locales '
-				   .'( loc_locale, loc_charset, loc_datefmt, loc_timefmt, '
-				   .'loc_startofweek, loc_name, loc_messages, loc_priority, '
-				   .'loc_enabled ) '
-				   .'VALUES ( '.$DB->quote( $current_locale ).', '
-				   .$DB->quote( $locales[$current_locale]['charset'] ).', '
-				   .$DB->quote( $locales[$current_locale]['datefmt'] ).', '
-				   .$DB->quote( $locales[$current_locale]['timefmt'] ).', '
-				   .$DB->quote( $locales[$current_locale]['startofweek'] ).', '
-				   .$DB->quote( $locales[$current_locale]['name'] ).', '
-				   .$DB->quote( $locales[$current_locale]['messages'] ).', '
-				   .$DB->quote( $locales[$current_locale]['priority'] ).', '
-				   .' 1)' );
-		echo 'OK.<br />', "\n";
-	}
+	// Insert default locales into T_locales.
+	create_default_locales();
 
+	// Insert default settings into T_settings.
 	create_default_settings();
-
-	// don't change order of the following two functions as countries has relations to currencies
-	create_default_currencies();
-	create_default_countries();
 
 	// create default scheduled jobs
 	create_default_jobs();
 
-	echo 'Creating default "help" slug... ';
+	task_begin( 'Creating default "help" slug... ' );
 	$DB->query( '
 		INSERT INTO T_slug( slug_title, slug_type )
 		VALUES( "help", "help" )', 'Add "help" slug' );
-	echo "OK.<br />\n";
+	task_end();
 
 	install_basic_skins();
 
@@ -279,13 +318,13 @@ function create_default_data()
  * Create default currencies
  *
  */
-function create_default_currencies()
+function create_default_currencies( $table_name = 'T_regional__currency' )
 {
 	global $DB;
 
-	echo 'Creating default currencies... ';
+	task_begin( 'Creating default currencies... ' );
 	$DB->query( "
-    INSERT INTO T_currency (curr_ID, curr_code, curr_shortcut, curr_name)
+		INSERT INTO $table_name (curr_ID, curr_code, curr_shortcut, curr_name)
 		 VALUES
 			(1, 'AFN', '&#x60b;', 'Afghani'),
 			(2, 'EUR', '&euro;', 'Euro'),
@@ -451,20 +490,20 @@ function create_default_currencies()
 			(162, 'PAB', 'PAB', 'Panamanian balboa'),
 			(163, 'UYU', '$', 'Uruguayan peso')
 			" );
-	echo "OK.<br />\n";
+	task_end();
 }
 
 /**
  * Create default countries with relations to currencies
  *
  */
-function create_default_countries()
+function create_default_countries( $table_name = 'T_regional__country', $set_preferred_country = true )
 {
-	global $DB;
+	global $DB, $current_locale;
 
-	echo 'Creating default countries... ';
+	task_begin( 'Creating default countries... ' );
 	$DB->query( "
-		INSERT INTO T_country ( ctry_ID, ctry_code, ctry_name, ctry_curr_ID)
+		INSERT INTO $table_name ( ctry_ID, ctry_code, ctry_name, ctry_curr_ID)
 		VALUES
 			(1, 'af', 'Afghanistan', 1),
 			(2, 'ax', 'Aland Islands', 2),
@@ -711,8 +750,239 @@ function create_default_countries()
 			(244, 'eh', 'Western Sahara', 93),
 			(245, 'ye', 'Yemen', 144),
 			(246, 'zm', 'Zambia', 145),
-			(247, 'zw', 'Zimbabwe', 146)" );
-	echo "OK.<br />\n";
+			(247, 'zw', 'Zimbabwe', 146),
+			(248, 'ct', 'Catalonia', 2)" );
+
+	if( $set_preferred_country && !empty( $current_locale ) )
+	{	// Set default preferred country from current locale
+		$result = array();
+		preg_match('#.*?-(.*)#', strtolower($current_locale),$result);
+
+		$DB->query( "UPDATE $table_name
+										SET ctry_preferred = 1
+									WHERE ctry_code = '".$DB->escape($result[1])."'");
+	}
+	task_end();
+}
+
+/**
+ * Create default regions
+ *
+ */
+function create_default_regions()
+{
+	global $DB, $current_charset;
+
+	task_begin( 'Creating default regions... ' );
+	$DB->query( convert_charset("
+		INSERT INTO T_regional__region ( rgn_ID, rgn_ctry_ID, rgn_code, rgn_name )
+		VALUES".
+			/* United States */"
+			(1, 233, 'AL', 'Alabama'),
+			(2, 233, 'AK', 'Alaska'),
+			(3, 233, 'AZ', 'Arizona'),
+			(4, 233, 'AR', 'Arkansas'),
+			(5, 233, 'CA', 'California'),
+			(6, 233, 'CO', 'Colorado'),
+			(7, 233, 'CT', 'Connecticut'),
+			(8, 233, 'DE', 'Delaware'),
+			(9, 233, 'FL', 'Florida'),
+			(10, 233, 'GA', 'Georgia'),
+			(11, 233, 'HI', 'Hawaii'),
+			(12, 233, 'ID', 'Idaho'),
+			(13, 233, 'IL', 'Illinois'),
+			(14, 233, 'IN', 'Indiana'),
+			(15, 233, 'IA', 'Iowa'),
+			(16, 233, 'KS', 'Kansas'),
+			(17, 233, 'KY', 'Kentucky'),
+			(18, 233, 'LA', 'Louisiana'),
+			(19, 233, 'ME', 'Maine'),
+			(20, 233, 'MD', 'Maryland'),
+			(21, 233, 'MA', 'Massachusetts'),
+			(22, 233, 'MI', 'Michigan'),
+			(23, 233, 'MN', 'Minnesota'),
+			(24, 233, 'MS', 'Mississippi'),
+			(25, 233, 'MO', 'Missouri'),
+			(26, 233, 'MT', 'Montana'),
+			(27, 233, 'NE', 'Nebraska'),
+			(28, 233, 'NV', 'Nevada'),
+			(29, 233, 'NH', 'New Hampshire'),
+			(30, 233, 'NJ', 'New Jersey'),
+			(31, 233, 'NM', 'New Mexico'),
+			(32, 233, 'NY', 'New York'),
+			(33, 233, 'NC', 'North Carolina'),
+			(34, 233, 'ND', 'North Dakota'),
+			(35, 233, 'OH', 'Ohio'),
+			(36, 233, 'OK', 'Oklahoma'),
+			(37, 233, 'OR', 'Oregon'),
+			(38, 233, 'PA', 'Pennsylvania'),
+			(39, 233, 'RI', 'Rhode Island'),
+			(40, 233, 'SC', 'South Carolina'),
+			(41, 233, 'SD', 'South Dakota'),
+			(42, 233, 'TN', 'Tennessee'),
+			(43, 233, 'TX', 'Texas'),
+			(44, 233, 'UT', 'Utah'),
+			(45, 233, 'VT', 'Vermont'),
+			(46, 233, 'VA', 'Virginia'),
+			(47, 233, 'WA', 'Washington'),
+			(48, 233, 'WV', 'West Virginia'),
+			(49, 233, 'WI', 'Wisconsin'),
+			(50, 233, 'WY', 'Wyoming'),".
+			/* France */"
+			(51, 74, '42', 'Alsace'),
+			(52, 74, '72', 'Aquitaine'),
+			(53, 74, '83', 'Auvergne'),
+			(54, 74, '26', 'Bourgogne'),
+			(55, 74, '53', 'Bretagne'),
+			(56, 74, '24', 'Centre'),
+			(57, 74, '21', 'Champagne-Ardenne'),
+			(58, 74, '94', 'Corse'),
+			(59, 74, '43', 'Franche-Comt\xE9'),
+			(60, 74, '11', '\xCEle-de-France'),
+			(61, 74, '91', 'Languedoc-Roussillon'),
+			(62, 74, '74', 'Limousin'),
+			(63, 74, '41', 'Lorraine'),
+			(64, 74, '73', 'Midi-Pyr\xE9n\xE9es'),
+			(65, 74, '31', 'Nord-Pas-de-Calais'),
+			(66, 74, '25', 'Basse-Normandie'),
+			(67, 74, '23', 'Haute-Normandie'),
+			(68, 74, '52', 'Pays de la Loire'),
+			(69, 74, '22', 'Picardie'),
+			(70, 74, '54', 'Poitou-Charentes'),
+			(71, 74, '93', 'Provence-Alpes-C\xF4te d\'Azur'),
+			(72, 74, '82', 'Rh\xF4ne-Alpes'),
+			(73, 74, '01', 'Guadeloupe'),
+			(74, 74, '02', 'Martinique'),
+			(75, 74, '03', 'Guyane'),
+			(76, 74, '04', 'La R\xE9union'),
+			(77, 74, '05', 'Mayotte'),
+			(78, 74, '09', 'Outre-Mer'),
+			(79, 74, '99', 'Monaco')", $current_charset, 'iso-8859-1' ) );
+
+	task_end();
+}
+
+/**
+ * Create default sub-regions
+ *
+ */
+function create_default_subregions()
+{
+	global $DB, $current_charset;
+
+	task_begin( 'Creating default sub-regions... ' );
+	$DB->query( convert_charset("
+		INSERT INTO T_regional__subregion ( subrg_ID, subrg_rgn_ID, subrg_code, subrg_name )
+		VALUES".
+			/* France */"
+			(1, 72, '01', 'Ain'),
+			(2, 69, '02', 'Aisne'),
+			(3, 53, '03', 'Allier'),
+			(4, 71, '04', 'Alpes-de-Haute-Provence'),
+			(5, 71, '05', 'Hautes-Alpes'),
+			(6, 71, '06', 'Alpes-Maritimes'),
+			(7, 72, '07', 'Ard\xE8che'),
+			(8, 57, '08', 'Ardennes'),
+			(9, 64, '09', 'Ari\xE8ge'),
+			(10, 57, '10', 'Aube'),
+			(11, 61, '11', 'Aude'),
+			(12, 64, '12', 'Aveyron'),
+			(13, 71, '13', 'Bouches-du-Rh\xF4ne'),
+			(14, 66, '14', 'Calvados'),
+			(15, 53, '15', 'Cantal'),
+			(16, 70, '16', 'Charente'),
+			(17, 70, '17', 'Charente-Maritime'),
+			(18, 56, '18', 'Cher'),
+			(19, 62, '19', 'Corr\xE8ze'),
+			(20, 58, '2A', 'Corse-du-Sud'),
+			(21, 58, '2B', 'Haute-Corse'),
+			(22, 54, '21', 'C\xF4te-d\'Or'),
+			(23, 55, '22', 'C\xF4tes-d\'Armor'),
+			(24, 62, '23', 'Creuse'),
+			(25, 52, '24', 'Dordogne'),
+			(26, 59, '25', 'Doubs'),
+			(27, 72, '26', 'Dr\xF4me'),
+			(28, 67, '27', 'Eure'),
+			(29, 56, '28', 'Eure-et-Loir'),
+			(30, 55, '29', 'Finist\xE8re'),
+			(31, 61, '30', 'Gard'),
+			(32, 64, '31', 'Haute-Garonne'),
+			(33, 64, '32', 'Gers'),
+			(34, 52, '33', 'Gironde'),
+			(35, 61, '34', 'H\xE9rault'),
+			(36, 55, '35', 'Ille-et-Vilaine'),
+			(37, 56, '36', 'Indre'),
+			(38, 56, '37', 'Indre-et-Loire'),
+			(39, 72, '38', 'Is\xE8re'),
+			(40, 59, '39', 'Jura'),
+			(41, 52, '40', 'Landes'),
+			(42, 56, '41', 'Loir-et-Cher'),
+			(43, 72, '42', 'Loire'),
+			(44, 53, '43', 'Haute-Loire'),
+			(45, 68, '44', 'Loire-Atlantique'),
+			(46, 56, '45', 'Loiret'),
+			(47, 64, '46', 'Lot'),
+			(48, 52, '47', 'Lot-et-Garonne'),
+			(49, 61, '48', 'Loz\xE8re'),
+			(50, 68, '49', 'Maine-et-Loire'),
+			(51, 66, '50', 'Manche'),
+			(52, 57, '51', 'Marne'),
+			(53, 57, '52', 'Haute-Marne'),
+			(54, 68, '53', 'Mayenne'),
+			(55, 63, '54', 'Meurthe-et-Moselle'),
+			(56, 63, '55', 'Meuse'),
+			(57, 55, '56', 'Morbihan'),
+			(58, 63, '57', 'Moselle'),
+			(59, 54, '58', 'Ni\xE8vre'),
+			(60, 65, '59', 'Nord'),
+			(61, 69, '60', 'Oise'),
+			(62, 66, '61', 'Orne'),
+			(63, 65, '62', 'Pas-de-Calais'),
+			(64, 53, '63', 'Puy-de-D\xF4me'),
+			(65, 52, '64', 'Pyr\xE9n\xE9es-Atlantiques'),
+			(66, 64, '65', 'Hautes-Pyr\xE9n\xE9es'),
+			(67, 61, '66', 'Pyr\xE9n\xE9es-Orientales'),
+			(68, 51, '67', 'Bas-Rhin'),
+			(69, 51, '68', 'Haut-Rhin'),
+			(70, 72, '69', 'Rh\xF4ne'),
+			(71, 59, '70', 'Haute-Sa\xF4ne'),
+			(72, 54, '71', 'Sa\xF4ne-et-Loire'),
+			(73, 68, '72', 'Sarthe'),
+			(74, 72, '73', 'Savoie'),
+			(75, 72, '74', 'Haute-Savoie'),
+			(76, 60, '75', 'Paris'),
+			(77, 67, '76', 'Seine-Maritime'),
+			(78, 60, '77', 'Seine-et-Marne'),
+			(79, 60, '78', 'Yvelines'),
+			(80, 70, '79', 'Deux-S\xE8vres'),
+			(81, 69, '80', 'Somme'),
+			(82, 64, '81', 'Tarn'),
+			(83, 64, '82', 'Tarn-et-Garonne'),
+			(84, 71, '83', 'Var'),
+			(85, 71, '84', 'Vaucluse'),
+			(86, 68, '85', 'Vend\xE9e'),
+			(87, 70, '86', 'Vienne'),
+			(88, 62, '87', 'Haute-Vienne'),
+			(89, 63, '88', 'Vosges'),
+			(90, 54, '89', 'Yonne'),
+			(91, 59, '90', 'Territoire de Belfort'),
+			(92, 60, '91', 'Essonne'),
+			(93, 60, '92', 'Hauts-de-Seine'),
+			(94, 60, '93', 'Seine-Saint-Denis'),
+			(95, 60, '94', 'Val-de-Marne'),
+			(96, 60, '95', 'Val-d\'Oise'),
+			(97, 73, '971', 'Guadeloupe'),
+			(98, 74, '972', 'Martinique'),
+			(99, 75, '973', 'Guyane'),
+			(100, 76, '974', 'La R\xE9union'),
+			(101, 77, '976', 'Mayotte'),
+			(102, 78, '975', 'Saint-Pierre-et-Miquelon'),
+			(103, 78, '986', 'Wallis-et-Futuna'),
+			(104, 78, '987', 'Polyn\xE9sie fran\xE7aise'),
+			(105, 78, '988', 'Nouvelle-Cal\xE9donie'),
+			(106, 79, '99', 'Monaco')", $current_charset, 'iso-8859-1') );
+
+	task_end();
 }
 
 /**
@@ -734,26 +1004,46 @@ function create_default_jobs( $is_upgrade = false )
 	$prune_pagecache_ctrl = 'cron/jobs/_prune_page_cache.job.php';
 	$prune_sessions_ctrl = 'cron/jobs/_prune_hits_sessions.job.php';
 	$poll_antispam_ctrl = 'cron/jobs/_antispam_poll.job.php';
+	$process_hitlog_ctrl = 'cron/jobs/_process_hitlog.job.php';
+	$messages_reminder_ctrl = 'cron/jobs/_unread_message_reminder.job.php';
+	$activate_reminder_ctrl = 'cron/jobs/_activate_account_reminder.job.php';
+	$moderation_reminder_ctrl = 'cron/jobs/_comment_moderation_reminder.job.php';
+	$light_db_maintenance_ctrl = 'cron/jobs/_light_db_maintenance.job.php';
+	$heavy_db_maintenance_ctrl = 'cron/jobs/_heavy_db_maintenance.job.php';
 
 	// init insert values
+	// run unread messages reminder in every 29 minutes
+	$messages_reminder = "( ".$DB->quote( form_date( $date, '01:00:00' ) ).", 1740, ".$DB->quote( T_( 'Send reminders about unread messages' ) ).", ".$DB->quote( $messages_reminder_ctrl ).", ".$ctsk_params." )";
+	// run activate account reminder in every 31 minutes
+	$activate_reminder = "( ".$DB->quote( form_date( $date, '01:30:00' ) ).", 1860, ".$DB->quote( T_( 'Send reminders about not activated accounts' ) ).", ".$DB->quote( $activate_reminder_ctrl ).", ".$ctsk_params." )";
 	$prune_pagecache = "( ".$DB->quote( form_date( $date, '02:00:00' ) ).", 86400, ".$DB->quote( T_( 'Prune old files from page cache' ) ).", ".$DB->quote( $prune_pagecache_ctrl ).", ".$ctsk_params." )";
-	$prune_sessions = "( ".$DB->quote( form_date( $date, '03:00:00' ) ).", 86400, ".$DB->quote( T_( 'Prune old hits & sessions' ) ).", ".$DB->quote( $prune_sessions_ctrl ).", ".$ctsk_params." )";
+	$process_hitlog = "( ".$DB->quote( form_date( $date, '02:30:00' ) ).", 86400, ".$DB->quote( T_( 'Process hit log' ) ).", ".$DB->quote( $process_hitlog_ctrl ).", ".$ctsk_params." )";
+	$prune_sessions = "( ".$DB->quote( form_date( $date, '03:00:00' ) ).", 86400, ".$DB->quote( T_( 'Prune old hits & sessions (includes OPTIMIZE)' ) ).", ".$DB->quote( $prune_sessions_ctrl ).", ".$ctsk_params." )";
 	$poll_antispam = "( ".$DB->quote( form_date( $date, '04:00:00' ) ).", 86400, ".$DB->quote( T_( 'Poll the antispam blacklist' ) ).", ".$DB->quote( $poll_antispam_ctrl ).", ".$ctsk_params." )";
+	$moderation_reminder = "( ".$DB->quote( form_date( $date, '04:30:00' ) ).", 86400, ".$DB->quote( T_( 'Send reminders about comments awaiting moderation' ) ).", ".$DB->quote( $moderation_reminder_ctrl ).", ".$ctsk_params." )";
+	$light_db_maintenance = "( ".$DB->quote( form_date( $date, '06:00:00' ) ).", 86400, ".$DB->quote( T_('Light DB maintenance (ANALYZE)') ).", ".$DB->quote( $light_db_maintenance_ctrl ).", ".$ctsk_params." )";
+	$next_sunday = date2mysql( strtotime( 'next Sunday',  $localtimenow + 86400 ) );
+	$heavy_db_maintenance = "( ".$DB->quote( form_date( $next_sunday, '06:30:00' ) ).", 604800, ".$DB->quote( T_('Heavy DB maintenance (CHECK & OPTIMIZE)') ).", ".$DB->quote( $heavy_db_maintenance_ctrl ).", ".$ctsk_params." )";
 	$insert_values = array(
+		$messages_reminder_ctrl => $messages_reminder,
+		$activate_reminder_ctrl => $activate_reminder,
 		$prune_pagecache_ctrl => $prune_pagecache,
+		$process_hitlog_ctrl => $process_hitlog,
 		$prune_sessions_ctrl => $prune_sessions,
-		$poll_antispam_ctrl => $poll_antispam );
-
+		$poll_antispam_ctrl => $poll_antispam,
+		$moderation_reminder_ctrl => $moderation_reminder,
+		$light_db_maintenance_ctrl => $light_db_maintenance,
+		$heavy_db_maintenance_ctrl => $heavy_db_maintenance );
 	if( $is_upgrade )
 	{ // Check if these jobs already exist, and don't create another
-		$sql = 'SELECT count(ctsk_ID) as job_number, ctsk_controller
-					FROM T_cron__task LEFT JOIN T_cron__log ON ctsk_ID = clog_ctsk_ID
-						WHERE clog_status IS NULL AND
-							( ctsk_controller = '.$DB->quote( $prune_pagecache_ctrl ).' OR
-							ctsk_controller = '.$DB->quote( $prune_sessions_ctrl ).' OR
-							ctsk_controller = '.$DB->quote( $poll_antispam_ctrl ).' )
-						GROUP BY ctsk_controller';
-		$result = $DB->get_results( $sql );
+		$SQL = new SQL();
+		$SQL->SELECT( 'count(ctsk_ID) as job_number, ctsk_controller' );
+		$SQL->FROM( 'T_cron__task' );
+		$SQL->FROM_add( 'LEFT JOIN T_cron__log ON ctsk_ID = clog_ctsk_ID' );
+		$SQL->WHERE( 'clog_status IS NULL' );
+		$SQL->WHERE_and( 'ctsk_controller IN ( '.$DB->quote( array_keys( $insert_values ) ).' )' );
+		$SQL->GROUP_BY( 'ctsk_controller' );
+		$result = $DB->get_results( $SQL->get() );
 		foreach( $result as $row )
 		{ // clear existing jobs insert values
 			unset( $insert_values[$row->ctsk_controller] );
@@ -786,9 +1076,14 @@ function create_blog(
 	$blog_tagline = '',
 	$blog_longdesc = '',
 	$blog_skin_ID = 1,
-	$kind = 'std' ) // standard blog; notorious variation: "photo"
+	$kind = 'std', // standard blog; notorious variations: "photo", "group", "forum"
+	$allow_rating_items = '',
+	$use_inskin_login = 0,
+	$blog_access_type = 'relative',
+	$allow_html = true,
+	$owner_user_ID = 1 )
 {
-	global $default_locale;
+	global $default_locale, $test_install_all_features;
 
 	$Blog = new Blog( NULL );
 
@@ -797,16 +1092,94 @@ function create_blog(
 	$Blog->set( 'tagline', $blog_tagline );
 	$Blog->set( 'longdesc', $blog_longdesc );
 	$Blog->set( 'locale', $default_locale );
-	$Blog->set( 'skin_ID', $blog_skin_ID );
+	$Blog->set( 'owner_user_ID', $owner_user_ID );
+	$Blog->set_setting( 'normal_skin_ID', $blog_skin_ID );
 
 	$Blog->dbinsert();
 
-	$Blog->set( 'access_type', 'relative' );
-	$Blog->set( 'siteurl', 'blog'.$Blog->ID.'.php' );
+	$Blog->set( 'access_type', $blog_access_type );
+	if( $blog_access_type == 'relative' )
+	{
+		$Blog->set( 'siteurl', 'blog'.$Blog->ID.'.php' );
+	}
+	if( $test_install_all_features )
+	{
+		$allow_rating_items = 'any';
+		$Blog->set_setting( 'skin'.$blog_skin_ID.'_bubbletip', '1' );
+		$Blog->set_setting( 'skin'.$blog_skin_ID.'_gender_colored', '1' );
+		$Blog->set_setting( 'in_skin_editing', '1' );
+		$Blog->set_setting( 'location_country', 'required' );
+		$Blog->set_setting( 'location_region', 'required' );
+		$Blog->set_setting( 'location_subregion', 'required' );
+		$Blog->set_setting( 'location_city', 'required' );
+
+		if( $kind == 'manual' )
+		{	// Set a posts ordering by 'post_order ASC'
+			$Blog->set_setting( 'orderby', 'order' );
+			$Blog->set_setting( 'orderdir', 'ASC' );
+		}
+	}
+	if( $allow_rating_items != '' )
+	{
+		$Blog->set_setting( 'allow_rating_items', $allow_rating_items );
+	}
+	if( $use_inskin_login || $test_install_all_features )
+	{
+		$Blog->set_setting( 'in_skin_login', 1 );
+	}
+
+	if( !$allow_html )
+	{
+		$Blog->set_setting( 'allow_html_post', 0 );
+		$Blog->set_setting( 'allow_html_comment', 0 );
+	}
 
 	$Blog->dbupdate();
 
 	return $Blog->ID;
+}
+
+/**
+ * Create a new User
+ *
+ * @param array Params
+ * @return integer User ID
+ */
+function create_user( $params = array() )
+{
+	global $timestamp;
+	global $random_password, $admin_email;
+	global $default_locale, $default_country;
+
+	$params = array_merge( array(
+			'login'   => '',
+			'pass'    => $random_password, // random
+			'email'   => $admin_email,
+			'status'  => 'autoactivated', // assume it's active
+			'level'   => 0,
+			'locale'  => $default_locale,
+			'ctry_ID' => $default_country,
+			'gender'  => 'M',
+			'Group'   => NULL,
+		), $params );
+
+	$User = new User();
+	$User->set( 'login', $params['login'] );
+	$User->set( 'pass', md5( $params['pass'] ) );
+	$User->set_email( $params['email'] );
+	$User->set( 'status', $params['status'] );
+	$User->set( 'level', $params['level'] );
+	$User->set( 'locale', $params['locale'] );
+	if( !empty( $params['ctry_ID'] ) )
+	{ // Set country
+		$User->set( 'ctry_ID', $params['ctry_ID'] );
+	}
+	$User->set( 'gender', $params['gender'] );
+	$User->set_datecreated( $timestamp++ );
+	$User->set_Group( $params['Group'] );
+	$User->dbinsert( false );
+
+	return $User->ID;
 }
 
 
@@ -819,11 +1192,12 @@ function create_demo_contents()
 	global $baseurl, $new_db_version;
 	global $random_password, $query;
 	global $timestamp, $admin_email;
-	global $Group_Admins, $Group_Privileged, $Group_Bloggers, $Group_Users;
+	global $Group_Admins, $Group_Privileged, $Group_Bloggers, $Group_Users, $Group_Suspect;
 	global $blog_all_ID, $blog_a_ID, $blog_b_ID, $blog_linkblog_ID;
 	global $DB;
-	global $default_locale;
+	global $default_locale, $default_country;
 	global $Plugins;
+	global $test_install_all_features;
 
 	/**
 	 * @var FileRootCache
@@ -833,60 +1207,107 @@ function create_demo_contents()
 	load_class( 'collections/model/_blog.class.php', 'Blog' );
 	load_class( 'files/model/_file.class.php', 'File' );
 	load_class( 'files/model/_filetype.class.php', 'FileType' );
-	load_class( 'items/model/_link.class.php', 'Link' );
+	load_class( 'links/model/_link.class.php', 'Link' );
 
 	task_begin('Assigning avatar to Admin... ');
-	$edit_File = new File( 'user', 1, 'faceyourmanga_admin_boy.png' );
-	// Load meta data AND MAKE SURE IT IS CREATED IN DB:
-	$edit_File->load_meta( true );
 	$UserCache = & get_UserCache();
 	$User_Admin = & $UserCache->get_by_ID( 1 );
+	if( $User_Admin->get( 'gender' ) == 'F' )
+	{ // Set girl avatar if user has female gender
+		$edit_File = new File( 'user', 1, 'faceyourmanga_admin_girl.png' );
+	}
+	else
+	{ // Set boy avatar if user has male gender
+		$edit_File = new File( 'user', 1, 'faceyourmanga_admin_boy.png' );
+	}
+	// Load meta data AND MAKE SURE IT IS CREATED IN DB:
+	$edit_File->load_meta( true );
 	$User_Admin->set( 'avatar_file_ID', $edit_File->ID );
 	$User_Admin->dbupdate();
 	task_end();
 
-	task_begin('Creating demo blogger user... ');
-	$User_Blogger = new User();
-	$User_Blogger->set( 'login', 'ablogger' );
-	$User_Blogger->set( 'pass', md5($random_password) ); // random
-	$User_Blogger->set( 'nickname', 'Blogger A' );
-	$User_Blogger->set_email( $admin_email );
-	$User_Blogger->set( 'validated', 1 ); // assume it's validated
-	$User_Blogger->set( 'ip', '127.0.0.1' );
-	$User_Blogger->set( 'domain', 'localhost' );
-	$User_Blogger->set( 'level', 1 );
-	$User_Blogger->set( 'locale', $default_locale );
-	$User_Blogger->set_datecreated( $timestamp++ );
-	$User_Blogger->set_Group( $Group_Bloggers );
-	$User_Blogger->dbinsert();
+	task_begin('Creating demo amoderator user... ');
+	$amoderator_ID = create_user( array(
+			'login'  => 'amoderator',
+			'level'  => 2,
+			'gender' => 'M',
+			'Group'  => $Group_Privileged,
+		) );
 	task_end();
 
-	task_begin('Creating demo user... ');
-	$User_Demo = new User();
-	$User_Demo->set( 'login', 'demouser' );
-	$User_Demo->set( 'pass', md5($random_password) ); // random
-	$User_Demo->set( 'nickname', 'Mr. Demo' );
-	$User_Demo->set_email( $admin_email );
-	$User_Demo->set( 'validated', 1 ); // assume it's validated
-	$User_Demo->set( 'ip', '127.0.0.1' );
-	$User_Demo->set( 'domain', 'localhost' );
-	$User_Demo->set( 'level', 0 );
-	$User_Demo->set( 'locale', $default_locale );
-	$User_Demo->set( 'allow_msgform', 2 ); // set user msgform settings to allow only emails ( 2 = only emails )
-	$User_Demo->set_datecreated( $timestamp++ );
-	$User_Demo->set_Group( $Group_Users );
-	$User_Demo->dbinsert();
+	task_begin('Creating demo bmoderator user... ');
+	$bmoderator_ID = create_user( array(
+			'login'  => 'bmoderator',
+			'level'  => 2,
+			'gender' => 'F',
+			'Group'  => $Group_Privileged,
+		) );
+	task_end();
+
+	task_begin('Creating demo ablogger user... ');
+	$ablogger_ID = create_user( array(
+			'login'  => 'ablogger',
+			'level'  => 1,
+			'gender' => 'M',
+			'Group'  => $Group_Bloggers,
+		) );
+	task_end();
+
+	task_begin('Creating demo bblogger user... ');
+	$bblogger_ID = create_user( array(
+			'login'  => 'bblogger',
+			'level'  => 1,
+			'gender' => 'F',
+			'Group'  => $Group_Bloggers,
+		) );
+	task_end();
+
+	task_begin('Creating demo auser user... ');
+	$auser_ID = create_user( array(
+			'login'  => 'auser',
+			'level'  => 0,
+			'gender' => 'M',
+			'Group'  => $Group_Users,
+		) );
+	task_end();
+
+	task_begin('Creating demo buser user... ');
+	$buser_ID = create_user( array(
+			'login'  => 'buser',
+			'level'  => 0,
+			'gender' => 'F',
+			'Group'  => $Group_Users,
+		) );
+	task_end();
+
+	task_begin( 'Set settings for demo users... ' );
+	$DB->query( "
+		INSERT INTO T_users__usersettings ( uset_user_ID, uset_name, uset_value )
+		VALUES ( 2, 'created_fromIPv4', '".ip2int( '127.0.0.1' )."' ),
+				( 2, 'user_domain', 'localhost' ),
+				( 3, 'created_fromIPv4', '".ip2int( '127.0.0.1' )."' ),
+				( 3, 'user_domain', 'localhost' ),
+				( 4, 'created_fromIPv4', '".ip2int( '127.0.0.1' )."' ),
+				( 4, 'user_domain', 'localhost' ),
+				( 5, 'created_fromIPv4', '".ip2int( '127.0.0.1' )."' ),
+				( 5, 'user_domain', 'localhost' ),
+				( 6, 'created_fromIPv4', '".ip2int( '127.0.0.1' )."' ),
+				( 6, 'user_domain', 'localhost' ),
+				( 7, 'created_fromIPv4', '".ip2int( '127.0.0.1' )."' ),
+				( 7, 'user_domain', 'localhost' )" );
 	task_end();
 
 	global $default_locale, $query, $timestamp;
 	global $blog_all_ID, $blog_a_ID, $blog_b_ID, $blog_linkblog_ID;
 
 	$default_blog_longdesc = T_("This is the long description for the blog named '%s'. %s");
+	$default_blog_access_type = 'relative';
 
-	echo "Creating default blogs... ";
+	task_begin( 'Creating default blogs... ' );
 
 	$blog_shortname = 'Blog A';
 	$blog_a_long = sprintf( T_('%s Title'), $blog_shortname );
+	$blog_a_access_type = ( $test_install_all_features ) ? 'default' : $default_blog_access_type;
 	$blog_stub = 'a';
 	$blog_a_ID = create_blog(
 		$blog_a_long,
@@ -894,9 +1315,16 @@ function create_demo_contents()
 		$blog_stub,
 		sprintf( T_('Tagline for %s'), $blog_shortname ),
 		sprintf( $default_blog_longdesc, $blog_shortname, '' ),
-		1, 'std' ); // Skin ID
+		1, // Skin ID
+		'std',
+		'any',
+		1,
+		$blog_a_access_type,
+		true,
+		$ablogger_ID );
 
 	$blog_shortname = 'Blog B';
+	$blog_b_access_type = ( $test_install_all_features ) ? 'index.php' : $default_blog_access_type;
 	$blog_stub = 'b';
 	$blog_b_ID = create_blog(
 		sprintf( T_('%s Title'), $blog_shortname ),
@@ -904,9 +1332,16 @@ function create_demo_contents()
 		$blog_stub,
 		sprintf( T_('Tagline for %s'), $blog_shortname ),
 		sprintf( $default_blog_longdesc, $blog_shortname, '' ),
-		2, 'std' ); // Skin ID
+		2, // Skin ID
+		'std',
+		'',
+		0,
+		$blog_b_access_type,
+		true,
+		$bblogger_ID );
 
 	$blog_shortname = 'Linkblog';
+	$blog_linkblog_access_type = ( $test_install_all_features ) ? 'extrapath' : $default_blog_access_type;
 	$blog_stub = 'links';
 	$blog_more_longdesc = '<br />
 <br />
@@ -917,7 +1352,13 @@ function create_demo_contents()
 		$blog_stub,
 		T_('Some interesting links...'),
 		sprintf( $default_blog_longdesc, $blog_shortname, $blog_more_longdesc ),
-		3, 'std' ); // SKin ID
+		3, // SKin ID
+		'std',
+		'any',
+		0,
+		$blog_linkblog_access_type,
+		true,
+		$ablogger_ID );
 
 	$blog_shortname = 'Photoblog';
 	$blog_stub = 'photos';
@@ -930,14 +1371,41 @@ function create_demo_contents()
 		$blog_stub,
 		T_('This blog shows photos...'),
 		sprintf( $default_blog_longdesc, $blog_shortname, $blog_more_longdesc ),
-		4, 'photo' ); // SKin ID
+		4, // SKin ID
+		'photo', '', 0, 'relative', true,
+		$ablogger_ID );
 
-	echo "OK.<br />\n";
+	$blog_shortname = 'Forums';
+	$blog_forums_long = sprintf( T_('%s Title'), $blog_shortname );
+	$blog_stub = 'forums';
+	$blog_forums_ID = create_blog(
+		$blog_forums_long,
+		$blog_shortname,
+		$blog_stub,
+		sprintf( T_('Tagline for %s'), $blog_shortname ),
+		sprintf( $default_blog_longdesc, $blog_shortname, '' ),
+		5, // Skin ID
+		'forum', 'any', 1, 'relative', false,
+		$ablogger_ID );
 
+	$blog_shortname = 'Manual';
+	$blog_manual_long = sprintf( T_('%s Title'), $blog_shortname );
+	$blog_stub = 'manual';
+	$blog_manual_ID = create_blog(
+		$blog_manual_long,
+		$blog_shortname,
+		$blog_stub,
+		sprintf( T_('Tagline for %s'), $blog_shortname ),
+		sprintf( $default_blog_longdesc, $blog_shortname, '' ),
+		6, // Skin ID
+		'manual', 'any', 1, $default_blog_access_type, true,
+		$ablogger_ID );
+
+	task_end();
 
 	global $query, $timestamp;
 
-	echo 'Creating sample categories... ';
+	task_begin( 'Creating sample categories... ' );
 
 	// Create categories for blog A
 	$cat_ann_a = cat_create( T_('Welcome'), 'NULL', $blog_a_ID );
@@ -962,10 +1430,68 @@ function create_demo_contents()
 	// Create categories for photoblog
 	$cat_photo_album = cat_create( T_('Monument Valley'), 'NULL', $blog_photoblog_ID );
 
-	echo "OK.<br />\n";
+	// Create categories for forums
+	$cat_forums_ann = cat_create( T_('Welcome'), 'NULL', $blog_forums_ID, 'Welcome description' );
+	$cat_forums_news = cat_create( T_('News'), 'NULL', $blog_forums_ID, 'News description' );
+	$cat_forums_bg = cat_create( T_('Background'), 'NULL', $blog_forums_ID, 'Background description' );
+	$cat_forums_fun = cat_create( T_('Fun'), 'NULL', $blog_forums_ID, 'Fun description' );
+	$cat_forums_life = cat_create( T_('In real life'), $cat_forums_fun, $blog_forums_ID );
+	$cat_forums_web = cat_create( T_('On the web'), $cat_forums_fun, $blog_forums_ID );
+	$cat_forums_sports = cat_create( T_('Sports'), $cat_forums_life, $blog_forums_ID );
+	$cat_forums_movies = cat_create( T_('Movies'), $cat_forums_life, $blog_forums_ID );
+	$cat_forums_music = cat_create( T_('Music'), $cat_forums_life, $blog_forums_ID );
+
+	// Create categories for manual
+	$cat_manual_ann = cat_create( T_('Welcome'), 'NULL', $blog_manual_ID, 'Welcome description', false, 15 );
+	$cat_manual_news = cat_create( T_('News'), 'NULL', $blog_manual_ID, 'News description', false, 5 );
+	$cat_manual_bg = cat_create( T_('Background'), 'NULL', $blog_manual_ID, 'Background description', false, 35 );
+	$cat_manual_fun = cat_create( T_('Cat with intro post'), 'NULL', $blog_manual_ID, 'Description of cat with intro post', false, 25 );
+	$cat_manual_life = cat_create( T_('In real life'), $cat_manual_fun, $blog_manual_ID, NULL, false, 10 );
+	$cat_manual_web = cat_create( T_('On the web'), $cat_manual_fun, $blog_manual_ID, NULL, false, 5 );
+	$cat_manual_sports = cat_create( T_('Sports'), $cat_manual_life, $blog_manual_ID, NULL, false, 35 );
+	$cat_manual_movies = cat_create( T_('Movies'), $cat_manual_life, $blog_manual_ID, NULL, false, 25 );
+	$cat_manual_music = cat_create( T_('Music'), $cat_manual_life, $blog_manual_ID, NULL, false, 5 );
+
+	task_end();
 
 
-	echo 'Creating sample posts... ';
+	task_begin( 'Creating sample posts... ' );
+
+	// Define here all categories which should have the advertisement banners
+	$adv_cats = array(
+			'blogA'     => $cat_bg, // Background
+			'blogB'     => $cat_ann_b, // Announcements
+			'linkblog'  => $cat_linkblog_b2evo, // b2evolution
+			'photoblog' => $cat_photo_album, // Monument Valley
+			'forums'    => $cat_forums_bg, // Background
+			'manual'    => $cat_manual_bg, // Background
+		);
+	foreach( $adv_cats as $adv_cat_ID )
+	{	// Insert three ADVERTISEMENTS for each blog:
+		$now = date('Y-m-d H:i:s',$timestamp++);
+		$edited_Item = new Item();
+		$edited_Item->insert( 1, T_('b2evo : The software for blog pros!'), T_('The software for blog pros!'), $now, $adv_cat_ID,
+			array(), 'published', '#', '', 'http://b2evolution.net', 'open', array('default'), 4000 );
+		$edit_File = new File( 'shared', 0, 'banners/b2evo-125-pros.png' );
+		$LinkOwner = new LinkItem( $edited_Item );
+		$edit_File->link_to_Object( $LinkOwner );
+
+		$now = date('Y-m-d H:i:s',$timestamp++);
+		$edited_Item = new Item();
+		$edited_Item->insert( 1, T_('b2evo : Better Blog Software!'), T_('Better Blog Software!'), $now, $adv_cat_ID,
+			array(), 'published', '#', '', 'http://b2evolution.net', 'open', array('default'), 4000 );
+		$edit_File = new File( 'shared', 0, 'banners/b2evo-125-better.png' );
+		$LinkOwner = new LinkItem( $edited_Item );
+		$edit_File->link_to_Object( $LinkOwner );
+
+		$now = date('Y-m-d H:i:s',$timestamp++);
+		$edited_Item = new Item();
+		$edited_Item->insert( 1, T_('b2evo : The other blog tool!'), T_('The other blog tool!'), $now, $adv_cat_ID,
+			array(), 'published', '#', '', 'http://b2evolution.net', 'open', array('default'), 4000 );
+		$edit_File = new File( 'shared', 0, 'banners/b2evo-125-other.png' );
+		$LinkOwner = new LinkItem( $edited_Item );
+		$edit_File->link_to_Object( $LinkOwner );
+	}
 
 	// Insert a post:
 	$now = date('Y-m-d H:i:s',$timestamp++);
@@ -984,7 +1510,7 @@ function create_demo_contents()
 	// Insert sidebar links into Blog B
 	$now = date('Y-m-d H:i:s',$timestamp++);
 	$edited_Item = new Item();
-	$edited_Item->insert( 1, T_('Skin faktory'), '', $now, $cat_additional_skins, array(), 'published', 'en-US', '', 'http://www.skinfaktory.com/', 'open', array('default'), 3000 );
+	$edited_Item->insert( 1, 'Skin Faktory', '', $now, $cat_additional_skins, array(), 'published', 'en-US', '', 'http://www.skinfaktory.com/', 'open', array('default'), 3000 );
 
 	$now = date('Y-m-d H:i:s',$timestamp++);
 	$edited_Item = new Item();
@@ -1003,7 +1529,8 @@ function create_demo_contents()
 	$edited_Item->insert( 1, T_('Bus Stop Ahead'), 'In the middle of nowhere: a school bus stop where you wouldn\'t really expect it!',
 					 $now, $cat_photo_album, array(), 'published','en-US', '', 'http://fplanque.com/photo/monument-valley' );
 	$edit_File = new File( 'shared', 0, 'monument-valley/bus-stop-ahead.jpg' );
-	$edit_File->link_to_Item( $edited_Item );
+	$LinkOwner = new LinkItem( $edited_Item );
+	$edit_File->link_to_Object( $LinkOwner );
 
 	// Insert a post into photoblog:
 	$now = date('Y-m-d H:i:s',$timestamp++);
@@ -1011,7 +1538,8 @@ function create_demo_contents()
 	$edited_Item->insert( 1, T_('John Ford Point'), 'Does this scene look familiar? You\'ve probably seen it in a couple of John Ford westerns!',
 					 $now, $cat_photo_album, array(), 'published','en-US', '', 'http://fplanque.com/photo/monument-valley' );
 	$edit_File = new File( 'shared', 0, 'monument-valley/john-ford-point.jpg' );
-	$edit_File->link_to_Item( $edited_Item );
+	$LinkOwner = new LinkItem( $edited_Item );
+	$edit_File->link_to_Object( $LinkOwner );
 
 	// Insert a post into photoblog:
 	$now = date('Y-m-d H:i:s',$timestamp++);
@@ -1019,7 +1547,8 @@ function create_demo_contents()
 	$edited_Item->insert( 1, T_('Monuments'), 'This is one of the most famous views in Monument Valley. I like to frame it with the dirt road in order to give a better idea of the size of those things!',
 					 $now, $cat_photo_album, array(), 'published','en-US', '', 'http://fplanque.com/photo/monument-valley' );
 	$edit_File = new File( 'shared', 0, 'monument-valley/monuments.jpg' );
-	$edit_File->link_to_Item( $edited_Item );
+	$LinkOwner = new LinkItem( $edited_Item );
+	$edit_File->link_to_Object( $LinkOwner );
 
 	// Insert a post into photoblog:
 	$now = date('Y-m-d H:i:s',$timestamp++);
@@ -1027,7 +1556,8 @@ function create_demo_contents()
 	$edited_Item->insert( 1, T_('Road to Monument Valley'), 'This gives a pretty good idea of the Monuments you\'re about to drive into...',
 					 $now, $cat_photo_album, array(), 'published','en-US', '', 'http://fplanque.com/photo/monument-valley' );
 	$edit_File = new File( 'shared', 0, 'monument-valley/monument-valley-road.jpg' );
-	$edit_File->link_to_Item( $edited_Item );
+	$LinkOwner = new LinkItem( $edited_Item );
+	$edit_File->link_to_Object( $LinkOwner );
 
 	// Insert a post into photoblog:
 	$now = date('Y-m-d H:i:s',$timestamp++);
@@ -1035,7 +1565,8 @@ function create_demo_contents()
 	$edited_Item->insert( 1, T_('Monument Valley'), T_('This is a short photo album demo. Use the arrows to navigate between photos. Click on "Index" to see a thumbnail index.'),
 					 $now, $cat_photo_album, array(), 'published','en-US', '', 'http://fplanque.com/photo/monument-valley' );
 	$edit_File = new File( 'shared', 0, 'monument-valley/monument-valley.jpg' );
-	$edit_File->link_to_Item( $edited_Item );
+	$LinkOwner = new LinkItem( $edited_Item );
+	$edit_File->link_to_Object( $LinkOwner );
 
 
 	// POPULATE THE LINKBLOG:
@@ -1072,7 +1603,7 @@ function create_demo_contents()
 	// Insert a post into linkblog:
 	$now = date('Y-m-d H:i:s',$timestamp++);
 	$edited_Item = new Item();
-	$edited_Item->insert( 1, 'Manual', '', $now, $cat_linkblog_b2evo, array(), 'published',	'en-US', '', 'http://manual.b2evolution.net/', 'disabled', array() );
+	$edited_Item->insert( 1, 'Manual', '', $now, $cat_linkblog_b2evo, array(), 'published',	'en-US', '', 'http://b2evolution.net/man/', 'disabled', array() );
 
 	// Insert a post into linkblog:
 	$now = date('Y-m-d H:i:s',$timestamp++);
@@ -1081,7 +1612,7 @@ function create_demo_contents()
 
 
 
- 	$info_page = T_("<p>This blog is powered by b2evolution.</p>
+	$info_page = T_("<p>This blog is powered by b2evolution.</p>
 
 <p>You are currently looking at an info page about %s.</p>
 
@@ -1111,9 +1642,10 @@ function create_demo_contents()
 <p>Info pages are very much like regular posts, except that they do not appear in the regular flow of posts. They appear as info pages in the sidebar instead.</p>
 
 <p>If needed, an evoskin can format info pages differently from regular posts.</p>"), $now, $cat_ann_a,
-		array( $cat_ann_a, $cat_ann_b, $cat_linkblog_b2evo ), 'published', '#', '', '', 'open', array('default'), 1000 );
+		array( $cat_ann_a, $cat_ann_b, $cat_linkblog_b2evo, $cat_forums_ann ), 'published', '#', '', '', 'open', array('default'), 1000 );
 	$edit_File = new File( 'shared', 0, 'logos/b2evolution8.png' );
-	$edit_File->link_to_Item( $edited_Item );
+	$LinkOwner = new LinkItem( $edited_Item );
+	$edit_File->link_to_Object( $LinkOwner );
 
 
 	/*
@@ -1164,8 +1696,8 @@ function create_demo_contents()
 	$edited_Item->insert( 1, T_("Apache optimization..."), sprintf( T_("<p>b2evolution comes with an <code>.htaccess</code> file destined to optimize the way b2evolution is handled by your webseerver (if you are using Apache). In some circumstances, that file may not be automatically activated at setup. Please se the man page about <a %s>Tricky Stuff</a> for more information.</p>
 
 <p>For further optimization, please review the manual page about <a %s>Performance optimization</a>. Depending on your current configuration and on what your <a %s>web hosting</a> company allows you to do, you may increase the speed of b2evolution by up to a factor of 10!</p>"),
-'href="http://manual.b2evolution.net/Tricky_stuff"',
-'href="http://manual.b2evolution.net/Performance_optimization"',
+'href="http://b2evolution.net/man/tricky-stuff"',
+'href="http://b2evolution.net/man/performance-optimization"',
 'href="http://b2evolution.net/web-hosting/"' ),
 												$now, $cat_b2evo, array( $cat_ann_b ) );
 
@@ -1214,7 +1746,7 @@ function create_demo_contents()
 
 <p>To start customizing a skin, open its "<code>index.main.php</code>" file in an editor and read the comments in there. Note: you can also edit skins in the "Files" tab of the admin interface.</p>
 
-<p>And, of course, read the <a href="http://manual.b2evolution.net/Skins_2.0" target="_blank">manual on skins</a>!</p>'), $now, $cat_b2evo );
+<p>And, of course, read the <a href="http://b2evolution.net/man/skin-structure" target="_blank">manual on skins</a>!</p>'), $now, $cat_b2evo );
 	$edited_Item->set_tags_from_string( 'skins' );
 	$edited_Item->set( 'featured', 1 );
 	$edited_Item->dbsave();
@@ -1228,7 +1760,8 @@ function create_demo_contents()
 
 <p>Check out the photoblog (accessible through the links at the top) to see a completely different skin focused more on the photos than on the blog text.</p>'), $now, $cat_bg );
 	$edit_File = new File( 'shared', 0, 'monument-valley/monuments.jpg' );
-	$edit_File->link_to_Item( $edited_Item );
+	$LinkOwner = new LinkItem( $edited_Item );
+	$edit_File->link_to_Object( $LinkOwner );
 
 
 	// Insert a post:
@@ -1258,9 +1791,11 @@ function create_demo_contents()
 	$edited_Item = new Item();
 	$edited_Item->insert( 1, T_('Extended post with no teaser'), T_('<p>This is an extended post with no teaser. This means that you won\'t see this teaser any more when you click the "more" link.</p>
 
-<!--more--><!--noteaser-->
+<!--more-->
 
 <p>This is the extended text. You only see it when you have clicked the "more" link.</p>'), $now, $cat_bg );
+	$edited_Item->set_setting( 'hide_teaser', '1' );
+	$edited_Item->dbsave();
 
 
 	// Insert a post:
@@ -1276,7 +1811,7 @@ function create_demo_contents()
 	// Insert a post:
 	$now = date('Y-m-d H:i:s',$timestamp++);
 	$edited_Item = new Item();
-	$edited_Item->insert( 1, T_("Welcome to b2evolution!"), T_("<p>Four blogs have been created with sample contents:</p>
+	$Item_BlogA_welcome_ID = $edited_Item->insert( 1, T_("Welcome to b2evolution!"), T_("<p>Four blogs have been created with sample contents:</p>
 
 <ul>
 	<li><strong>Blog A</strong>: You are currently looking at it. It contains a few sample posts, using simple features of b2evolution.</li>
@@ -1287,49 +1822,370 @@ function create_demo_contents()
 
 <p>You can add new blogs, delete unwanted blogs and customize existing blogs (title, sidebar, blog skin, widgets, etc.) from the Blog Settings tab in the admin interface.</p>"), $now, $cat_ann_a );
 	$edit_File = new File( 'shared', 0, 'logos/b2evolution8.png' );
-	$edit_File->link_to_Item( $edited_Item );
+	$LinkOwner = new LinkItem( $edited_Item );
+	$edit_File->link_to_Object( $LinkOwner );
+
+	// FORUMS:
+
+	// Insert a PAGE:
+	$now = date('Y-m-d H:i:s',$timestamp++);
+	$edited_Item = new Item();
+	$edited_Item->insert( 1, T_("About Forums"), sprintf( $info_page, T_('Forums') ), $now, $cat_forums_ann,
+		array(), 'published', '#', '', '', 'open', array('default'), 1000 );
+
+	// Insert a post:
+	$now = date('Y-m-d H:i:s',$timestamp++);
+	$edited_Item = new Item();
+	$edited_Item->insert( 1, T_('First Topic'), T_('<p>This is the first topic.</p>
+
+<p>It appears in a single category.</p>'), $now, $cat_forums_ann );
+
+	// Insert a post:
+	$now = date('Y-m-d H:i:s',$timestamp++);
+	$edited_Item = new Item();
+	$edited_Item->insert( 1, T_('Second topic'), T_('<p>This is the second topic.</p>
+
+<p>It appears in multiple categories.</p>'), $now, $cat_forums_news, array( $cat_forums_ann ) );
+
+
+	// Insert a post:
+	$now = date('Y-m-d H:i:s',$timestamp++);
+	$edited_Item = new Item();
+	$edited_Item->insert( 1, T_('Image topic'), T_('<p>This topic has an image attached to it. The image is automatically resized to fit the current blog skin. You can zoom in by clicking on the thumbnail.</p>
+
+<p>Check out the photoblog (accessible through the links at the top) to see a completely different skin focused more on the photos than on the blog text.</p>'), $now, $cat_forums_bg );
+	$edit_File = new File( 'shared', 0, 'monument-valley/monuments.jpg' );
+	$LinkOwner = new LinkItem( $edited_Item );
+	$edit_File->link_to_Object( $LinkOwner );
+
+
+	// Insert a post:
+	$now = date('Y-m-d H:i:s',$timestamp++);
+	$edited_Item = new Item();
+	$edited_Item->insert( 1, T_('This is a multipage topic'), T_('<p>This is page 1 of a multipage topic.</p>
+
+<p>You can see the other pages by clicking on the links below the text.</p>
+
+<!--nextpage-->
+
+<p>This is page 2.</p>
+
+<!--nextpage-->
+
+<p>This is page 3.</p>
+
+<!--nextpage-->
+
+<p>This is page 4.</p>
+
+<p>It is the last page.</p>'), $now, $cat_forums_bg );
+
+
+	// Insert a post:
+	$now = date('Y-m-d H:i:s',$timestamp++);
+	$edited_Item = new Item();
+	$edited_Item->insert( 1, T_('Extended topic with no teaser'), T_('<p>This is an extended topic with no teaser. This means that you won\'t see this teaser any more when you click the "more" link.</p>
+
+<!--more-->
+
+<p>This is the extended text. You only see it when you have clicked the "more" link.</p>'), $now, $cat_forums_bg );
+	$edited_Item->set_setting( 'hide_teaser', '1' );
+	$edited_Item->dbsave();
+
+
+	// Insert a post:
+	$now = date('Y-m-d H:i:s',$timestamp++);
+	$edited_Item = new Item();
+	$edited_Item->insert( 1, T_('Extended topic'), T_('<p>This is an extended topic. This means you only see this small teaser by default and you must click on the link below to see more.</p>
+
+<!--more-->
+
+<p>This is the extended text. You only see it when you have clicked the "more" link.</p>'), $now, $cat_forums_bg );
+
+
+	// Insert a post:
+	$now = date('Y-m-d H:i:s',$timestamp++);
+	$edited_Item = new Item();
+	$Item_Forum_welcome_ID = $edited_Item->insert( 1, T_("Welcome to b2evolution!"), T_("<p>Four blogs have been created with sample contents:</p>
+
+<ul>
+	<li><strong>Blog A</strong>: You are currently looking at it. It contains a few sample posts, using simple features of b2evolution.</li>
+	<li><strong>Blog B</strong>: You can access it from a link at the top of the page. It contains information about more advanced features.</li>
+	<li><strong>Linkblog</strong>: By default, the linkblog is included as a \"Blogroll\" in the sidebar of both Blog A &amp; Blog B.</li>
+	<li><strong>Photoblog</strong>: This blog is an example of how you can use b2evolution to showcase photos, with one photo per page as well as a thumbnail index.</li>
+</ul>
+
+<p>You can add new blogs, delete unwanted blogs and customize existing blogs (title, sidebar, blog skin, widgets, etc.) from the Blog Settings tab in the admin interface.</p>"), $now, $cat_forums_ann );
+	$edit_File = new File( 'shared', 0, 'logos/b2evolution8.png' );
+	$LinkOwner = new LinkItem( $edited_Item );
+	$edit_File->link_to_Object( $LinkOwner );
+
+	// MANUAL:
+
+	// Insert a main intro:
+	$now = date('Y-m-d H:i:s',$timestamp++);
+	$edited_Item = new Item();
+	$edited_Item->insert( 1, T_("Manual main intro"), T_('This is the main introduction for the manual'), $now, $cat_manual_ann,
+		array(), 'published', '#', '', '', 'open', array('default'), 1500 );
+
+	// Insert a cat intro:
+	$now = date('Y-m-d H:i:s',$timestamp++);
+	$edited_Item = new Item();
+	$edited_Item->insert( 1, T_("Cat intro post"), T_('This is an intro-cat post for the category with intro post'), $now, $cat_manual_fun,
+		array(), 'published', '#', '', '', 'open', array('default'), 1520 );
+
+	// Insert a PAGE:
+	$now = date('Y-m-d H:i:s',$timestamp++);
+	$edited_Item = new Item();
+	$edited_Item->insert( 1, T_("About Manual"), sprintf( $info_page, T_('Manual') ), $now, $cat_manual_ann,
+		array(), 'published', '#', '', '', 'open', array('default'), 1000 );
+
+	// Insert a post:
+	$now = date('Y-m-d H:i:s',$timestamp++);
+	$edited_Item = new Item();
+	$edited_Item->insert( 1, T_('First Topic'), T_('<p>This is the first topic.</p>
+
+<p>It appears in a single category.</p>'), $now, $cat_manual_ann, array( $cat_manual_news, $cat_manual_movies ),
+		'published', '#', '', '', 'open', array('default'), 1, NULL, 10 );
+
+	// Insert a post:
+	$now = date('Y-m-d H:i:s',$timestamp++);
+	$edited_Item = new Item();
+	$edited_Item->insert( 1, T_('Second topic'), T_('<p>This is the second topic.</p>
+
+<p>It appears in multiple categories.</p>'), $now, $cat_manual_news, array( $cat_manual_ann ),
+		'published', '#', '', '', 'open', array('default'), 1, NULL, 3 );
+
+
+	// Insert a post:
+	$now = date('Y-m-d H:i:s',$timestamp++);
+	$edited_Item = new Item();
+	$edited_Item->insert( 1, T_('Image topic'), T_('<p>This topic has an image attached to it. The image is automatically resized to fit the current blog skin. You can zoom in by clicking on the thumbnail.</p>
+
+<p>Check out the photoblog (accessible through the links at the top) to see a completely different skin focused more on the photos than on the blog text.</p>'), $now, $cat_manual_bg, array( $cat_manual_sports ),
+		'published', '#', '', '', 'open', array('default'), 1, NULL, 20 );
+	$edit_File = new File( 'shared', 0, 'monument-valley/monuments.jpg' );
+	$LinkOwner = new LinkItem( $edited_Item );
+	$edit_File->link_to_Object( $LinkOwner );
+
+
+	// Insert a post:
+	$now = date('Y-m-d H:i:s',$timestamp++);
+	$edited_Item = new Item();
+	$edited_Item->insert( 1, T_('This is a multipage topic'), T_('<p>This is page 1 of a multipage topic.</p>
+
+<p>You can see the other pages by clicking on the links below the text.</p>
+
+<!--nextpage-->
+
+<p>This is page 2.</p>
+
+<!--nextpage-->
+
+<p>This is page 3.</p>
+
+<!--nextpage-->
+
+<p>This is page 4.</p>
+
+<p>It is the last page.</p>'), $now, $cat_manual_fun, array(),
+		'published', '#', '', '', 'open', array('default'), 1, NULL, 8 );
+
+
+	// Insert a post:
+	$now = date('Y-m-d H:i:s',$timestamp++);
+	$edited_Item = new Item();
+	$edited_Item->insert( 1, T_('Extended topic with no teaser'), T_('<p>This is an extended topic with no teaser. This means that you won\'t see this teaser any more when you click the "more" link.</p>
+
+<!--more-->
+
+<p>This is the extended text. You only see it when you have clicked the "more" link.</p>'), $now, $cat_manual_bg, array(),
+		'published', '#', '', '', 'open', array('default'), 1, NULL, 5 );
+	$edited_Item->set_setting( 'hide_teaser', '1' );
+	$edited_Item->dbsave();
+
+
+	// Insert a post:
+	$now = date('Y-m-d H:i:s',$timestamp++);
+	$edited_Item = new Item();
+	$edited_Item->insert( 1, T_('Extended topic'), T_('<p>This is an extended topic. This means you only see this small teaser by default and you must click on the link below to see more.</p>
+
+<!--more-->
+
+<p>This is the extended text. You only see it when you have clicked the "more" link.</p>'), $now, $cat_manual_life, array(),
+		'published', '#', '', '', 'open', array('default'), 1, NULL, 10 );
+
+
+	// Insert a post:
+	$now = date('Y-m-d H:i:s',$timestamp++);
+	$edited_Item = new Item();
+	$Item_Manual_welcome_ID = $edited_Item->insert( 1, T_("Welcome to b2evolution!"), T_("<p>Four blogs have been created with sample contents:</p>
+
+<ul>
+	<li><strong>Blog A</strong>: You are currently looking at it. It contains a few sample posts, using simple features of b2evolution.</li>
+	<li><strong>Blog B</strong>: You can access it from a link at the top of the page. It contains information about more advanced features.</li>
+	<li><strong>Linkblog</strong>: By default, the linkblog is included as a \"Blogroll\" in the sidebar of both Blog A &amp; Blog B.</li>
+	<li><strong>Photoblog</strong>: This blog is an example of how you can use b2evolution to showcase photos, with one photo per page as well as a thumbnail index.</li>
+</ul>
+
+<p>You can add new blogs, delete unwanted blogs and customize existing blogs (title, sidebar, blog skin, widgets, etc.) from the Blog Settings tab in the admin interface.</p>"), $now, $cat_manual_ann, array( $cat_manual_life ),
+		'published', '#', '', '', 'open', array('default'), 1, NULL, 5 );
+	$edit_File = new File( 'shared', 0, 'logos/b2evolution8.png' );
+	$LinkOwner = new LinkItem( $edited_Item );
+	$edit_File->link_to_Object( $LinkOwner );
+
+	// Insert a post:
+	$now = date('Y-m-d H:i:s',$timestamp++);
+	$edited_Item = new Item();
+	$edited_Item->insert( 1, T_('Sports post'), T_('<p>This is the sports post.</p>
+
+<p>It appears in sports category.</p>'), $now, $cat_manual_sports, array(),
+		'published', '#', '', '', 'open', array('default'), 1, NULL, 15 );
+
+	// Insert a post:
+	$now = date('Y-m-d H:i:s',$timestamp++);
+	$edited_Item = new Item();
+	$edited_Item->insert( 1, T_('Second sports post'), T_('<p>This is the second sports post.</p>
+
+<p>It appears in sports category.</p>'), $now, $cat_manual_sports, array(),
+		'published', '#', '', '', 'open', array('default'), 1, NULL, 5 );
+
+	task_end();
 
 
 
+	task_begin( 'Creating sample comments... ' );
 
-	echo "OK.<br />\n";
-
-
-
-	echo 'Creating sample comments... ';
-
+	// Comments for Blog A:
 	$now = date('Y-m-d H:i:s');
 	$query = "INSERT INTO T_comments( comment_post_ID, comment_type, comment_author,
 																				comment_author_email, comment_author_url, comment_author_IP,
-																				comment_date, comment_content, comment_karma)
-						VALUES( 1, 'comment', 'miss b2', 'missb2@example.com', 'http://example.com', '127.0.0.1',
+																				comment_date, comment_content, comment_renderers, comment_karma)
+						VALUES( '".$Item_BlogA_welcome_ID."', 'comment', 'miss b2', 'missb2@example.com', 'http://example.com', '127.0.0.1',
 									 '$now', '".
-									 $DB->escape(T_('Hi, this is a comment.<br />To delete a comment, just log in, and view the posts\' comments, there you will have the option to edit or delete them.')). "', 0)";
+									 $DB->escape(T_('Hi, this is a comment.<br />To delete a comment, just log in, and view the posts\' comments, there you will have the option to edit or delete them.'))."', 'default', 0)";
 	$DB->query( $query );
 
-	echo "OK.<br />\n";
+	if( $test_install_all_features )
+	{ // Insert the comments from each user
+		for( $i_user_ID = 1; $i_user_ID <= 7; $i_user_ID++ )
+		{
+			$now = date('Y-m-d H:i:s');
+			$query = "INSERT INTO T_comments( comment_post_ID, comment_type, comment_author_ID, comment_author_IP,
+																				comment_date, comment_content, comment_renderers, comment_karma, comment_notif_status)
+								VALUES( '".$Item_BlogA_welcome_ID."', 'comment', '$i_user_ID', '127.0.0.1', '$now', '".
+											 $DB->escape( T_('Hi, this is my comment.') ). "', 'default', 0, 'finished')";
+			$DB->query( $query );
+		}
+	}
+
+	// Comments for Forums:
+	$now = date('Y-m-d H:i:s');
+	$query = "INSERT INTO T_comments( comment_post_ID, comment_type, comment_author,
+																				comment_author_email, comment_author_url, comment_author_IP,
+																				comment_date, comment_content, comment_renderers, comment_karma)
+						VALUES( '".$Item_Forum_welcome_ID."', 'comment', 'miss b2', 'missb2@example.com', 'http://example.com', '127.0.0.1',
+									 '$now', '".
+									 $DB->escape(T_('Hi, this is a comment.<br />To delete a comment, just log in, and view the posts\' comments, there you will have the option to edit or delete them.')). "', 'default', 0)";
+	$DB->query( $query );
+
+	if( $test_install_all_features )
+	{ // Insert the comments from each user
+		for( $i_user_ID = 1; $i_user_ID <= 7; $i_user_ID++ )
+		{
+			$now = date('Y-m-d H:i:s');
+			$query = "INSERT INTO T_comments( comment_post_ID, comment_type, comment_author_ID, comment_author_IP,
+																				comment_date, comment_content, comment_renderers, comment_karma, comment_notif_status)
+								VALUES( '".$Item_Forum_welcome_ID."', 'comment', '$i_user_ID', '127.0.0.1', '$now', '".
+											 $DB->escape( T_('Hi, this is my comment.') ). "', 'default', 0, 'finished')";
+			$DB->query( $query );
+		}
+	}
+
+	// Comments for Manual:
+	$now = date('Y-m-d H:i:s');
+	$query = "INSERT INTO T_comments( comment_post_ID, comment_type, comment_author,
+																				comment_author_email, comment_author_url, comment_author_IP,
+																				comment_date, comment_content, comment_renderers, comment_karma)
+						VALUES( '".$Item_Manual_welcome_ID."', 'comment', 'miss b2', 'missb2@example.com', 'http://example.com', '127.0.0.1',
+									 '$now', '".
+									 $DB->escape(T_('Hi, this is a comment.<br />To delete a comment, just log in, and view the posts\' comments, there you will have the option to edit or delete them.')). "', 'default', 0)";
+	$DB->query( $query );
+
+	if( $test_install_all_features )
+	{ // Insert the comments from each user
+		for( $i_user_ID = 1; $i_user_ID <= 7; $i_user_ID++ )
+		{
+			$now = date('Y-m-d H:i:s');
+			$query = "INSERT INTO T_comments( comment_post_ID, comment_type, comment_author_ID, comment_author_IP,
+																				comment_date, comment_content, comment_renderers, comment_karma, comment_notif_status)
+								VALUES( '".$Item_Manual_welcome_ID."', 'comment', '$i_user_ID', '127.0.0.1', '$now', '".
+											 $DB->escape( T_('Hi, this is my comment.') ). "', 'default', 0, 'finished')";
+			$DB->query( $query );
+		}
+	}
+
+	task_end();
 
 
-	echo 'Creating default group/blog permissions... ';
-	// Admin for blog A:
+	if( $test_install_all_features )
+	{
+		task_begin( 'Creating fake hit statistics... ' );
+		load_funcs('sessions/model/_hitlog.funcs.php');
+		load_funcs('_core/_url.funcs.php');
+		$insert_data_count = generate_hit_stat(10, 0, 5000);
+		echo sprintf( '%d test hits are added.', $insert_data_count );
+		task_end();
+	}
+
+	task_begin( 'Creating default group/blog permissions... ' );
 	$query = "
 		INSERT INTO T_coll_group_perms( bloggroup_blog_ID, bloggroup_group_ID, bloggroup_ismember,
-			bloggroup_perm_poststatuses, bloggroup_perm_delpost, bloggroup_perm_edit_ts,
-			bloggroup_perm_draft_cmts, bloggroup_perm_publ_cmts, bloggroup_perm_depr_cmts,
+			bloggroup_perm_poststatuses, bloggroup_perm_edit, bloggroup_perm_delpost, bloggroup_perm_edit_ts,
+			bloggroup_perm_delcmts, bloggroup_perm_recycle_owncmts, bloggroup_perm_vote_spam_cmts, bloggroup_perm_cmtstatuses, bloggroup_perm_edit_cmt,
 			bloggroup_perm_cats, bloggroup_perm_properties,
 			bloggroup_perm_media_upload, bloggroup_perm_media_browse, bloggroup_perm_media_change )
-		VALUES
-			( $blog_a_ID, ".$Group_Admins->ID.", 1, 'published,deprecated,protected,private,draft', 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ),
-			( $blog_a_ID, ".$Group_Privileged->ID.", 1, 'published,deprecated,protected,private,draft', 1, 0, 1, 1, 1, 0, 0, 1, 1, 1 ),
-			( $blog_a_ID, ".$Group_Bloggers->ID.", 1, 'published,deprecated,protected,private,draft', 0, 0, 0, 0, 0, 0, 0, 1, 1, 0 ),
-			( $blog_b_ID, ".$Group_Admins->ID.", 1, 'published,deprecated,protected,private,draft', 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ),
-			( $blog_b_ID, ".$Group_Privileged->ID.", 1, 'published,deprecated,protected,private,draft', 1, 0, 1, 1, 1, 0, 0, 1, 1, 1 ),
-			( $blog_b_ID, ".$Group_Bloggers->ID.", 1, 'published,deprecated,protected,private,draft', 0, 0, 0, 0, 0, 0, 0, 1, 1, 0 ),
-			( $blog_linkblog_ID, ".$Group_Admins->ID.", 1, 'published,deprecated,protected,private,draft', 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ),
-			( $blog_linkblog_ID, ".$Group_Privileged->ID.", 1, 'published,deprecated,protected,private,draft', 1, 0, 1, 1, 1, 0, 0, 1, 1, 1 ),
-			( $blog_linkblog_ID, ".$Group_Bloggers->ID.", 1, 'published,deprecated,protected,private,draft', 0, 0, 0, 0, 0, 0, 0, 1, 1, 0 )";
+		VALUES ";
+
+	$gp_blogs_IDs = array( $blog_a_ID, $blog_b_ID, $blog_linkblog_ID, $blog_photoblog_ID, $blog_forums_ID, $blog_manual_ID );
+
+	// Init the permissions for all blogs
+	$all_statuses = "'published,community,deprecated,protected,private,review,draft'";
+	$gp_user_groups = array(
+			'admins'     => $Group_Admins->ID.",     1, $all_statuses, 'all', 1, 1, 1, 1, 1, $all_statuses, 'all', 1, 1, 1, 1, 1",
+			'privileged' => $Group_Privileged->ID.", 1, $all_statuses, 'le', 1, 0, 1, 1, 1, $all_statuses, 'le', 0, 0, 1, 1, 1",
+			'bloggers'   => $Group_Bloggers->ID.",   1, '', 'no', 0, 0, 0, 0, 1, '', 'no', 0, 0, 1, 1, 0",
+		);
+
+	// Init the special permissions for Forums
+	$gp_user_groups_forums = array(
+			'bloggers'   => $Group_Bloggers->ID.",   1, 'community,draft', 'no', 0, 0, 0, 0, 1, 'community,draft', 'no', 0, 0, 1, 1, 0",
+			'users'      => $Group_Users->ID.",      1, 'community,draft', 'no', 0, 0, 0, 0, 0, 'community,draft', 'no', 0, 0, 0, 0, 0",
+			'suspect'    => $Group_Suspect->ID.",    1, 'review,draft', 'no', 0, 0, 0, 0, 0, 'review,draft', 'no', 0, 0, 0, 0, 0"
+		);
+	$gp_user_groups_forums = array_merge( $gp_user_groups, $gp_user_groups_forums );
+
+	$query_values = array();
+	foreach( $gp_blogs_IDs as $gp_blog_ID )
+	{
+		if( $gp_blog_ID == $blog_forums_ID )
+		{	// Permission for forums blogs
+			foreach( $gp_user_groups_forums as $gp_user_group_perms )
+			{
+				$query_values[] = "( $gp_blog_ID, ".$gp_user_group_perms.")";
+			}
+		}
+		else
+		{	// Permission for other blogs
+			foreach( $gp_user_groups as $gp_user_group_perms )
+			{
+				$query_values[] = "( $gp_blog_ID, ".$gp_user_group_perms.")";
+			}
+		}
+	}
+	$query .= implode( ',', $query_values );
 	$DB->query( $query );
-	echo "OK.<br />\n";
+	task_end();
 
 	/*
 	// Note: we don't really need this any longer, but we might use it for a better default setup later...
@@ -1346,6 +2202,11 @@ function create_demo_contents()
 	echo "OK.<br />\n";
 	*/
 
+	// Allow all modules to create their own demo contents:
+	modules_call_method( 'create_demo_contents' );
+
+	// Set default locations for each post in test mode installation
+	create_default_posts_location();
 
 	install_basic_widgets();
 
@@ -1357,7 +2218,22 @@ function create_demo_contents()
 }
 
 
-/*
- * $Log: _functions_create.php,v $
+/**
+ * Create default location for all posts
  */
+function create_default_posts_location()
+{
+	global $test_install_all_features;
+
+	if( $test_install_all_features )
+	{	// Set default location in test mode installation
+		global $DB;
+
+		$DB->query( 'UPDATE T_items__item SET
+			post_ctry_ID = '.$DB->quote( '74'/* France */ ).',
+			post_rgn_ID = '.$DB->quote( '60'/* Île-de-France */ ).',
+			post_subrg_ID = '.$DB->quote( '76'/* Paris */ ) );
+	}
+}
+
 ?>

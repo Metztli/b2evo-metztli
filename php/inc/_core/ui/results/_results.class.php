@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
  * {@internal License choice
@@ -29,7 +29,7 @@
  * @author fplanque: Francois PLANQUE
  * @author fsaya: Fabrice SAYA-GASNIER / PROGIDISTRI
  *
- * @version $Id: _results.class.php 57 2011-10-26 08:18:58Z sam2kb $
+ * @version $Id: _results.class.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -212,6 +212,7 @@ class Results extends Table
 	 */
 	var $page_param;
 	var $order_param;
+	var $limit_param;
 
 	/**
 	 * List of sortable fields
@@ -248,22 +249,20 @@ class Results extends Table
 	 * @param string default ordering of columns (special syntax) if not specified in the URL params
 	 *               example: -A-- will sort in ascending order on 2nd column
 	 *               example: ---D will sort in descending order on 4th column
-	 * @param integer number of lines displayed on one page (0 to disable paging; null to use $UserSettings/results_per_page)
+	 * @param integer Default number of lines displayed on one page (0 to disable paging; null to use $UserSettings/results_per_page)
 	 * @param string SQL to get the total count of results
 	 * @param boolean
 	 * @param string|integer SQL query used to count the total # of rows
 	 * 												- if integer, we'll use that as the count
 	 * 												- if NULL, we'll try to COUNT(*) by ourselves
 	 */
-	function Results( $sql, $param_prefix = '', $default_order = '', $limit = NULL, $count_sql = NULL, $init_page = true )
+	function Results( $sql, $param_prefix = '', $default_order = '', $default_limit = NULL, $count_sql = NULL, $init_page = true )
 	{
-		global $UserSettings;
-
 		parent::Table( NULL, $param_prefix );
 
 		$this->sql = $sql;
 
-		$this->limit = is_null($limit) ? $UserSettings->get('results_per_page') : $limit;
+		$this->init_limit_param( $default_limit );
 
 		// Count total rows:
 		// TODO: check if this can be done later instead
@@ -271,14 +270,112 @@ class Results extends Table
 
 		if( $init_page )
 		{	// attribution of a page number
-			$this->page_param = 'results_'.$param_prefix.'page';
+			$this->page_param = 'results_'.$this->param_prefix.'page';
 			$page = param( $this->page_param, 'integer', 1, true );
 			$this->page = min( $page, $this->total_pages );
 		}
 
+		$this->init_order_param( $default_order );
+	}
+
+
+	/**
+	 * Initialize the limit param
+	 *
+	 * @param integer Default number of lines displayed on one page (0 to disable paging; null to use $UserSettings/results_per_page)
+	 */
+	function init_limit_param( $default_limit )
+	{
+		global $UserSettings;
+
+		if( empty( $UserSettings ) )
+		{
+			$UserSettings = new UserSettings();
+		}
+
+		// attribution of a limit number
+		$this->limit_param = 'results_'.$this->param_prefix.'per_page';
+		$this->limit = param( $this->limit_param, 'integer', -1, true );
+		if( !empty( $this->param_prefix ) &&
+		    $this->limit > -1 &&
+		    $this->limit != (int)$UserSettings->get( $this->limit_param ) )
+		{	// Change a limit number in DB for current user and current list
+			if( $this->limit == $UserSettings->get( 'results_per_page' ) || $this->limit == 0 )
+			{	// Delete a limit number for current list if it equals a default value
+				$UserSettings->delete( $this->limit_param );
+				$this->limit = $UserSettings->get( 'results_per_page' );
+			}
+			else
+			{	// Set a new value of limit number current list
+				$UserSettings->set( $this->limit_param, $this->limit );
+			}
+			$UserSettings->dbupdate();
+		}
+
+		if( !empty( $this->param_prefix ) && $this->limit == -1 )
+		{	// Set a limit number from DB
+			if( $UserSettings->get( $this->limit_param ) > 0 )
+			{	// Set a value for current list if it was already defined
+				$this->limit = $UserSettings->get( $this->limit_param );
+			}
+		}
+
+		if( $this->limit == -1 || empty( $this->limit ) )
+		{	// Set a default value
+			$this->limit = is_null( $default_limit ) ? $UserSettings->get( 'results_per_page' ) : $default_limit;
+		}
+	}
+
+
+	/**
+	 * Initialize the order param
+	 *
+	 * @param string default ordering of columns (special syntax) if not specified in the URL params
+	 *               example: -A-- will sort in ascending order on 2nd column
+	 *               example: ---D will sort in descending order on 4th column
+	 */
+	function init_order_param( $default_order )
+	{
+		global $UserSettings;
+
+		if( empty( $UserSettings ) )
+		{
+			$UserSettings = new UserSettings();
+		}
+
 		// attribution of an order type
-		$this->order_param = 'results_'.$param_prefix.'order';
-		$this->order = param( $this->order_param, 'string', $default_order, true );
+		$this->order_param = 'results_'.$this->param_prefix.'order';
+		$this->order = param( $this->order_param, 'string', '', true );
+		// remove symbols '-' from the end
+		$this->order = preg_replace( '/(-*[AD]+)(-*)/i', '$1', $this->order );
+
+		if( !empty( $this->param_prefix ) &&
+		    !empty( $this->order ) &&
+		    $this->order != $UserSettings->get( $this->order_param ) )
+		{	// Change an order param in DB for current user and current list
+			if( $this->order == $default_order )
+			{	// Delete an order param for current list if it is a default value
+				$UserSettings->delete( $this->order_param );
+			}
+			else
+			{	// Set a new value of an order param for current list
+				$UserSettings->set( $this->order_param, $this->order );
+			}
+			$UserSettings->dbupdate();
+		}
+
+		if( !empty( $this->param_prefix ) && empty( $this->order ) )
+		{	// Set an order param from DB
+			if( $UserSettings->get( $this->order_param ) != '' )
+			{	// Set a value for current list if it was already defined
+				$this->order = $UserSettings->get( $this->order_param );
+			}
+		}
+
+		if( empty( $this->order ) )
+		{	// Set a default value
+			$this->order = $default_order;
+		}
 	}
 
 
@@ -341,6 +438,11 @@ class Results extends Table
 		global $DB, $Debuglog;
 		if( !is_null( $this->rows ) )
 		{ // Query has already executed:
+			return;
+		}
+
+		if( empty( $this->sql ) )
+		{ // the sql query is empty so we can't process it
 			return;
 		}
 
@@ -604,10 +706,14 @@ class Results extends Table
 		if( is_null( $this->page_ID_array ) )
 		{
 			$this->page_ID_array = array();
-
-			foreach( $this->rows as $row )
-			{ // For each row/line:
-				$this->page_ID_array[] = $row->{$this->ID_col};
+			// pre_dump( $this );
+			if( $this->result_num_rows )
+			{	// We have some rows to explore.
+				// Fp> note: I don't understand why we can sometimes have: $this->rows = array{ [0]=>  NULL }  (found in Manual skin intro post testing)
+				foreach( $this->rows as $row )
+				{ // For each row/line:
+					$this->page_ID_array[] = $row->{$this->ID_col};
+				}
 			}
 		}
 
@@ -653,11 +759,11 @@ class Results extends Table
 
 				/*
 				 *
-				 * On a un problème avec la recherche sur les sociétés
-				 * si on fait un select count(*), ça sort un nombre de réponses énorme
+				 * On a un problï¿½me avec la recherche sur les sociï¿½tï¿½s
+				 * si on fait un select count(*), ï¿½a sort un nombre de rï¿½ponses ï¿½norme
 				 * mais on ne sait pas pourquoi... la solution est de lister des champs dans le COUNT()
-				 * MAIS malheureusement ça ne fonctionne pas pour d'autres requêtes.
-				 * L'idéal serait de réussir à isoler qu'est-ce qui, dans la requête SQL, provoque le comportement
+				 * MAIS malheureusement ï¿½a ne fonctionne pas pour d'autres requï¿½tes.
+				 * L'idï¿½al serait de rï¿½ussir ï¿½ isoler qu'est-ce qui, dans la requï¿½te SQL, provoque le comportement
 				 * bizarre....
 				 */
 				// Tentative 1:
@@ -666,7 +772,7 @@ class Results extends Table
 				// if( preg_match( '#(,|JOIN)#si', $matches[1] ) )
 				// { // there was a coma or a JOIN clause in the FROM clause of the original query,
 				// Tentative 2:
-				// fplanque: je pense que la différence est sur la présence de DISTINCT ou non.
+				// fplanque: je pense que la diffï¿½rence est sur la prï¿½sence de DISTINCT ou non.
 				// if( preg_match( '#\s DISTINCT \s#six', $sql_count, $matches ) )
 				if( preg_match( '#\s DISTINCT \s+ ([A-Za-z_]+)#six', $sql_count, $matches ) )
 				{ //
@@ -761,19 +867,31 @@ class Results extends Table
 		echo $this->params['before'];
 
 			if( $this->total_pages == 0 )
-			{ // There are no results! Nothing to display!
+			{	// There are no results! Nothing to display!
+
+				// TITLE / FILTERS:
+				$this->display_head();
+
+				// START OF AJAX CONTENT:
+				echo $this->replace_vars( $this->params['content_start'] );
 
 				// START OF LIST/TABLE:
 				$this->display_list_start();
 
-				// DISPLAY FILTERS:
-				$this->display_filters();
-
 				// END OF LIST/TABLE:
 				$this->display_list_end();
+
+				// END OF AJAX CONTENT:
+				echo $this->params['content_end'];
 			}
 			else
 			{	// We have rows to display:
+
+				// TITLE / FILTERS:
+				$this->display_head();
+
+				// START OF AJAX CONTENT:
+				echo $this->replace_vars( $this->params['content_start'] );
 
 				// GLOBAL (NAV) HEADER:
 				$this->display_nav( 'header' );
@@ -781,8 +899,8 @@ class Results extends Table
 				// START OF LIST/TABLE:
 				$this->display_list_start();
 
-					// TITLE / FILTERS / COLUMN HEADERS:
-					$this->display_head();
+					// DISPLAY COLUMN HEADERS:
+					$this->display_col_headers();
 
 					// GROUP & DATA ROWS:
 					$this->display_body();
@@ -798,6 +916,9 @@ class Results extends Table
 
 				// GLOBAL (NAV) FOOTER:
 				$this->display_nav( 'footer' );
+
+				// END OF AJAX CONTENT:
+				echo $this->params['content_end'];
 			}
 
 		echo $this->params['after'];
@@ -1014,7 +1135,16 @@ class Results extends Table
 			{ // For each column:
 
 				// COL START:
-				$this->display_col_start();
+				if ( ! empty($col['extra']) )
+				{
+					// array of extra params $col['extra']
+					$this->display_col_start( $col['extra'] );
+				}
+				else
+				{
+					$this->display_col_start();
+				}
+
 
 				// Contents to output:
 				$output = $this->parse_col_content( $col['td'] );
@@ -1059,6 +1189,7 @@ class Results extends Table
 		if( $total_enable )
 		{ // We have to dispaly a totals line
 
+			echo $this->params['tfoot_start'];
 			// <tr>
 			echo $this->params['total_line_start'];
 
@@ -1114,6 +1245,7 @@ class Results extends Table
 			}
 			// </tr>
 			echo $this->params['total_line_end'];
+			echo $this->params['tfoot_end'];
 		}
 	}
 
@@ -1177,22 +1309,27 @@ class Results extends Table
 	 */
 	function display_nav( $template )
 	{
-		echo $this->params[$template.'_start'];
-
 		if( empty($this->limit) && isset($this->params[$template.'_text_no_limit']) )
 		{	// No LIMIT (there's always only one page)
-			echo $this->params[$template.'_text_no_limit'];
+			$navigation = $this->params[$template.'_text_no_limit'];
 		}
 		elseif( ( $this->total_pages <= 1 ) )
 		{	// Single page (we probably don't want to show navigation in this case)
-			echo $this->params[$template.'_text_single'];
+			$navigation = $this->replace_vars( $this->params[$template.'_text_single'] );
 		}
 		else
 		{	// Several pages
-			echo $this->replace_vars( $this->params[$template.'_text'] );
+			$navigation = $this->replace_vars( $this->params[$template.'_text'] );
 		}
 
-		echo $this->params[$template.'_end'];
+		if( !empty( $navigation ) )
+		{	// Display navigation
+			echo $this->params[$template.'_start'];
+
+			echo $navigation;
+
+			echo $this->params[$template.'_end'];
+		}
 	}
 
 
@@ -1282,6 +1419,27 @@ class Results extends Table
 	{
 		if( is_null( $this->order_field_list ) )
 		{ // Order list is not defined yet
+			if( ( !empty( $this->order ) ) && ( !empty( $this->cols ) ) && ( substr( $this->order, 0, 1 ) == '/' ) )
+			{ // order is set in format '/order_field_name/A' or '/order_field_name/D'
+				$order_parts = explode( '/', $this->order );
+				$this->order = '';
+				if( ( count( $order_parts ) == 3 ) && ( ( $order_parts[2] == 'A' ) || ( $order_parts[2] == 'D' ) ) )
+				{
+					foreach( $this->cols as $col )
+					{ // iterate thrugh columns and find matching column name
+						if( isset( $col['order'] ) && ( $col['order'] == $order_parts[1] ) )
+						{ // we have found the requested orderable column
+							$this->order .= $order_parts[2];
+							break;
+						}
+						else
+						{
+							$this->order .= '-';
+						}
+					}
+				}
+			}
+
 			if( empty( $this->order ) )
 			{ // We have no user provided order:
 				if( empty( $this->cols ) )
@@ -1301,11 +1459,6 @@ class Results extends Table
 					{
 						$this->order .= '-';
 					}
-				}
-
-				if( empty( $this->cols ) )
-				{	// We did not find any column to order on...
-					return '';
 				}
 			}
 
@@ -1389,7 +1542,7 @@ class Results extends Table
 	 * - #var#
 	 * - {row}
 	 * - %func()%
-	 * - ¤func()¤
+	 * - ~func()~
 	 */
 	function parse_col_content( $content )
 	{
@@ -1410,6 +1563,9 @@ class Results extends Table
 		// Make callback for Object method substitution:
 		$content = preg_replace( '#@ (.+?) @#ix', "'.\$this->current_Obj->$1.'", $content );
 		// Sometimes we need embedded function call, so we provide a second sign:
+		$content = preg_replace( '#~ (.+?) ~#ix', "'.$1.'", $content );
+
+		// @deprecated by ~func()~. Left here for backward compatibility only, to be removed in future versions.
 		$content = preg_replace( '#¤ (.+?) ¤#ix', "'.$1.'", $content );
 
 		// Make callback function move_icons for orderable lists // dh> what does it do?
@@ -1594,6 +1750,14 @@ class Results extends Table
 				//inits the link to next page range
 				return $this->display_next( $this->params['page_url'] );
 
+			case 'page_size' :
+				//inits the list to select page size
+				return $this->display_page_size( $this->params['page_url'] );
+
+			case 'prefix' :
+				//prefix
+				return $this->param_prefix;
+
 			default :
 				return parent::replace_callback( $matches );
 		}
@@ -1694,6 +1858,60 @@ class Results extends Table
 			return '<a href="'.regenerate_url( $this->page_param,$this->page_param.'='.$page_no, $page_url ).'">'
 								.$this->params['list_next_text'].'</a>';
 		}
+	}
+
+
+	/**
+	 * returns a list to select page size
+	 */
+	function display_page_size( $page_url = '' )
+	{
+		// Don't allow to change a page size:
+		if( $this->total_rows <= 10 || // if total number of rows is always less then min page size
+		    empty( $this->param_prefix ) ) // the lists without defined param_prefix
+		{
+			return;
+		}
+
+		$page_size_options = array(
+				'10' => sprintf( T_('%s lines'), '10' ),
+				'20' => sprintf( T_('%s lines'), '20' ),
+				'30' => sprintf( T_('%s lines'), '30' ),
+				'40' => sprintf( T_('%s lines'), '40' ),
+				'50' => sprintf( T_('%s lines'), '50' ),
+				'100' => sprintf( T_('%s lines'), '100' ),
+				'200' => sprintf( T_('%s lines'), '200' ),
+				'500' => sprintf( T_('%s lines'), '500' ),
+			);
+
+		$default_page_size_value = '0';
+		if( is_logged_in() )
+		{	// Get default page size for current user
+			global $UserSettings;
+
+			$default_page_size_value = $UserSettings->get( 'results_per_page' );
+			$default_page_size_option = array( '0' => sprintf( T_('Default (%s lines)'), $default_page_size_value ) );
+			$page_size_options = $default_page_size_option + $page_size_options;
+		}
+
+		$html = '<small>';
+		$html .= T_('Lines per page:');
+
+		$html .= ' <select name="'.$this->limit_param.'" onchange="location.href=\''.regenerate_url( $this->page_param.','.$this->limit_param, $this->limit_param, $page_url ).'=\'+this.value">';
+		foreach( $page_size_options as $value => $name )
+		{
+			$selected = '';
+			if( $this->limit == $value && $value != $default_page_size_value )
+			{
+				$selected = ' selected="selected"';
+			}
+			$html .= '<option value="'.$value.'"'.$selected.'>'.$name.'</option>';
+		}
+		$html .= '</select>';
+
+		$html .= '</small>';
+
+		return $html;
 	}
 
 
@@ -1845,10 +2063,4 @@ function conditional( $condition, $on_true, $on_false = '' )
 	}
 }
 
-
-
-
-/*
- * $Log: _results.class.php,v $
- */
 ?>

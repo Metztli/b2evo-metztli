@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -29,7 +29,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE
  *
- * @version $Id: _blogcache.class.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _blogcache.class.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -187,25 +187,64 @@ class BlogCache extends DataObjectCache
 
 
 	/**
+	 * Load the cache **extensively**
+	 */
+	function load_all( $order_by = '', $order_dir = '' )
+	{
+		global $Settings;
+
+		if( $order_by == '' )
+		{	// Use default value from settings
+			$order_by = $Settings->get('blogs_order_by');
+		}
+
+		if( $order_dir == '' )
+		{	// Use default value from settings
+			$order_dir = $Settings->get('blogs_order_dir');
+		}
+
+		// Save order
+		$saved_order = $this->order_by;
+
+		$this->order_by = gen_order_clause( $order_by, $order_dir, $this->dbprefix, $this->dbIDname );
+
+		parent::load_all();
+
+		// Restore
+		$this->order_by = $saved_order;
+	}
+
+
+	/**
 	 * Load a list of public blogs into the cache
 	 *
 	 * @param string
 	 * @return array of IDs
 	 */
-	function load_public( $order_by = 'ID' )
+	function load_public( $order_by = '', $order_dir = '' )
 	{
-		global $DB, $Debuglog;
+		global $DB, $Settings, $Debuglog;
 
 		$Debuglog->add( "Loading <strong>$this->objtype(public)</strong> into cache", 'dataobjects' );
 
-		$sql = "SELECT *
-		          FROM {$this->dbtablename}
-		         WHERE blog_in_bloglist <> 0
-		         ORDER BY {$this->dbprefix}{$order_by}";
+		if( $order_by == '' )
+		{	// Use default value from settings
+			$order_by = $Settings->get('blogs_order_by');
+		}
 
-		foreach( $DB->get_results( $sql, OBJECT, 'Load public blog list' ) as $row )
-		{
-			// Instantiate a custom object
+		if( $order_dir == '' )
+		{	// Use default value from settings
+			$order_dir = $Settings->get('blogs_order_dir');
+		}
+
+		$SQL = new SQL();
+		$SQL->SELECT( '*' );
+		$SQL->FROM( $this->dbtablename );
+		$SQL->WHERE( 'blog_in_bloglist <> 0' );
+		$SQL->ORDER_BY( gen_order_clause( $order_by, $order_dir, 'blog_', 'blog_ID' ) );
+
+		foreach( $DB->get_results( $SQL->get(), OBJECT, 'Load public blog list' ) as $row )
+		{	// Instantiate a custom object
 			$this->instantiate( $row );
 		}
 
@@ -220,20 +259,30 @@ class BlogCache extends DataObjectCache
 	 * @param string
 	 * @return array of IDs
 	 */
-	function load_owner_blogs( $owner_ID, $order_by = 'ID' )
+	function load_owner_blogs( $owner_ID, $order_by = '', $order_dir = '' )
 	{
-		global $DB, $Debuglog;
+		global $DB, $Settings, $Debuglog;
 
 		$Debuglog->add( "Loading <strong>$this->objtype(owner={$owner_ID})</strong> into cache", 'dataobjects' );
 
-		$sql = "SELECT *
-		          FROM {$this->dbtablename}
-		         WHERE blog_owner_user_ID = {$owner_ID}
-		         ORDER BY {$this->dbprefix}{$order_by}";
+		if( $order_by == '' )
+		{	// Use default value from settings
+			$order_by = $Settings->get('blogs_order_by');
+		}
 
-		foreach( $DB->get_results( $sql, OBJECT, 'Load owner blog list' ) as $row )
-		{
-			// Instantiate a custom object
+		if( $order_dir == '' )
+		{	// Use default value from settings
+			$order_dir = $Settings->get('blogs_order_dir');
+		}
+
+		$SQL = new SQL();
+		$SQL->SELECT( '*' );
+		$SQL->FROM( $this->dbtablename );
+		$SQL->WHERE( 'blog_owner_user_ID = '.$DB->quote($owner_ID) );
+		$SQL->ORDER_BY( gen_order_clause( $order_by, $order_dir, 'blog_', 'blog_ID' ) );
+
+		foreach( $DB->get_results( $SQL->get(), OBJECT, 'Load owner blog list' ) as $row )
+		{	// Instantiate a custom object
 			$this->instantiate( $row );
 		}
 
@@ -249,11 +298,21 @@ class BlogCache extends DataObjectCache
 	 * @param integer user ID
 	 * @return array The blog IDs
 	 */
-	function load_user_blogs( $permname = 'blog_ismember', $permlevel = 'view', $user_ID = NULL, $order_by = 'ID', $limit = NULL )
+	function load_user_blogs( $permname = 'blog_ismember', $permlevel = 'view', $user_ID = NULL, $order_by = '', $order_dir = '', $limit = NULL )
 	{
-		global $DB, $Debuglog;
+		global $DB, $Settings, $Debuglog;
 
 		$Debuglog->add( "Loading <strong>$this->objtype(permission: $permname)</strong> into cache", 'dataobjects' );
+
+		if( $order_by == '' )
+		{	// Use default value from settings
+			$order_by = $Settings->get('blogs_order_by');
+		}
+
+		if( $order_dir == '' )
+		{	// Use default value from settings
+			$order_dir = $Settings->get('blogs_order_dir');
+		}
 
 		if( is_null($user_ID) )
 		{
@@ -272,7 +331,7 @@ class BlogCache extends DataObjectCache
 		// First check if we have a global access perm:
  		if( $Group->check_perm( 'blogs', $permlevel ) )
 		{ // If group grants a global permission:
-			$this->load_all();
+			$this->load_all( $order_by, $order_dir );
 			return $this->get_ID_array();
 		}
 
@@ -305,13 +364,9 @@ class BlogCache extends DataObjectCache
 				break;
 
 			case 'blog_comments':
-				// user needs to have permission for at least one kind of comments (published, draft, deprecated)
-				$sql .= "OR bloguser_perm_draft_cmts <> 0
-						OR bloguser_perm_publ_cmts <> 0
-						OR bloguser_perm_depr_cmts <> 0
-						OR bloggroup_perm_draft_cmts <> 0
-						OR bloggroup_perm_publ_cmts <> 0
-						OR bloggroup_perm_depr_cmts <> 0";
+				// user needs to have permission for at least one kind of comments
+				$sql .= "OR bloguser_perm_cmtstatuses <> ''
+						OR bloggroup_perm_cmtstatuses <> ''";
 				break;
 
 			case 'stats':
@@ -329,7 +384,7 @@ class BlogCache extends DataObjectCache
 				debug_die( 'BlogCache::load_user_blogs() : Unsupported perm ['.$permname.']!' );
 		}
 
-		$sql .= " ORDER BY {$this->dbprefix}{$order_by}";
+		$sql .= " ORDER BY ".gen_order_clause( $order_by, $order_dir, $this->dbprefix, $this->dbIDname );
 
 		if( $limit )
 		{
@@ -353,6 +408,8 @@ class BlogCache extends DataObjectCache
 	 *
 	 * @param integer selected ID
 	 * @param boolean provide a choice for "none" with ID 0
+	 * @param string Callback method name
+	 * @return string HTML tags <option>
 	 */
 	function get_option_list( $default = 0, $allow_none = false, $method = 'get_name' )
 	{
@@ -361,10 +418,39 @@ class BlogCache extends DataObjectCache
 
 		return parent::get_option_list( $default, $allow_none, $method );
 	}
+
+
+	/**
+	 * Returns form option list with cache contents
+	 *
+	 * Loads the blogs with forums type!
+	 *
+	 * @param integer selected ID
+	 * @param boolean provide a choice for "none" with ID 0
+	 * @param string Callback method name
+	 * @return string HTML tags <option>
+	 */
+	function get_option_list_forums( $default = 0, $allow_none = false, $method = 'get_name' )
+	{
+		// Load only blogs with type 'forum'
+		$this->load_where( 'blog_type = "forum"' );
+
+		return parent::get_option_list( $default, $allow_none, $method );
+	}
+
+
+	/**
+	 * Returns form option list with cache contents
+	 *
+	 * @param integer selected ID
+	 * @param boolean provide a choice for "none" with ID 0
+	 * @param string Callback method name
+	 * @return string HTML tags <option>
+	 */
+	function get_option_list_parent( $default = 0, $allow_none = false, $method = 'get_name' )
+	{
+		return parent::get_option_list( $default, $allow_none, $method );
+	}
 }
 
-
-/*
- * $Log: _blogcache.class.php,v $
- */
 ?>

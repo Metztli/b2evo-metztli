@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -24,15 +24,16 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: cronjobs.ctrl.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: cronjobs.ctrl.php 3462 2013-04-12 04:37:35Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
+load_funcs( 'cron/_cron.funcs.php' );
 
 // Check minimum permission:
 $current_User->check_perm( 'options', 'view', true );
 
-$AdminUI->set_path( 'tools', 'cron' );
+$AdminUI->set_path( 'options', 'cron' );
 
 param( 'action', 'string', 'list' );
 
@@ -42,9 +43,21 @@ param( 'ctst_started', 'integer', 0, true );
 param( 'ctst_timeout', 'integer', 0, true );
 param( 'ctst_error', 'integer', 0, true );
 param( 'ctst_finished', 'integer', 0, true );
-param( 'results_crontab_order', 'string', '-A', true );
+param( 'results_crontab_order', 'string', '-D', true );
 param( 'results_crontab_page', 'integer', 1, true );
 
+
+if( param( 'ctsk_ID', 'integer', '', true) )
+{// Load cronjob from cache:
+	$CronjobCache = & get_CronjobCache();
+	if( ( $edited_Cronjob = & $CronjobCache->get_by_ID( $ctsk_ID, false ) ) === false )
+	{
+		unset( $edited_Cronjob );
+		forget_param( 'ctsk_ID' );
+		$Messages->add( sprintf( T_('Requested &laquo;%s&raquo; object does not exist any longer.'), T_('Scheduled job') ), 'error' );
+		$action = 'list';
+	}
+}
 
 // fp> The if  below was the point where THE LINE WAS CROSSED!
 // This is bloated here. This has to go into the action handling block (and maybe a function)
@@ -52,15 +65,23 @@ param( 'results_crontab_page', 'integer', 1, true );
 // dh> ok. Moved the other param inits above. Ok? I don't think it should be an extra function..
 
 // Init names and params for "static" available jobs and ask Plugins about their jobs:
-if( $action == 'new' || $action == 'create' )
+if( in_array( $action, array( 'new', 'create', 'edit', 'update', 'copy' ) ) )
 {
 	// NOTE: keys starting with "plugin_" are reserved for jobs provided by Plugins
 	$cron_job_names = array(
 			'test' => T_('Basic test job'),
 			'error' => T_('Error test job'),
 			'anstispam_poll' => T_('Poll the antispam blacklist'),
-			'prune_hits_sessions' => T_('Prune old hits & sessions'),
+			'prune_hits_sessions' => T_('Prune old hits & sessions (includes OPTIMIZE)'),
 			'prune_page_cache' => T_('Prune old files from page cache'),
+			'post_by_email' => T_('Create posts by email'),
+			'process_hitlog' => T_('Process hit log'),
+			'unread_message_reminder' => T_( 'Send reminders about unread messages' ),
+			'activate_account_reminder' => T_( 'Send reminders about not activated accounts' ),
+			'comment_moderation_reminder' => T_( 'Send reminders about comments awaiting moderation' ),
+			'return_path' => T_('Process the return path inbox'),
+			'light_db_maintenance' => T_('Light DB maintenance (ANALYZE)'),
+			'heavy_db_maintenance' => T_('Heavy DB maintenance (CHECK & OPTIMIZE)'),
 			// post notifications, not user schedulable
 		);
 	$cron_job_params = array(
@@ -78,6 +99,30 @@ if( $action == 'new' || $action == 'create' )
 				'params' => NULL ),
 			'prune_page_cache' => array(
 				'ctrl' => 'cron/jobs/_prune_page_cache.job.php',
+				'params' => NULL ),
+			'post_by_email' => array(
+				'ctrl' => 'cron/jobs/_post_by_email.job.php',
+				'params' => NULL ),
+			'process_hitlog' => array(
+				'ctrl' => 'cron/jobs/_process_hitlog.job.php',
+				'params' => NULL ),
+			'unread_message_reminder' => array(
+				'ctrl' => 'cron/jobs/_unread_message_reminder.job.php',
+				'params' => NULL ),
+			'activate_account_reminder' => array(
+				'ctrl' => 'cron/jobs/_activate_account_reminder.job.php',
+				'params' => NULL ),
+			'comment_moderation_reminder' => array(
+				'ctrl' => 'cron/jobs/_comment_moderation_reminder.job.php',
+				'params' => NULL ),
+			'return_path' => array(
+				'ctrl' => 'cron/jobs/_decode_returned_emails.job.php',
+				'params' => NULL ),
+			'light_db_maintenance' => array(
+				'ctrl' => 'cron/jobs/_light_db_maintenance.job.php',
+				'params' => NULL ),
+			'heavy_db_maintenance' => array(
+				'ctrl' => 'cron/jobs/_heavy_db_maintenance.job.php',
 				'params' => NULL ),
 			// post notifications, not user schedulable
 		);
@@ -124,57 +169,91 @@ switch( $action )
 	case 'new':
 		// Check that we have permission to edit options:
 		$current_User->check_perm( 'options', 'edit', true, NULL );
+
+		load_class( 'cron/model/_cronjob.class.php', 'Cronjob' );
+		$edited_Cronjob = new Cronjob();
+		break;
+
+	case 'edit':
+	case 'copy':
+		// Check that we have permission to edit options:
+		$current_User->check_perm( 'options', 'edit', true, NULL );
+
+		if( ( $action == 'edit' && $edited_Cronjob->get_status() != 'pending' ) ||
+		    ( $action == 'copy' && $edited_Cronjob->get_status() != 'error' ) )
+		{	// Don't edit cron jobs with not "pending" status
+			header_redirect( '?ctrl=crontab', 303 ); // Will EXIT
+			// We have EXITed already at this point!!
+		}
+
+		if( $action == 'copy' )
+		{	// Reset time to now for copied cron job
+			global $localtimenow;
+			$edited_Cronjob->start_timestamp = $localtimenow;
+		}
+
 		break;
 
 	case 'create':
 		// Check that this action request is not a CSRF hacked request:
 		$Session->assert_received_crumb( 'crontask' );
-		
+
 		// Check that we have permission to edit options:
 		$current_User->check_perm( 'options', 'edit', true, NULL );
+
+		if( !empty( $edited_Cronjob ) )
+		{	// It is a copy action, we should save the fields "controller" & "params"
+			$ctsk_controller = $edited_Cronjob->get( 'controller' );
+			$ctsk_params = $edited_Cronjob->get( 'params' );
+		}
 
 		// CREATE OBJECT:
 		load_class( '/cron/model/_cronjob.class.php', 'Cronjob' );
 		$edited_Cronjob = new Cronjob();
 
-		$cjob_type = param( 'cjob_type', 'string', true );
-		if( !isset( $cron_job_params[$cjob_type] ) )
-		{
-			param_error( 'cjob_type', T_('Invalid job type') );
-		}
+		if( $edited_Cronjob->load_from_Request( $cron_job_names, $cron_job_params ) )
+		{	// We could load data from form without errors:
 
-		// start datetime:
-		param_date( 'cjob_date', T_('Please enter a valid date.'), true );
-		param_time( 'cjob_time' );
-		$edited_Cronjob->set( 'start_datetime', form_date( get_param( 'cjob_date' ), get_param( 'cjob_time' ) ) );
+			if( !empty( $ctsk_controller ) )
+			{	// Save controller field from copied object
+				$edited_Cronjob->set( 'controller', $ctsk_controller );
+			}
 
-		// repeat after:
-		$cjob_repeat_after = param_duration( 'cjob_repeat_after' );
-
-		if( $cjob_repeat_after == 0 )
-		{
-			$cjob_repeat_after = NULL;
-		}
-		$edited_Cronjob->set( 'repeat_after', $cjob_repeat_after );
-
-		// name:
-		$edited_Cronjob->set( 'name', $cron_job_names[$cjob_type] );
-
-		// controller:
-		$edited_Cronjob->set( 'controller', $cron_job_params[$cjob_type]['ctrl'] );
-
-		// params:
-		$edited_Cronjob->set( 'params', $cron_job_params[$cjob_type]['params'] );
-
-		if( ! param_errors_detected() )
-		{	// No errors
+			if( !empty( $ctsk_params ) )
+			{	// Save params field from copied object
+				$edited_Cronjob->set( 'params', $ctsk_params );
+			}
 
 			// Save to DB:
 			$edited_Cronjob->dbinsert();
 
 			$Messages->add( T_('New job has been scheduled.'), 'success' );
 
-			$action = 'list';
+			// Redirect so that a reload doesn't write to the DB twice:
+			header_redirect( '?ctrl=crontab', 303 ); // Will EXIT
+			// We have EXITed already at this point!!
+		}
+		break;
+
+	case 'update':
+		// Check that this action request is not a CSRF hacked request:
+		$Session->assert_received_crumb( 'crontask' );
+
+		// Check that we have permission to edit options:
+		$current_User->check_perm( 'options', 'edit', true, NULL );
+
+		if( $edited_Cronjob->load_from_Request( $cron_job_names, $cron_job_params ) )
+		{	// We could load data from form without errors:
+
+			if( $edited_Cronjob->dbupdate() )
+			{	// The job was updated successfully
+				$Messages->add( T_('The scheduled job has been updated.'), 'success' );
+			}
+			else
+			{	// Errors on updating, probably this job has not "pending" status
+				$Messages->add( T_('This scheduled job can not be updated.'), 'error' );
+			}
+
 			// Redirect so that a reload doesn't write to the DB twice:
 			header_redirect( '?ctrl=crontab', 303 ); // Will EXIT
 			// We have EXITed already at this point!!
@@ -185,7 +264,7 @@ switch( $action )
 	case 'delete':
 		// Check that this action request is not a CSRF hacked request:
 		$Session->assert_received_crumb( 'crontask' );
-		
+
 		// Make sure we got an ord_ID:
 		param( 'ctsk_ID', 'integer', true );
 
@@ -225,7 +304,7 @@ switch( $action )
 		//forget_param( 'ctsk_ID' );
 		//$action = 'list';
 		// Redirect so that a reload doesn't write to the DB twice:
-		header_redirect( '?ctrl=crontab', 303 ); // Will EXIT
+		header_redirect( regenerate_url( 'action,ctsk_ID', '', '', '&' ), 303 ); // Will EXIT
 		// We have EXITed already at this point!!
 		break;
 
@@ -246,21 +325,17 @@ switch( $action )
 
 	case 'list':
 		// Detect timed out tasks:
-		$sql = " UPDATE T_cron__log
-								SET clog_status = 'timeout'
-							WHERE clog_status = 'started'
-										AND clog_realstart_datetime < ".$DB->quote( date2mysql( time() + $time_difference - $cron_timeout_delay ) );
-		$DB->query( $sql, 'Detect cron timeouts.' );
+		detect_timeout_cron_jobs();
 
 		break;
 }
 
 
 $AdminUI->breadcrumbpath_init( false );  // fp> I'm playing with the idea of keeping the current blog in the path here...
-$AdminUI->breadcrumbpath_add( T_('Tools'), '?ctrl=crontab' );
+$AdminUI->breadcrumbpath_add( T_('System'), '?ctrl=system' );
 $AdminUI->breadcrumbpath_add( T_('Scheduler'), '?ctrl=crontab' );
 
-if( ( $action == 'new' ) || ( $action == 'create' ) )
+if( in_array( $action, array( 'new', 'create', 'edit', 'update', 'copy' ) ) )
 { // load date picker style for cronjob.form.php
 	require_css( 'ui.datepicker.css' );
 }
@@ -278,6 +353,9 @@ switch( $action )
 {
 	case 'new':
 	case 'create':
+	case 'edit':
+	case 'update':
+	case 'copy':
 		// Display VIEW:
 		$AdminUI->disp_view( 'cron/views/_cronjob.form.php' );
 		break;
@@ -298,7 +376,4 @@ $AdminUI->disp_payload_end();
 // Display body bottom, debug info and close </html>:
 $AdminUI->disp_global_footer();
 
-/*
- * $Log: cronjobs.ctrl.php,v $
- */
 ?>

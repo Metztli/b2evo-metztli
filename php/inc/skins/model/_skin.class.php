@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
  * {@internal License choice
@@ -22,7 +22,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _skin.class.php 1477 2012-06-20 20:14:50Z sam2kb $
+ * @version $Id: _skin.class.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -66,7 +66,10 @@ class Skin extends DataObject
 		parent::DataObject( 'T_skins__skin', 'skin_', 'skin_ID' );
 
 		$this->delete_restrictions = array(
-				array( 'table'=>'T_blogs', 'fk'=>'blog_skin_ID', 'msg'=>T_('%d blogs using this skin') ),
+				array( 'table'=>'T_coll_settings', 'fk'=>'cset_value', 'msg'=>T_('%d blogs using this skin'), 
+						'and_condition' => '( cset_name = "normal_skin_ID" OR cset_name = "mobile_skin_ID" OR cset_name = "tablet_skin_ID" )' ),
+				array( 'table'=>'T_settings', 'fk'=>'set_value', 'msg'=>T_('This skin is set as default skin.'), 
+						'and_condition' => '( set_name = "def_normal_skin_ID" OR set_name = "def_mobile_skin_ID" OR set_name = "def_tablet_skin_ID" )' ),
 			);
 
 		$this->delete_cascades = array(
@@ -89,7 +92,7 @@ class Skin extends DataObject
 	}
 
 
-  /**
+	/**
 	 * Install current skin to DB
 	 */
 	function install()
@@ -102,7 +105,7 @@ class Skin extends DataObject
 	}
 
 
-  /**
+	/**
 	 * Get default name for the skin.
 	 * Note: the admin can customize it.
 	 */
@@ -112,7 +115,7 @@ class Skin extends DataObject
 	}
 
 
-  /**
+	/**
 	 * Get default type for the skin.
 	 */
 	function get_default_type()
@@ -159,6 +162,13 @@ class Skin extends DataObject
 		// Loop through all widget params:
 		foreach( $this->get_param_definitions( array('for_editing'=>true) ) as $parname => $parmeta )
 		{
+			if( isset( $parmeta['type'] ) && $parmeta['type'] == 'color' && empty( $parmeta['valid_pattern'] ) )
+			{ // Set default validation for color fields
+				$parmeta['valid_pattern'] = array(
+						'pattern' => '~^(#([a-f0-9]{3}){1,2})?$~i',
+						'error'   => T_('Invalid color code.')
+					);
+			}
 			autoform_set_param_from_request( $parname, $parmeta, $this, 'Skin' );
 		}
 	}
@@ -215,7 +225,7 @@ class Skin extends DataObject
 
 		if( false )
 		{	// DEBUG:
-			echo '<img src="'.$rsc_url.'/img/blank.gif" alt="" class="clear" />';
+			echo get_icon( 'pixel', 'imgtag', array( 'class' => 'clear' ) );
 			echo '</div>';
 		}
 
@@ -224,7 +234,7 @@ class Skin extends DataObject
 
 
 	/**
-	 * Discover containers included in skin file
+	 * Discover containers included in skin files
 	 */
 	function discover_containers()
 	{
@@ -244,7 +254,7 @@ class Skin extends DataObject
 			$rf_main_subpath = $this->folder.'/'.$file;
 			$af_main_path = $skins_path.$rf_main_subpath;
 
-			if( !is_file( $af_main_path ) || ! preg_match( '¤\.php$¤', $file ) )
+			if( !is_file( $af_main_path ) || ! preg_match( '~\.php$~', $file ) )
 			{ // Not a php template file, go to next:
 				continue;
 			}
@@ -308,12 +318,15 @@ class Skin extends DataObject
 		return true;
 	}
 
+
 	/**
+	 * Get the list of containers that have been previously discovered for this skin.
+	 *
 	 * @return array
 	 */
 	function get_containers()
 	{
-    /**
+		/**
 		 * @var DB
 		 */
 		global $DB;
@@ -328,6 +341,7 @@ class Skin extends DataObject
 
 		return $this->container_list;
 	}
+
 
 	/**
 	 * Update the DB based on previously recorded changes
@@ -384,9 +398,9 @@ class Skin extends DataObject
 
 		// Get a list of all currently empty containers:
 		$sql = 'SELECT sco_name
-						FROM T_skins__container LEFT JOIN T_widget ON ( sco_name = wi_sco_name )
-						WHERE sco_skin_ID = '.$this->ID.'
-						GROUP BY sco_name
+						  FROM T_skins__container LEFT JOIN T_widget ON ( sco_name = wi_sco_name )
+						 WHERE sco_skin_ID = '.$this->ID.'
+						 GROUP BY sco_name
 						HAVING COUNT(wi_ID) = 0';
 		$empty_containers_list = $DB->get_col( $sql, 0, 'Get empty containers' );
 		//pre_dump( $empty_containers_list );
@@ -426,24 +440,34 @@ class Skin extends DataObject
 	 *
 	 * @static
 	 */
-	function disp_skinshot( $skin_folder, $skin_name, $function = NULL, $selected = false, $select_url = NULL, $function_url = NULL )
+	function disp_skinshot( $skin_folder, $skin_name, $disp_params = array() )
 	{
 		global $skins_path, $skins_url;
 
-		if( !empty($select_url) )
+		$disp_params = array_merge( array(
+				'selected'       => false,
+				'skinshot_class' => 'skinshot',
+			), $disp_params );
+
+		if( isset( $disp_params[ 'select_url' ] ) )
 		{
-			$select_a_begin = '<a href="'.$select_url.'" title="'.T_('Select this skin!').'">';
+			$select_a_begin = '<a href="'.$disp_params[ 'select_url' ].'" title="'.T_('Select this skin!').'">';
+			$select_a_end = '</a>';
+		}
+		elseif( isset( $disp_params[ 'function_url' ] ) )
+		{
+			$select_a_begin = '<a href="'.$disp_params[ 'function_url' ].'" title="'.T_('Install NOW!').'">';
 			$select_a_end = '</a>';
 		}
 		else
 		{
-			$select_a_begin = '<a href="'.$function_url.'" title="'.T_('Install NOW!').'">';
-			$select_a_end = '</a>';
+			$select_a_begin = '';
+			$select_a_end = '';
 		}
 
-		echo '<div class="skinshot">';
+		echo '<div class="'.$disp_params[ 'skinshot_class' ].'">';
 		echo '<div class="skinshot_placeholder';
-		if( $selected )
+		if( $disp_params[ 'selected' ] )
 		{
 			echo ' current';
 		}
@@ -473,18 +497,18 @@ class Skin extends DataObject
 		}
 		echo '</div>';
 		echo '<div class="legend">';
-		if( !empty( $function) )
+		if( isset( $disp_params[ 'function' ] ) && isset( $disp_params[ 'function_url' ] ) )
 		{
 			echo '<div class="actions">';
-			switch( $function )
+			switch( $disp_params[ 'function' ] )
 			{
 				case 'install':
-					echo '<a href="'.$function_url.'" title="'.T_('Install NOW!').'">';
+					echo '<a href="'.$disp_params[ 'function_url' ].'" title="'.T_('Install NOW!').'">';
 					echo T_('Install NOW!').'</a>';
 					break;
 
 				case 'select':
-					echo '<a href="'.$function_url.'" target="_blank" title="'.T_('Preview blog with this skin in a new window').'">';
+					echo '<a href="'.$disp_params[ 'function_url' ].'" target="_blank" title="'.T_('Preview blog with this skin in a new window').'">';
 					echo T_('Preview').'</a>';
 					break;
 			}
@@ -496,12 +520,11 @@ class Skin extends DataObject
 	}
 
 
-
 	/**
-   * Get definitions for editable params
-   *
-   * @todo this is destined to be overridden by derived Skin classes
-   *
+	 * Get definitions for editable params
+	 *
+	 * @todo this is destined to be overridden by derived Skin classes
+	 *
 	 * @see Plugin::GetDefaultSettings()
 	 * @param local params like 'for_editing' => true
 	 */
@@ -541,6 +564,21 @@ class Skin extends DataObject
 			return $params[$parname]['defaultvalue'] ;
 		}
 
+		return NULL;
+	}
+
+
+	/**
+	 * Get current skin post navigation setting.
+	 * Possible values:
+	 *    - NULL - In this case the Blog post navigation setting will be used
+	 *    - 'same_category' - to always navigate through the same category in this skin
+	 *    - 'same_author' - to always navigate through the same authors in this skin
+	 * 
+	 * Set this to not NULL only if the same post navigation should be used in every Blog where this skin is used
+	 */
+	function get_post_navigation()
+	{
 		return NULL;
 	}
 
@@ -666,10 +704,130 @@ class Skin extends DataObject
 	}
 
 
+	/**
+	 * Those templates are used for example by the messaging screens.
+	 */
+	function get_template( $name )
+	{
+		switch( $name )
+		{
+			case 'Results':
+				// Results list:
+				return array(
+					'page_url' => '', // All generated links will refer to the current page
+					'before' => '<div class="results">',
+					'content_start' => '<div id="$prefix$ajax_content">',
+					'header_start' => '<div class="results_nav">',
+						'header_text' => '<strong>'.T_('Pages').'</strong>: $prev$ $first$ $list_prev$ $list$ $list_next$ $last$ $next$',
+						'header_text_single' => '',
+					'header_end' => '</div>',
+					'head_title' => '<div class="title"><span style="float:right">$global_icons$</span>$title$</div>'
+							            ."\n",
+					'filters_start' => '<div class="filters">',
+					'filters_end' => '</div>',
+					'list_start' => '<div class="table_scroll">'."\n"
+					               .'<table class="grouped" cellspacing="0">'."\n",
+						'head_start' => '<thead>'."\n",
+							'line_start_head' => '<tr>',  // TODO: fusionner avec colhead_start_first; mettre a jour admin_UI_general; utiliser colspan="$headspan$"
+							'colhead_start' => '<th $class_attrib$ $title_attrib$>',
+							'colhead_start_first' => '<th class="firstcol $class$" $title_attrib$>',
+							'colhead_start_last' => '<th class="lastcol $class$" $title_attrib$>',
+							'colhead_end' => "</th>\n",
+							'sort_asc_off' => get_icon( 'sort_asc_off' ),
+							'sort_asc_on' => get_icon( 'sort_asc_on' ),
+							'sort_desc_off' => get_icon( 'sort_desc_off' ),
+							'sort_desc_on' => get_icon( 'sort_desc_on' ),
+							'basic_sort_off' => '',
+							'basic_sort_asc' => get_icon( 'ascending' ),
+							'basic_sort_desc' => get_icon( 'descending' ),
+						'head_end' => "</thead>\n\n",
+						'tfoot_start' => "<tfoot>\n",
+						'tfoot_end' => "</tfoot>\n\n",
+						'body_start' => "<tbody>\n",
+							'line_start' => '<tr class="even">'."\n",
+							'line_start_odd' => '<tr class="odd">'."\n",
+							'line_start_last' => '<tr class="even lastline">'."\n",
+							'line_start_odd_last' => '<tr class="odd lastline">'."\n",
+								'col_start' => '<td $class_attrib$>',
+								'col_start_first' => '<td class="firstcol $class$">',
+								'col_start_last' => '<td class="lastcol $class$">',
+								'col_end' => "</td>\n",
+							'line_end' => "</tr>\n\n",
+							'grp_line_start' => '<tr class="group">'."\n",
+							'grp_line_start_odd' => '<tr class="odd">'."\n",
+							'grp_line_start_last' => '<tr class="lastline">'."\n",
+							'grp_line_start_odd_last' => '<tr class="odd lastline">'."\n",
+										'grp_col_start' => '<td $class_attrib$ $colspan_attrib$>',
+										'grp_col_start_first' => '<td class="firstcol $class$" $colspan_attrib$>',
+										'grp_col_start_last' => '<td class="lastcol $class$" $colspan_attrib$>',
+								'grp_col_end' => "</td>\n",
+							'grp_line_end' => "</tr>\n\n",
+						'body_end' => "</tbody>\n\n",
+						'total_line_start' => '<tr class="total">'."\n",
+							'total_col_start' => '<td $class_attrib$>',
+							'total_col_start_first' => '<td class="firstcol $class$">',
+							'total_col_start_last' => '<td class="lastcol $class$">',
+							'total_col_end' => "</td>\n",
+						'total_line_end' => "</tr>\n\n",
+					'list_end' => "</table></div>\n\n",
+					'footer_start' => '<div class="results_nav nav_footer">',
+					'footer_text' => '<strong>'.T_('Pages').'</strong>: $prev$ $first$ $list_prev$ $list$ $list_next$ $last$ $next$'
+					                  /* T_('Page $scroll_list$ out of $total_pages$   $prev$ | $next$<br />'. */
+					                  /* '<strong>$total_pages$ Pages</strong> : $prev$ $list$ $next$' */
+					                  /* .' <br />$first$  $list_prev$  $list$  $list_next$  $last$ :: $prev$ | $next$') */,
+					'footer_text_single' => '',
+					'footer_text_no_limit' => '', // Text if theres no LIMIT and therefor only one page anyway
+						'prev_text' => T_('Previous'),
+						'next_text' => T_('Next'),
+						'no_prev_text' => '',
+						'no_next_text' => '',
+						'list_prev_text' => T_('...'),
+						'list_next_text' => T_('...'),
+						'list_span' => 11,
+						'scroll_list_range' => 5,
+					'footer_end' => "</div>\n\n",
+					'no_results_start' => '<table class="grouped" cellspacing="0">'."\n",
+					'no_results_end'   => '<tr class="lastline"><td class="firstcol lastcol">$no_results$</td></tr>'
+					                      .'</table>'."\n\n",
+				'content_end' => '</div>',
+				'after' => '</div>',
+				'sort_type' => 'basic'
+				);
+
+			case 'messages':
+				return array(
+					'show_only_date' => true,
+					'show_columns' => 'login',
+				);
+
+			case 'blockspan_form':
+				// blockspan Form settings:
+				return array(
+					'layout' => 'blockspan',		// Temporary dirty hack
+					'formstart' => '',
+					'title_fmt' => '$title$'."\n", // TODO: icons
+					'no_title_fmt' => '',          //           "
+					'fieldset_begin' => '<fieldset $fieldset_attribs$>'."\n"
+															.'<legend $title_attribs$>$fieldset_title$</legend>'."\n",
+					'fieldset_end' => '</fieldset>'."\n",
+					'fieldstart' => '<span class="block" $ID$>',
+					'labelstart' => '',
+					'labelend' => "\n",
+					'labelempty' => '',
+					'inputstart' => '',
+					'infostart' => '',
+					'inputend' => "\n",
+					'fieldend' => '</span>'.get_icon( 'pixel' )."\n",
+					'buttonsstart' => '',
+					'buttonsend' => "\n",
+					'customstart' => '',
+					'customend' => "\n",
+					'formend' => '',
+				);
+		}
+
+		return array();
+	}
 }
 
-
-/*
- * $Log: _skin.class.php,v $
- */
 ?>

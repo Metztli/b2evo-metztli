@@ -5,27 +5,28 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
  *
  * @package admin
  *
- * @version $Id: _skin_list.view.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _skin_list.view.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
 // Create result set:
 $SQL = new SQL();
-$SQL->SELECT( 'T_skins__skin.*, COUNT(blog_ID) AS nb_blogs' );
-$SQL->FROM( 'T_skins__skin LEFT JOIN T_blogs ON skin_ID = blog_skin_ID' );
+$SQL->SELECT( 'T_skins__skin.*, COUNT( DISTINCT( cset_coll_ID ) ) AS nb_blogs' );
+$SQL->FROM( 'T_skins__skin LEFT JOIN T_coll_settings ON skin_ID = cset_value AND
+			( cset_name = "normal_skin_ID" OR cset_name = "mobile_skin_ID" OR cset_name = "tablet_skin_ID" )' );
 $SQL->GROUP_BY( 'skin_ID' );
 
 $CountSQL = new SQL();
 $CountSQL->SELECT( 'COUNT( * )' );
 $CountSQL->FROM( 'T_skins__skin' );
 
-$Results = new Results( $SQL->get(), '', '', NULL, $CountSQL->get() );
+$Results = new Results( $SQL->get(), 'skin_', '', NULL, $CountSQL->get() );
 
 $Results->Cache = & get_SkinCache();
 
@@ -60,7 +61,7 @@ $Results->cols[] = array(
 						'order' => 'nb_blogs',
 						'th_class' => 'shrinkwrap',
 						'td_class' => 'center',
-						'td' => '¤conditional( (#nb_blogs# > 0), #nb_blogs#, \'&nbsp;\' )¤',
+						'td' => '~conditional( (#nb_blogs# > 0), #nb_blogs#, \'&nbsp;\' )~',
 					);
 
 $Results->cols[] = array(
@@ -79,10 +80,10 @@ if( $current_User->check_perm( 'options', 'edit', false ) )
 	                        '%regenerate_url( \'\', \'skin_ID=$skin_ID$&amp;action=edit\')%' )
 	                    .action_icon( TS_('Reload containers!'), 'reload',
 	                        '%regenerate_url( \'\', \'skin_ID=$skin_ID$&amp;action=reload&amp;'.url_crumb('skin').'\')%' )
-											.'¤conditional( #nb_blogs# < 1, \''
+											.'~conditional( #nb_blogs# < 1, \''
 											.action_icon( TS_('Uninstall this skin!'), 'delete',
 	                        '%regenerate_url( \'\', \'skin_ID=$skin_ID$&amp;action=delete&amp;'.url_crumb('skin').'\')%' ).'\', \''
-	                        .get_icon( 'delete', 'noimg' ).'\' )¤',
+	                        .get_icon( 'delete', 'noimg' ).'\' )~',
 						);
 
   $Results->global_icon( T_('Install new skin...'), 'new', regenerate_url( 'action,blog', 'action=new'), T_('Install new'), 3, 4  );
@@ -94,8 +95,4 @@ $fadeout_array = NULL;
 
 $Results->display( NULL, 'session' );
 
-
-/*
- * $Log: _skin_list.view.php,v $
- */
 ?>

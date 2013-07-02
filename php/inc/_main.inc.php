@@ -8,7 +8,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
@@ -33,13 +33,7 @@
  *
  * @package evocore
  *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE
- * @author blueyed: Daniel HAHLER
- * @author mfollett: Matt FOLLETT
- * @author mbruneau: Marc BRUNEAU / PROGIDISTRI
- *
- * @version $Id: _main.inc.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _main.inc.php 3768 2013-05-22 06:14:32Z yura $
  */
 if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page directly.' );
 
@@ -61,23 +55,24 @@ if( defined( 'EVO_MAIN_INIT' ) )
 define( 'EVO_MAIN_INIT', true );
 
 
-// Initialize the most basic stuff
+// == 1. Initialize the most basic stuff: ==
 require dirname(__FILE__).'/_init_base.inc.php';
 
 
 if( $use_db )
 {
-	// Initialize DB connection
+	// == 2. Initialize DB connection: ==
 	require dirname(__FILE__).'/_init_db.inc.php';
 
 
+	// == 3. Initialize Modules: ==
 	// Let the modules load/register what they need:
 	$Timer->resume('init modules');
 	modules_call_method( 'init' );
 	$Timer->pause( 'init modules' );
 
 
-	// Initialize Plugins
+	// == 4. Initialize Plugins: ==
 	// At this point, the first hook is "SessionLoaded"
 	// The dnsbl_antispam plugin is an example that uses this to check the user's IP against a list of DNS blacklists.
 	load_class( 'plugins/model/_plugins.class.php', 'Plugins' );
@@ -86,24 +81,37 @@ if( $use_db )
 	 */
 	$Plugins = new Plugins();
 
+	// This is the earliest event you can use
+	$Plugins->trigger_event( 'AfterPluginsInit' );
 
-	// Initialize WWW HIT
+	// == 5. Initialize WWW HIT: ==
 	if( ! $is_cli )
 	{
 		require dirname(__FILE__).'/_init_hit.inc.php';
 	}
+
+	$Plugins->trigger_event( 'AfterMainInit' );
 }
 
-// Load hacks file if it exists (DEPRECATED):
-if( $use_hacks && file_exists($conf_path.'hacks.php') )
-{
-	$Timer->resume( 'hacks.php' );
-	include_once $conf_path.'hacks.php';
-	$Timer->pause( 'hacks.php' );
-}
+// == 6. Initialize Additional Variables: ==
+
+// fp> TODO: the following was in _vars.inc -- temporaily here, b2evolution stuff needs to move out of evoCORE.
+// dummy var for backward compatibility with versions < 2.4.1 -- prevents "Undefined variable"
+$credit_links = array();
+$francois_links = array( 'fr' => array( 'http://fplanque.net/', array( array( 78, 'Fran&ccedil;ois'),  array( 100, 'Francois') ) ),
+													'' => array( 'http://fplanque.com/', array( array( 78, 'Fran&ccedil;ois'),  array( 100, 'Francois') ) )
+												);
+$fplanque_links = array( 'fr' => array( 'http://fplanque.net/', array( array( 78, 'Fran&ccedil;ois Planque'),  array( 100, 'Francois Planque') ) ),
+													'' => array( 'http://fplanque.com/', array( array( 78, 'Fran&ccedil;ois Planque'),  array( 100, 'Francois Planque') ) )
+												);
+$skin_links = array( '' => array( 'http://skinfaktory.com/', array( array( 15, 'b2evo skin'), array( 20, 'b2evo skins'), array( 35, 'b2evolution skin'), array( 40, 'b2evolution skins'), array( 55, 'Blog skin'), array( 60, 'Blog skins'), array( 75, 'Blog theme'),array( 80, 'Blog themes'), array( 95, 'Blog template'), array( 100, 'Blog templates') ) ),
+												);
+$skinfaktory_links = array( '' => array( array( 73, 'http://evofactory.com/', array( array( 61, 'Evo Factory'), array( 68, 'EvoFactory'), array( 73, 'Evofactory') ) ),
+														             array( 100, 'http://skinfaktory.com/', array( array( 92, 'Skin Faktory'), array( 97, 'SkinFaktory'), array( 99, 'Skin Factory'), array( 100, 'SkinFactory') ) ),
+																				)
+												);
 
 
-/*
- * $Log: _main.inc.php,v $
- */
+// Move user to suspect group by IP address
+antispam_suspect_user();
 ?>

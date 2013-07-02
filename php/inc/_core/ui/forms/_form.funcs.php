@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -31,7 +31,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _form.funcs.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _form.funcs.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -275,7 +275,53 @@ function form_formstart( $action, $class = '', $name = '', $method = 'get', $id 
 	}
 }
 
-/*
- * $Log: _form.funcs.php,v $
+
+/**
+ * Builds a textarea field.
+ *
+ * @deprecated Deprecated by (@link Form::textarea_input())
+ *
+ * @param string the name of the input field
+ * @param string initial value
+ * @param integer rows of the textarea field
+ * @param string label displayed in front of the field
+ * @param array params
  */
+function form_textarea( $field_name, $field_value, $field_rows, $field_label, $field_params = array() )
+{
+
+	$textarea_rows = '';
+	if( !empty( $field_rows ) )
+	{
+		$textarea_rows = ' rows="'.$field_rows.'"';
+	}
+
+	$textarea_cols = '';
+	if( !empty( $field_params['cols'] ) )
+	{
+		$textarea_cols = ' cols="'.$field_params['cols'].'"';
+	}
+
+	$textarea_class = '';
+	if( !empty( $field_params['class'] ) )
+	{
+		$textarea_class = ' class="'.$field_params['class'].'"';
+	}
+
+	$r = "<fieldset>\n"
+			.'<div class="label"><label for="'.$field_name.'">'.$field_label.":</label></div>\n"
+			.'<div class="input"><textarea name="'.$field_name.'" id="'.$field_name.'"'.$textarea_rows.$textarea_cols.$textarea_class.'>'
+			.format_to_output($field_value, 'formvalue')
+			.'</textarea>'."\n";
+
+	if( !empty( $field_params['note'] ) )
+	{
+		$r .= '<span class="notes">'.$field_params['note'].'</span>';
+	}
+
+	$r .= "</div>\n</fieldset>\n\n";
+
+	echo $r;
+}
+
 ?>

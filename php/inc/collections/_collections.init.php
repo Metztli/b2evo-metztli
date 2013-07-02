@@ -2,7 +2,7 @@
 /**
  * This is the init file for the collections module
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
  *
@@ -15,6 +15,15 @@ if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page direct
  */
 $default_ctrl = 'dashboard';
 
+/**
+ * Minimum PHP version required for collections module to function properly
+ */
+$required_php_version[ 'collections' ] = '5.0';
+
+/**
+ * Minimum MYSQL version required for collections module to function properly
+ */
+$required_mysql_version[ 'collections' ] = '5.0.3';
 
 /**
  * Aliases for table names:
@@ -24,21 +33,24 @@ $default_ctrl = 'dashboard';
  *  change {@link $tableprefix} in _basic_config.php)
  */
 $db_config['aliases'] = array_merge( $db_config['aliases'], array(
-		'T_blogs'                => $tableprefix.'blogs',
-		'T_categories'           => $tableprefix.'categories',
-		'T_coll_group_perms'     => $tableprefix.'bloggroups',
-		'T_coll_user_perms'      => $tableprefix.'blogusers',
-		'T_coll_settings'        => $tableprefix.'coll_settings',
-		'T_comments'             => $tableprefix.'comments',
-		'T_items__item'          => $tableprefix.'items__item',
-		'T_items__itemtag'       => $tableprefix.'items__itemtag',
-		'T_items__prerendering'  => $tableprefix.'items__prerendering',
-		'T_items__status'        => $tableprefix.'items__status',
-		'T_items__tag'           => $tableprefix.'items__tag',
-		'T_items__type'          => $tableprefix.'items__type',
-		'T_items__subscriptions' => $tableprefix.'items__subscriptions',
-		'T_items__version'       => $tableprefix.'items__version',
-		'T_links'                => $tableprefix.'links',
+		'T_blogs'                  => $tableprefix.'blogs',
+		'T_categories'             => $tableprefix.'categories',
+		'T_coll_group_perms'       => $tableprefix.'bloggroups',
+		'T_coll_user_perms'        => $tableprefix.'blogusers',
+		'T_coll_settings'          => $tableprefix.'coll_settings',
+		'T_comments'               => $tableprefix.'comments',
+		'T_comments__votes'        => $tableprefix.'comments__votes',
+		'T_comments__prerendering' => $tableprefix.'comments__prerendering',
+		'T_items__item'            => $tableprefix.'items__item',
+		'T_items__item_settings'   => $tableprefix.'items__item_settings',
+		'T_items__itemtag'         => $tableprefix.'items__itemtag',
+		'T_items__prerendering'    => $tableprefix.'items__prerendering',
+		'T_items__status'          => $tableprefix.'items__status',
+		'T_items__tag'             => $tableprefix.'items__tag',
+		'T_items__type'            => $tableprefix.'items__type',
+		'T_items__subscriptions'   => $tableprefix.'items__subscriptions',
+		'T_items__version'         => $tableprefix.'items__version',
+		'T_links'                  => $tableprefix.'links',
 		'T_postcats'             => $tableprefix.'postcats',
 		'T_skins__container'     => $tableprefix.'skins__container',
 		'T_skins__skin'          => $tableprefix.'skins__skin',
@@ -69,11 +81,14 @@ $ctrl_mappings = array_merge( $ctrl_mappings, array(
 		'items'        => 'items/items.ctrl.php',
 		'itemstatuses' => 'items/item_statuses.ctrl.php',
 		'itemtypes'    => 'items/item_types.ctrl.php',
+		'links'        => 'links/links.ctrl.php',
 		'mtimport'     => 'tools/mtimport.ctrl.php',
 		'skins'        => 'skins/skins.ctrl.php',
 		'tools'        => 'tools/tools.ctrl.php',
 		'widgets'      => 'widgets/widgets.ctrl.php',
 		'wpimport'     => 'tools/wpimport.ctrl.php',
+		'wpimportxml'  => 'tools/wpimportxml.ctrl.php',
+		'phpbbimport'  => 'tools/phpbbimport.ctrl.php',
 	) );
 
 
@@ -240,6 +255,23 @@ function & get_CommentCache()
 	return $CommentCache;
 }
 
+/**
+ * Get the CommentPrerenderingCache
+ *
+ * @return CommentPrerenderingCache
+ */
+function & get_CommentPrerenderingCache()
+{
+	global $CommentPrerenderingCache;
+
+	if( ! isset( $CommentPrerenderingCache ) )
+	{	// Cache doesn't exist yet:
+		$CommentPrerenderingCache = array();
+	}
+
+	return $CommentPrerenderingCache;
+}
+
 
 /**
  * Get the LinkCache
@@ -252,7 +284,7 @@ function & get_LinkCache()
 
 	if( ! isset( $LinkCache ) )
 	{	// Cache doesn't exist yet:
-		load_class( 'items/model/_linkcache.class.php', 'LinkCache' );
+		load_class( 'links/model/_linkcache.class.php', 'LinkCache' );
 		$LinkCache = new LinkCache(); // COPY (FUNC)
 	}
 
@@ -336,12 +368,15 @@ class collections_Module extends Module
 	 */
 	function init()
 	{
+		$this->check_required_php_version( 'collections' );
+
 		load_class( 'collections/model/_blog.class.php', 'Blog' );
 		load_funcs( 'collections/model/_blog.funcs.php' );
 		load_funcs( 'collections/model/_category.funcs.php' );
 		load_funcs( 'items/model/_item.funcs.php' );
 		load_class( 'items/model/_itemtype.class.php', 'ItemType' );
-		load_class( 'items/model/_link.class.php', 'Link' );
+		load_class( 'links/model/_link.class.php', 'Link' );
+		load_funcs( 'links/model/_link.funcs.php' );
 		load_funcs( 'comments/model/_comment.funcs.php');
 		load_class( 'comments/model/_commentlist.class.php', 'CommentList2' );
 		load_class( 'items/model/_itemquery.class.php', 'ItemQuery' );
@@ -546,7 +581,7 @@ class collections_Module extends Module
 							);
 		$entries['manual'] = array(
 								'text' => T_('Open Online manual'),
-								'href' => 'http://manual.b2evolution.net/',
+								'href' => 'http://b2evolution.net/man/',
 								'target' => '_blank',
 							);
 		$entries['info_sep'] = array(
@@ -604,7 +639,7 @@ class collections_Module extends Module
 						),
 
 					'items' => array(
-						'text' => T_('Posts / Comments'),
+						'text' => T_('Contents'),
 						'href' => $dispatcher.'?ctrl=items&amp;blog='.$blog.'&amp;filter=restore',
 						// Controller may add subtabs
 						),
@@ -641,10 +676,25 @@ class collections_Module extends Module
 					NULL, // root
 					array(
 						'blogs' => array(
-							'text' => T_('Blog settings'),
+							'text' => T_('Blogs'),
 							'href' => $dispatcher.'?ctrl=collections',
+							'entries' => array(
+								'list' => array(
+									'text' => T_('List'),
+									'href' => $dispatcher.'?ctrl=collections',
+								),
+							)
+						),
+					), 'dashboard' );
+			if( $current_User->check_perm( 'options', 'view' ) )
+			{
+				$AdminUI->add_menu_entries( 'blogs', array(
+						'settings' => array(
+							'text' => T_('Settings'),
+							'href' => $dispatcher.'?ctrl=collections&amp;tab=settings',
 						),
 					) );
+			}
 		}
 		else
 		{	// We're on any other page, we may have a direct destination
@@ -667,25 +717,50 @@ class collections_Module extends Module
 					NULL, // root
 					array(
 						'blogs' => array(
-							'text' => T_('Blog settings'),
+							'text' => T_('Blogs'),
 							'href' => $default_page,
 							),
-						) );
+						), 'dashboard' );
 
 			if( $coll_settings_perm )
 			{
+				$skin_entries['current_skin'] = array(
+							'text' => T_('Skins for this blog'),
+							'href' => $dispatcher.'?ctrl=coll_settings&amp;tab=skin&amp;blog='.$blog );
+
+				if( $current_User->check_perm( 'options', 'view' ) )
+				{
+					$skin_entries['manage_skins'] = array(
+							'text' => T_('Manage skins'),
+							'href' => $dispatcher.'?ctrl=skins&amp;blog='.$blog );
+				}
+
 				$AdminUI->add_menu_entries( 'blogs',	array(
 							'general' => array(
 								'text' => T_('General'),
 								'href' => $dispatcher.'?ctrl=coll_settings&amp;tab=general&amp;blog='.$blog, ),
 							'features' => array(
 								'text' => T_('Features'),
-								'href' => $dispatcher.'?ctrl=coll_settings&amp;tab=features&amp;blog='.$blog, ),
+								'href' => $dispatcher.'?ctrl=coll_settings&amp;tab=features&amp;blog='.$blog,
+								'entries' => array(
+									'features' => array(
+										'text' => T_('Posts'),
+										'href' => $dispatcher.'?ctrl=coll_settings&amp;tab=features&amp;blog='.$blog ),
+									'comments' => array(
+										'text' => T_('Comments'),
+										'href' => $dispatcher.'?ctrl=coll_settings&amp;tab=comments&amp;blog='.$blog ),
+									'other' => array(
+										'text' => T_('Other'),
+										'href' => $dispatcher.'?ctrl=coll_settings&amp;tab=other&amp;blog='.$blog ),
+								),
+							),
 							'skin' => array(
 								'text' => T_('Skin'),
-								'href' => $dispatcher.'?ctrl=coll_settings&amp;tab=skin&amp;blog='.$blog, ),
+								'href' => $dispatcher.'?ctrl=coll_settings&amp;tab=skin&amp;blog='.$blog,
+								'entries' => $skin_entries,
+							),
 							'plugin_settings' => array(
-								'text' => T_('Plugin settings'),
+								'text' => T_('Plugins'),
 								'href' => $dispatcher.'?ctrl=coll_settings&amp;tab=plugin_settings&amp;blog='.$blog, ),
 							'widgets' => array(
 								'text' => T_('Widgets'),
@@ -703,7 +778,7 @@ class collections_Module extends Module
 
 				if( $Blog && $Blog->advanced_perms )
 				{
-					$AdminUI->add_menu_entries( 'blogs',	array(
+					$AdminUI->add_menu_entries( 'blogs', array(
 								'perm' => array(
 									'text' => T_('User perms'), // keep label short
 									'href' => $dispatcher.'?ctrl=coll_settings&amp;tab=perm&amp;blog='.$blog, ),
@@ -743,25 +818,172 @@ class collections_Module extends Module
 		if( $current_User->check_perm( 'options', 'view' ) )
 		{	// Permission to view settings:
 			$AdminUI->add_menu_entries( 'options', array(
-					'skins' => array(
-						'text' => T_('Skins'),
-						'href' => $dispatcher.'?ctrl=skins'),
-					) );
-			$AdminUI->add_menu_entries( 'tools', array(
-						'' => array(	// fp> '' is dirty
-							'text' => T_('Misc'),
-							'href' => $dispatcher.'?ctrl=tools' ),
-					) );
+					'misc' => array(
+						'text' => T_('Maintenance'),
+						'href' => $dispatcher.'?ctrl=tools',
+						'entries' => array(
+							'tools' => array(
+								'text' => T_('Tools'),
+								'href' => $dispatcher.'?ctrl=tools' ),
+							'import' => array(
+								'text' => T_('Import'),
+								'href' => $dispatcher.'?ctrl=tools&amp;tab3=import' ),
+							'test' => array(
+								'text' => T_('Testing'),
+								'href' => $dispatcher.'?ctrl=tools&amp;tab3=test' ),
+							'backup' => array(
+								'text' => T_('Backup'),
+								'href' => $dispatcher.'?ctrl=backup' ),
+							'upgrade' => array(
+								'text' => T_('Check for updates'),
+								'href' => $dispatcher.'?ctrl=upgrade' ),
+							),
+				) ) );
 
 		}
 
+	}
+
+
+	/**
+	 * Handle collections module htsrv actions
+	 */
+	function handle_htsrv_action()
+	{
+		global $demo_mode, $current_User, $DB, $Session, $Messages;
+		global $UserSettings, $samedomain_htsrv_url;
+
+		if( !is_logged_in() )
+		{ // user must be logged in
+			bad_request_die( $this->T_( 'You are not logged in.' ) );
+		}
+
+		// Init the objects we want to work on.
+		$action = param_action( true );
+
+		// Check that this action request is not a CSRF hacked request:
+		$Session->assert_received_crumb( 'collections_'.$action );
+
+		switch( $action )
+		{
+			case 'unlink':
+				// Unlink a file from a LinkOwner ( Item, Comment ) object, and delete that file if it's not linked to any other object
+
+				$link_ID = param( 'link_ID', 'integer', true );
+				$redirect_to = param( 'redirect_to', 'string', '' );
+				$LinkCache = & get_LinkCache();
+				$edited_Link = & $LinkCache->get_by_ID( $link_ID, false );
+
+				if( !$edited_Link )
+				{ // the edited Link object doesn't exists
+					$Messages->add( sprintf( T_('Requested &laquo;%s&raquo; object does not exist any longer.'), T_('Link') ), 'error' );
+					header_redirect();
+				}
+
+				// We have a link, get the LinkOwner it is attached to:
+				$LinkOwner = & $edited_Link->get_LinkOwner();
+				$linked_File = & $edited_Link->get_File();
+
+				// Load the blog we're in:
+				$Blog = & $LinkOwner->get_Blog();
+				set_working_blog( $Blog->ID );
+
+				// Check permission:
+				$LinkOwner->check_perm( 'edit', true );
+
+				$confirmed = param( 'confirmed', 'integer', 0 );
+				if( $confirmed )
+				{ // Unlink File from Item:
+					$edited_Link->dbdelete( true );
+					unset($edited_Link);
+					$Messages->add( $LinkOwner->T_( 'Link has been deleted from $ownerTitle$.' ), 'success' );
+					if( $current_User->check_perm( 'files', 'edit' ) )
+					{ // current User has permission to edit/delete files
+						$file_name = $linked_File->get_name();
+						// Get number of objects where this file is attahced to
+						// TODO: attila>this must be handled with a different function
+						$file_links = get_file_links( $linked_File->ID, array( 'separator' => '<br />' ) );
+						$links_count = ( strlen( $file_links ) > 0 ) ? substr_count( $file_links, '<br />' ) + 1 : 0;
+						if( $links_count > 0 )
+						{ // File is linked to other objects
+							$Messages->add( sprintf( T_('File %s is still linked to %d other objects'), $file_name, $links_count ), 'note' );
+						}
+						else
+						{ // File is not linked to other objects
+							if( $linked_File->unlink() )
+							{ // File removed successful ( removed from db and from storage device also )
+								$Messages->add( sprintf( T_('File %s has been deleted.'), $file_name ), 'success' );
+							}
+							else
+							{ // Could not completly remove the file
+								$Messages->add( sprintf( T_('File %s could not be deleted.'), $file_name ), 'error' );
+							}
+						}
+					}
+				}
+				else
+				{ // Display confirm unlink/delete message
+					$delete_url = $samedomain_htsrv_url.'action.php?mname=collections&action=unlink&link_ID='.$edited_Link->ID.'&confirmed=1&crumb_collections_unlink='.get_crumb( 'collections_unlink' );
+					$ok_button = '<span class="linkbutton"><a href="'.$delete_url.'">'.T_( 'I am sure!' ).'!</a></span>';
+					$cancel_button = '<span class="linkbutton"><a href="'.$redirect_to.'">CANCEL</a></span>';
+					$msg = sprintf( T_( 'You are about to unlink and delete the attached file from %s path.' ), $linked_File->get_root_and_rel_path() );
+					$msg .= '<br />'.T_( 'This CANNOT be undone!').'<br />'.T_( 'Are you sure?' ).'<br /><br />'.$ok_button."\t".$cancel_button;
+					$Messages->add( $msg, 'error' );
+				}
+				header_redirect( $redirect_to );
+				break;
+
+			case 'isubs_update':
+				// Subscribe/Unsubscribe user on the selected item
+
+				if( $demo_mode && ( $current_User->ID <= 3 ) )
+				{ // don't allow default users profile change on demo mode
+					bad_request_die( 'Demo mode: you can\'t edit the admin and demo users profile!<br />[<a href="javascript:history.go(-1)">'
+								. T_('Back to profile') . '</a>]' );
+				}
+
+				// Get params
+				$item_ID = param( 'p', 'integer', true );
+				$notify = param( 'notify', 'integer', 0 );
+
+				if( ( $notify < 0 ) || ( $notify > 1 ) )
+				{ // Invalid notify param. It should be 0 for unsubscribe and 1 for subscribe.
+					$Messages->add( 'Invalid params!', 'error' );
+				}
+
+				if( ! is_email( $current_User->get( 'email' ) ) )
+				{ // user doesn't have a valid email address
+					$Messages->add( T_( 'Your email address is invalid. Please set your email address first.' ), 'error' );
+				}
+
+				if( $Messages->has_errors() )
+				{ // errors detected
+					header_redirect();
+					// already exited here
+				}
+
+				if( set_user_isubscription( $current_User->ID, $item_ID, $notify ) )
+				{
+					if( $notify == 0 )
+					{
+						$Messages->add( T_( 'You have successfully unsubscribed.' ), 'success' );
+					}
+					else
+					{
+						$Messages->add( T_( 'You have successfully subscribed to notifications.' ), 'success' );
+					}
+				}
+				else
+				{
+					$Messages->add( T_( 'Could not subscribe to notifications.' ), 'error' );
+				}
+
+				header_redirect();
+				break; // already exited here
+		}
 	}
 }
 
 $collections_Module = new collections_Module();
 
-
-/*
- * $Log: _collections.init.php,v $
- */
 ?>

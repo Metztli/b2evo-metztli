@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -24,7 +24,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _cron.funcs.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _cron.funcs.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -55,19 +55,79 @@ function cron_log( $message, $level = 0 )
 	}
 }
 
+function keyphrase_job()
+{
+	global $DB;
+
+	$sql = 'SELECT MIN(h.hit_ID) as min, MAX(h.hit_ID) as max
+				FROM T_hitlog as h
+				WHERE h.hit_keyphrase IS NOT NULL
+					AND h.hit_keyphrase_keyp_ID IS NULL';
+	$ids = $DB->get_row( $sql, "ARRAY_A", NULL, ' Get max/min hits ids of unprocessed keyphrases' );
+
+	if ( ! empty ( $ids['min'] ) && ! empty ( $ids['max'] ) )
+	{
+
+		$sql = 'INSERT INTO T_track__keyphrase(keyp_phrase, keyp_count_refered_searches)
+					SELECT h.hit_keyphrase, 1
+					FROM T_hitlog as h
+					WHERE 
+						(h.hit_ID >= '.$ids['min'].' AND h.hit_ID <= '.$ids['max'].')
+						AND h.hit_keyphrase IS NOT NULL
+						AND h.hit_keyphrase_keyp_ID IS NULL
+						AND h.hit_referer_type = "search"
+				ON DUPLICATE KEY UPDATE
+				T_track__keyphrase.keyp_count_refered_searches = T_track__keyphrase.keyp_count_refered_searches + 1';
+		$DB->query( $sql, ' Insert/Update external keyphrase' );
+
+		$sql = 'INSERT INTO T_track__keyphrase(keyp_phrase, keyp_count_internal_searches)
+					SELECT h.hit_keyphrase, 1
+					FROM T_hitlog as h
+					WHERE
+						(h.hit_ID >= '.$ids['min'].' AND h.hit_ID <= '.$ids['max'].')
+						AND h.hit_keyphrase IS NOT NULL
+						AND h.hit_keyphrase_keyp_ID IS NULL
+						AND h.hit_referer_type != "search"
+				ON DUPLICATE KEY UPDATE
+				T_track__keyphrase.keyp_count_internal_searches = T_track__keyphrase.keyp_count_internal_searches + 1';
+		$DB->query( $sql, 'Insert/Update  internal keyphrase' );
+
+	// fp> This is dirty! No transaction -> no consistency! :(
+	// fp> Not possible to do transactions on myisam
+	// fp> workaround: in the queries above: set hit_keyphrase_keyp_ID = 0 on a TEMPORARY BASIS
+
+	// fp> double dirty: this also updates rows that are already up to date.
+	// fp> Add an additional WHERE condition: hit_keyphrase_keyp_ID = 0
+
+		$sql = 'UPDATE T_hitlog as h, T_track__keyphrase as k
+				SET h.hit_keyphrase_keyp_ID = k.keyp_ID
+				WHERE 
+					h.hit_keyphrase = k.keyp_phrase
+					AND (h.hit_ID >= '.$ids['min'].' AND h.hit_ID <= '.$ids['max'].')';
+		$DB->query( $sql, 'Update hitlogs keyphrase id' );
+
+
+	}
+
+}
+
 
 /**
  * Call a cron job.
  *
  * @param string Name of the job
- * @param string Params for the job
+ * @param string Params for the job:
+ *               'ctsk_ID'   - task ID
+ *               'ctsk_name' - task name
+ * @return string Error message
  */
 function call_job( $job_name, $job_params = array() )
 {
-	global $DB, $inc_path, $Plugins;
+	global $DB, $inc_path, $Plugins, $admin_url;
 
 	global $result_message, $result_status, $timestop, $time_difference;
 
+	$error_message = '';
 	$result_message = NULL;
 	$result_status = 'error';
 
@@ -84,7 +144,7 @@ function call_job( $job_name, $job_params = array() )
 		{
 			$result_message = 'Plugin for controller ['.$job_name.'] could not get instantiated.';
 			cron_log( $result_message, 2 );
-			return;
+			return $result_message;
 		}
 
 		// CALL THE PLUGIN TO HANDLE THE JOB:
@@ -101,18 +161,36 @@ function call_job( $job_name, $job_params = array() )
 		{
 			$result_message = 'Controller ['.$job_name.'] does not exist.';
 			cron_log( $result_message, 2 );
-			return;
+			return $result_message;
 		}
 
 		// INCLUDE THE JOB FILE AND RUN IT:
 		$error_code = require $controller;
 	}
 
+	if( is_array( $result_message ) )
+	{	// If result is array (we should store it as serialized data later)
+		// array keys: 'message' - Result message
+		//             'table_cols' - Columns names of the table to display on the Execution details of the cron job log
+		//             'table_data' - Array
+		$result_message_text = $result_message['message'];
+	}
+	else
+	{	// Result is text string
+		$result_message_text = $result_message;
+	}
+
 	if( $error_code != 1 )
 	{	// We got an error
 		$result_status = 'error';
-		$result_message = '[Error code: '.$error_code.' ] '.$result_message;
+		$result_message_text = '[Error code: '.$error_code.' ] '.$result_message_text;
+		if( is_array( $result_message ) )
+		{ // If result is array
+			$result_message['message'] = $result_message_text;
+		}
 		$cron_log_level = 2;
+
+		$error_message = $result_message_text;
 	}
 	else
 	{
@@ -122,11 +200,118 @@ function call_job( $job_name, $job_params = array() )
 
 	$timestop = time() + $time_difference;
 	cron_log( 'Task finished at '.date( 'H:i:s', $timestop ).' with status: '.$result_status
-		."\nMessage: $result_message", $cron_log_level );
+		."\nMessage: $result_message_text", $cron_log_level );
+
+	return $error_message;
 }
 
 
-/*
- * $Log: _cron.funcs.php,v $
+/**
+ * Get status color of sheduled job by status value
+ *
+ * @param string Status value
+ * @return string Color value
  */
+function cron_status_color( $status )
+{
+	$colors = array(
+			'pending'  => '808080',
+			'started'  => 'FFFF00',
+			'finished' => '008000',
+			'error'    => 'FF0000',
+			'timeout'  => 'FFA500',
+		);
+
+	return isset( $colors[ $status ] ) ? '#'.$colors[ $status ] : 'none';
+}
+
+
+/**
+ * Get the manual page link for the requested cron job, given by the controller path
+ *
+ * @param string job ctrl path
+ * @return string NULL when the corresponding manual topic was not defined, the manual link otherwise
+ */
+function cron_job_manual_link( $job_ctrl )
+{
+	$manual_topics = array(
+		'cron/jobs/_test.job.php' => 'task-test',
+		'cron/jobs/_error_test.job.php' => 'task-error-test',
+		'cron/jobs/_antispam_poll.job.php' => 'task-poll-antispam-blacklist',
+		'cron/jobs/_prune_hits_sessions.job.php' => 'task-prune-old-hits-and-sessions',
+		'cron/jobs/_prune_page_cache.job.php' => 'task-prune-old-files-from-page-cache',
+		'cron/jobs/_post_by_email.job.php' => 'task-create-post-by-email',
+		'cron/jobs/_process_hitlog.job.php' => 'task-process-hit-log',
+		'cron/jobs/_unread_message_reminder.job.php' => 'task-send-unread-messages-reminders',
+		'cron/jobs/_activate_account_reminder.job.php' => 'task-send-not-activated-account-reminders',
+		'cron/jobs/_comment_moderation_reminder.job.php' => 'task-send-unmoderated-comments-reminders',
+		'cron/jobs/_decode_returned_emails.job.php' => 'task-process-return-path-inbox',
+		'cron/jobs/_cleanup_jobs.job.php' => 'task-cleanup-scheduled-jobs',
+		'cron/jobs/_light_db_maintenance.job.php' => 'task-light-db-maintenance',
+		'cron/jobs/_heavy_db_maintenance.job.php' => 'task-heavy-db-maintenance',
+		'cron/jobs/_prune_recycled_comments.job.php' => 'task-prune-recycled-comments',
+	);
+
+	if( isset( $manual_topics[$job_ctrl] ) )
+	{ // return the corresponding manual page topic
+		return get_manual_link( $manual_topics[$job_ctrl] );
+	}
+
+	// The topic was not defined
+	return NULL;
+}
+
+
+/**
+ * Detect timed out cron jobs and Send notifications
+ *
+ * @param array Task with error
+ *             'name'
+ *             'message'
+ */
+function detect_timeout_cron_jobs( $error_task = NULL )
+{
+	global $DB, $time_difference, $cron_timeout_delay, $admin_url;
+
+	$SQL = new SQL( 'Find cron timeouts' );
+	$SQL->SELECT( 'ctsk_ID, ctsk_name' );
+	$SQL->FROM( 'T_cron__log' );
+	$SQL->FROM_add( 'INNER JOIN T_cron__task ON ctsk_ID = clog_ctsk_ID' );
+	$SQL->WHERE( 'clog_status = "started"' );
+	$SQL->WHERE_and( 'clog_realstart_datetime < '.$DB->quote( date2mysql( time() + $time_difference - $cron_timeout_delay ) ) );
+	$SQL->GROUP_BY( 'ctsk_ID' );
+	$timeouts = $DB->get_assoc( $SQL->get(), OBJECT, $SQL->title );
+
+	$tasks = array();
+
+	if( count( $timeouts ) > 0 )
+	{
+		foreach( $timeouts as $task_ID => $task_name )
+		{
+			$tasks[ $task_ID ] = array(
+					'name'    => $task_name,
+					'message' => T_('Cron job was timed out.'),
+				);
+		}
+
+		// Update timed out cron jobs
+		$DB->query( 'UPDATE T_cron__log
+			  SET clog_status = "timeout"
+			WHERE clog_ctsk_ID IN ( '.$DB->quote( array_keys( $tasks ) ).' )', 'Detect cron timeouts.' );
+	}
+
+	if( !is_null( $error_task ) )
+	{ // Send notification with error task
+		$tasks[ $error_task['ID'] ] = $error_task;
+	}
+
+	if( count( $tasks ) > 0 )
+	{ // Send notification email about timed out and error cron jobs to users with edit options permission
+		$email_template_params = array(
+				'tasks' => $tasks,
+			);
+		send_admin_notification( NT_('Scheduled task error'), 'scheduled_task_error_report', $email_template_params );
+	}
+}
+
 ?>

@@ -3,7 +3,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2009 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @copyright (c)2009-2013 by Francois PLANQUE - {@link http://fplanque.net/}
  * Parts of this file are copyright (c)2009 by The Evo Factory - {@link http://www.evofactory.com/}.
  *
  * {@internal License choice
@@ -27,7 +27,7 @@
  * @author efy-maxim: Evo Factory / Maxim.
  * @author fplanque: Francois Planque.
  *
- * @version $Id: _country.form.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _country.form.php 3328 2013-03-26 11:44:11Z yura $
  */
 
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -45,7 +45,7 @@ $creating = is_create_action( $action );
 
 $Form = new Form( NULL, 'country_checkchanges', 'post', 'compact' );
 
-$Form->global_icon( T_('Delete this country!'), 'delete', regenerate_url( 'action', 'action=delete' ) );
+$Form->global_icon( T_('Delete this country!'), 'delete', regenerate_url( 'action', 'action=delete&amp;'.url_crumb('country') ) );
 $Form->global_icon( T_('Cancel editing!'), 'close', regenerate_url( 'action' ) );
 
 $Form->begin_form( 'fform', $creating ?  T_('New country') : T_('Country') );
@@ -59,7 +59,7 @@ $Form->begin_form( 'fform', $creating ?  T_('New country') : T_('Country') );
 
 	$CurrencyCache = & get_CurrencyCache();
 
-	$Form->select_input_object( 'ctry_curr_ID', $edited_Country->curr_ID, $CurrencyCache, T_( 'Default Currency' ), array( 'allow_none' => true ) );
+	$Form->select_input_object( 'ctry_curr_ID', $edited_Country->curr_ID, $CurrencyCache, T_('Default Currency'), array( 'allow_none' => true ) );
 
 if( $creating )
 {
@@ -74,7 +74,4 @@ else
 													array( 'reset', '', T_('Reset'), 'ResetButton' ) ) );
 }
 
-/*
- * $Log: _country.form.php,v $
- */
 ?>

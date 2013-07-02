@@ -8,7 +8,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -27,7 +27,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _itemlistlight.class.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _itemlistlight.class.php 3577 2013-04-28 06:53:19Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -109,7 +109,7 @@ class ItemListLight extends DataObjectList2
 			$filterset_name = ''				// Name to be used when saving the filterset (leave empty to use default for collection)
 		)
 	{
-		global $Settings;
+		global $Settings, $posttypes_specialtypes;
 
 		// Call parent constructor:
 		parent::DataObjectList2( get_Cache($cache_name), $limit, $param_prefix, NULL );
@@ -125,7 +125,7 @@ class ItemListLight extends DataObjectList2
 		}
 		else
 		{	// Set a generic filterset_name
-			$this->filterset_name = 'ItemList_filters_coll'.$this->Blog->ID;
+			$this->filterset_name = 'ItemList_filters_coll'.( !is_null( $this->Blog ) ? $this->Blog->ID : '0' );
 		}
 
 		$this->page_param = $param_prefix.'paged';
@@ -155,11 +155,11 @@ class ItemListLight extends DataObjectList2
 				'ymdhms_min' => NULL,
 				'ymdhms_max' => NULL,
 				'statuses' => NULL,
-				'types' => '-1000,1500,1520,1530,1570,1600,3000',	// All types except pages, intros and sidebar links
-				'visibility_array' => array( 'published', 'protected', 'private' ),
-				'orderby' => $this->Blog->get_setting('orderby'),
-				'order' => $this->Blog->get_setting('orderdir'),
-				'unit' => $this->Blog->get_setting('what_to_show'),
+				'types' => '-'.implode(',',$posttypes_specialtypes),	// Keep content post types, Exclide pages, intros, sidebar links and ads
+				'visibility_array' => get_inskin_statuses(),
+				'orderby' => !is_null( $this->Blog ) ? $this->Blog->get_setting('orderby') : 'datestart',
+				'order' => !is_null( $this->Blog ) ? $this->Blog->get_setting('orderdir') : 'DESC',
+				'unit' => !is_null( $this->Blog ) ? $this->Blog->get_setting('what_to_show'): 'posts',
 				'posts' => $this->limit,
 				'page' => 1,
 				'featured' => NULL,
@@ -178,19 +178,6 @@ class ItemListLight extends DataObjectList2
 		$this->ItemQuery = new ItemQuery( $this->Cache->dbtablename, $this->Cache->dbprefix, $this->Cache->dbIDname );
 
 		parent::reset();
-	}
-
-
-	/**
-	 * Set default filter values we always want to use if not individually specified otherwise:
-	 *
-	 * @param array default filters to be merged with the class defaults
-	 * @param array default filters for each preset, to be merged with general default filters if the preset is used
-	 */
-	function set_default_filters( $default_filters, $preset_filters = array() )
-	{
-		$this->default_filters = array_merge( $this->default_filters, $default_filters );
-		$this->preset_filters = $preset_filters;
 	}
 
 
@@ -342,7 +329,7 @@ class ItemListLight extends DataObjectList2
 		if( $use_filters )
 		{
 			// Do we want to restore filters or do we want to create a new filterset
-			$filter_action = param( $this->param_prefix.'filter', 'string', 'save' );
+			$filter_action = param( /*$this->param_prefix.*/'filter', 'string', 'save' );
 			// echo ' filter action: ['.$filter_action.'] ';
 			switch( $filter_action )
 			{
@@ -380,7 +367,7 @@ class ItemListLight extends DataObjectList2
 		 * Blog & Chapters/categories restrictions:
 		 */
 		// Get chapters/categories (and compile those values right away)
-		param_compile_cat_array( /* TODO: check $this->Blog->ID == 1 ? 0 :*/ $this->Blog->ID,
+		param_compile_cat_array( /* TODO: check $this->Blog->ID == 1 ? 0 :*/ !is_null( $this->Blog ) ? $this->Blog->ID : 0,
 								$this->default_filters['cat_modifier'], $this->default_filters['cat_array'] );
 
 		$this->filters['cat_array'] = get_param( 'cat_array' );
@@ -484,7 +471,7 @@ class ItemListLight extends DataObjectList2
 		 * Restrict to the statuses we want to show:
 		 */
 		// Note: oftentimes, $show_statuses will have been preset to a more restrictive set of values
-		$this->filters['visibility_array'] = param( $this->param_prefix.'show_statuses', 'array', $this->default_filters['visibility_array']
+		$this->filters['visibility_array'] = param( $this->param_prefix.'show_statuses', 'array/string', $this->default_filters['visibility_array']
 						, true, false, true, false );	// Array of sharings to restrict to
 
 		/*
@@ -531,84 +518,6 @@ class ItemListLight extends DataObjectList2
 
 
 	/**
-	 * Activate preset default filters if necessary
-	 *
-	 */
-	function activate_preset_filters()
-	{
-		$filter_preset = $this->filters['filter_preset'];
-
-		if( empty( $filter_preset ) )
-		{ // No filter preset, there are no additional defaults to use:
-			return;
-		}
-
-		// Override general defaults with the specific defaults for the preset:
-		$this->default_filters = array_merge( $this->default_filters, $this->preset_filters[$filter_preset] );
-
-		// Save the name of the preset in order for is_filtered() to work properly:
-		$this->default_filters['filter_preset'] = $this->filters['filter_preset'];
-	}
-
-
-	/**
-	 * Save current filterset to session.
-	 */
-	function save_filterset()
-	{
-		/**
-		 * @var Session
-		 */
-		global $Session, $Debuglog;
-
-		$Debuglog->add( 'Saving filterset <strong>'.$this->filterset_name.'</strong>', 'filters' );
-
-		$Session->set( $this->filterset_name, $this->filters );
-	}
-
-
-	/**
-	 * Load previously saved filterset from session.
-	 *
-	 * @return boolean true if we could restore something
-	 */
-	function restore_filterset()
-	{
-	  /**
-	   * @var Session
-	   */
-		global $Session;
-	  /**
-	   * @var Request
-	   */
-
-		global $Debuglog;
-
-		$filters = $Session->get( $this->filterset_name );
-
-		/*
-		fp> 2007-09-26> even if there are no filters, we need to "set" them in order to set global variables like $show_statuses
-		if( empty($filters) )
-		{ // We have no saved filters:
-			return false;
-		}
-		*/
-
-		if( empty($filters) )
-		{ // set_filters() expects array
-			$filters = array();
-		}
-
-		$Debuglog->add( 'Restoring filterset <strong>'.$this->filterset_name.'</strong>', 'filters' );
-
-		// Restore filters:
-		$this->set_filters( $filters );
-
-		return true;
-	}
-
-
-	/**
 	 *
 	 *
 	 * @todo count?
@@ -636,8 +545,17 @@ class ItemListLight extends DataObjectList2
 		/*
 		 * filtering stuff:
 		 */
-		$this->ItemQuery->where_chapter2( $this->Blog, $this->filters['cat_array'], $this->filters['cat_modifier'],
+		if( !is_null( $this->Blog ) )
+		{ // Get the posts only for current Blog
+			$this->ItemQuery->where_chapter2( $this->Blog, $this->filters['cat_array'], $this->filters['cat_modifier'],
 																			$this->filters['cat_focus'] );
+		}
+		else // $this->Blog == NULL
+		{ // If we want to get the posts from all blogs
+			// Save for future use (permission checks..)
+			$this->ItemQuery->blog = 0;
+			$this->ItemQuery->Blog = $this->Blog;
+		}
 		$this->ItemQuery->where_tags( $this->filters['tags'] );
 		$this->ItemQuery->where_author( $this->filters['authors'] );
 		$this->ItemQuery->where_assignees( $this->filters['assignees'] );
@@ -667,7 +585,7 @@ class ItemListLight extends DataObjectList2
 		{	// Use blog setting here because 'orderby' might be set to 'ID_list' as default filter
 			$this->filters['orderby'] = $this->Blog->get_setting('orderby');
 		}
-		
+
 		if( empty($order_by) )
 		{
 			$order_by = gen_order_clause( $this->filters['orderby'], $this->filters['order'], $this->Cache->dbprefix, $this->Cache->dbIDname );
@@ -907,7 +825,7 @@ class ItemListLight extends DataObjectList2
 	 */
 	function get_filter_titles( $ignore = array(), $params = array() )
 	{
-		global $month, $post_statuses;
+		global $month;
 
 		$params = array_merge( array(
 				'category_text' => T_('Category').': ',
@@ -1031,13 +949,13 @@ class ItemListLight extends DataObjectList2
 		if( !empty($this->filters['authors']) )
 		{
 			$authors = preg_split('~\s*,\s*~', $this->filters['authors'], -1, PREG_SPLIT_NO_EMPTY);
-			if( $authors ) 
+			if( $authors )
 			{
 				$UserCache = get_UserCache();
 				$author_names = array();
-				foreach( $authors as $author_ID ) 
+				foreach( $authors as $author_ID )
 				{
-					if( $tmp_Author = $UserCache->get_by_ID($author_ID, false) ) 
+					if( $tmp_Author = $UserCache->get_by_ID($author_ID, false) )
 					{
 						$author_names[] = htmlspecialchars($tmp_Author->get_preferred_name());
 					}
@@ -1087,10 +1005,12 @@ class ItemListLight extends DataObjectList2
 		if( count( $this->filters['visibility_array'] ) < 5
 			&& !in_array( 'visibility', $ignore ) )
 		{
+			$post_statuses = get_visibility_statuses();
+
 			$status_titles = array();
 			foreach( $this->filters['visibility_array'] as $status )
 			{
-				$status_titles[] = T_( $post_statuses[$status] );
+				$status_titles[] = $post_statuses[$status];
 			}
 			$title_array[] = T_('Visibility').': '.implode( ', ', $status_titles );
 		}
@@ -1492,8 +1412,6 @@ class ItemListLight extends DataObjectList2
 	 */
 	function page_links( $params = array() )
 	{
-		global $generating_static;
-
 		$default_params = array(
 				'block_start' => '<p class="center">',
 				'block_end' => '</p>',
@@ -1509,10 +1427,6 @@ class ItemListLight extends DataObjectList2
 				'list_span' => 11,
 				'scroll_list_range' => 5,
 			);
-	  if( !empty($generating_static) )
-	  {	// When generating a static page, act as if we were currently on the blog main page:
-	  	$default_params['page_url'] = $this->Blog->get('url');
-		}
 
 		// Use defaults + overrides:
 		$params = array_merge( $default_params, $params );
@@ -1541,7 +1455,4 @@ class ItemListLight extends DataObjectList2
 
 }
 
-/*
- * $Log: _itemlistlight.class.php,v $
- */
 ?>

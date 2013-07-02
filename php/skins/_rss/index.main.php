@@ -3,14 +3,14 @@
  * This template generates an RSS 0.92 feed for the requested blog's latest posts
  *
  * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://manual.b2evolution.net/Skins_2.0}
+ * {@link http://b2evolution.net/man/skin-structure}
  *
  * See {@link http://backend.userland.com/rss092}
  *
  * @package evoskins
  * @subpackage rss
  *
- * @version $Id: index.main.php 57 2011-10-26 08:18:58Z sam2kb $
+ * @version $Id: index.main.php 3157 2013-03-06 04:34:44Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 

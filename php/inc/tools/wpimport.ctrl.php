@@ -32,7 +32,7 @@ if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.'
 	<?php
 
 	// Check if user is logged in and is in group #1 (admins)
-	if( !is_logged_in() || $current_User->Group->ID != 1 )
+	if( !is_logged_in( false ) || $current_User->grp_ID != 1 )
 	{	// login failed
 		debug_die( 'You must login with an administrator (group #1) account.' );
 	}
@@ -541,7 +541,7 @@ if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.'
 			{
 				// Import the user
 				$query = 'INSERT INTO '.$b2.'users (user_ID, user_login, user_pass, user_firstname, user_nickname, user_email,
-																						user_url, dateYMDhour, user_validated, user_grp_ID)
+																						user_url, user_created_datetime, user_validated, user_grp_ID)
 									VALUES ("'.$a_user['id'].'", "'.$a_user['login'].'", "'.$a_user['password'].'", "'
 														.$a_user['firstname'].'", "'.$a_user['nickname'].'", "'.$a_user['email']
 														.'", "'.$a_user['url'].'", "'.fix_date($a_user['date']).'", "1", "4");';
@@ -573,9 +573,3 @@ if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.'
 	 	 error_reporting ($prevlevel); ?>
 </body>
 </html>
-
-<?php
-/*
- * $Log: wpimport.ctrl.php,v $
- */
-?>

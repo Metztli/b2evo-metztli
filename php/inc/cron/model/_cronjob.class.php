@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -24,7 +24,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _cronjob.class.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _cronjob.class.php 3860 2013-05-30 09:16:56Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -63,6 +63,7 @@ class Cronjob extends DataObject
 		{	// Loading an object from DB:
 			$this->ID              = $db_row->ctsk_ID;
 			$this->start_datetime  = $db_row->ctsk_start_datetime;
+			$this->start_timestamp = strtotime( $db_row->ctsk_start_datetime );
 			$this->repeat_after    = $db_row->ctsk_repeat_after;
 			$this->name            = $db_row->ctsk_name;
 			$this->controller      = $db_row->ctsk_controller;
@@ -70,7 +71,8 @@ class Cronjob extends DataObject
 		}
 		else
 		{	// New object:
-
+			global $localtimenow;
+			$this->start_timestamp = $localtimenow;
 		}
 	}
 
@@ -92,7 +94,7 @@ class Cronjob extends DataObject
 				return $this->set_param( 'params', 'string', serialize($parvalue), false );
 
 			case 'name':
-				return $this->set_param( $parname, 'string', evo_substr( $parvalue, 0, 50 ), false );
+				return $this->set_param( $parname, 'string', evo_substr( $parvalue, 0, 255 ), false );
 		}
 
 		return $this->set_param( $parname, 'string', $parvalue, $make_null );
@@ -115,9 +117,118 @@ class Cronjob extends DataObject
 
 		return parent::get( $parname );
 	}
+
+
+	/**
+	 * Load data from Request form fields.
+	 *
+	 * @return boolean true if loaded data seems valid.
+	 */
+	function load_from_Request( $cron_job_names = array(), $cron_job_params = array() )
+	{
+		if( $this->ID > 0 || get_param( 'ctsk_ID' ) > 0 )
+		{	// Update or copy cron job
+			$cjob_name = param( 'cjob_name', 'string', true );
+			param_check_not_empty( 'cjob_name', T_('Please enter job name') );
+		}
+		else
+		{	// Create new cron job
+			$cjob_type = param( 'cjob_type', 'string', true );
+			if( !isset( $cron_job_params[$cjob_type] ) )
+			{ // This cron job type doesn't exist, so this is an invalid state
+				debug_die('Invalid job type received');
+				$cjob_name = '';
+			}
+			else
+			{
+				$cjob_name = $cron_job_names[$cjob_type];
+			}
+		}
+
+		// start datetime:
+		param_date( 'cjob_date', T_('Please enter a valid date.'), true );
+		param_time( 'cjob_time' );
+		$this->set( 'start_datetime', form_date( get_param( 'cjob_date' ), get_param( 'cjob_time' ) ) );
+
+		// repeat after:
+		$cjob_repeat_after = param_duration( 'cjob_repeat_after' );
+		if( $cjob_repeat_after == 0 )
+		{
+			$cjob_repeat_after = NULL;
+		}
+		$this->set( 'repeat_after', $cjob_repeat_after );
+
+		// name:
+		if( !empty( $cjob_name ) && $cjob_name != $this->get( 'name' ) )
+		{
+			$this->set( 'name', $cjob_name );
+		}
+
+		if( $this->ID == 0 && get_param( 'ctsk_ID' ) == 0 )
+		{	// Set these params only on creating and copying actions
+			// controller:
+			$this->set( 'controller', $cron_job_params[$cjob_type]['ctrl'] );
+
+			// params:
+			$this->set( 'params', $cron_job_params[$cjob_type]['params'] );
+		}
+
+		return ! param_errors_detected();
+	}
+
+
+	/**
+	 * Get status
+	 *
+	 * @return string Status
+	 */
+	function get_status()
+	{
+		global $DB;;
+
+		if( $this->ID > 0 )
+		{
+			$SQL = new SQL( 'Get status of scheduled job' );
+			$SQL->SELECT( 'clog_status' );
+			$SQL->FROM( 'T_cron__log' );
+			$SQL->WHERE( 'clog_ctsk_ID = '.$DB->quote( $this->ID ) );
+			$status = $DB->get_var( $SQL->get() );
+		}
+
+		if( empty( $status ) )
+		{	// Set default status for new cron jobs and for cron jobs without log
+			$status = 'pending';
+		}
+
+		return $status;
+	}
+
+
+	/**
+	 * Update the DB based on previously recorded changes
+	 *
+	 * @return boolean true
+	 */
+	function dbupdate()
+	{
+		global $DB;
+
+		$DB->begin();
+
+		if( $this->get_status() == 'pending' )
+		{	// Update crob jobs only with "pending" status
+			$result = parent::dbupdate();
+		}
+		else
+		{	// Don't update this cron job
+			$DB->rollback();
+			return false;
+		}
+
+		$DB->commit();
+
+		return $result;
+	}
 }
 
-/*
- * $Log: _cronjob.class.php,v $
- */
 ?>

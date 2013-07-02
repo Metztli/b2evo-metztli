@@ -4,7 +4,7 @@
  *
  * This file is part of the b2evolution project - {@link http://b2evolution.net/}
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2005-2007 by Yabba/Scott - {@link http://astonishme.co.uk/contact/}.
  *
  * {@internal License choice
@@ -75,16 +75,16 @@ class am_xml_highlighter
 	{
 		// highlight all < ?xml - ? >, CDATA and comment blocks
 		$block = preg_replace( array(
-						'¤(&lt;\!--(.*?)--&gt;)¤',
-						'¤(&lt;\!\[CDATA\[([\s\S]*?)]]&gt;)¤',
-						'¤(&lt;\?(.*?)\?&gt;)¤' ),
+						'~(&lt;\!--(.*?)--&gt;)~',
+						'~(&lt;\!\[CDATA\[([\s\S]*?)]]&gt;)~',
+						'~(&lt;\?(.*?)\?&gt;)~' ),
 					array(
 						'<span class="amc_comment">&lt;!&#8722;&#8722;$2&#8722;&#8722;&gt;</span>',
 						'<span class="amc_comment">$1</span>',
 						'<span class="amc_keyword">$1</span>' ),
 						 $block );
 		// highlight remaining tags, attributes and strings
-		$block = callback_on_non_matching_blocks(  $block, '¤<span([\s\S]+?)</span>¤', array( $this, 'highlight_xml_tags' ) );
+		$block = callback_on_non_matching_blocks(  $block, '~<span([\s\S]+?)</span>~', array( $this, 'highlight_xml_tags' ) );
 
 
 		return $this->parent->tidy_code_output( '<span class="amc_default">'.$block.'</span>' );
@@ -99,7 +99,7 @@ class am_xml_highlighter
 	 */
 	function highlight_xml_tags( $block )
 	{
-		$block = preg_replace_callback( '¤(&lt;(.*?)&gt;)¤', array( $this, 'highlight_xml' ), $block );
+		$block = preg_replace_callback( '~(&lt;(.*?)&gt;)~', array( $this, 'highlight_xml' ), $block );
 		return '<span class="amc_default">'.$block.'</span>';
 	}
 
@@ -126,8 +126,4 @@ class am_xml_highlighter
 
 }
 
-
-/*
- * $Log: xml.highlighter.php,v $
- */
 ?>

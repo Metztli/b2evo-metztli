@@ -4,7 +4,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal Open Source relicensing agreement:
  * Daniel HAHLER grants Francois PLANQUE the right to license
@@ -14,7 +14,7 @@
  *
  * @package install
  *
- * @version $Id: _functions_evoupgrade.php 1132 2012-04-02 05:27:26Z sam2kb $
+ * @version $Id: _functions_evoupgrade.php 3960 2013-06-07 08:54:26Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -51,10 +51,10 @@ function set_upgrade_checkpoint( $version )
 	$elapsed_time = time() - $script_start_time;
 
 	echo "OK. (Elapsed upgrade time: $elapsed_time seconds)<br />\n";
-	flush();
+	evo_flush();
 
 	$max_exe_time = ini_get( 'max_execution_time' );
-	if( $max_exe_time && $elapsed_time > $max_exe_time - 10 )
+	if( $max_exe_time && ( $elapsed_time > ( $max_exe_time - 20 ) ) )
 	{ // Max exe time not disabled and we're recahing the end
 		echo 'We are reaching the time limit for this script. Please click <a href="index.php?locale='.$locale.'&amp;action=evoupgrade">continue</a>...';
 		// Dirty temporary solution:
@@ -165,6 +165,57 @@ function db_key_exists( $table, $field_name, $field_value )
 }
 
 /**
+ * Add a Foreign Key constraint.
+ * If another foreign key exists between these two fields then the old FK will be deleted and a new will be created.
+ * If the table engine is not InnoDB, then it will be changed automatically.
+ * If the FK table contains data which would prevent foreign key creation then these records will be deleted.
+ *
+ * @param string foreign key table
+ * @param string foreing key column name
+ * @param string foreign key refrence table name
+ * @param string reference column name in the reference table
+ * @param string foreign key definition ( e.g. "ON DELETE CASCADE" or "ON UPDATE RESTRICT" )
+ */
+function db_add_foreign_key( $table, $field_name, $reference_table, $reference_field_name, $definition )
+{
+	global $DB;
+	$table = preg_replace( $DB->dbaliases, $DB->dbreplaces, $table );
+	$reference_table = preg_replace( $DB->dbaliases, $DB->dbreplaces, $reference_table );
+	$foreign_key_fields = array( array(
+			'fk_fields' => $field_name,
+			'reference_table' => $reference_table,
+			'reference_columns' => $reference_field_name,
+			'fk_definition' => $definition,
+			'create' => true, // This FK should be created if not exists
+		) );
+	db_delta_foreign_keys( $foreign_key_fields, $table, true, 'add' );
+}
+
+/**
+ * Drop a Foreign Key constraint.
+ * If this foreign key not exists the function won't give error.
+ *
+ * @param string foreign key table
+ * @param string foreing key column name
+ * @param string foreign key refrence table name
+ * @param string reference column name in the reference table
+ */
+function db_drop_foreign_key( $table, $field_name, $reference_table, $reference_field_name )
+{
+	global $DB;
+	$table = preg_replace( $DB->dbaliases, $DB->dbreplaces, $table );
+	$reference_table = preg_replace( $DB->dbaliases, $DB->dbreplaces, $reference_table );
+	$foreign_key_fields = array( array(
+			'fk_fields' => $field_name,
+			'reference_table' => $reference_table,
+			'reference_columns' => $reference_field_name,
+			'fk_definition' => '',
+			'create' => false, // This FK shouldn't be created if not exists
+		) );
+	db_delta_foreign_keys( $foreign_key_fields, $table, true, 'drop' );
+}
+
+/**
  * Converts languages in a given table into according locales
  *
  * @param string name of the table
@@ -239,15 +290,19 @@ function upgrade_b2evo_tables()
 	global $db_config, $tableprefix;
 	global $baseurl, $old_db_version, $new_db_version;
 	global $Group_Admins, $Group_Privileged, $Group_Bloggers, $Group_Users;
-	global $locales, $default_locale;
+	global $locales, $locale;
 	global $DB;
 	global $admin_url;
+	global $Settings, $Plugins;
 
 	// used for defaults, when upgrading to 1.6
 	global $use_fileupload, $fileupload_allowedtypes, $fileupload_maxk, $doubleCheckReferers;
 
 	// new DB-delta functionality
 	global $schema_queries, $inc_path;
+
+	// used to check script time before starting to create db delta
+	global $script_start_time;
 
 	// Load DB schema from modules
 	load_db_schema();
@@ -269,12 +324,6 @@ function upgrade_b2evo_tables()
 	if( $old_db_version < 8000 ) debug_die( T_('This version is too old!') );
 	if( $old_db_version > $new_db_version ) debug_die( T_('This version is too recent! We cannot downgrade to the version you are trying to install...') );
 	echo "OK.<br />\n";
-
-
-	// Try to obtain some serious time to do some serious processing (5 minutes)
-	set_max_execution_time(300);
-
-
 
 	if( $old_db_version < 8010 )
 	{
@@ -432,7 +481,7 @@ function upgrade_b2evo_tables()
 			grp_perm_options enum('none','view','edit') NOT NULL default 'none',
 			grp_perm_users enum('none','view','edit') NOT NULL default 'none',
 			grp_perm_templates TINYINT NOT NULL DEFAULT 0,
-			grp_perm_files enum('none','view','add','edit') NOT NULL default 'none',
+			grp_perm_files enum('none','view','add','edit','all') NOT NULL default 'none',
 			PRIMARY KEY grp_ID (grp_ID)
 		)";
 		$DB->query( $query );
@@ -540,6 +589,11 @@ function upgrade_b2evo_tables()
 		echo "OK.<br />\n";
 
 		echo 'Upgrading users table... ';
+		$DB->query( 'UPDATE T_users
+									  SET dateYMDhour = \'2000-01-01 00:00:00\'
+									WHERE ( dateYMDhour = \'0000-00-00 00:00:00\' OR dateYMDhour = \'2000-00-00 00:00:01\' )' );
+		$DB->query( 'ALTER TABLE T_users
+							MODIFY COLUMN dateYMDhour DATETIME NOT NULL DEFAULT \'2000-01-01 00:00:00\'' );
 		$query = "ALTER TABLE T_users
 							ADD COLUMN user_notify tinyint(1) NOT NULL default 1,
 							ADD COLUMN user_grp_ID int(4) NOT NULL default 1,
@@ -626,7 +680,6 @@ function upgrade_b2evo_tables()
 							CHANGE COLUMN post_lang post_locale varchar(20) NOT NULL default 'en-EU',
 							DROP COLUMN post_url,
 							CHANGE COLUMN post_trackbacks post_url varchar(250) NULL default NULL,
-							MODIFY COLUMN post_flags SET( 'pingsdone', 'imported' ),
 							ADD COLUMN post_renderers VARCHAR(179) NOT NULL default 'default',
 							DROP INDEX post_date,
 							ADD INDEX post_issue_date( post_issue_date ),
@@ -728,6 +781,11 @@ function upgrade_b2evo_tables()
 		}
 
 		echo 'Upgrading Comments table... ';
+		$DB->query( 'UPDATE T_comments
+									  SET comment_date = \'2000-01-01 00:00:00\'
+									WHERE comment_date = \'0000-00-00 00:00:00\'' );
+		$DB->query( 'ALTER TABLE T_comments
+							MODIFY COLUMN comment_date DATETIME NOT NULL DEFAULT \'2000-01-01 00:00:00\'' );
 		$query = "ALTER TABLE T_comments
 							ADD COLUMN comment_author_ID int unsigned NULL default NULL AFTER comment_status,
 							MODIFY COLUMN comment_author varchar(100) NULL,
@@ -1837,7 +1895,7 @@ function upgrade_b2evo_tables()
           )' );
 		echo "OK.<br />\n";
 
-		install_basic_skins();
+		install_basic_skins( false );
 
 		echo 'Updating blogs table... ';
 		$DB->query( 'ALTER TABLE T_blogs
@@ -1848,7 +1906,7 @@ function upgrade_b2evo_tables()
 		echo "OK.<br />\n";
 
 
-		install_basic_widgets();
+		install_basic_widgets( $old_db_version );
 
 		set_upgrade_checkpoint( '9408' );
 	}
@@ -2102,7 +2160,7 @@ function upgrade_b2evo_tables()
 			ADD COLUMN post_varchar3  VARCHAR(255) NULL COMMENT 'Custom varchar value 3' AFTER post_varchar2" );
 		echo "OK.<br />\n";
 
- 		echo 'Creating keyphrase table... ';
+		echo 'Creating keyphrase table... ';
 		$query = "CREATE TABLE T_track__keyphrase (
             keyp_ID      INT UNSIGNED NOT NULL AUTO_INCREMENT,
             keyp_phrase  VARCHAR( 255 ) NOT NULL,
@@ -2112,7 +2170,8 @@ function upgrade_b2evo_tables()
 		$DB->query( $query );
 		echo "OK.<br />\n";
 
- 		echo 'Upgrading hitlog table... ';
+		echo 'Upgrading hitlog table... ';
+		evo_flush();
 		$query = "ALTER TABLE T_hitlog
 			 CHANGE COLUMN hit_ID hit_ID              INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
 			 CHANGE COLUMN hit_datetime hit_datetime  DATETIME NOT NULL DEFAULT '2000-01-01 00:00:00',
@@ -2158,10 +2217,10 @@ function upgrade_b2evo_tables()
 	if( $old_db_version < 9900 )
 	{	// 3.0 part 1
 		task_begin( 'Updating keyphrases in hitlog table... ' );
-		flush();
 		load_class( 'sessions/model/_hit.class.php', 'Hit' );
-		$Hit = new Hit();
-
+		// New Hit object creation was added later, to fix upgrades from very old versions.
+		// We create a new temp Hit object to be able to call the Hit::extract_params_from_referer() function which was static when this upgrade block was created.
+		$tempHit = new Hit();
 		$sql = 'SELECT SQL_NO_CACHE hit_ID, hit_referer
   		          FROM T_hitlog
    		         WHERE hit_referer_type = "search"
@@ -2169,7 +2228,7 @@ function upgrade_b2evo_tables()
 		$rows = $DB->get_results( $sql, OBJECT, 'get all search hits' );
 		foreach( $rows as $row )
 		{
-			$params = $Hit->extract_params_from_referer( $row->hit_referer );
+			$params = $tempHit->extract_params_from_referer( $row->hit_referer );
 			if( empty( $params['keyphrase'] ) )
 			{
 				continue;
@@ -2276,7 +2335,7 @@ function upgrade_b2evo_tables()
 		task_end();
 
 		task_begin( 'Creating table for User fields...' );
-		$DB->query( "CREATE TABLE T_users__fields (
+		$DB->query( "CREATE TABLE {$tableprefix}users_fields (
 				uf_ID      int(10) unsigned NOT NULL auto_increment,
 			  uf_user_ID int(10) unsigned NOT NULL,
 			  uf_ufdf_ID int(10) unsigned NOT NULL,
@@ -2427,30 +2486,30 @@ function upgrade_b2evo_tables()
 		require_once dirname(__FILE__).'/_functions_create.php';
 
 		task_begin( 'Creating table for default currencies... ' );
-		$DB->query( "CREATE TABLE T_currency (
+		$DB->query( 'CREATE TABLE '.$tableprefix.'currency (
 				curr_ID int(10) unsigned NOT NULL auto_increment,
 				curr_code char(3) NOT NULL,
 				curr_shortcut varchar(30) NOT NULL,
 				curr_name varchar(40) NOT NULL,
 				PRIMARY KEY curr_ID (curr_ID),
 				UNIQUE curr_code (curr_code)
-			) ENGINE = innodb" );
+			) ENGINE = innodb' );
 		task_end();
 
-		create_default_currencies();
+		create_default_currencies( $tableprefix.'currency' );
 
 		task_begin( 'Creating table for default countries... ' );
-		$DB->query( "CREATE TABLE T_country (
+		$DB->query( 'CREATE TABLE '.$tableprefix.'country (
 				ctry_ID int(10) unsigned NOT NULL auto_increment,
 				ctry_code char(2) NOT NULL,
 				ctry_name varchar(40) NOT NULL,
 				ctry_curr_ID int(10) unsigned,
 				PRIMARY KEY ctry_ID (ctry_ID),
 				UNIQUE ctry_code (ctry_code)
-			) ENGINE = innodb" );
+			) ENGINE = innodb' );
 		task_end();
 
-		create_default_countries();
+		create_default_countries( $tableprefix.'country', false );
 
 		task_begin( 'Upgrading user permissions table... ' );
 		$DB->query( "ALTER TABLE T_coll_user_perms
@@ -2559,7 +2618,7 @@ function upgrade_b2evo_tables()
 		task_end();
 
 		task_begin( 'Upgrading countries... ' );
-		db_add_col( 'T_country', 'ctry_enabled', 'tinyint(1) NOT NULL DEFAULT 1 AFTER ctry_curr_ID' );
+		db_add_col( $tableprefix.'country', 'ctry_enabled', 'tinyint(1) NOT NULL DEFAULT 1 AFTER ctry_curr_ID' );
 		task_end();
 
 
@@ -2730,7 +2789,7 @@ function upgrade_b2evo_tables()
 		task_end();
 
 		task_begin( 'Upgrading currency table...' );
-		$DB->query( 'ALTER TABLE T_currency ADD COLUMN curr_enabled tinyint(1) NOT NULL DEFAULT 1 AFTER curr_name' );
+		$DB->query( 'ALTER TABLE '.$tableprefix.'currency ADD COLUMN curr_enabled tinyint(1) NOT NULL DEFAULT 1 AFTER curr_name' );
 		task_end();
 
 		task_begin( 'Upgrading default blog access type for new blogs...' );
@@ -2837,7 +2896,7 @@ function upgrade_b2evo_tables()
 		db_drop_col( 'T_blogs', 'blog_allowcomments' );
 		task_end();
 
-		task_begin( 'UUpgrading blogs table: allow_rating fields...' );
+		task_begin( 'Upgrading blogs table: allow_rating fields...' );
 		$DB->query( 'UPDATE T_coll_settings
 						SET cset_value = "any"
 						WHERE cset_value = "always" AND cset_name = "allow_rating"' );
@@ -2924,13 +2983,15 @@ function upgrade_b2evo_tables()
 		}
 		task_end();
 
-		task_begin( 'Upgrading settings table...');
+		task_begin( 'Upgrading settings table... ');
 		$DB->query( 'INSERT INTO T_settings (set_name, set_value)
 						VALUES ( "smart_hit_count", 1 )' );
 		$DB->query( 'ALTER TABLE T_coll_settings
-									CHANGE COLUMN cset_value cset_value VARCHAR( 10000 ) NULL COMMENT "The AdSense plugin wants to store very long snippets of HTML"' );
-		task_end();
+									CHANGE COLUMN cset_value cset_value   VARCHAR( 10000 ) NULL COMMENT "The AdSense plugin wants to store very long snippets of HTML"' );
+  		task_end();
 
+  		// The following two upgrade task were created subsequently to "Make sure DB schema is up to date".
+  		// Note: These queries don't modify the correct databases
 		task_begin( 'Upgrading users table, no notification by default...');
 		$DB->query( 'ALTER TABLE T_users ALTER COLUMN user_notify SET DEFAULT 0' );
 		task_end();
@@ -2943,48 +3004,1461 @@ function upgrade_b2evo_tables()
 	}
 
 
-	/*
-	 * ADD UPGRADES HERE.
-	 *
-	 * ALL DB CHANGES MUST BE EXPLICITLY CARRIED OUT. DO NOT RELY ON SCHEMA UPDATES!
-	 * Schema updates do not survive after several incremental changes.
-	 *
-	 * NOTE: every change that gets done here, should bump {@link $new_db_version} (by 100).
-	 */
+	if( $old_db_version < 10300 )
+	{	// 4.2
+		task_begin( 'Upgrading user fields...' );
+		$DB->query( 'ALTER TABLE T_users__fielddefs
+									ADD COLUMN ufdf_required enum("hidden","optional","recommended","require") NOT NULL default "optional"');
+		$DB->query( 'UPDATE T_users__fielddefs
+										SET ufdf_required = "recommended"
+									WHERE ufdf_name in ("Website", "Twitter", "Facebook") ' );
+		$DB->query( "REPLACE INTO T_users__fielddefs (ufdf_ID, ufdf_type, ufdf_name, ufdf_required)
+			 						VALUES (400000, 'text', 'About me', 'recommended');" );
+		task_end();
+
+		task_begin( 'Moving data to user fields...' );
+		$DB->query( 'INSERT INTO T_users__fields( uf_user_ID, uf_ufdf_ID, uf_varchar )
+								 SELECT user_ID, 10300, user_icq
+									 FROM T_users
+								  WHERE user_icq IS NOT NULL AND TRIM(user_icq) <> ""' );
+		$DB->query( 'INSERT INTO T_users__fields( uf_user_ID, uf_ufdf_ID, uf_varchar )
+								 SELECT user_ID, 10200, user_aim
+									 FROM T_users
+								  WHERE user_aim IS NOT NULL AND TRIM(user_aim) <> ""' );
+		$DB->query( 'INSERT INTO T_users__fields( uf_user_ID, uf_ufdf_ID, uf_varchar )
+								 SELECT user_ID, 10000, user_msn
+									 FROM T_users
+								  WHERE user_msn IS NOT NULL AND TRIM(user_msn) <> ""' );
+		$DB->query( 'INSERT INTO T_users__fields( uf_user_ID, uf_ufdf_ID, uf_varchar )
+								 SELECT user_ID, 10100, user_yim
+									 FROM T_users
+								  WHERE user_yim IS NOT NULL AND TRIM(user_yim) <> ""' );
+		task_end();
+
+		task_begin( 'Dropping obsolete user columns...' );
+		$DB->query( 'ALTER TABLE T_users
+									DROP COLUMN user_icq,
+									DROP COLUMN user_aim,
+									DROP COLUMN user_msn,
+									DROP COLUMN user_yim' );
+		task_end();
+
+		// ---
+
+		task_begin( 'Adding new user columns...' );
+		$DB->query( 'ALTER TABLE T_users
+									ADD COLUMN user_postcode varchar(12) NULL AFTER user_ID,
+									ADD COLUMN user_age_min int unsigned NULL AFTER user_postcode,
+									ADD COLUMN user_age_max int unsigned NULL AFTER user_age_min' );
+		task_end();
+
+		task_begin( 'Upgrading item table for hide teaser...' );
+		$DB->query( 'ALTER TABLE T_items__item
+						ADD COLUMN post_hideteaser tinyint(1) NOT NULL DEFAULT 0 AFTER post_featured');
+		$DB->query( 'UPDATE T_items__item
+										SET post_hideteaser = 1
+									WHERE post_content LIKE "%<!--noteaser-->%"' );
+		task_end();
+
+		task_begin( 'Creating table for a specific post settings...' );
+		$DB->query( "CREATE TABLE T_items__item_settings (
+						iset_item_ID  int(10) unsigned NOT NULL,
+						iset_name     varchar( 50 ) NOT NULL,
+						iset_value    varchar( 2000 ) NULL,
+						PRIMARY KEY ( iset_item_ID, iset_name )
+					) ENGINE = innodb" );
+		task_end();
+
+		task_begin( 'Adding new column to comments...' );
+		$DB->query( 'ALTER TABLE T_comments
+									ADD COLUMN comment_in_reply_to_cmt_ID INT(10) unsigned NULL AFTER comment_status' );
+		task_end();
+
+		task_begin( 'Create table for internal searches...' );
+		$DB->query( 'CREATE TABLE T_logs__internal_searches (
+						isrch_ID bigint(20) NOT NULL auto_increment,
+						isrch_coll_ID bigint(20) NOT NULL,
+						isrch_hit_ID bigint(20) NOT NULL,
+						isrch_keywords varchar(255) NOT NULL,
+						PRIMARY KEY (isrch_ID)
+					) ENGINE = MyISAM' );
+		task_end();
+
+		task_begin( 'Create table for comments votes...' );
+		$DB->query( 'CREATE TABLE T_comments__votes (
+						cmvt_cmt_ID  int(10) unsigned NOT NULL,
+						cmvt_user_ID int(10) unsigned NOT NULL,
+						cmvt_helpful TINYINT(1) NULL DEFAULT NULL,
+						cmvt_spam    TINYINT(1) NULL DEFAULT NULL,
+						PRIMARY KEY (cmvt_cmt_ID, cmvt_user_ID),
+						KEY cmvt_cmt_ID (cmvt_cmt_ID),
+						KEY cmvt_user_ID (cmvt_user_ID)
+					) ENGINE = innodb' );
+		task_end();
+
+		task_begin( 'Adding new comments columns...' );
+		$DB->query( 'ALTER TABLE T_comments
+									ADD comment_helpful_addvotes INT NOT NULL DEFAULT 0 AFTER comment_nofollow ,
+									ADD comment_helpful_countvotes INT UNSIGNED NOT NULL DEFAULT 0 AFTER comment_helpful_addvotes ,
+									ADD comment_spam_addvotes INT NOT NULL DEFAULT 0 AFTER comment_helpful_countvotes ,
+									ADD comment_spam_countvotes INT UNSIGNED NOT NULL DEFAULT 0 AFTER comment_spam_addvotes ,
+									CHANGE COLUMN comment_notif_ctsk_ID comment_notif_ctsk_ID      INT(10) unsigned NULL DEFAULT NULL COMMENT "When notifications for this comment are sent through a scheduled job, what is the job ID?"');
+		task_end();
+
+		task_begin( 'Adding new user permission for spam voting...' );
+		$DB->query( 'ALTER TABLE T_coll_user_perms
+									ADD bloguser_perm_vote_spam_cmts tinyint NOT NULL default 0 AFTER bloguser_perm_edit_ts' );
+		task_end();
+
+		task_begin( 'Adding new group permission for spam voting...' );
+		$DB->query( 'ALTER TABLE T_coll_group_perms
+									ADD bloggroup_perm_vote_spam_cmts tinyint NOT NULL default 0 AFTER bloggroup_perm_edit_ts' );
+		task_end();
+
+		task_begin( 'Upgrading countries table...' );
+		$DB->query( 'ALTER TABLE '.$tableprefix.'country ADD COLUMN ctry_preferred tinyint(1) NOT NULL DEFAULT 0 AFTER ctry_enabled' );
+		task_end();
+
+		$DB->query( 'ALTER TABLE T_items__subscriptions CHANGE COLUMN isub_comments isub_comments   tinyint(1) NOT NULL DEFAULT 0 COMMENT "The user wants to receive notifications for new comments on this post"' );
+
+		set_upgrade_checkpoint( '10300' );
+	}
+
+
+	if( $old_db_version < 10400 )
+	{	// 4.2 part 2
+		task_begin( 'Updating "Post by Email" settings...' );
+		$DB->query( 'UPDATE T_settings SET set_name = "eblog_autobr" WHERE set_name = "AutoBR"' );
+		task_end();
+
+		if( $DB->get_var('SELECT set_value FROM T_settings WHERE set_name = "eblog_enabled"') )
+		{	// eblog enabled, let's create a scheduled job for it
+			task_begin( 'Creating "Post by Email" scheduled job...' );
+			$start_date = form_date( date2mysql($GLOBALS['localtimenow'] + 86400), '05:00:00' ); // start tomorrow
+			$DB->query( '
+				INSERT INTO T_cron__task ( ctsk_start_datetime, ctsk_repeat_after, ctsk_name, ctsk_controller, ctsk_params )
+				VALUES ( '.$DB->quote( $start_date ).', 86400, '.$DB->quote( T_('Create posts by email') ).', '.$DB->quote( 'cron/jobs/_post_by_email.job.php' ).', '.$DB->quote( 'N;' ).' )' );
+			task_end();
+		}
+
+		task_begin( 'Upgrading hitlog table...' );
+		$DB->query( 'ALTER TABLE T_hitlog
+								ADD COLUMN hit_disp        VARCHAR(30) DEFAULT NULL AFTER hit_uri,
+								ADD COLUMN hit_ctrl        VARCHAR(30) DEFAULT NULL AFTER hit_disp,
+								ADD COLUMN hit_response_code     INT DEFAULT NULL AFTER hit_agent_type ' );
+		task_end();
+
+		task_begin( 'Upgrading file types...' );
+		// Update ftyp_icon column
+		// Previous versions used a image file name for this field,
+		// but from now we should use a icon name from the file /conf/_icons.php
+		$DB->query( 'UPDATE T_filetypes
+						SET ftyp_icon = "file_image"
+						WHERE ftyp_extensions IN ( "gif", "png", "jpg jpeg" )' );
+		$DB->query( 'UPDATE T_filetypes
+						SET ftyp_icon = "file_document"
+						WHERE ftyp_extensions = "txt"' );
+		$DB->query( 'UPDATE T_filetypes
+						SET ftyp_icon = "file_www"
+						WHERE ftyp_extensions = "htm html"' );
+		$DB->query( 'UPDATE T_filetypes
+						SET ftyp_icon = "file_pdf"
+						WHERE ftyp_extensions = "pdf"' );
+		$DB->query( 'UPDATE T_filetypes
+						SET ftyp_icon = "file_doc"
+						WHERE ftyp_extensions = "doc"' );
+		$DB->query( 'UPDATE T_filetypes
+						SET ftyp_icon = "file_xls"
+						WHERE ftyp_extensions = "xls"' );
+		$DB->query( 'UPDATE T_filetypes
+						SET ftyp_icon = "file_ppt"
+						WHERE ftyp_extensions = "ppt"' );
+		$DB->query( 'UPDATE T_filetypes
+						SET ftyp_icon = "file_pps"
+						WHERE ftyp_extensions = "pps"' );
+		$DB->query( 'UPDATE T_filetypes
+						SET ftyp_icon = "file_zip"
+						WHERE ftyp_extensions = "zip"' );
+		$DB->query( 'UPDATE T_filetypes
+						SET ftyp_icon = "file_php"
+						WHERE ftyp_extensions = "php php3 php4 php5 php6"' );
+		$DB->query( 'UPDATE T_filetypes
+						SET ftyp_icon = ""
+						WHERE ftyp_extensions = "css"' );
+		$DB->query( 'UPDATE T_filetypes
+						SET ftyp_icon = "file_sound"
+						WHERE ftyp_extensions IN ( "mp3", "m4a" )' );
+		$DB->query( 'UPDATE T_filetypes
+						SET ftyp_icon = "file_video"
+						WHERE ftyp_extensions IN ( "mp4", "mov", "m4v" )' );
+		task_end();
+
+		set_upgrade_checkpoint( '10400' );
+	}
+
+
+	if( $old_db_version < 10500 )
+	{	//  part 3
+		task_begin( 'Upgrading hitlog table...' );
+		$DB->query( "ALTER TABLE T_hitlog
+								CHANGE COLUMN hit_referer_type  hit_referer_type ENUM(  'search',  'special',  'spam',  'referer',  'direct',  'self',  'admin', 'blacklist' ) NOT NULL,
+								ADD COLUMN hit_type ENUM('standard','rss','admin','ajax', 'service') DEFAULT 'standard' NOT NULL AFTER hit_ctrl,
+								ADD COLUMN hit_action VARCHAR(30) DEFAULT NULL AFTER hit_ctrl" );
+		$DB->query( 'UPDATE T_hitlog SET hit_referer_type = "special" WHERE hit_referer_type = "blacklist"' );
+		$DB->query( 'UPDATE T_hitlog SET hit_type = "admin", hit_referer_type = "direct"  WHERE hit_referer_type = "admin"' );
+		$DB->query( "ALTER TABLE T_hitlog
+								CHANGE COLUMN hit_referer_type  hit_referer_type ENUM(  'search',  'special',  'spam',  'referer',  'direct',  'self' ) NOT NULL");
+		task_end();
+
+		task_begin( 'Creating table for Groups of user field definitions...' );
+		$DB->query( 'CREATE TABLE T_users__fieldgroups (
+				ufgp_ID int(10) unsigned NOT NULL auto_increment,
+				ufgp_name varchar(255) NOT NULL,
+				ufgp_order int(11) NOT NULL,
+				PRIMARY KEY (ufgp_ID)
+			) ENGINE = innodb' );
+		$DB->query( 'INSERT INTO T_users__fieldgroups ( ufgp_name, ufgp_order )
+				VALUES ( "Instant Messaging", "1" ),
+							 ( "Phone", "2" ),
+							 ( "Web", "3" ),
+							 ( "Organization", "4" ),
+							 ( "Address", "5" ),
+							 ( "Other", "6" ) ' );
+		task_end();
+
+		task_begin( 'Upgrading user field definitions...' );
+		// Add new fields:
+		// 		"ufdf_options" to save a values of the Option list
+		// 		"ufdf_duplicated" to add a several instances
+		// 		"ufdf_ufgp_ID" - Group ID
+		// 		"ufdf_order" - Order number
+		// 		"ufdf_suggest" - Suggest values
+		$DB->query( 'ALTER TABLE T_users__fielddefs
+						ADD ufdf_options    TEXT NOT NULL AFTER ufdf_name,
+						ADD ufdf_duplicated enum("forbidden","allowed","list") NOT NULL default "allowed",
+						ADD ufdf_ufgp_ID    int(10) unsigned NOT NULL AFTER ufdf_ID,
+						ADD ufdf_order      int(11) NOT NULL,
+						ADD ufdf_suggest    tinyint(1) NOT NULL DEFAULT 0,
+						CHANGE ufdf_ID ufdf_ID int(10) UNSIGNED NOT NULL AUTO_INCREMENT' );
+		// Set default values of the field "ufdf_duplicated"
+		$DB->query( 'UPDATE T_users__fielddefs
+						SET ufdf_duplicated = "allowed"
+						WHERE ufdf_ID IN ( 10000, 10100, 10200, 10300, 50100, 50200, 100000, 100100 )' );
+		// Group fields by default
+		$DB->query( 'UPDATE T_users__fielddefs
+						SET ufdf_ufgp_ID = "1"
+						WHERE ufdf_ID <= 40000 ' );
+		$DB->query( 'UPDATE T_users__fielddefs
+						SET ufdf_ufgp_ID = "2"
+						WHERE ufdf_ID > 40000 AND ufdf_ID <= 60100' );
+		$DB->query( 'UPDATE T_users__fielddefs
+						SET ufdf_ufgp_ID = "3"
+						WHERE ufdf_ID > 60100 AND ufdf_ID <= 160100' );
+		$DB->query( 'UPDATE T_users__fielddefs
+						SET ufdf_ufgp_ID = "4"
+						WHERE ufdf_ID > 160100 AND ufdf_ID <= 211000' );
+		$DB->query( 'UPDATE T_users__fielddefs
+						SET ufdf_ufgp_ID = "5"
+						WHERE ufdf_ID > 211000 AND ufdf_ID <= 300300' );
+		$DB->query( 'UPDATE T_users__fielddefs
+						SET ufdf_ufgp_ID = "6"
+						WHERE ufdf_ID > 300300' );
+		// Set order field
+		$userfields = $DB->get_results( 'SELECT ufdf_ID, ufdf_ufgp_ID
+				FROM T_users__fielddefs
+				ORDER BY ufdf_ufgp_ID, ufdf_ID' );
+		$userfield_order = 1;
+		foreach( $userfields as $uf => $userfield )
+		{
+			if( $uf > 0 )
+			{
+				if( $userfields[$uf-1]->ufdf_ufgp_ID != $userfield->ufdf_ufgp_ID )
+				{	// New group is starting, reset $userfield_order
+					$userfield_order = 1;
+				}
+			}
+			$DB->query( 'UPDATE T_users__fielddefs
+						SET ufdf_order = "'.$userfield_order.'"
+						WHERE ufdf_ID = '.$userfield->ufdf_ID );
+			$userfield_order++;
+		}
+		// Change field type for Group 'Organization' (group_ID=4)
+		$DB->query( 'UPDATE T_users__fielddefs
+					SET ufdf_type = "word"
+					WHERE ufdf_ufgp_ID = "4"' );
+		// Create a default additional info for administrator (user_ID=1)
+		$DB->query( 'INSERT INTO T_users__fields ( uf_user_ID, uf_ufdf_ID, uf_varchar )
+			VALUES ( 1, 200000, "Site administrator" ),
+						 ( 1, 200000, "Moderator" ),
+						 ( 1, 100000, "'.$baseurl.'" )' );
+		// Add Indexes
+		$DB->query( 'ALTER TABLE T_users__fields
+						ADD INDEX uf_ufdf_ID ( uf_ufdf_ID ),
+						ADD INDEX uf_varchar ( uf_varchar ) ' );
+		task_end();
+
+		task_begin( 'Upgrading permissions...' );
+		// Group permissions
+		$DB->query( 'ALTER TABLE T_coll_group_perms
+						ADD bloggroup_perm_own_cmts tinyint NOT NULL default 0 AFTER bloggroup_perm_edit_ts' );
+		// Set default values for Administrators & Privileged Bloggers groups
+		$DB->query( 'UPDATE T_coll_group_perms
+						SET bloggroup_perm_own_cmts = "1"
+						WHERE bloggroup_group_ID IN ( 1, 2 )' );
+		// User permissions
+		$DB->query( 'ALTER TABLE T_coll_user_perms
+						ADD bloguser_perm_own_cmts tinyint NOT NULL default 0 AFTER bloguser_perm_edit_ts' );
+		task_end();
+
+
+		set_upgrade_checkpoint( '10500' );
+	}
+
+
+	if( $old_db_version < 10600 )
+	{	//  part 4
+
+		// For create_default_regions() and create_default_subregions():
+		require_once dirname(__FILE__).'/_functions_create.php';
+
+		task_begin( 'Renaming Countries table...' );
+		$DB->query( 'RENAME TABLE '.$tableprefix.'country TO T_regional__country' );
+		task_end();
+
+		task_begin( 'Renaming Currencies table...' );
+		$DB->query( 'RENAME TABLE '.$tableprefix.'currency TO T_regional__currency' );
+		task_end();
+
+		task_begin( 'Creating Regions table...' );
+		$DB->query( 'CREATE TABLE T_regional__region (
+			rgn_ID        int(10) unsigned NOT NULL auto_increment,
+			rgn_ctry_ID   int(10) unsigned NOT NULL,
+			rgn_code      char(6) NOT NULL,
+			rgn_name      varchar(40) NOT NULL,
+			rgn_enabled   tinyint(1) NOT NULL DEFAULT 1,
+			rgn_preferred tinyint(1) NOT NULL DEFAULT 0,
+			PRIMARY KEY rgn_ID (rgn_ID),
+			UNIQUE rgn_ctry_ID_code (rgn_ctry_ID, rgn_code)
+		) ENGINE = innodb' );
+		task_end();
+
+		create_default_regions();
+
+		task_begin( 'Creating Sub-regions table...' );
+		$DB->query( 'CREATE TABLE T_regional__subregion (
+			subrg_ID        int(10) unsigned NOT NULL auto_increment,
+			subrg_rgn_ID    int(10) unsigned NOT NULL,
+			subrg_code      char(6) NOT NULL,
+			subrg_name      varchar(40) NOT NULL,
+			subrg_enabled   tinyint(1) NOT NULL DEFAULT 1,
+			subrg_preferred tinyint(1) NOT NULL DEFAULT 0,
+			PRIMARY KEY subrg_ID (subrg_ID),
+			UNIQUE subrg_rgn_ID_code (subrg_rgn_ID, subrg_code)
+		) ENGINE = innodb' );
+		task_end();
+
+		create_default_subregions();
+
+		task_begin( 'Creating Cities table...' );
+		$DB->query( 'CREATE TABLE T_regional__city (
+			city_ID         int(10) unsigned NOT NULL auto_increment,
+			city_ctry_ID    int(10) unsigned NOT NULL,
+			city_rgn_ID     int(10) unsigned NULL,
+			city_subrg_ID   int(10) unsigned NULL,
+			city_postcode   char(12) NOT NULL,
+			city_name       varchar(40) NOT NULL,
+			city_enabled    tinyint(1) NOT NULL DEFAULT 1,
+			city_preferred  tinyint(1) NOT NULL DEFAULT 0,
+			PRIMARY KEY city_ID (city_ID),
+			INDEX city_ctry_ID_postcode ( city_ctry_ID, city_postcode ),
+			INDEX city_rgn_ID_postcode ( city_rgn_ID, city_postcode ),
+			INDEX city_subrg_ID_postcode ( city_subrg_ID, city_postcode )
+		) ENGINE = innodb' );
+		task_end();
+
+		task_begin( 'Update Item Settings...' );
+		// Admin: full rights for all blogs (look 'ma, doing a natural join! :>)
+		$query = "INSERT INTO T_items__item_settings( iset_item_ID, iset_name, iset_value )
+						SELECT post_ID, 'hide_teaser', post_hideteaser
+							FROM T_items__item";
+		$DB->query( $query );
+
+		db_drop_col( 'T_items__item', 'post_hideteaser' );
+		task_end();
+
+		task_begin( 'Upgrading hitlog table...' );
+		$DB->query( "ALTER TABLE T_hitlog
+						ADD COLUMN hit_keyphrase VARCHAR(255) DEFAULT NULL AFTER hit_keyphrase_keyp_ID" );
+		task_end();
+
+		task_begin( 'Upgrading track__keyphrase...' );
+		$DB->query( "ALTER TABLE T_track__keyphrase
+						ADD COLUMN keyp_count_refered_searches INT UNSIGNED DEFAULT 0 AFTER keyp_phrase,
+						ADD COLUMN keyp_count_internal_searches INT UNSIGNED DEFAULT 0 AFTER keyp_count_refered_searches" );
+		task_end();
 
 
 
-	/* Wait until we're sure and no longer experimental for that one...
-	task_begin( 'Moving user data to fields' );
-	// ICQ
-	$DB->query( "INSERT INTO T_users__fields( uf_user_ID, uf_ufdf_ID, uf_varchar )
-							 SELECT user_ID, 10300, user_icq
-								 FROM T_users
-								WHERE user_msn IS NOT NULL AND TRIM(user_icq) <> ''" );
-	// URL
-	$DB->query( "INSERT INTO T_users__fields( uf_user_ID, uf_ufdf_ID, uf_varchar )
-							 SELECT user_ID, 100000, user_url
-								 FROM T_users
-								WHERE user_msn IS NOT NULL AND TRIM(user_url) <> ''" );
-	// AIM
-	$DB->query( "INSERT INTO T_users__fields( uf_user_ID, uf_ufdf_ID, uf_varchar )
-							 SELECT user_ID, 10200, user_aim
-								 FROM T_users
-								WHERE user_msn IS NOT NULL AND TRIM(user_aim) <> ''" );
-	// MSN/live IM
-	$DB->query( "INSERT INTO T_users__fields( uf_user_ID, uf_ufdf_ID, uf_varchar )
-							 SELECT user_ID, 10000, user_msn
-								 FROM T_users
-								WHERE user_msn IS NOT NULL AND TRIM(user_msn) <> ''" );
-	// Yahoo IM
-	$DB->query( "INSERT INTO T_users__fields( uf_user_ID, uf_ufdf_ID, uf_varchar )
-							 SELECT user_ID, 10100, user_yim
-								 FROM T_users
-								WHERE user_msn IS NOT NULL AND TRIM(user_yim) <> ''" );
-	task_end();
-	*/
+		task_begin( 'Droping table internal searches...' );
+
+		$DB->query( "DROP TABLE T_logs__internal_searches" );
+		task_end();
 
 
+		task_begin( 'Upgrading users table...' );
+		db_add_col( 'T_users', 'user_rgn_ID', 'int(10) unsigned NULL AFTER user_ctry_ID' );
+		db_add_col( 'T_users', 'user_subrg_ID', 'int(10) unsigned NULL AFTER user_rgn_ID' );
+		db_add_col( 'T_users', 'user_city_ID', 'int(10) unsigned NULL AFTER user_subrg_ID' );
+		task_end();
+
+		task_begin( 'Upgrading hitlog table...' );
+		$DB->query( 'UPDATE T_hitlog
+						SET hit_type = "rss",
+							hit_agent_type = "unknown"
+						WHERE hit_agent_type = "rss"' );
+
+		$DB->query( "ALTER TABLE T_hitlog
+								CHANGE COLUMN hit_agent_type hit_agent_type ENUM('robot','browser','unknown') DEFAULT 'unknown' NOT NULL" );
+		task_end();
+
+		task_begin( 'Creating mail log table...' );
+		$DB->query( 'CREATE TABLE '.$tableprefix.'mail__log (
+		  emlog_ID        INT(10) UNSIGNED NOT NULL auto_increment,
+		  emlog_timestamp TIMESTAMP NOT NULL,
+		  emlog_to        VARCHAR(255) DEFAULT NULL,
+		  emlog_success   TINYINT(1) NOT NULL DEFAULT 0,
+		  emlog_subject   VARCHAR(255) DEFAULT NULL,
+		  emlog_headers   TEXT DEFAULT NULL,
+		  emlog_message   TEXT DEFAULT NULL,
+		  PRIMARY KEY     (emlog_ID)
+		) ENGINE = myisam' );
+		task_end();
+
+		set_upgrade_checkpoint( '10600' );
+	}
+
+
+	if( $old_db_version < 10700 )
+	{	// part 5
+
+		task_begin( 'Upgrading user notifications settings...' );
+		$DB->query( 'INSERT INTO T_users__usersettings ( uset_user_ID, uset_name, uset_value )
+						SELECT user_ID, "notify_published_comments", user_notify
+							FROM T_users', 'Move notify settings from users to users_usersettings' );
+		$DB->query( 'INSERT INTO T_users__usersettings ( uset_user_ID, uset_name, uset_value )
+						SELECT user_ID, "notify_comment_moderation", user_notify_moderation
+							FROM T_users', 'Move notify moderation settings from users to users_usersettings' );
+		$DB->query( 'INSERT INTO T_users__usersettings ( uset_user_ID, uset_name, uset_value )
+						SELECT user_ID, "enable_PM", 1
+							FROM T_users
+								WHERE user_allow_msgform = 1 OR user_allow_msgform = 3', 'Set enable PM on users_usersettings' );
+		$DB->query( 'INSERT INTO T_users__usersettings ( uset_user_ID, uset_name, uset_value )
+						SELECT user_ID, "enable_PM", 0
+							FROM T_users
+								WHERE user_allow_msgform = 0 OR user_allow_msgform = 2', 'Set enable PM on users_usersettings' );
+		$DB->query( 'INSERT INTO T_users__usersettings ( uset_user_ID, uset_name, uset_value )
+						SELECT user_ID, "enable_email", 1
+							FROM T_users
+								WHERE user_allow_msgform > 1', 'Set enable email true on users_usersettings' );
+		$DB->query( 'INSERT INTO T_users__usersettings ( uset_user_ID, uset_name, uset_value )
+						SELECT user_ID, "enable_email", 0
+							FROM T_users
+								WHERE user_allow_msgform < 2', 'Set enable email false on users_usersettings' );
+		db_drop_col( 'T_users', 'user_notify' );
+		db_drop_col( 'T_users', 'user_notify_moderation' );
+		db_drop_col( 'T_users', 'user_allow_msgform' );
+		task_end();
+
+		task_begin( 'Upgrading Item table...' );
+		db_add_col( 'T_items__item', 'post_ctry_ID', 'INT(10) UNSIGNED NULL' );
+		db_add_col( 'T_items__item', 'post_rgn_ID', 'INT(10) UNSIGNED NULL' );
+		db_add_col( 'T_items__item', 'post_subrg_ID', 'INT(10) UNSIGNED NULL' );
+		db_add_col( 'T_items__item', 'post_city_ID', 'INT(10) UNSIGNED NULL' );
+		task_end();
+
+		task_begin( 'Upgrading users table...' );
+		db_drop_col( 'T_users', 'user_postcode' );	// Previously obsoleted
+		db_drop_col( 'T_users', 'user_idmode' );
+		task_end();
+
+		task_begin( 'Upgrading users fields table...' );
+		db_add_col( 'T_users__fielddefs', 'ufdf_bubbletip', 'varchar(2000) NULL' );
+		task_end();
+
+
+		task_begin( 'Creating table for groups of messaging contacts...' );
+		$DB->query( "CREATE TABLE IF NOT EXISTS T_messaging__contact_groups (
+			cgr_ID      int(10) unsigned NOT NULL auto_increment,
+			cgr_user_ID int(10) unsigned NOT NULL,
+			cgr_name    varchar(50) NOT NULL,
+			PRIMARY KEY cgr_ID (cgr_ID)
+		) ENGINE = innodb" );
+		task_end();
+
+		task_begin( 'Creating table for group users of messaging contacts...' );
+		$DB->query( "CREATE TABLE T_messaging__contact_groupusers (
+			cgu_user_ID int(10) unsigned NOT NULL,
+			cgu_cgr_ID  int(10) unsigned NOT NULL,
+			PRIMARY KEY cgu_PK (cgu_user_ID, cgu_cgr_ID)
+		) ENGINE = innodb" );
+		task_end();
+
+		task_begin( 'Upgrading mail log table...' );
+		db_add_col( $tableprefix.'mail__log', 'emlog_user_ID', 'INT(10) UNSIGNED DEFAULT NULL AFTER emlog_timestamp' );
+		task_end();
+
+		set_upgrade_checkpoint( '10700' );
+	}
+
+	if( $old_db_version < 10800 )
+	{	// part 6 aka between "i1-i2" and "i2"
+
+		task_begin( 'Upgrading users table, add user status...' );
+		db_add_col( 'T_users', 'user_status', 'enum( "activated", "autoactivated", "closed", "deactivated", "emailchanged", "new" ) NOT NULL default "new" AFTER user_validated' );
+		$update_user_status_query = 'UPDATE T_users SET user_status = ';
+		// check if new users must activate their account. If users are not required to activate their account, then all existing users will be considerated as activated user.
+		$new_users_must_validate = $DB->get_var( 'SELECT set_value FROM T_settings WHERE set_name = '.$DB->quote( 'newusers_mustvalidate' ) );
+		if( $new_users_must_validate || ( $new_users_must_validate == NULL ) )
+		{ // newusers_mustvalidate setting is set to true, or it is not set at all. If it is not set, we know that the default value is true!
+			// set activated status only for validated users
+			$update_user_status_query .= $DB->quote( 'activated' );
+			$update_user_status_query .= ' WHERE user_validated = 1';
+		}
+		else
+		{
+			$update_user_status_query .= $DB->quote( 'autoactivated' );
+		}
+		// set activated status for corresponding users
+		$DB->query( $update_user_status_query );
+		db_drop_col( 'T_users', 'user_validated' );
+		task_end();
+
+		set_upgrade_checkpoint( '10800' );
+	}
+
+	if( $old_db_version < 10900 )
+	{	// part 7 aka "i3"
+
+		task_begin( 'Upgrading user settings table...' );
+		$DB->query( 'INSERT INTO T_users__usersettings ( uset_user_ID, uset_name, uset_value )
+						SELECT user_ID, "show_online", 0
+							FROM T_users
+								WHERE user_showonline = 0', 'Set show online on users_usersettings' );
+		$DB->query( 'INSERT INTO T_users__usersettings ( uset_user_ID, uset_name, uset_value )
+						SELECT user_ID, "user_ip", user_ip
+							FROM T_users
+								WHERE user_ip IS NOT NULL', 'Set user ip on users_usersettings' );
+		$DB->query( 'INSERT INTO T_users__usersettings ( uset_user_ID, uset_name, uset_value )
+						SELECT user_ID, "user_domain", user_domain
+							FROM T_users
+								WHERE user_domain IS NOT NULL', 'Set user domain on users_usersettings' );
+		$DB->query( 'INSERT INTO T_users__usersettings ( uset_user_ID, uset_name, uset_value )
+						SELECT user_ID, "user_browser", user_browser
+							FROM T_users
+								WHERE user_browser IS NOT NULL', 'Set user browser on users_usersettings' );
+		db_drop_col( 'T_users', 'user_showonline' );
+		db_drop_col( 'T_users', 'user_ip' );
+		db_drop_col( 'T_users', 'user_domain' );
+		db_drop_col( 'T_users', 'user_browser' );
+		task_end();
+
+		task_begin( 'Upgrading user activation settings...' );
+		// Remove all last_activation_email timestamps because we will use date instead of them
+		$DB->query( 'DELETE FROM T_users__usersettings WHERE uset_name = "last_activation_email"' );
+		task_end();
+
+		task_begin( 'Upgrading Users table...' );
+		// Update user_status column add 'failedactivation' status
+		$DB->query( 'ALTER TABLE T_users CHANGE user_status
+					user_status enum( "activated", "autoactivated", "closed", "deactivated", "emailchanged", "failedactivation", "new" ) NOT NULL default "new"' );
+		db_add_col( 'T_users', 'user_created_fromIPv4', 'int(10) unsigned NOT NULL' );
+		db_add_col( 'T_users', 'user_email_dom_ID', 'int(10) unsigned NULL' );
+		$DB->query( 'ALTER TABLE T_users CHANGE dateYMDhour user_created_datetime DATETIME NOT NULL DEFAULT \'2000-01-01 00:00:00\'' );
+		db_add_col( 'T_users', 'user_reg_ctry_ID', 'int(10) unsigned NULL AFTER user_age_max' );
+		db_add_col( 'T_users', 'user_profileupdate_ts', 'timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP' );
+		$DB->query( 'ALTER TABLE T_users ADD INDEX user_email ( user_email )' );
+		task_end();
+
+		task_begin( 'Renaming Email log table...' );
+		$DB->query( 'RENAME TABLE '.$tableprefix.'mail__log TO T_email__log' );
+		task_end();
+
+		task_begin( 'Creating email returns table...' );
+		$DB->query( "CREATE TABLE T_email__returns (
+			  emret_ID        INT(10) UNSIGNED NOT NULL auto_increment,
+			  emret_address   VARCHAR(255) DEFAULT NULL,
+			  emret_errormsg  VARCHAR(255) DEFAULT NULL,
+			  emret_timestamp TIMESTAMP NOT NULL,
+			  emret_headers   TEXT DEFAULT NULL,
+			  emret_message   TEXT DEFAULT NULL,
+			  emret_errtype   CHAR(1) NOT NULL DEFAULT 'U',
+			  PRIMARY KEY     (emret_ID)
+			) ENGINE = myisam" );
+		task_end();
+
+		task_begin( 'Upgrading general settings table...' );
+		$DB->query( 'ALTER TABLE T_settings CHANGE set_value set_value VARCHAR( 5000 ) NULL' );
+		task_end();
+
+		task_begin( 'Upgrading sessions table...' );
+		db_add_col( 'T_sessions', 'sess_device', 'VARCHAR(8) NOT NULL DEFAULT \'\'' );
+		task_end();
+
+		task_begin( 'Creating table for Antispam IP Ranges...' );
+		$DB->query( "CREATE TABLE T_antispam__iprange (
+			aipr_ID         int(10) unsigned NOT NULL auto_increment,
+			aipr_IPv4start  int(10) unsigned NOT NULL,
+			aipr_IPv4end    int(10) unsigned NOT NULL,
+			aipr_user_count int(10) unsigned DEFAULT 0,
+			PRIMARY KEY aipr_ID (aipr_ID)
+		) ENGINE = innodb" );
+		task_end();
+
+		task_begin( 'Upgrading base domains table...' );
+		$DB->query( "ALTER TABLE T_basedomains CHANGE dom_type dom_type ENUM( 'unknown', 'normal', 'searcheng', 'aggregator', 'email' ) CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL DEFAULT 'unknown'" );
+		$DB->query( 'ALTER TABLE T_basedomains DROP INDEX dom_name' );
+		$DB->query( 'ALTER TABLE T_basedomains DROP INDEX dom_type' );
+		$DB->query( 'ALTER TABLE T_basedomains ADD UNIQUE dom_type_name ( dom_type, dom_name )' );
+		task_end();
+
+		/*** Update user_email_dom_ID for all already existing users ***/
+		task_begin( 'Upgrading users email domains...' );
+		$DB->begin();
+		// Get the users
+		$uemails_SQL = new SQL();
+		$uemails_SQL->SELECT( 'user_ID, user_email' );
+		$uemails_SQL->FROM( 'T_users' );
+		$users_emails = $DB->get_assoc( $uemails_SQL->get() );
+
+		if( count( $users_emails ) > 0 )
+		{
+			// Get all email domains
+			$edoms_SQL = new SQL();
+			$edoms_SQL->SELECT( 'dom_ID, dom_name' );
+			$edoms_SQL->FROM( 'T_basedomains' );
+			$edoms_SQL->WHERE( 'dom_type = \'email\'' );
+			$email_domains = $DB->get_assoc( $edoms_SQL->get() );
+			// pre_dump( $email_domains );
+
+			foreach( $users_emails as $user_ID => $user_email )
+			{
+				if( preg_match( '#@(.+)#i', strtolower($user_email), $ematch ) )
+				{	// Get email domain from user's email address
+					$email_domain = $ematch[1];
+					$dom_ID = array_search( $email_domain, $email_domains );
+
+					if( ! $dom_ID )
+					{	// Insert new email domain
+						$DB->query( 'INSERT INTO T_basedomains ( dom_type, dom_name )
+							VALUES ( \'email\', '.$DB->quote( $email_domain ).' )' );
+						$dom_ID = $DB->insert_id;
+
+						// Memorize inserted domain to prevent duplicates
+						$email_domains[$dom_ID] = $email_domain;
+						// pre_dump( $dom_ID, $email_domain );
+					}
+
+					// Update user_email_dom_ID
+					$DB->query( 'UPDATE T_users
+						SET user_email_dom_ID = '.$DB->quote( $dom_ID ).'
+						WHERE user_ID = '.$DB->quote( $user_ID ) );
+				}
+			}
+		}
+		$DB->commit();
+		task_end();
+
+		task_begin( 'Upgrading users fields table...' );
+		$DB->query( 'ALTER TABLE T_users__fields CHANGE uf_varchar uf_varchar VARCHAR( 10000 ) NOT NULL' );
+		// Modify Indexes
+		$DB->query( 'ALTER TABLE T_users__fields
+						DROP INDEX uf_varchar,
+						ADD INDEX uf_varchar ( uf_varchar(255) )' );
+		task_end();
+
+		task_begin( 'Upgrading cron tasks table...' );
+		$DB->query( 'ALTER TABLE T_cron__task CHANGE ctsk_name ctsk_name VARCHAR(255) NOT NULL' );
+		task_end();
+
+		task_begin( 'Upgrading comments table...' );
+		db_add_col( 'T_comments', 'comment_IP_ctry_ID', 'int(10) unsigned NULL AFTER comment_author_IP' );
+		task_end();
+
+		task_begin( 'Creating table for Blocked Email Addreses...' );
+		$DB->query( "CREATE TABLE {$tableprefix}email__blocked (
+			emblk_ID                    INT(10) UNSIGNED NOT NULL auto_increment,
+			emblk_address               VARCHAR(255) DEFAULT NULL,
+			emblk_status                ENUM ( 'unknown', 'warning', 'suspicious1', 'suspicious2', 'suspicious3', 'prmerror', 'spammer' ) NOT NULL DEFAULT 'unknown',
+			emblk_sent_count            INT(10) UNSIGNED NOT NULL DEFAULT 0,
+			emblk_sent_last_returnerror INT(10) UNSIGNED NOT NULL DEFAULT 0,
+			emblk_prmerror_count        INT(10) UNSIGNED NOT NULL DEFAULT 0,
+			emblk_tmperror_count        INT(10) UNSIGNED NOT NULL DEFAULT 0,
+			emblk_spamerror_count       INT(10) UNSIGNED NOT NULL DEFAULT 0,
+			emblk_othererror_count      INT(10) UNSIGNED NOT NULL DEFAULT 0,
+			emblk_last_sent_ts          TIMESTAMP NULL,
+			emblk_last_error_ts         TIMESTAMP NULL,
+			PRIMARY KEY                 (emblk_ID),
+			UNIQUE                      emblk_address (emblk_address)
+		) ENGINE = myisam" );
+		task_end();
+
+		task_begin( 'Upgrading email log table...' );
+		// Get old values of emlog_success field
+		$SQL = new SQL();
+		$SQL->SELECT( 'emlog_ID' );
+		$SQL->FROM( 'T_email__log' );
+		$SQL->WHERE( 'emlog_success = 0' );
+		$email_failed_logs = $DB->get_col( $SQL->get() );
+		// Change a field emlog_success to new format
+		$DB->query( 'ALTER TABLE T_email__log CHANGE emlog_success emlog_result ENUM ( "ok", "error", "blocked" ) NOT NULL DEFAULT "ok"' );
+		if( !empty( $email_failed_logs ) )
+		{	// Update only the failed email logs to new values
+			// Do NOT update the success email logs, because we already have a result type 'ok' as default
+			$DB->query( 'UPDATE T_email__log
+					SET emlog_result = '.$DB->quote( 'error' ).'
+				WHERE emlog_ID IN ( '.$DB->quote( $email_failed_logs ).' )' );
+		}
+		task_end();
+
+		/*
+		 * ADD UPGRADES FOR i3 BRANCH __ABOVE__ IN THIS BLOCK.
+		 *
+		 * This part will be included in trunk and i3 branches
+		 */
+
+		set_upgrade_checkpoint( '10900' );
+	}
+
+	if( $old_db_version < 11000 )
+	{	// part 8 trunk aka first part of "i4"
+
+		global $db_storage_charset;
+
+		task_begin( 'Upgrading Locales table...' );
+		db_add_col( 'T_locales', 'loc_transliteration_map', 'VARCHAR(10000) NOT NULL default \'\' AFTER loc_priority' );
+		task_end();
+
+		task_begin( 'Upgrading general settings table...' );
+		$DB->query( 'UPDATE T_settings SET set_name = '.$DB->quote( 'smart_view_count' ).' WHERE set_name = '.$DB->quote( 'smart_hit_count' ) );
+		task_end();
+
+		task_begin( 'Upgrading sessions table...' );
+		$DB->query( "UPDATE T_sessions SET sess_lastseen = concat( '2000-01-01 ', time( sess_lastseen ) )
+						WHERE date( sess_lastseen ) = '1970-01-01'" );
+		$DB->query( "ALTER TABLE T_sessions CHANGE COLUMN sess_lastseen sess_lastseen_ts TIMESTAMP NOT NULL DEFAULT '2000-01-01 00:00:00' COMMENT 'User last logged activation time. Value may be off by up to 60 seconds'" );
+		db_add_col( 'T_sessions', 'sess_start_ts', "TIMESTAMP NOT NULL DEFAULT '2000-01-01 00:00:00' AFTER sess_hitcount" );
+		$DB->query( 'UPDATE T_sessions SET sess_start_ts = TIMESTAMPADD( SECOND, -1, sess_lastseen_ts )' );
+		db_drop_col( 'T_sessions', 'sess_hitcount' );
+		task_end();
+
+		task_begin( 'Upgrading users table...' );
+		db_add_col( 'T_users', 'user_lastseen_ts', 'TIMESTAMP NULL AFTER user_created_datetime' );
+		$DB->query( 'UPDATE T_users SET user_lastseen_ts = ( SELECT MAX( sess_lastseen_ts ) FROM T_sessions WHERE sess_user_ID = user_ID )' );
+		$DB->query( 'UPDATE T_users SET user_profileupdate_ts = user_created_datetime WHERE user_profileupdate_ts < user_created_datetime' );
+		$DB->query( "ALTER TABLE T_users CHANGE COLUMN user_profileupdate_ts user_profileupdate_date DATE NOT NULL DEFAULT '2000-01-01' COMMENT 'Last day when the user has updated some visible field in his profile.'" );
+		task_end();
+
+		task_begin( 'Updating versions table...' );
+		db_add_col( 'T_items__version', 'iver_ID', 'INT UNSIGNED NOT NULL FIRST' );
+		$DB->query( 'ALTER TABLE T_items__version DROP INDEX iver_itm_ID, ADD INDEX iver_ID_itm_ID ( iver_ID , iver_itm_ID )' );
+		task_end();
+
+		task_begin( 'Upgrading messaging contact group users...' );
+		db_add_foreign_key( 'T_messaging__contact_groupusers', 'cgu_cgr_ID', 'T_messaging__contact_groups', 'cgr_ID', 'ON DELETE CASCADE' );
+		task_end();
+
+		task_begin( 'Creating table for a latest version of the POT file...' );
+		$DB->query( "CREATE TABLE T_i18n_original_string (
+			iost_ID        int(10) unsigned NOT NULL auto_increment,
+			iost_string    varchar(10000) NOT NULL default '',
+			iost_inpotfile tinyint(1) NOT NULL DEFAULT 0,
+			PRIMARY KEY (iost_ID)
+		) ENGINE = innodb" );
+		task_end();
+
+		task_begin( 'Creating table for a latest versions of the PO files...' );
+		$DB->query( "CREATE TABLE T_i18n_translated_string (
+			itst_ID       int(10) unsigned NOT NULL auto_increment,
+			itst_iost_ID  int(10) unsigned NOT NULL,
+			itst_locale   varchar(20) NOT NULL default '',
+			itst_standard varchar(10000) NOT NULL default '',
+			itst_custom   varchar(10000) NULL,
+			itst_inpofile tinyint(1) NOT NULL DEFAULT 0,
+			PRIMARY KEY (itst_ID)
+		) ENGINE = innodb DEFAULT CHARSET = utf8" );
+		task_end();
+
+		task_begin( 'Updating Antispam IP Ranges table...' );
+		db_add_col( 'T_antispam__iprange', 'aipr_status', 'enum( \'trusted\', \'suspect\', \'blocked\' ) NULL DEFAULT NULL' );
+		db_add_col( 'T_antispam__iprange', 'aipr_block_count', 'int(10) unsigned DEFAULT 0' );
+		$DB->query( "ALTER TABLE T_antispam__iprange CHANGE COLUMN aipr_user_count aipr_user_count int(10) unsigned DEFAULT 0" );
+		task_end();
+
+		task_begin( 'Creating default antispam IP ranges... ' );
+		$DB->query( '
+			INSERT INTO T_antispam__iprange ( aipr_IPv4start, aipr_IPv4end, aipr_status )
+			VALUES ( '.$DB->quote( ip2int( '127.0.0.0' ) ).', '.$DB->quote( ip2int( '127.0.0.255' ) ).', "trusted" ),
+				( '.$DB->quote( ip2int( '10.0.0.0' ) ).', '.$DB->quote( ip2int( '10.255.255.255' ) ).', "trusted" ),
+				( '.$DB->quote( ip2int( '172.16.0.0' ) ).', '.$DB->quote( ip2int( '172.31.255.255' ) ).', "trusted" ),
+				( '.$DB->quote( ip2int( '192.168.0.0' ) ).', '.$DB->quote( ip2int( '192.168.255.255' ) ).', "trusted" )
+			' );
+		task_end();
+
+
+		task_begin( 'Adding new countries...' );
+		// IGNORE is needed for upgrades from DB version 9970 or later
+		$DB->query( 'INSERT IGNORE INTO T_regional__country ( ctry_code, ctry_name, ctry_curr_ID ) VALUES ( \'ct\', \'Catalonia\', \'2\' )' );
+		task_end();
+
+		task_begin( 'Upgrading message thread statuses table...' );
+		db_add_col( 'T_messaging__threadstatus', 'tsta_thread_leave_msg_ID', 'int(10) unsigned NULL DEFAULT NULL' );
+		task_end();
+
+		task_begin( 'Upgrading Item Settings...' );
+		// Convert item custom fields to custom item settings ( move custom fields from T_items__item table to T_items__item_settings table )
+		$query = "INSERT INTO T_items__item_settings( iset_item_ID, iset_name, iset_value ) ";
+		for( $i = 1; $i <= 8; $i++ )
+		{ // For each custom fields:
+			if( $i > 1 )
+			{
+				$query .= ' UNION';
+			}
+			$field_name = ( $i > 5 ) ? 'varchar'.( $i - 5 ) : 'double'.$i;
+			$query .= " SELECT post_ID, 'custom_".$field_name."', post_".$field_name."
+							FROM T_items__item WHERE post_".$field_name." IS NOT NULL";
+		}
+		$DB->query( $query );
+
+		for( $i = 1; $i <= 5; $i++ )
+		{ // drop custom double columns from items tabe
+			db_drop_col( 'T_items__item', 'post_double'.$i );
+		}
+		for( $i = 1; $i <= 3; $i++ )
+		{ // drop custom varchar columns from items tabe
+			db_drop_col( 'T_items__item', 'post_varchar'.$i );
+		}
+
+		// Convert post_editor_code item field to item settings
+		$DB->query( 'INSERT INTO T_items__item_settings ( iset_item_ID, iset_name, iset_value )
+						SELECT post_ID, "editor_code", post_editor_code
+							FROM T_items__item
+							WHERE post_editor_code IS NOT NULL' );
+		db_drop_col( 'T_items__item', 'post_editor_code' );
+
+		// Convert post_metadesc item field to item settings
+		$DB->query( 'INSERT INTO T_items__item_settings ( iset_item_ID, iset_name, iset_value )
+						SELECT post_ID, "post_metadesc", post_metadesc
+							FROM T_items__item
+							WHERE post_metadesc IS NOT NULL' );
+		db_drop_col( 'T_items__item', 'post_metadesc' );
+
+		// Convert and rename post_metakeywords item field to post_custom_headers item settings
+		$DB->query( 'INSERT INTO T_items__item_settings ( iset_item_ID, iset_name, iset_value )
+						SELECT post_ID, "post_custom_headers", post_metakeywords
+							FROM T_items__item
+							WHERE post_metakeywords IS NOT NULL' );
+		db_drop_col( 'T_items__item', 'post_metakeywords' );
+		task_end();
+
+		task_begin( 'Upgrading items table...' );
+		// Drop not used column
+		db_drop_col( 'T_items__item', 'post_commentsexpire' );
+		task_end();
+
+		task_begin( 'Adding new video file types...' );
+		$ftyp = $DB->get_row('SELECT ftyp_ID, ftyp_extensions
+									FROM T_filetypes
+									WHERE ftyp_mimetype = "video/mp4"
+									AND ftyp_extensions NOT LIKE "%f4v%"
+									LIMIT 1');
+
+		if( $ftyp )
+		{	// Add f4v extension to mp4 file type, if not exists
+			$DB->query( 'UPDATE T_filetypes SET ftyp_extensions = "'.$DB->escape($ftyp->ftyp_extensions.' f4v').'"
+							WHERE ftyp_ID = '.$DB->quote($ftyp->ftyp_ID) );
+		}
+		// Add flv file type if not exists
+		if( !db_key_exists( 'T_filetypes', 'ftyp_extensions', '"flv"' ) )
+		{
+			$DB->query( 'INSERT INTO T_filetypes (ftyp_extensions, ftyp_name, ftyp_mimetype, ftyp_icon, ftyp_viewtype, ftyp_allowed)
+				             VALUES ("flv", "Flash video file", "video/x-flv", "", "browser", "registered")', 'Add "flv" file type' );
+		}
+		// Add swf file type if not exists
+		if( !db_key_exists( 'T_filetypes', 'ftyp_extensions', '"swf"' ) )
+		{
+			$DB->query( 'INSERT INTO T_filetypes (ftyp_extensions, ftyp_name, ftyp_mimetype, ftyp_icon, ftyp_viewtype, ftyp_allowed)
+				             VALUES ("swf", "Flash video file", "application/x-shockwave-flash", "", "browser", "registered")', 'Add "swf" file type' );
+		}
+		task_end();
+
+		task_begin( 'Upgrading custom item settings...' );
+		$DB->begin();
+		// Convert latitude and longitude from custom setting to normal item settings
+		// Get those blog ids where Latitude and Longitude are both set
+		$result = $DB->get_col( 'SELECT cs_left.cset_coll_ID
+									FROM T_coll_settings as cs_left
+									INNER JOIN T_coll_settings as cs_right ON cs_left.cset_coll_ID = cs_right.cset_coll_ID
+									WHERE cs_left.cset_name = "custom_double3" AND cs_left.cset_value = "Latitude" AND
+										cs_right.cset_name = "custom_double4" AND cs_right.cset_value = "Longitude"' );
+		if( $result )
+		{ // blogs were found where Latitude and Longitude custom fields were set for google maps plugin
+			// Set "Show location coordinates" on where Latitude and Longitude were set
+			$query_values = '( '.implode( ', "show_location_coordinates", 1 ), ( ', $result ).', "show_location_coordinates", 1 )';
+			$DB->query( 'INSERT INTO T_coll_settings( cset_coll_ID, cset_name, cset_value )
+							VALUES '.$query_values );
+
+			$coll_ids = implode( ', ', $result );
+			// Update latitude Item settings
+			$DB->query( 'UPDATE T_items__item_settings SET iset_name = "latitude"
+							WHERE iset_name = "custom_double3" AND iset_item_ID IN (
+								SELECT post_ID FROM T_items__item
+								INNER JOIN T_categories ON post_main_cat_ID = cat_ID
+								WHERE cat_blog_ID IN ( '.$coll_ids.' )
+							)' );
+			// Update longitude Item settings
+			$DB->query( 'UPDATE T_items__item_settings SET iset_name = "longitude"
+							WHERE iset_name = "custom_double4" AND iset_item_ID IN (
+								SELECT post_ID FROM T_items__item
+								INNER JOIN T_categories ON post_main_cat_ID = cat_ID
+								WHERE cat_blog_ID IN ( '.$coll_ids.' )
+							)' );
+			// Delete proessed latitude & longitude custom fields from collection settings
+			$DB->query( 'DELETE FROM T_coll_settings
+						WHERE ( cset_name = "custom_double3" OR cset_name = "custom_double4" ) AND
+							cset_coll_ID IN ( '.$coll_ids.' )' );
+		}
+		$DB->commit(); // End convert latitude and longitude
+
+		$DB->begin(); // Convert custom fields
+		// Delete not used custom fields
+		$DB->query( 'DELETE FROM T_coll_settings WHERE ( cset_value IS NULL OR cset_value = "" ) AND cset_name LIKE "custom\_%"' );
+		// Set custom double fields count
+		$DB->query( 'INSERT INTO T_coll_settings( cset_coll_ID, cset_name, cset_value )
+						SELECT cset_coll_ID, "count_custom_double", COUNT( cset_name )
+						FROM T_coll_settings
+						WHERE cset_name LIKE "custom\_double%"
+						GROUP BY cset_coll_ID' );
+		// Set custom varchar fields count
+		$DB->query( 'INSERT INTO T_coll_settings( cset_coll_ID, cset_name, cset_value )
+						SELECT cset_coll_ID, "count_custom_varchar", COUNT( cset_name )
+						FROM T_coll_settings
+						WHERE cset_name LIKE "custom\_varchar%"
+						GROUP BY cset_coll_ID' );
+		// Select all custom fields from all blog, to create converted field values
+		$result = $DB->get_results( 'SELECT cset_coll_ID as coll_ID, cset_name as name, cset_value as value
+										FROM T_coll_settings
+										WHERE cset_name LIKE "custom\_%"
+										ORDER BY cset_coll_ID, cset_name' );
+		if( !empty( $result ) )
+		{ // There are custom fields in blog settings
+			$convert_field_values = '';
+			$reorder_field_values = '';
+			$old_prefix = "";
+			$old_coll_ID = "";
+			foreach( $result as $row )
+			{ // process each custom field
+				$custom_id = uniqid( '' );
+				$prefix = ( substr( $row->name, 7, 6 ) === 'double' ) ? 'custom_double' : 'custom_varchar';
+				// replace custom_double{N} and custom_varchar{N} values with a custom_id where N is number
+				$convert_field_values .= '( '.$row->coll_ID.', "'.$row->name.'", "'.$custom_id.'" ), ';
+				// add new custom_double_{customid} and custom_varchar_{customid} entries with the old correspinding custom field values
+				$convert_field_values .= '( '.$row->coll_ID.', "'.$prefix.'_'.$custom_id.'", "'.$row->value.'" ), ';
+
+				// create reorder values to replace e.g. custom_double2 to custom_double1 if custom_double1 doesn't exists yet
+				$index = ( ( $old_prefix == $prefix ) && ( $old_coll_ID == $row->coll_ID ) ) ? $index + 1 : 1;
+				$reorder_field_values .= '( '.$row->coll_ID.', "'.$prefix.$index.'", "'.$custom_id.'" ), ';
+				$old_prefix = $prefix;
+				$old_coll_ID = $row->coll_ID;
+			}
+			$convert_field_values = substr( $convert_field_values, 0, -2 );
+			$reorder_field_values = substr( $reorder_field_values, 0, -2 );
+			// Convert custom fields in collection setting
+			$DB->query( 'REPLACE INTO T_coll_settings( cset_coll_ID, cset_name, cset_value )
+							VALUES '.$convert_field_values );
+			// Update double custom field name_ids in item settings table
+			$DB->query( 'UPDATE T_items__item_settings SET iset_name = (
+								SELECT CONCAT( "custom_double_", cset_value ) FROM T_coll_settings
+									INNER JOIN T_categories ON cset_coll_ID = cat_blog_ID
+									INNER JOIN T_items__item ON cat_ID = post_main_cat_ID
+									WHERE cset_name = iset_name AND post_ID  = iset_item_ID )
+							WHERE iset_name LIKE "custom\_double%"' );
+			// Update varchar custom field name_ids in item settings table
+			$DB->query( 'UPDATE T_items__item_settings SET iset_name = (
+								SELECT CONCAT( "custom_varchar_", cset_value ) FROM T_coll_settings
+									INNER JOIN T_categories ON cset_coll_ID = cat_blog_ID
+									INNER JOIN T_items__item ON cat_ID = post_main_cat_ID
+									WHERE cset_name = iset_name AND post_ID  = iset_item_ID )
+							WHERE iset_name LIKE "custom\_varchar%"' );
+			// Reorder custom fields in collection settings
+			$DB->query( 'REPLACE INTO T_coll_settings( cset_coll_ID, cset_name, cset_value )
+							VALUES '.$reorder_field_values );
+		}
+		$DB->commit(); // End convert custom fields
+		task_end();
+
+		task_begin( 'Convert group users permissions to pluggable permissions...' );
+		$DB->query( 'REPLACE INTO T_groups__groupsettings( gset_grp_ID, gset_name, gset_value )
+						SELECT grp_ID, "perm_users", grp_perm_users
+							FROM T_groups' );
+		db_drop_col( 'T_groups', 'grp_perm_users' );
+		task_end();
+
+		task_begin( 'Update Post Types... ' );
+		$DB->query( "REPLACE INTO T_items__type ( ptyp_ID, ptyp_name )
+			VALUES ( 4000, 'Advertisement' )" );
+		task_end();
+
+		task_begin( 'Update files table... ' );
+		db_add_col( 'T_files', 'file_hash', 'char(32) default NULL' );
+		task_end();
+
+		task_begin( 'Create table for files voting...' );
+		$DB->query( 'CREATE TABLE T_files__vote (
+				fvot_file_ID       int(11) UNSIGNED NOT NULL,
+				fvot_user_ID       int(11) UNSIGNED NOT NULL,
+				fvot_like          tinyint(1),
+				fvot_inappropriate tinyint(1),
+				fvot_spam          tinyint(1),
+				primary key (fvot_file_ID, fvot_user_ID)
+			) ENGINE = innodb' );
+		task_end();
+
+		task_begin( 'Create table for users reporting...' );
+		$DB->query( "CREATE TABLE T_users__reports (
+			urep_target_user_ID int(11) unsigned NOT NULL,
+			urep_reporter_ID    int(11) unsigned NOT NULL,
+			urep_status         enum( 'fake', 'guidelines', 'harass', 'spam', 'other' ),
+			urep_info           varchar(240),
+			urep_datetime		datetime NOT NULL,
+			PRIMARY KEY ( urep_target_user_ID, urep_reporter_ID )
+		) ENGINE = innodb" );
+		task_end();
+
+		task_begin( 'Upgrading skins type...' );
+		$DB->query( "ALTER TABLE T_skins__skin MODIFY COLUMN skin_type enum('normal','feed','sitemap','mobile','tablet') NOT NULL default 'normal'" );
+		task_end();
+
+		task_begin( 'Upgrading blogs skins...' );
+		// Convert blog skin ID to blog settings
+		$DB->query( 'INSERT INTO T_coll_settings( cset_coll_ID, cset_name, cset_value )
+						SELECT blog_ID, "normal_skin_ID", blog_skin_ID
+						FROM T_blogs' );
+		db_drop_col( 'T_blogs', 'blog_skin_ID' );
+		task_end();
+
+		task_begin( 'Update categories table... ' );
+		db_add_col( 'T_categories', 'cat_meta', 'tinyint(1) NOT NULL DEFAULT 0' );
+		db_add_col( 'T_categories', 'cat_lock', 'tinyint(1) NOT NULL DEFAULT 0' );
+		task_end();
+
+		task_begin( 'Plugin settings update...' );
+		$all_blog_ids = $DB->get_col( 'SELECT blog_ID FROM T_blogs' );
+		$plugin_ids = $DB->get_assoc( 'SELECT pset_plug_ID, pset_value FROM T_pluginsettings WHERE pset_name = "render_comments"' );
+		$insert_values = '';
+		foreach( $all_blog_ids as $blog_ID )
+		{
+			foreach( $plugin_ids as $plugin_ID => $setting_value )
+			{
+				$apply_comment_rendering = $setting_value ? 'stealth' : 'never';
+				$insert_values .= '( '.$blog_ID.', "plugin'.$plugin_ID.'_coll_apply_comment_rendering", "'.$apply_comment_rendering.'" ),';
+			}
+		}
+		if( !empty( $insert_values ) )
+		{
+			$DB->query( 'INSERT INTO T_coll_settings( cset_coll_ID, cset_name, cset_value )
+							VALUES '.substr( $insert_values, 0, strlen( $insert_values ) - 1 ) );
+		}
+		$DB->query( 'DELETE FROM T_pluginsettings WHERE pset_name = "render_comments"' );
+		task_end();
+
+		task_begin( 'Creating comment prerendering cache table...' );
+		$DB->query( "CREATE TABLE T_comments__prerendering (
+			cmpr_cmt_ID INT(11) UNSIGNED NOT NULL,
+			cmpr_format ENUM('htmlbody','entityencoded','xml','text') NOT NULL,
+			cmpr_renderers TEXT NOT NULL,
+			cmpr_content_prerendered MEDIUMTEXT NULL,
+			cmpr_datemodified TIMESTAMP NOT NULL,
+			PRIMARY KEY (cmpr_cmt_ID, cmpr_format)
+		) ENGINE = innodb" );
+		db_add_col( 'T_comments', 'comment_renderers', "TEXT NOT NULL AFTER comment_content" );
+		$DB->query( 'UPDATE T_comments SET comment_renderers = "default"' );
+		task_end();
+
+		task_begin( 'Upgrading plugins table...' );
+		db_drop_col( 'T_plugins', 'plug_apply_rendering' );
+		task_end();
+
+		task_begin( 'Upgrading Auto_P plugin...' );
+		$blog_settings = $DB->get_assoc( 'SELECT cset_coll_ID, cset_value FROM T_coll_settings WHERE cset_name = "comment_autobr"' );
+		$insert_values = array();
+		$plugin_ids = $DB->get_col( 'SELECT plug_ID FROM T_plugins WHERE plug_code = "b2WPAutP"' );
+		foreach( $blog_settings as $blog_ID => $blog_setting_value )
+		{
+			foreach( $plugin_ids as $plugin_ID )
+			{
+				switch( $blog_setting_value )
+				{
+					case 'never':
+						$apply_comment_rendering = 'never';
+						break;
+					case 'optional':
+						$apply_comment_rendering = 'opt-out';
+						break;
+					case 'always':
+						$apply_comment_rendering = 'stealth';
+						break;
+					default:
+						break 2;
+				}
+				$insert_values[] = '( '.$blog_ID.', "plugin'.$plugin_ID.'_coll_apply_comment_rendering", "'.$apply_comment_rendering.'" )';
+			}
+		}
+		if( count( $insert_values ) > 0 )
+		{
+			$DB->query( 'REPLACE INTO T_coll_settings( cset_coll_ID, cset_name, cset_value )
+						VALUES '.implode( ',', $insert_values ) );
+		}
+		$DB->query( 'DELETE FROM T_coll_settings WHERE cset_name = "comment_autobr"' );
+		$DB->query( 'UPDATE T_comments SET comment_content = REPLACE( REPLACE( comment_content, "<br>\n", "\n" ), "<br />\n", "\n" )' );
+		task_end();
+
+		set_upgrade_checkpoint( '11000' );
+	}
+
+	if( $old_db_version < 11010 )
+	{	// part 9 trunk aka second part of "i4"
+
+		task_begin( 'Upgrading post statuses...' );
+		$DB->query( "ALTER TABLE T_items__item CHANGE COLUMN post_status post_status enum('published','community','deprecated','protected','private','review','draft','redirected') NOT NULL default 'published'" );
+		$DB->query( "ALTER TABLE T_items__version CHANGE COLUMN iver_status iver_status ENUM('published','community','deprecated','protected','private','review','draft','redirected') NULL" );
+		$DB->query( "ALTER TABLE T_coll_user_perms CHANGE COLUMN bloguser_perm_poststatuses bloguser_perm_poststatuses set('review','draft','private','protected','deprecated','community','published','redirected') NOT NULL default ''" );
+		$DB->query( "ALTER TABLE T_coll_group_perms CHANGE COLUMN bloggroup_perm_poststatuses bloggroup_perm_poststatuses set('review','draft','private','protected','deprecated','community','published','redirected') NOT NULL default ''" );
+		task_end();
+
+		task_begin( 'Upgrading groups table...' );
+		$pbloggers_renamed_to_moderators = $DB->query( 'UPDATE T_groups SET grp_name = "Moderators" WHERE grp_ID = 2 AND grp_name = "Privileged Bloggers"' );
+		// Update administrators and moderators users coll setting permissions with new permissions
+		// Note we can change moderators permission if the group name and ID was not changed after the original install
+		$moderators_condition = $pbloggers_renamed_to_moderators ? ' OR bloggroup_group_ID = 2' : '';
+		$DB->query( "UPDATE T_coll_group_perms SET bloggroup_perm_poststatuses = 'published,community,deprecated,protected,private,review,draft' WHERE bloggroup_group_ID = 1".$moderators_condition );
+		// Change groups name
+		$DB->query( 'UPDATE T_groups SET grp_name = "Trusted Users" WHERE grp_ID = 3 AND grp_name = "Bloggers"' );
+		$DB->query( 'UPDATE T_groups SET grp_name = "Normal Users" WHERE grp_ID = 4 AND grp_name = "Basic Users"' );
+
+		// Get "Misbehaving/Suspect Users" group ID
+		$suspect_query = 'SELECT grp_ID
+						FROM T_groups
+						WHERE grp_name = "Misbehaving/Suspect Users"
+						ORDER BY grp_ID DESC
+						LIMIT 1';
+		$suspect_group_ID = $DB->get_var( $suspect_query );
+		if( empty( $suspect_group_ID ) )
+		{ // suspect group doesn't exists, check spammers because probably it does not exists either
+			$insert_values = '( "Misbehaving/Suspect Users" )';
+			// Get "Spammers/Restricted Users" group ID
+			$query = 'SELECT grp_ID
+					FROM T_groups
+					WHERE grp_name = "Spammers/Restricted Users"
+					ORDER BY grp_ID DESC
+					LIMIT 1';
+			$spammers_group_ID = $DB->get_var( $query );
+			if( empty( $spammers_group_ID ) )
+			{
+				$insert_values .= ', ( "Spammers/Restricted Users" )';
+			}
+			// Insert two new group
+			$DB->query( 'INSERT INTO T_groups ( grp_name )
+						VALUES '.$insert_values );
+
+			$suspect_group_ID = $DB->get_var( $suspect_query );
+			if( $suspect_group_ID )
+			{ // Set coll setting permissions for Misbehaving/Suspect Users in Forums
+				$query = "
+					INSERT INTO T_coll_group_perms( bloggroup_blog_ID, bloggroup_group_ID, bloggroup_ismember,
+						bloggroup_perm_poststatuses, bloggroup_perm_delpost, bloggroup_perm_edit_ts,
+						bloggroup_perm_own_cmts, bloggroup_perm_vote_spam_cmts, bloggroup_perm_draft_cmts, bloggroup_perm_publ_cmts, bloggroup_perm_depr_cmts,
+						bloggroup_perm_cats, bloggroup_perm_properties,
+						bloggroup_perm_media_upload, bloggroup_perm_media_browse, bloggroup_perm_media_change )
+					SELECT blog_ID, ".$suspect_group_ID.", 1, 'review,draft', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+						FROM T_blogs WHERE blog_ID = 5 AND blog_shortname = 'Forums'";
+				$DB->query( $query );
+			}
+		}
+		task_end();
+
+		task_begin( 'Upgrading blogs table...' );
+		db_add_col( 'T_blogs', 'blog_type', 'ENUM( "std", "photo", "group", "forum", "manual" ) DEFAULT "std" NOT NULL' );
+		task_end();
+
+		task_begin( 'Upgrading comment statuses...' );
+		$DB->query( "ALTER TABLE T_comments CHANGE COLUMN comment_status comment_status ENUM('published','community','deprecated','protected','private','review','draft','trash') DEFAULT 'published' NOT NULL" );
+		task_end();
+
+		task_begin( 'Updating collection user/group permissions...' );
+		db_add_col( 'T_coll_user_perms', 'bloguser_perm_cmtstatuses', "set('review','draft','private','protected','deprecated','community','published') NOT NULL default '' AFTER bloguser_perm_vote_spam_cmts" );
+		db_add_col( 'T_coll_user_perms', 'bloguser_perm_edit_cmt', "ENUM('no','own','anon','lt','le','all') NOT NULL default 'no' AFTER bloguser_perm_cmtstatuses" );
+		db_add_col( 'T_coll_group_perms', 'bloggroup_perm_cmtstatuses', "set('review','draft','private','protected','deprecated','community','published') NOT NULL default '' AFTER bloggroup_perm_vote_spam_cmts" );
+		db_add_col( 'T_coll_group_perms', 'bloggroup_perm_edit_cmt', "ENUM('no','own','anon','lt','le','all') NOT NULL default 'no' AFTER bloggroup_perm_cmtstatuses" );
+
+		// Add access to those comment statuses for what user had before
+		$DB->query( 'UPDATE T_coll_user_perms
+					SET bloguser_perm_cmtstatuses = ( bloguser_perm_publ_cmts * 1 ) | ( bloguser_perm_depr_cmts * 4 ) | ( bloguser_perm_draft_cmts * 64 )' );
+		// Add access to all cmt statuses for those users which had edit permission on all comment statuses
+		$DB->query( 'UPDATE T_coll_user_perms
+					SET bloguser_perm_cmtstatuses = "published,community,deprecated,protected,private,review,draft", bloguser_perm_edit_cmt = "all"
+					WHERE bloguser_perm_publ_cmts <> 0 AND bloguser_perm_depr_cmts <> 0 AND bloguser_perm_draft_cmts <> 0' );
+		// Add "lower then" edit permission to those users who had permission to edit published or draft comments
+		$DB->query( 'UPDATE T_coll_user_perms
+					SET bloguser_perm_edit_cmt = "lt"
+					WHERE ( bloguser_perm_cmtstatuses & 65 ) != 0 AND bloguser_perm_edit_cmt = "no"' );
+
+		// Add access to those comment statuses for what group had before
+		$DB->query( 'UPDATE T_coll_group_perms
+					SET bloggroup_perm_cmtstatuses = ( bloggroup_perm_publ_cmts * 1 ) | ( bloggroup_perm_depr_cmts * 4 ) | ( bloggroup_perm_draft_cmts * 64 )' );
+		// Add access to all cmt statuses for those groups which had edit permission on all comment statuses
+		$DB->query( 'UPDATE T_coll_group_perms
+					SET bloggroup_perm_cmtstatuses = "published,community,deprecated,protected,private,review,draft", bloggroup_perm_edit_cmt = "all"
+					WHERE bloggroup_perm_publ_cmts <> 0 AND bloggroup_perm_depr_cmts <> 0 AND bloggroup_perm_draft_cmts <> 0' );
+		// Add "lower then" edit permission to those groups who had permission to edit published or draft comments
+		$DB->query( 'UPDATE T_coll_group_perms
+					SET bloggroup_perm_edit_cmt = "lt"
+					WHERE ( bloggroup_perm_cmtstatuses & 65 ) != 0 AND bloggroup_perm_edit_cmt = "no"' );
+
+		db_drop_col( 'T_coll_user_perms', 'bloguser_perm_draft_cmts' );
+		db_drop_col( 'T_coll_user_perms', 'bloguser_perm_publ_cmts' );
+		db_drop_col( 'T_coll_user_perms', 'bloguser_perm_depr_cmts' );
+		db_drop_col( 'T_coll_group_perms', 'bloggroup_perm_draft_cmts' );
+		db_drop_col( 'T_coll_group_perms', 'bloggroup_perm_publ_cmts' );
+		db_drop_col( 'T_coll_group_perms', 'bloggroup_perm_depr_cmts' );
+
+		db_add_col( 'T_coll_user_perms', 'bloguser_perm_delcmts', 'tinyint NOT NULL default 0 AFTER bloguser_perm_edit_ts' );
+		db_add_col( 'T_coll_group_perms', 'bloggroup_perm_delcmts', 'tinyint NOT NULL default 0 AFTER bloggroup_perm_edit_ts' );
+		// GRANT delete comment perms for moderators
+		$DB->query( 'UPDATE T_coll_group_perms
+					SET bloggroup_perm_delcmts = 1
+					WHERE bloggroup_perm_edit_cmt = "le" OR bloggroup_perm_edit_cmt = "all"' );
+
+		$DB->query( "ALTER TABLE T_coll_user_perms CHANGE COLUMN bloguser_perm_own_cmts bloguser_perm_recycle_owncmts tinyint NOT NULL default 0" );
+		$DB->query( "ALTER TABLE T_coll_group_perms CHANGE COLUMN bloggroup_perm_own_cmts bloggroup_perm_recycle_owncmts tinyint NOT NULL default 0" );
+		task_end();
+
+		task_begin( 'Updating blogs settings...' );
+		$DB->query( 'UPDATE T_coll_settings SET cset_value = "blog" WHERE cset_name = "enable_goto_blog" AND cset_value = "1"' );
+		$DB->query( 'UPDATE T_coll_settings SET cset_value = "no" WHERE cset_name = "enable_goto_blog" AND cset_value = "0"' );
+		task_end();
+
+		/*
+		 * ADD UPGRADES FOR i4 BRANCH __ABOVE__ IN THIS BLOCK.
+		 *
+		 * This part will be included in trunk and i4 branches
+		 */
+
+		set_upgrade_checkpoint( '11010' );
+	}
+
+	if( $old_db_version < 11020 )
+	{	// part 10 trunk aka third part of "i4"
+
+		task_begin( 'Upgrading users table...' );
+		// Get all users with defined IPs
+		$users_SQL = new SQL();
+		$users_SQL->SELECT( 'user_ID, user_created_fromIPv4' );
+		$users_SQL->FROM( 'T_users' );
+		$users_SQL->WHERE( 'user_created_fromIPv4 IS NOT NULL' );
+		$users_SQL->WHERE_and( 'user_created_fromIPv4 != '.$DB->quote( ip2int( '0.0.0.0' ) ) );
+		$users_SQL->WHERE_and( 'user_created_fromIPv4 != '.$DB->quote( ip2int( '127.0.0.1' ) ) );
+		$users = $DB->get_assoc( $users_SQL->get() );
+		// Get user's IPs from settings table
+		$settings_SQL = new SQL();
+		$settings_SQL->SELECT( 'uset_user_ID, uset_value' );
+		$settings_SQL->FROM( 'T_users__usersettings' );
+		$settings_SQL->WHERE( 'uset_name = "user_ip"' );
+		if( count( $users ) > 0 )
+		{	// Get IPs only for users which have not IP in T_users table
+			$settings_SQL->WHERE_and( 'uset_user_ID NOT IN ('.$DB->quote( array_keys( $users ) ).')' );
+		}
+		$settings = $DB->get_assoc( $settings_SQL->get() );
+		if( count( $users ) > 0 || count( $settings ) > 0 )
+		{
+			$users_settings_insert_sql = array();
+			foreach( $users as $user_ID => $user_IP )
+			{
+				$users_settings_insert_sql[] = '( '.$DB->quote( $user_ID ).', "created_fromIPv4", '.$DB->quote( $user_IP ).' )';
+			}
+			foreach( $settings as $user_ID => $user_IP )
+			{
+				$users_settings_insert_sql[] = '( '.$DB->quote( $user_ID ).', "created_fromIPv4", '.$DB->quote( ip2int( $user_IP ) ).' )';
+			}
+			// Insert IPs values into settings table
+			$DB->query( 'INSERT INTO T_users__usersettings ( uset_user_ID, uset_name, uset_value )
+				VALUES '.implode( ', ', $users_settings_insert_sql ) );
+		}
+		// Remove old IPs from settings table
+		$DB->query( 'DELETE FROM T_users__usersettings
+			WHERE uset_name = "user_ip"' );
+		db_drop_col( 'T_users', 'user_created_fromIPv4' );
+		task_end();
+
+		/*
+		 * ADD UPGRADES FOR i4 BRANCH __ABOVE__ IN THIS BLOCK.
+		 *
+		 * This part will be included in trunk and i4 branches
+		 */
+
+		set_upgrade_checkpoint( '11020' );
+	}
+
+	if( $old_db_version < 11025 )
+	{	// part 11 trunk aka fourth part of "i4"
+
+		task_begin( 'Upgrading items table...' );
+		$DB->query( "UPDATE T_items__item SET post_datecreated = concat( '2000-01-01 ', time( post_datecreated ) )
+						WHERE date( post_datecreated ) = '1970-01-01'" );
+		$DB->query( "UPDATE T_items__item SET post_datemodified = concat( '2000-01-01 ', time( post_datemodified ) )
+						WHERE date( post_datemodified ) = '1970-01-01'" );
+		$DB->query( "ALTER TABLE T_items__item CHANGE COLUMN post_datecreated post_datecreated TIMESTAMP NOT NULL DEFAULT '2000-01-01 00:00:00'" );
+		$DB->query( "ALTER TABLE T_items__item CHANGE COLUMN post_datemodified post_datemodified TIMESTAMP NOT NULL DEFAULT '2000-01-01 00:00:00'" );
+		db_add_col( 'T_items__item', 'post_last_touched_ts', "TIMESTAMP NOT NULL DEFAULT '2000-01-01 00:00:00' AFTER post_datemodified" );
+		$DB->query( 'UPDATE T_items__item SET post_last_touched_ts = post_datemodified' );
+		task_end();
+
+		/*
+		 * ADD UPGRADES FOR i4 BRANCH __ABOVE__ IN THIS BLOCK.
+		 *
+		 * This part will be included in trunk and i4 branches
+		 */
+
+		set_upgrade_checkpoint( '11025' );
+	}
+
+	// In some upgrade versions ( currently only in "i5" ) we would like to create profile pictures links from the user's files in the profile pictures folder
+	// To be able to do that we need an up to date database version, so we will create profile pictures after the ugrade script run successfully.
+	// Set this $create_profile_picture_links to true only in those upgrade block where it's required.
+	$create_profile_picture_links = false;
+
+	if( $old_db_version < 11100 )
+	{	// part 12 trunk aka "i5"
+
+		task_begin( 'Update links table...' );
+		db_add_col( 'T_links', 'link_usr_ID', 'int(11) unsigned  NULL COMMENT "Used for linking files to users (user profile picture)" AFTER link_cmt_ID' );
+		db_add_index( 'T_links', 'link_usr_ID', 'link_usr_ID' );
+		task_end();
+
+		task_begin( 'Creating links for users profile pictures...' );
+		// Create links for main profile pictures
+		$link_create_date = date2mysql( time() );
+		$DB->query( 'INSERT INTO T_links( link_datecreated, link_datemodified, link_usr_ID, link_file_ID, link_position, link_order )
+						SELECT '.$DB->quote( $link_create_date ).', '.$DB->quote( $link_create_date ).', user_ID, user_avatar_file_ID, "", 1
+						FROM T_users
+						WHERE user_avatar_file_ID IS NOT NULL' );
+		// Set $create_profile_picture_links to true to create links for all files from the users profile_pictures folder
+		$create_profile_picture_links = true;
+		task_end();
+
+		task_begin( 'Upgrading categories table...' );
+		$DB->query( "ALTER TABLE T_categories CHANGE COLUMN cat_urlname cat_urlname varchar(255) NOT NULL COLLATE ascii_bin" );
+		task_end();
+
+		task_begin( 'Upgrading items table...' );
+		$DB->query( "ALTER TABLE T_items__item CHANGE COLUMN post_urltitle post_urltitle VARCHAR(210) NOT NULL COLLATE ascii_bin" );
+		task_end();
+
+		task_begin( 'Upgrading custom item settings...' );
+		$DB->begin(); // Add names for custom fields
+		// Select all custom fields from all blogs, to create field names
+		$result = $DB->get_results( 'SELECT cset_coll_ID as coll_ID, cset_name as name, cset_value as value
+										FROM T_coll_settings
+										WHERE cset_name LIKE "custom\_double\_%"
+										   OR cset_name LIKE "custom\_varchar\_%"
+										ORDER BY cset_coll_ID, cset_name' );
+		if( !empty( $result ) )
+		{ // There are custom fields in blog settings
+			$insert_field_names = '';
+			foreach( $result as $row )
+			{ // process each custom field
+				$field_guid = preg_replace( '/^custom_(double|varchar)_([a-f0-9\-]+)$/', '$2', $row->name );
+				// Replace special chars/umlauts, if we can convert charsets:
+				load_funcs('locales/_charset.funcs.php');
+				$field_name = strtolower( preg_replace( '/[^a-z0-9\-_]+/i', '_', $row->value ) );
+				$field_name = replace_special_chars( $field_name );
+
+				$insert_field_names .= '( '.$row->coll_ID.', "custom_fname_'.$field_guid.'", "'.$field_name.'" ), ';
+			}
+			// Insert names for custom fields in collection settings
+			$DB->query( 'INSERT INTO T_coll_settings( cset_coll_ID, cset_name, cset_value )
+							VALUES '.substr( $insert_field_names, 0, -2 ) );
+		}
+		$DB->commit(); // End adding of names for custom fields
+		task_end();
+
+		task_begin( 'Upgrading comments table...' );
+		db_add_index( 'T_comments', 'comment_status', 'comment_status' );
+		task_end();
+
+		/*
+		 * ADD UPGRADES FOR i5 BRANCH __ABOVE__ IN THIS BLOCK.
+		 *
+		 * This part will be included in trunk and i5 branches
+		 */
+
+		//set_upgrade_checkpoint( '11100' );
+	}
+
+	if( $old_db_version < 11110 )
+	{ // part 13 trunk aka second part of "i5"
+
+		// Add new settings for antispam groups
+		$antispam_group_settings = $DB->get_assoc( 'SELECT set_name, set_value
+			 FROM T_settings
+			WHERE set_name IN ( '.$DB->quote( array( 'antispam_suspicious_group', 'antispam_trust_groups' ) ).')' );
+		if( count( $antispam_group_settings ) < 2 )
+		{ // Insert new settings only if don't exist in DB
+			task_begin( 'Updating general settings...' );
+			// Set antispam suspicious group
+			if( !isset( $antispam_group_settings['antispam_suspicious_group'] ) )
+			{ // Insert new value, Don't rewrite value if it already defined before
+				$suspect_group_SQL = new SQL();
+				$suspect_group_SQL->SELECT( 'grp_ID' );
+				$suspect_group_SQL->FROM( 'T_groups' );
+				$suspect_group_SQL->WHERE( 'grp_name = '.$DB->quote( 'Misbehaving/Suspect Users' ) );
+				$suspect_group_ID = $DB->get_var( $suspect_group_SQL->get() );
+				if( !empty( $suspect_group_ID ) )
+				{ // Save setting value
+					$DB->query( 'INSERT INTO T_settings ( set_name, set_value ) VALUES
+							( '.$DB->quote( 'antispam_suspicious_group' ).', '.$DB->quote( $suspect_group_ID ).' )' );
+				}
+			}
+			// Set antispam trust groups
+			if( !isset( $antispam_group_settings['antispam_trust_groups'] ) )
+			{ // Insert new value, Don't rewrite value if it already defined before
+				$trust_groups = array( 'Administrators', 'Moderators', 'Trusted Users', 'Spammers/Restricted Users' );
+				$trust_groups_SQL = new SQL();
+				$trust_groups_SQL->SELECT( 'grp_ID' );
+				$trust_groups_SQL->FROM( 'T_groups' );
+				$trust_groups_SQL->WHERE( 'grp_name IN ( '.$DB->quote( $trust_groups ).')' );
+				$trust_groups_IDs = $DB->get_col( $trust_groups_SQL->get() );
+				if( !empty( $trust_groups_IDs ) )
+				{ // Save setting value
+					$DB->query( 'INSERT INTO T_settings ( set_name, set_value ) VALUES
+							( '.$DB->quote( 'antispam_trust_groups' ).', '.$DB->quote( implode( ',', $trust_groups_IDs ) ).' )' );
+				}
+			}
+			task_end();
+		}
+
+		/*
+		 * ADD UPGRADES FOR i5 BRANCH __ABOVE__ IN THIS BLOCK.
+		 *
+		 * This part will be included in trunk and i5 branches
+		 */
+
+		//set_upgrade_checkpoint( '11110' );
+	}
+
+	// Update modules own b2evo tables
+	echo "Calling modules for individual upgrades...<br>\n";
+	evo_flush();
+	modules_call_method( 'upgrade_b2evo_tables' );
 
 	// Just in case, make sure the db schema version is up to date at the end.
 	if( $old_db_version != $new_db_version )
@@ -2992,38 +4466,92 @@ function upgrade_b2evo_tables()
 		set_upgrade_checkpoint( $new_db_version );
 	}
 
-
-
-	// Init Caches: (it should be possible to do this with each upgrade)
-	load_funcs('tools/model/_system.funcs.php');
-	// We're going to need some environment in order to init caches...
-	global $Settings, $Plugins;
+	// We're going to need some environment in order to init caches and create profile picture links...
 	if( ! is_object( $Settings ) )
-	{
+	{ // create Settings object
 		load_class( 'settings/model/_generalsettings.class.php', 'GeneralSettings' );
 		$Settings = new GeneralSettings();
 	}
 	if( ! is_object( $Plugins ) )
-	{
+	{ // create Plugins object
 		load_class( 'plugins/model/_plugins.class.php', 'Plugins' );
 		$Plugins = new Plugins();
 	}
-	if( !system_init_caches() )
+
+	// Init Caches: (it should be possible to do this with each upgrade)
+	task_begin( '(Re-)Initializing caches...' );
+	load_funcs('tools/model/_system.funcs.php');
+	if( system_init_caches() )
+	{ // cache was initialized successfully
+		// Check all cache folders if exist and work properly. Try to repair cache folders if they aren't ready for operation.
+		system_check_caches();
+	}
+	else
 	{
 		echo "<strong>".T_('The /cache folder could not be created/written to. b2evolution will still work but without caching, which will make it operate slower than optimal.')."</strong><br />\n";
 	}
+	task_end();
 
-	// Invalidate all page caches
+	// Check if profile picture links should be recreated. It won't be executed in each upgrade, but only in those cases when it is required.
+	// This requires an up to date database, and also $Plugins and $GeneralSettings objects must be initialized before this.
+	// Note: Check $create_profile_picture_links intialization and usage above to get more information.
+	if( $create_profile_picture_links )
+	{ // Create links for all files from the users profile_pictures folder
+		task_begin( 'Creating profile picture links...' );
+		create_profile_picture_links();
+		task_end();
+	}
+
+	// Invalidate all page caches after every upgrade.
+	// A new version of b2evolution may not use the same links to access special pages.
+	// We want to play it safe here so that people don't think that upgrading broke their blog!
+	task_begin( 'Invalidating all page caches to make sure they don\'t contain old action links...' );
 	invalidate_pagecaches();
+	task_end();
 
-	// Create default cron jobs (this can be done at each upgrade):
-	require_once dirname(__FILE__).'/_functions_create.php';
-	create_default_jobs( true );
+
+	// Reload plugins after every upgrade, to detect even those changes on plugins which didn't require db modifications
+	task_begin( 'Reloading installed plugins to make sure their config is up to date...' );
+	$Plugins_admin = & get_Plugins_admin();
+	$Plugins_admin->reload_plugins();
+	task_end();
+
 
 	// This has to be at the end because plugin install may fail if the DB schema is not current (matching Plugins class).
 	// Only new default plugins will be installed, based on $old_db_version.
 	// dh> NOTE: if this fails (e.g. fatal error in one of the plugins), it will not get repeated
+	task_begin( 'Installing new default plugins (if any)...' );
 	install_basic_plugins( $old_db_version );
+	task_end();
+
+
+	// Create default cron jobs (this can be done at each upgrade):
+	echo "Checking if some default cron jobs need to be installed...<br/>\n";
+	evo_flush();
+	require_once dirname(__FILE__).'/_functions_create.php';
+	create_default_jobs( true );
+
+
+	// "Time running low" test: Check if the upgrade script elapsed time is close to the max execution time.
+	// Note: This should not really happen except the case when many plugins must be installed.
+	task_begin( 'Checking timing of upgrade...' );
+	$elapsed_time = time() - $script_start_time;
+	$max_exe_time = ini_get( 'max_execution_time' );
+	if( $max_exe_time && ( $elapsed_time > ( $max_exe_time - 20 ) ) )
+	{ // Max exe time not disabled and we're recahing the end
+		if( is_admin_page() )
+		{ // URL to continue the upgrade process from backoffice
+			$upgrade_continue_url = $admin_url.'?ctrl=upgrade&amp;action=continue_upgrade';
+		}
+		else
+		{ // URL to continue the upgrade process from install folder
+			$upgrade_continue_url = $baseurl.'install/index.php?locale='.$locale.'&amp;action=evoupgrade';
+		}
+		echo 'We are reaching the time limit for this script. Please click <a href="'.$upgrade_continue_url.'">continue</a>...';
+		// Dirty temporary solution:
+		exit(0);
+	}
+	task_end();
 
 
 	/*
@@ -3031,6 +4559,9 @@ function upgrade_b2evo_tables()
 	 * Check to make sure the DB schema is up to date:
 	 * -----------------------------------------------
 	 */
+	echo "Starting to check DB...<br/>\n";
+	evo_flush();
+
 	$upgrade_db_deltas = array(); // This holds changes to make, if any (just all queries)
 
 	global $debug;
@@ -3096,7 +4627,7 @@ function upgrade_b2evo_tables()
 
 		if( ! $confirmed_db_upgrade )
 		{
-			global $action, $locale, $form_action;
+			global $action, $form_action;
 			load_class( '_core/ui/forms/_form.class.php', 'Form' );
 
 			if( !empty( $form_action ) )
@@ -3140,8 +4671,4 @@ function upgrade_b2evo_tables()
 	return true;
 }
 
-
-/*
- * $Log: _functions_evoupgrade.php,v $
- */
 ?>

@@ -5,13 +5,13 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
  *
  * @package admin
  *
- * @version $Id: _skin_list_available.view.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _skin_list_available.view.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -36,8 +36,14 @@ if( $current_User->check_perm( 'options', 'edit', false ) )
 
 $block_item_Widget->disp_template_replaced( 'block_start' );
 
+$filename_params = array(
+		'inc_files'		=> false,
+		'recurse'		=> false,
+		'basename'		=> true,
+	);
 // Get all skin folder names:
-$skin_folders = get_filenames( $skins_path, false, true, true, false, true );
+$skin_folders = get_filenames( $skins_path, $filename_params );
+
 // Go through all skin folders:
 foreach( $skin_folders as $skin_folder )
 {
@@ -51,14 +57,14 @@ foreach( $skin_folders as $skin_folder )
 	}
 
 	// Display skinshot:
-	$function_url = '?ctrl=skins&amp;action=create&amp;skin_folder='.rawurlencode($skin_folder).'&amp;redirect_to='.rawurlencode($redirect_to).'&amp;'.url_crumb('skin');
-	Skin::disp_skinshot( $skin_folder, $skin_folder, 'install', false, NULL, $function_url );
+	$disp_params = array(
+		'function' => 'install',
+		'function_url' => '?ctrl=skins&amp;action=create&amp;skin_folder='.rawurlencode($skin_folder).'&amp;redirect_to='.rawurlencode($redirect_to).'&amp;'.url_crumb('skin')
+	);
+	Skin::disp_skinshot( $skin_folder, $skin_folder, $disp_params );
 }
 
 echo '<div class="clear"></div>';
 $block_item_Widget->disp_template_replaced( 'block_end' );
 
-/*
- * $Log: _skin_list_available.view.php,v $
- */
 ?>

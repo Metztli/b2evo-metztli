@@ -6,7 +6,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package plugins
  * @ignore
@@ -22,11 +22,11 @@ class wacko_plugin extends Plugin
 	var $code = 'b2evWcko';
 	var $name = 'Wacko formatting';
 	var $priority = 30;
-	var $version = '1.9-dev';
-	var $apply_rendering = 'opt-in';
+	var $version = '5.0.0';
 	var $group = 'rendering';
 	var $short_desc;
 	var $long_desc;
+	var $help_url = 'http://b2evolution.net/man/technical-reference/renderer-plugins/wacko-plugin';
 	var $number_of_installs = 1;
 
 	/**
@@ -84,6 +84,19 @@ class wacko_plugin extends Plugin
 
 
 	/**
+	 * Define here default collection/blog settings that are to be made available in the backoffice.
+	 *
+	 * @param array Associative array of parameters.
+	 * @return array See {@link Plugin::get_coll_setting_definitions()}.
+	 */
+	function get_coll_setting_definitions( & $params )
+	{
+		$default_params = array_merge( $params, array( 'default_post_rendering' => 'opt-in' ) );
+		return parent::get_coll_setting_definitions( $default_params );
+	}
+
+
+	/**
 	 * Perform rendering
 	 *
 	 * @param array Associative array of parameters
@@ -95,14 +108,38 @@ class wacko_plugin extends Plugin
 	{
 		$content = & $params['data'];
 
-		$content = preg_replace( $this->search, $this->replace, $content );
+		$content = replace_content_outcode( $this->search, $this->replace, $content );
 
 		// Find bullet lists
+		if( stristr( $content, '<code' ) !== false || stristr( $content, '<pre' ) !== false )
+		{	// Call replace_content() on everything outside code/pre:
+			$content = callback_on_non_matching_blocks( $content,
+				'~<(code|pre)[^>]*>.*?</\1>~is',
+				array( $this, 'find_bullet_lists' ) );
+		}
+		else
+		{	// No code/pre blocks, replace on the whole thing
+			$content = $this->find_bullet_lists( $content );
+		}
+
+		return true;
+	}
+
+
+	/**
+	 * Find bullet lists
+	 *
+	 * @param string Content
+	 * @return string Content
+	 */
+	function find_bullet_lists( $content )
+	{
 		$lines = explode( "\n", $content );
+		$lines_count = count( $lines );
 		$lists = array();
 		$current_depth = 0;
 		$content = '';
-		foreach( $lines as $line )
+		foreach( $lines as $l => $line )
 		{
 			if( ! preg_match( '#^ /s $#xm', $line ) )
 			{	 // If not blank line
@@ -157,7 +194,11 @@ class wacko_plugin extends Plugin
 					$current_depth = 0;
 				}
 
-				$content .= $line."\n";
+				$content .= $line;
+				if( $l < $lines_count - 1 )
+				{	// Don't append a newline at the end, because it will create an unnecessary newline that didn't exist in source content
+					$content .= "\n";
+				}
 
 			}
 		}
@@ -167,12 +208,8 @@ class wacko_plugin extends Plugin
 			$content .= '</'.implode( ">\n</", $lists ).">\n";
 		}
 
-		return true;
+		return $content;
 	}
 }
 
-
-/*
- * $Log: _wacko.plugin.php,v $
- */
 ?>

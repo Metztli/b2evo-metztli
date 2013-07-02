@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -29,7 +29,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _file_list.inc.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _file_list.inc.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -63,9 +63,9 @@ global $Messages;
  */
 global $selected_Filelist;
 /**
- * @var Item
+ * @var Link Owner
  */
-global $edited_Item;
+global $LinkOwner;
 
 global $edited_User;
 
@@ -219,7 +219,7 @@ $Form->begin_form();
 			}
 			else
 			{
-				echo $lFile->get_preview_thumb( 'fulltype' );
+				echo $lFile->get_preview_thumb( 'fulltype', true );
 			}
 		}
 		else
@@ -282,7 +282,7 @@ $Form->begin_form();
 				// TODO: dh> provide support for direcories (display included files).
 
 				// fp> here might not be the best place to put the perm check
-				if( isset($edited_Item) && $current_User->check_perm( 'item_post!CURSTATUS', 'edit', false, $edited_Item ) )
+				if( isset( $LinkOwner ) && $LinkOwner->check_perm( 'edit' ) )
 				{	// Offer option to link the file to an Item (or anything else):
 					$link_attribs = array();
 					$link_action = 'link';
@@ -475,10 +475,11 @@ $Form->begin_form();
 				<?php
 					if( ! $Messages->has_errors() )
 					{ // no Filelist errors, the directory must be empty
+						$Messages->clear();
 						$Messages->add( T_('No files found.')
 							.( $fm_Filelist->is_filtering() ? '<br />'.T_('Filter').': &laquo;'.$fm_Filelist->get_filter().'&raquo;' : '' ), 'error' );
+						$Messages->display( '', '' );
 					}
-					$Messages->display( '', '' );
 				?>
 			</td>
 		</tr>
@@ -504,9 +505,9 @@ $Form->begin_form();
 			 * TODO: fp> the following is a good idea but in case we also have $mode == 'upload' it currently doesn't refresh the list of attachements
 			 * which makes it seem like this feature is broken. Please add necessary javascript for this.
 			 */
-			if( $fm_mode == 'link_item' && $mode != 'upload' )
-			{	// We are linking to a post...
-				$field_options['link'] = T_('Link files to current post');
+			if( $fm_mode == 'link_object' && $mode != 'upload' )
+			{	// We are linking to an object...
+				$field_options['link'] = $LinkOwner->T_( 'Link files to current owner' );
 			}
 
 			if( $mode != 'upload' && ($fm_Filelist->get_root_type() == 'collection' || !empty($Blog))
@@ -515,7 +516,7 @@ $Form->begin_form();
 				// User must have access to admin permission
 				// fp> TODO: use current as default but let user choose into which blog he wants to post
 				$field_options['make_post'] = T_('Make one post (including all images)');
-				$field_options['make_posts'] = T_('Make multiple posts (1 per image)');
+				$field_options['make_posts_pre'] = T_('Make multiple posts (1 per image)');
 			}
 
 			if( $mode == 'upload' )
@@ -592,6 +593,11 @@ $Form->begin_form();
 				}
 
 				// other actions:
+
+				if ( selected_value == 'make_posts_pre' )
+				{
+					jQuery('#FilesForm').append('<input type="hidden" name="ctrl" value="items" />');
+				}
 				return true;
 			}
 
@@ -687,8 +693,3 @@ $Form->begin_form();
 	}}}
 ?>
 <!-- End of detailed file list -->
-<?php
-/*
- * $Log: _file_list.inc.php,v $
- */
-?>

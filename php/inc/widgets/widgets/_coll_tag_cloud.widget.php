@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -21,7 +21,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _coll_tag_cloud.widget.php 1480 2012-06-20 21:46:06Z sam2kb $
+ * @version $Id: _coll_tag_cloud.widget.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -103,6 +103,11 @@ class coll_tag_cloud_Widget extends ComponentWidget
 					'defaultvalue' => T_('Tag cloud'),
 					'maxlength' => 100,
 				),
+			'blog_ids' => array(
+					'type' => 'text',
+					'label' => T_('Include blogs'),
+					'note' => T_('A comma-separated list of Blog IDs.'),
+				),
 			'max_tags' => array(
 					'type' => 'integer',
 					'label' => T_('Max # of tags'),
@@ -158,61 +163,28 @@ class coll_tag_cloud_Widget extends ComponentWidget
 	{
 		$this->init_display( $params );
 
-		global $Blog;
+		global $blog;
 
-		if( empty($Blog) )
+		// Get a list of quoted blog IDs
+		$blog_ids = sanitize_id_list($this->disp_params['blog_ids'], true);
+
+		if( empty($blog) && empty($blog_ids) )
 		{	// Nothing to display
 			return;
 		}
-
-		global $DB, $localtimenow;
-
-// fp> verrry dirty and params; TODO: clean up
-// dh> oddly, this appears to not get cached by the query cache. Have experimented a bit, but not found the reason.
-//     It worked locally somehow, but not live.
-//     This takes up to ~50% (but more likely 15%) off the total SQL time. With the query being cached, it would be far better.
-		// get list of relevant blogs
-		$where_cats = trim($Blog->get_sql_where_aggregate_coll_IDs('cat_blog_ID'));
-
-		// build query, only joining categories, if not using all.
-		$sql = "SELECT LOWER(tag_name) AS tag_name, post_datestart, COUNT(DISTINCT itag_itm_ID) AS tag_count
-			  FROM T_items__tag INNER JOIN T_items__itemtag ON itag_tag_ID = tag_ID";
-		if( $where_cats != '1' )
-		{ // we have to join the cats
-			$sql .= "
-			 INNER JOIN T_postcats ON itag_itm_ID = postcat_post_ID
-			 INNER JOIN T_categories ON postcat_cat_ID = cat_ID";
-		}
-		$sql .= "
-			 INNER JOIN T_items__item ON itag_itm_ID = post_ID
-			 WHERE $where_cats
-			   AND post_ptyp_ID NOT IN (1000,1500,1520,1530,1570,1600,3000)
-			   AND post_status = 'published' AND post_datestart < '".remove_seconds($localtimenow)."'";
-
-		if( $this->disp_params['filter_list'] )
-		{	// Filter tags
-			$filter_list = explode( ',', $this->disp_params['filter_list'] ) ;
-
-			$filter_tags = array();
-			foreach( $filter_list as $l_tag )
-			{
-				$filter_tags[] = '"'.$DB->escape(trim($l_tag)).'"';
-			}
-
-			$sql .= ' AND tag_name NOT IN ('.implode(', ', $filter_tags).')';
+		elseif( empty($blog_ids) )
+		{	// Use current Blog
+			$blog_ids = $blog;
 		}
 
-		$sql .= "
-			 GROUP BY tag_name
-			 ORDER BY tag_count DESC
-			 LIMIT ".$this->disp_params['max_tags'];
-
-		$results = $DB->get_results( $sql, OBJECT, 'Get tags' );
+		$results = get_tags( $blog_ids, $this->disp_params['max_tags'], $this->disp_params['filter_list'], true );
 
 		if( empty($results) )
 		{	// No tags!
 			return;
 		}
+
+		$BlogCache = & get_BlogCache();
 
 		$max_count = $results[0]->tag_count;
 		$min_count = $results[count($results)-1]->tag_count;
@@ -248,9 +220,10 @@ class coll_tag_cloud_Widget extends ComponentWidget
 				: format_to_output($row->tag_name, 'htmlbody');
 			$size = floor( $row->tag_count * $size_span / $count_span + $min_size );
 
-			echo $Blog->get_tag_link( $row->tag_name, $tag_name_disp, array(
+			$l_Blog = $BlogCache->get_by_id( $row->cat_blog_ID );
+			echo $l_Blog->get_tag_link( $row->tag_name, $tag_name_disp, array(
 				'style' => 'font-size:'.$size.'pt;',
-				'title' => sprintf( T_('%d posts'), $row->tag_count ) ) ); // TODO: dh> improve title, along "Display items tagged as «%s»"
+				'title' => sprintf( T_('Display posts tagged with &laquo;%s&raquo;'), $row->tag_name ) ) );
 			$count++;
 		}
 		echo $this->disp_params['tag_cloud_end'];
@@ -290,8 +263,4 @@ class coll_tag_cloud_Widget extends ComponentWidget
 	*/
 }
 
-
-/*
- * $Log: _coll_tag_cloud.widget.php,v $
- */
 ?>

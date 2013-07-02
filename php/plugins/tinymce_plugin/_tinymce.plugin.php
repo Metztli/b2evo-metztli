@@ -16,7 +16,7 @@
  * @author fplanque: Francois Planque
  * @author PhiBo: Philipp Seidel (since version 0.6)
  *
- * @version $Id: _tinymce.plugin.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _tinymce.plugin.php 3606 2013-04-30 07:14:00Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -38,7 +38,7 @@ class tinymce_plugin extends Plugin
 	var $code = 'evo_TinyMCE';
 	var $name = 'TinyMCE';
 	var $priority = 10;
-	var $version = '3.3.0';
+	var $version = '5.0.0';
 	var $group = 'editor';
 	var $number_of_installs = 1;
 
@@ -257,7 +257,7 @@ class tinymce_plugin extends Plugin
 
 
 	/**
-	 * Init the TinyMCE object.
+	 * Init the TinyMCE object (in backoffice).
 	 *
 	 * This is done late, so that scriptaculous has been loaded before,
 	 * which got used by the youtube_plugin and caused problems with tinyMCE.
@@ -279,8 +279,17 @@ class tinymce_plugin extends Plugin
 			return;
 		}
 
+		if( !empty( $Blog ) )
+		{
+			if( !$Blog->get_setting( 'allow_html_post' ) )
+			{	// Only when HTML is allowed in post
+				return false;
+			}
+		}
+
 		// Get init params, depending on edit mode: simple|expert
 		$tmce_init = $this->get_tmce_init( $params['edit_layout'] );
+
 		?>
 
 		<input id="tinymce_plugin_toggle_button"
@@ -465,11 +474,12 @@ class tinymce_plugin extends Plugin
 		</script>
 
 		<?php
-		if( is_object($edited_Item) && !empty($edited_Item->editor_code) )
+		$item_editor_code = ( is_object($edited_Item) ) ? $edited_Item->get_setting( 'editor_code' ) : NULL;
+		if( !empty( $item_editor_code ) )
 		{	// We have a preference for the current post, follow it:
 			// Use tinyMCE if code matched the code of the current plugin.
 			// fp> Note: this is a temporary solution; in the long term, this will be part of the API and the appropriate plugin will be selected.
-			$use_tinymce = ($edited_Item->editor_code == $this->code);
+			$use_tinymce = ($item_editor_code == $this->code);
 		}
 		else
 		{	// We have no pref, fall back to whatever current user has last used:
@@ -492,6 +502,17 @@ class tinymce_plugin extends Plugin
 		$this->htsrv_save_editor_state( array('on'=>$use_tinymce, 'blog'=>$Blog->ID, 'item'=>$edited_Item->ID ) );
 
 		return true;
+	}
+
+
+	/**
+	 * Init the TinyMCE object (in front office).
+	 *
+	 * @return boolean
+	 */
+	function DisplayEditorButton( & $params )
+	{
+		return $this->AdminDisplayEditorButton($params);
 	}
 
 
@@ -699,29 +720,65 @@ class tinymce_plugin extends Plugin
 			$tmce_plugins_array[] = 'contextmenu';
 		}
 
-		/* ----------- button row 1 ------------ */
+		if( $edit_layout == 'inskin' )
+		{	// In-skin editing mode
 
-		$tmce_theme_advanced_buttons1_array = array(
-			'bold,italic,strikethrough,forecolor,backcolor',
-			'fontselect,fontsizeselect',
-			'removeformat',
-			'nonbreaking,charmap',
-			'image,media',
-			'link,unlink',
-			'fullscreen'
-		);
+			/* ----------- button row 1 ------------ */
 
-		/* ----------- button row 2 ------------ */
+			$tmce_theme_advanced_buttons1_array = array(
+				'bold,italic,strikethrough,forecolor,backcolor',
+				'fontselect,fontsizeselect',
+				'removeformat',
+				'nonbreaking,charmap',
+				'image,media'
+			);
 
-		$tmce_theme_advanced_buttons2_array = array(
-			'formatselect,styleselect',
-			'bullist,numlist',
-			'outdent,indent',
-			'justifyleft,justifycenter,justifyright,justifyfull',
-			'morebtn,pagebreak',
-			'undo,redo',
-			'search,replace'
-		);
+			/* ----------- button row 2 ------------ */
+
+			$tmce_theme_advanced_buttons2_array = array(
+				'formatselect,styleselect',
+				'bullist,numlist',
+				'outdent,indent',
+				'justifyleft,justifycenter,justifyright,justifyfull',
+				'morebtn,pagebreak',
+				'fullscreen'
+			);
+
+			/* ----------- button row 3 ------------ */
+
+			$tmce_theme_advanced_buttons3_array = array(
+				'link,unlink',
+				'undo,redo',
+				'search,replace'
+			);
+		}
+		else
+		{	// Simple & Expert modes
+
+			/* ----------- button row 1 ------------ */
+
+			$tmce_theme_advanced_buttons1_array = array(
+				'bold,italic,strikethrough,forecolor,backcolor',
+				'fontselect,fontsizeselect',
+				'removeformat',
+				'nonbreaking,charmap',
+				'image,media',
+				'link,unlink',
+				'fullscreen'
+			);
+
+			/* ----------- button row 2 ------------ */
+
+			$tmce_theme_advanced_buttons2_array = array(
+				'formatselect,styleselect',
+				'bullist,numlist',
+				'outdent,indent',
+				'justifyleft,justifycenter,justifyright,justifyfull',
+				'morebtn,pagebreak',
+				'undo,redo',
+				'search,replace'
+			);
+		}
 
 		if( $edit_layout == 'expert' )
 		{	// Simple needs to be simpler than expert
@@ -833,20 +890,22 @@ class tinymce_plugin extends Plugin
 		// fp> we are not aiming for perfect wysiwyg (too heavy), just for a relevant look & feel.
 		// dh>We can/should use class_filter to only keep useful classes.
 		// fp> how???
-			if( ! empty( $Blog->skin_ID) )
+			$content_css = '';
+			$blog_skin_ID = $Blog->get_skin_ID();
+			if( ! empty( $blog_skin_ID ) )
 			{
 				$SkinCache = & get_SkinCache();
 				/**
 				 * @var Skin
 				 */
-				$Skin = $SkinCache->get_by_ID( $Blog->skin_ID );
+				$Skin = $SkinCache->get_by_ID( $blog_skin_ID );
 				$item_css_url = $skins_url.$Skin->folder.'/item.css';
 				// else: $item_css_url = $rsc_url.'css/item_base.css';
-				$content_css = ','.$item_css_url;		// fp> TODO: this needs to be a param... "of course" -- if none: else item_default.css ?
+				$content_css .= ','.$item_css_url;		// fp> TODO: this needs to be a param... "of course" -- if none: else item_default.css ?
 			}
 			// else item_default.css -- is it still possible to have no skin ?
 
-		$init_options[] = 'content_css : "'.$this->get_plugin_url().'editor.css?v='.($debug ? $localtimenow : $this->version )
+		$init_options[] = 'content_css : "'.$this->get_plugin_url().'editor.css?v='.( $debug ? $localtimenow : $this->version )
 									.$content_css.'"';
 
 /* fp> the following seems like something that filters classes but the way it's done doesn't make sense to me.
@@ -951,9 +1010,8 @@ class tinymce_plugin extends Plugin
 		if( !empty($params['item']) )
 		{	// Save the status last used by this Item:
 			// fp> TODO: also do that on CREATE post because it won't have been done here:
-			$sql = 'UPDATE T_items__item
-								 SET post_editor_code = '.$DB->quote( (int)$params['on'] ? $this->code : 'html' )
-						.' WHERE post_ID = '.$DB->quote((int)$params['item']);
+			$sql = 'REPLACE INTO T_items__item_settings ( iset_item_ID, iset_name, iset_value )
+								VALUES( '.$DB->quote((int)$params['item']).', '.$DB->quote( 'editor_code' ).', '.$DB->quote( (int)$params['on'] ? $this->code : 'html' ).' )';
 			$DB->query( $sql, 'Save editor state for current post' );
 		}
 
@@ -1007,6 +1065,30 @@ class tinymce_plugin extends Plugin
 	function GetHtsrvMethods()
 	{
 		return array('save_editor_state', 'get_item_content_css');
+	}
+
+
+	/**
+	 * Event handler: Called as action just before updating the {@link Plugin::$Settings plugin's settings}.
+	 *
+	 * @return false|NULL Return false to prevent the settings from being updated to DB.
+	 */
+	function PluginSettingsUpdateAction()
+	{
+		if( $this->Settings->get( 'use_gzip_compressor' ) == 1 )
+		{ // Check if the cache folder is not writable
+			global $cache_path;
+			$cache_folder = $cache_path.'plugins/tinymce'; // Cache path, this is where the .gz files will be stored
+
+			if( !is_writable( $cache_folder ) )
+			{
+				global $Messages;
+				$Messages->add( sprintf( T_( 'TinyMCE plugin cannot uses the compressor because folder %s is not writable' ), '<b>'.$cache_folder.'</b>' ), 'note' );
+
+				// Disable gzip compressor
+				$this->Settings->set( 'use_gzip_compressor', 0 );
+			}
+		}
 	}
 }
 

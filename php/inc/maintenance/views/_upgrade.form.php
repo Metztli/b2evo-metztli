@@ -3,7 +3,7 @@
  * This file is part of b2evolution - {@link http://b2evolution.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2009 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @copyright (c)2009-2013 by Francois PLANQUE - {@link http://fplanque.net/}
  * Parts of this file are copyright (c)2009 by The Evo Factory - {@link http://www.evofactory.com/}.
  *
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
@@ -20,7 +20,7 @@
  * @author efy-maxim: Evo Factory / Maxim.
  * @author fplanque: Francois Planque.
  *
- * @version $Id: _upgrade.form.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _upgrade.form.php 3360 2013-03-29 12:42:27Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -43,7 +43,7 @@ switch( $action )
 		if( empty( $updates ) )
 		{
 			?><div class="action_messages">
-				<div class="log_error" style="text-align:center;font-weight:bold"><?php echo T_( 'There are no any new updates.' ); ?></div>
+				<div class="log_error" style="text-align:center;font-weight:bold"><?php echo T_( 'There are no new updates.' ); ?></div>
 			</div><?php
 
 			$Form->end_form();
@@ -99,8 +99,4 @@ switch( $action )
 		break;
 }
 
-
-/*
- * $Log: _upgrade.form.php,v $
- */
 ?>

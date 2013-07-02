@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -29,7 +29,7 @@
  * @author fplanque: Francois PLANQUE
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: _plugin.funcs.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _plugin.funcs.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -92,7 +92,7 @@ function autoform_display_field( $parname, $parmeta, & $Form, $set_type, $Obj, $
 		$params['note'] = $parmeta['note'];
 	}
 
-	if( ! isset($parmeta['type']) ||  $parmeta['type'] == 'html_input' )
+	if( ! isset($parmeta['type']) || $parmeta['type'] == 'html_input' )
 	{
 		$parmeta['type'] = 'text';
 	}
@@ -138,14 +138,7 @@ function autoform_display_field( $parname, $parmeta, & $Form, $set_type, $Obj, $
 		{
 			case 'begin_fieldset':
 				$fieldset_title = $set_label;
-				if( isset($help_icon) )
-				{
-					$Form->begin_fieldset( $fieldset_title, array(), array($help_icon) );
-				}
-				else
-				{
-					$Form->begin_fieldset( $fieldset_title );
-				}
+				$Form->begin_fieldset( $fieldset_title.$help_icon );
 				break;
 
 			case 'end_fieldset':
@@ -154,6 +147,15 @@ function autoform_display_field( $parname, $parmeta, & $Form, $set_type, $Obj, $
 
 			case 'separator':
 				echo '<hr />';
+				break;
+
+			case 'html': // Output HTML code here
+				if( ! isset($parmeta['value']) )
+				{
+					$parmeta['value'] = '<div class="error">HTML layout usage:<pre>'.
+							htmlentities("'layout' => 'html',\n'value' => '<em>My HTML code</em>',").'</pre></div>';
+				}
+				echo $parmeta['value'];
 				break;
 		}
 		return;
@@ -279,6 +281,8 @@ function autoform_display_field( $parname, $parmeta, & $Form, $set_type, $Obj, $
 		case 'array':
 			$has_array_type = true;
 
+			// Always use 'fieldset' layout to display it the same way from normal and ajax calls
+			$Form->switch_layout( 'fieldset' );
 			if( substr_count( $parname, '[' ) % 2 )
 			{ // this refers to a specific array type set (with index pos at the end), e.g. when adding a field through AJAX:
 				$pos_last_bracket = strrpos($parname, '[');
@@ -310,37 +314,24 @@ function autoform_display_field( $parname, $parmeta, & $Form, $set_type, $Obj, $
 			{ // Display value of the setting. It may be empty, if there's no set yet.
 				foreach( $disp_arrays as $k => $v )
 				{
-					$fieldset_icons = array();
+					$remove_action = '';
 					if( ! isset($parmeta['min_count']) || count($set_value) > $parmeta['min_count'] )
 					{ // provide icon to remove this set
-						$fieldset_icons[] = action_icon(
+						$remove_action = action_icon(
 								T_('Delete set!'),
 								'delete',
 								regenerate_url( 'action', array('action=del_settings_set&amp;set_path='.$parname.'['.$k.']'.( $set_type == 'UserSettings' ? '&amp;user_ID='.$user_ID : '' ), 'plugin_ID='.$Obj->ID) ),
 								'',
 								5, 0, /* icon/text prio */
-								// attach onclick event to remove the whole fieldset (AJAX):
+								// attach onclick event to remove the whole fieldset:
 								array(
 									'onclick' => "
-										var oThis = this;
-										jQuery.get('{$htsrv_url}async.php', {
-												action: 'del_plugin_sett_set',
-												plugin_ID: '{$Obj->ID}',
-												user_ID: '$user_ID',
-												set_type: '$set_type',
-												set_path: '{$parname}[$k]'
-											},
-											function(r, status) {
-												if( r == 'OK' )
-												{
-													jQuery(oThis).parents('fieldset:first').remove();
-												}
-										} );
+										jQuery('#".$parname.'_'.$k_nb."').remove();
 										return false;",
 									)
 								);
 					}
-					$Form->begin_fieldset( '#'.$k_nb, array('class'=>'bordered'), $fieldset_icons );
+					$Form->begin_fieldset( '#'.$k_nb.$remove_action, array( 'class' => 'bordered', 'id' => $parname.'_'.$k_nb ) );
 
 					if( isset($parmeta['key']) )
 					{ // KEY FOR THIS ENTRY:
@@ -372,14 +363,15 @@ function autoform_display_field( $parname, $parmeta, & $Form, $set_type, $Obj, $
 			{ // no max_number defined or not reached: display link to add a new set
 				$set_path = $parname.'['.$k_nb.']';
 
-				echo '<div>';
+				echo '<div id="'.$parname.'_add_new">';
 				echo action_icon(
 					sprintf( T_('Add a new set of &laquo;%s&raquo;'), $set_label),
 					'new',
 					regenerate_url( 'action', array('action=add_settings_set', 'set_path='.$set_path.( $set_type == 'UserSettings' ? '&amp;user_ID='.get_param('user_ID') : '' ), 'plugin_ID='.$Obj->ID) ),
 					T_('New set'),
 					5, 1, /* icon/text prio */
-					array('onclick'=> "
+					// Replace the 'add new' action icon div with a new set of setting and a new 'add new' action icon div
+					array('onclick'=>"
 						var oThis = this;
 						jQuery.get('{$htsrv_url}async.php', {
 								action: 'add_plugin_sett_set',
@@ -388,7 +380,7 @@ function autoform_display_field( $parname, $parmeta, & $Form, $set_type, $Obj, $
 								set_path: '$set_path'
 							},
 							function(r, status) {
-								jQuery(oThis).parent('div').html(r);
+								jQuery('#".$parname."_add_new').replaceWith(r);
 							}
 						);
 						return false;")
@@ -400,6 +392,7 @@ function autoform_display_field( $parname, $parmeta, & $Form, $set_type, $Obj, $
 			{ // close the surrounding fieldset:
 				$Form->end_fieldset();
 			}
+			$Form->switch_layout( NULL );
 
 			break;
 
@@ -432,6 +425,10 @@ function autoform_display_field( $parname, $parmeta, & $Form, $set_type, $Obj, $
 
 		case 'info':
 			$Form->info( $parmeta['label'], $parmeta['info'] );
+			break;
+
+		case 'color':
+			$Form->color_input( $input_name, $set_value, $set_label, '', $params );
 			break;
 
 		default:
@@ -1055,7 +1052,69 @@ function handle_array_keys_in_plugin_settings( & $a )
 }
 
 
-/*
- * $Log: _plugin.funcs.php,v $
+/**
+ * Helper function to do the action part of DB schema upgrades for "enable" and "install"
+ * actions.
+ *
+ * @param object Plugin
+ * @param boolean Force install DB for the plugin (used in installation of b2evo)
+ * @return boolean True, if no changes needed or done; false if we should break out to display "install_db_schema" action payload.
  */
+function install_plugin_db_schema_action( & $Plugin, $force_install_db_deltas = false )
+{
+	global $action, $inc_path, $install_db_deltas, $DB, $Messages;
+
+	$action = 'list';
+	// Prepare vars for DB layout changes
+	$install_db_deltas_confirm_md5 = param( 'install_db_deltas_confirm_md5' );
+
+	$db_layout = $Plugin->GetDbLayout();
+	$install_db_deltas = array(); // This holds changes to make, if any (just all queries)
+	//pre_dump( $db_layout );
+
+	if( ! empty($db_layout) )
+	{ // The plugin has a DB layout attached
+		load_funcs('_core/model/db/_upgrade.funcs.php');
+
+		// Get the queries to make:
+		foreach( db_delta($db_layout) as $table => $queries )
+		{
+			foreach( $queries as $query_info )
+			{
+				foreach( $query_info['queries'] as $query )
+				{ // subqueries for this query (usually one, but may include required other queries)
+					$install_db_deltas[] = $query;
+				}
+			}
+		}
+
+		if( ! empty($install_db_deltas) )
+		{ // delta queries to make
+			if( empty($install_db_deltas_confirm_md5) && !$force_install_db_deltas )
+			{ // delta queries have to be confirmed in payload
+				$action = 'install_db_schema';
+				return false;
+			}
+			elseif( $install_db_deltas_confirm_md5 == md5( implode('', $install_db_deltas) ) || $force_install_db_deltas )
+			{ // Confirmed in first step:
+				foreach( $install_db_deltas as $query )
+				{
+					$DB->query( $query );
+				}
+
+				$Messages->add( T_('The database has been updated.'), 'success' );
+			}
+			else
+			{ // should not happen
+				$Messages->add( T_('The DB schema has been changed since confirmation.'), 'error' );
+
+				// delta queries have to be confirmed (again) in payload
+				$action = 'install_db_schema';
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
 ?>

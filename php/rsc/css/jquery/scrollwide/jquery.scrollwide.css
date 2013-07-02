@@ -1,0 +1,22 @@
+/**
+ * jquery.scrollwide.js v1.0
+ * jQuery Wide Scroll
+ * @author Yuriy Bakhtin
+ * Copyright (c) 2012 Yuriy Bakhtin
+ */
+
+.wscontrol {
+	border: 1px solid #999;
+	background: #fdf537 url(images/arrows.png) repeat-y 5px 10px;
+	text-align: center;
+	cursor: pointer;
+}
+.wscontrol:hover, .wscontrol.wsover {
+	background-color: #FFFF00;
+}
+.wscontrol.wsclick {
+	background-color: #FF9900;
+}
+.wscontrol.wsleft {
+	background-position: -12px 10px;
+}

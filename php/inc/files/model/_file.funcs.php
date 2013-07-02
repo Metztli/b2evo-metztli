@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -29,7 +29,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _file.funcs.php 622 2011-12-21 08:44:02Z attila $
+ * @version $Id: _file.funcs.php 3891 2013-06-02 14:07:42Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -102,16 +102,25 @@ function bytesreadable( $bytes, $htmlabbr = true )
  * Note: there is no ending slash on dir names returned.
  *
  * @param string the path to start
- * @param boolean include files (not only directories)
- * @param boolean include directories (not the directory itself!)
- * @param boolean flat (return an one-dimension-array)
- * @param boolean Recurse into subdirectories?
- * @param boolean Get the basename only.
+ * @param array of params
  * @return false|array false if the first directory could not be accessed,
  *                     array of entries otherwise
  */
-function get_filenames( $path, $inc_files = true, $inc_dirs = true, $flat = true, $recurse = true, $basename = false, $trailing_slash = false )
+function get_filenames( $path, $params = array() )
 {
+	global $Settings;
+
+	$params = array_merge( array(
+			'inc_files'		=> true,	// include files (not only directories)
+			'inc_dirs'		=> true,	// include directories (not the directory itself!)
+			'flat'			=> true,	// return a one-dimension-array
+			'recurse'		=> true,	// recurse into subdirectories
+			'basename'		=> false,	// get the basename only
+			'trailing_slash'=> false,	// add trailing slash
+			'inc_hidden'    => true,	// inlcude hidden files, directories and content
+			'inc_evocache'	=> false,	// exclude evocache directories and content
+		), $params );
+
 	$r = array();
 
 	$path = trailing_slash( $path );
@@ -121,26 +130,35 @@ function get_filenames( $path, $inc_files = true, $inc_dirs = true, $flat = true
 		while( ( $file = readdir($dir) ) !== false )
 		{
 			if( $file == '.' || $file == '..' )
-			{
+				continue;
+
+			// asimo> Also check if $Settings is not empty because this function is called from the install srcipt too, where $Settings is not initialized yet
+			if( ! $params['inc_evocache'] && ! empty( $Settings ) && $file == $Settings->get('evocache_foldername') )
+				continue;
+
+			// Check for hidden status...
+			if( ( ! $params['inc_hidden'] ) && ( substr( $file, 0, 1 ) == '.' ) )
+			{ // Do not load & show hidden files and folders (prefixed with .)
 				continue;
 			}
+
 			if( is_dir($path.$file) )
 			{
-				if( $flat )
+				if( $params['flat'] )
 				{
-					if( $inc_dirs )
+					if( $params['inc_dirs'] )
 					{
-						$directory_name = $basename ? $file : $path.$file;
-						if( $trailing_slash )
+						$directory_name = $params['basename'] ? $file : $path.$file;
+						if( $params['trailing_slash'] )
 						{
 							$directory_name = trailing_slash( $directory_name );
 						}
 
 						$r[] = $directory_name;
 					}
-					if( $recurse )
+					if( $params['recurse'] )
 					{
-						$rSub = get_filenames( $path.$file, $inc_files, $inc_dirs, $flat, $recurse, $basename, $trailing_slash );
+						$rSub = get_filenames( $path.$file, $params );
 						if( $rSub )
 						{
 							$r = array_merge( $r, $rSub );
@@ -149,12 +167,12 @@ function get_filenames( $path, $inc_files = true, $inc_dirs = true, $flat = true
 				}
 				else
 				{
-					$r[$file] = get_filenames( $path.$file, $inc_files, $inc_dirs, $flat, $recurse, $basename, $trailing_slash );
+					$r[$file] = get_filenames( $path.$file, $params );
 				}
 			}
-			elseif( $inc_files )
+			elseif( $params['inc_files'] )
 			{
-				$r[] = $basename ? $file : $path.$file;
+				$r[] = $params['basename'] ? $file : $path.$file;
 			}
 		}
 		closedir($dir);
@@ -179,7 +197,12 @@ function get_admin_skins()
 {
 	global $adminskins_path, $admin_subdir, $adminskins_subdir;
 
-	$dirs_in_adminskins_dir = get_filenames( $adminskins_path, false, true, true, false, true );
+	$filename_params = array(
+			'inc_files'		=> false,
+			'recurse'		=> false,
+			'basename'      => true,
+		);
+	$dirs_in_adminskins_dir = get_filenames( $adminskins_path, $filename_params );
 
 	if( $dirs_in_adminskins_dir === false )
 	{
@@ -319,8 +342,8 @@ function imgsize( $path, $param = 'widthheight' )
 	{
 		$size = $cache_imgsize[$path];
 	}
-	elseif( !file_exists($path) || !($size = @getimagesize( $path )) )
-    {    // File not found, or not an image 
+	elseif( !($size = @getimagesize( $path )) )
+	{
 		return false;
 	}
 	else
@@ -362,44 +385,6 @@ function imgsize( $path, $param = 'widthheight' )
 	else
 	{ // default: 'widthheight'
 		return array( $size[0], $size[1] );
-	}
-}
-
-
-/**
- * Add a trailing slash, if none present
- *
- * @param string the path/url
- * @return string the path/url with trailing slash
- */
-function trailing_slash( $path )
-{
-	if( empty($path) || substr( $path, -1 ) == '/' )
-	{
-		return $path;
-	}
-	else
-	{
-		return $path.'/';
-	}
-}
-
-
-/**
- * Remove trailing slash, if present
- *
- * @param string the path/url
- * @return string the path/url without trailing slash
- */
-function no_trailing_slash( $path )
-{
-	if( substr( $path, -1 ) == '/' )
-	{
-		return substr( $path, 0, strlen( $path )-1 );
-	}
-	else
-	{
-		return $path;
 	}
 }
 
@@ -483,6 +468,71 @@ function get_canonical_path( $ads_path )
 
 
 /**
+ * Fix the length of a given file name based on the global $filename_max_length setting.
+ *
+ * @param string the file name
+ * @param string the index before we should remove the over characters
+ * @return string the modified filename if the length was above the max length and the $remove_before_index param was correct. The original filename otherwie.
+ */
+function fix_filename_length( $filename, $remove_before_index )
+{
+	global $filename_max_length;
+
+	$filename_length = strlen( $filename );
+	if( $filename_length > $filename_max_length )
+	{
+		$difference = $filename_length - $filename_max_length;
+		if( $remove_before_index > $difference )
+		{ // Fix file name length only if the filename part before the 'remove index' contains more characters then what we have to remove
+			$filename = substr_replace( $filename, '', $remove_before_index - $difference, $difference );
+		}
+	}
+	return $filename;
+}
+
+
+/**
+ * Process filename:
+ *  - convert to lower case
+ *  - replace consecutive dots with one dot
+ *  - if force_validation is true, then replace every not valid character to '_'
+ *  - check if file name is valid
+ *
+ * @param string file name (by reference) - this file name will be processed
+ * @param boolean force validation ( replace not valid characters to '_' without warning )
+ * @return error message if the file name is not valid, false otherwise
+ */
+function process_filename( & $filename, $force_validation = false )
+{
+	global $filename_max_length;
+
+	if( empty( $filename ) )
+	{
+		return T_( 'Empty file name is not valid.' );
+	}
+
+	if( $force_validation )
+	{ // replace every not valid characters
+		$filename = preg_replace( '/[^a-z0-9\-_.]+/i', '_', $filename );
+		// Make sure the filename length doesn't exceed the maximum allowed. Remove characters from the end of the filename ( before the extension ) if required.  
+		$extension_pos = strrpos( $filename, '.' );
+		$filename = fix_filename_length( $filename, strrpos( $filename, '.', ( $extension_pos ? $extension_pos : strlen( $filename ) ) ) );
+	}
+
+	// check if the file name contains consecutive dots, and replace them with one dot without warning ( keep only one dot '.' instead of '...' )
+	$filename = preg_replace( '/\.(\.)+/', '.', evo_strtolower( $filename ) );
+
+	if( $error_filename = validate_filename( $filename ) )
+	{ // invalid file name
+		return $error_filename;
+	}
+
+	// on success
+	return false;
+}
+
+
+/**
  * Check for valid filename and extension of the filename (no path allowed). (MB)
  *
  * @uses $FiletypeCache, $settings or $force_regexp_filename form _advanced.php
@@ -493,7 +543,17 @@ function get_canonical_path( $ads_path )
  */
 function validate_filename( $filename, $allow_locked_filetypes = NULL )
 {
-	global $Settings, $force_regexp_filename;
+	global $Settings, $force_regexp_filename, $filename_max_length;
+
+	if( strpos( $filename, '..' ) !== false )
+	{ // consecutive dots are not allowed in file name
+		return sprintf( T_('&laquo;%s&raquo; is not a valid filename.').' '.T_( 'Consecutive dots are not allowed.' ), $filename );
+	}
+
+	if( strlen( $filename ) > $filename_max_length )
+	{ // filename is longer then the maximum allowed
+		return sprintf( T_('&laquo;%s&raquo; is not a valid filename.').' '.sprintf( T_( 'Max %d characters are allowed on filenames.' ), $filename_max_length ), $filename );
+	}
 
 	// Check filename
 	if( $force_regexp_filename )
@@ -547,10 +607,15 @@ function validate_filename( $filename, $allow_locked_filetypes = NULL )
  */
 function validate_dirname( $dirname )
 {
-	global $Settings, $force_regexp_dirname;
+	global $Settings, $force_regexp_dirname, $filename_max_length;
 
 	if( $dirname != '..' )
 	{
+		if( strlen( $dirname ) > $filename_max_length )
+		{ // Don't allow longer directory names then the max file name length
+			return sprintf( T_('&laquo;%s&raquo; is not a valid directory name.'), $dirname ).' '.sprintf( T_( 'Max %d characters are allowed.' ), $filename_max_length );
+		}
+
 		if( !empty( $force_regexp_dirname ) )
 		{ // Use the regexp from _advanced.php
 			if( preg_match( ':'.str_replace( ':', '\:', $force_regexp_dirname ).':', $dirname ) )
@@ -577,27 +642,35 @@ function validate_dirname( $dirname )
  * used when renaming a file, File settings
  *
  * @param string the new name
- * @param boolean 0 if directory
- * @param boolean 0 if permission denied
- * @return nothing if the rename is acceptable, error message if not
+ * @param boolean true if it is a directory, false if not
+ * @param string the absolute path of the parent directory
+ * @param boolean true if user has permission to all kind of fill types, false otherwise
+ * @return mixed NULL if the rename is acceptable, error message if not
  */
-function check_rename ( & $newname, $is_dir, $allow_locked_filetypes )
+function check_rename( & $newname, $is_dir, $dir_path, $allow_locked_filetypes )
 {
+	global $dirpath_max_length;
+
 	// Check if provided name is okay:
 	$newname = trim( strip_tags($newname) );
 
-	if( ! $is_dir )
+	if( $is_dir )
 	{
-		if( $error_filename = validate_filename( $newname, $allow_locked_filetypes ) )
-		{ // Not a file name or not an allowed extension
-			return $error_filename;
+		if( $error_dirname = validate_dirname( $newname ) )
+		{ // invalid directory name
+			return $error_dirname;
+		}
+		if( $dirpath_max_length < ( strlen( $dir_path ) + strlen( $newname ) ) )
+		{ // The new path length would be too long
+			return T_('The new name is too long for this folder.');
 		}
 	}
-	elseif( $error_dirname = validate_dirname( $newname ) )
-	{ // directory name
-		return $error_dirname;
+	elseif( $error_filename = validate_filename( $newname, $allow_locked_filetypes ) )
+	{ // Not a file name or not an allowed extension
+		return $error_filename;
 	}
-	return;
+
+	return NULL;
 }
 
 
@@ -609,7 +682,7 @@ function get_upload_restriction()
 	global $DB, $Settings, $current_User;
 	$restrictNotes = array();
 
-	if( is_logged_in() )
+	if( is_logged_in( false ) )
 	{
 		$condition = ( $current_User->check_perm( 'files', 'all' ) ) ? '' : 'ftyp_allowed <> "admin"';
 	}
@@ -790,13 +863,14 @@ function get_directory_tree( $Root = NULL, $ads_full_path = NULL, $ads_selected_
 
 		// Handle potential subdir:
 		if( ! $has_sub_dirs )
-		{	// No subirs
+		{	// No subdirs
 			$r['string'] .= get_icon( 'expand', 'noimg', array( 'class'=>'' ) ).'&nbsp;'.$label.'</span>';
 		}
 		else
 		{ // Process subdirs
 			$r['string'] .= get_icon( 'collapse', 'imgtag', array( 'onclick' => 'toggle_clickopen(\''.$id_path.'\');',
-						'id' => 'clickimg_'.$id_path
+						'id' => 'clickimg_'.$id_path,
+						'style'=>'margin:0 2px'
 					) )
 				.'&nbsp;'.$label.'</span>'
 				.'<ul class="clicktree" id="clickdiv_'.$id_path.'">'."\n";
@@ -849,8 +923,6 @@ function get_directory_tree( $Root = NULL, $ads_full_path = NULL, $ads_selected_
 /**
  * Create a directory recursively.
  *
- * NOTE: this can be done with the "recursive" param in PHP5
- *
  * @todo dh> simpletests for this (especially for open_basedir)
  *
  * @param string directory name
@@ -870,42 +942,7 @@ function mkdir_r( $dirName, $chmod = NULL )
 		$chmod = $Settings->get('fm_default_chmod_dir');
 	}
 
-	/*
-	if( version_compare(PHP_VERSION, 5, '>=') )
-	{
-		return mkdir( $dirName, $chmod, true );
-	}
-	*/
-
-	$dirName = trailing_slash($dirName);
-
-	$parts = array_reverse( explode('/', $dirName) );
-	$loop_dir = $dirName;
-	$create_dirs = array();
-	foreach($parts as $part)
-	{
-		if( ! strlen($part) )
-		{
-			continue;
-		}
-		// We want to create this dir:
-		array_unshift($create_dirs, $loop_dir);
-		$loop_dir = substr($loop_dir, 0, 0 - strlen($part)-1);
-
-		if( is_dir($loop_dir) )
-		{ // found existing dir:
-			foreach($create_dirs as $loop_dir )
-			{
-				// Tblue> Note: The chmod value for mkdir() is affected by the user's umask.
-				if( ! @mkdir($loop_dir, octdec($chmod)) )
-				{
-					return false;
-				}
-			}
-			return true;
-		}
-	}
-	return true;
+	return mkdir( $dirName, octdec($chmod), true );
 }
 
 
@@ -955,9 +992,10 @@ if ( !function_exists('sys_get_temp_dir'))
   }
 }
 
+
 /**
-* Controller helper
-*/
+ * Controller helper
+ */
 function file_controller_build_tabs()
 {
 	global $AdminUI, $current_User, $blog;
@@ -986,14 +1024,17 @@ function file_controller_build_tabs()
 			array('files', 'upload'),
 			array(
 					'quick' => array(
-						'text' => T_('Quick'),
-						'href' => '?ctrl=upload&amp;tab3=quick' ),
+						'text' => /* TRANS: Quick upload method */ T_('Quick '),
+						'href' => '?ctrl=upload&amp;tab3=quick',
+						'onclick' => 'return b2edit_reload( document.getElementById( \'fm_upload_checkchanges\' ), \'?ctrl=upload&amp;tab3=quick\' );' ),
 					'standard' => array(
-						'text' => T_('Standard'),
-						'href' => '?ctrl=upload&amp;tab3=standard' ),
+						'text' => /* TRANS: Standard upload method */ T_('Standard '),
+						'href' => '?ctrl=upload&amp;tab3=standard',
+						'onclick' => 'return b2edit_reload( document.getElementById( \'fm_upload_checkchanges\' ), \'?ctrl=upload&amp;tab3=standard\' );' ),
 					'advanced' => array(
-						'text' => T_('Advanced'),
-						'href' => '?ctrl=upload&amp;tab3=advanced' ),
+						'text' => /* TRANS: Advanced upload method */ T_('Advanced '),
+						'href' => '?ctrl=upload&amp;tab3=advanced',
+						'onclick' => 'return b2edit_reload( document.getElementById( \'fm_upload_checkchanges\' ), \'?ctrl=upload&amp;tab3=advanced\' );' ),
 				)
 			);
 	}
@@ -1023,7 +1064,29 @@ function file_controller_build_tabs()
 			);
 	}
 
+	if( $current_User->check_perm( 'options', 'edit' ) )
+	{	// Permission to edit settings:
+		$AdminUI->add_menu_entries(
+			'files',
+			array(
+				'moderation' => array(
+					'text' => T_('Moderation'),
+					'href' => '?ctrl=filemod',
+					'entries' => array(
+						'suspicious' => array(
+							'text' => T_('Suspicious'),
+							'href' => '?ctrl=filemod&amp;tab=suspicious' ),
+						'duplicates' => array(
+							'text' => T_('Duplicates'),
+							'href' => '?ctrl=filemod&amp;tab=duplicates' ),
+						)
+					)
+				)
+			);
+	}
+
 }
+
 
 /**
  * Rename evocache folders after File settings update, whe evocahe folder name was chaned
@@ -1043,7 +1106,12 @@ function rename_cachefolders( $oldname, $newname )
 	$result = true;
 	foreach( $available_Roots as $fileRoot )
 	{
-		$dirpaths = get_filenames( $fileRoot->ads_path, false );
+		$filename_params = array(
+				'inc_files'		=> false,
+				'inc_evocache'	=> true,
+			);
+		$dirpaths = get_filenames( $fileRoot->ads_path, $filename_params );
+
 		foreach( $dirpaths as $dirpath )
 		{ // search ?evocache folders
 			$dirpath_length = strlen( $dirpath );
@@ -1078,7 +1146,12 @@ function delete_cachefolders( $Log = NULL )
 	// Get this, just in case someone comes up with a different naming:
 	$evocache_foldername = $Settings->get( 'evocache_foldername' );
 
-	$dirs = get_filenames( $media_path, false );
+	$filename_params = array(
+			'inc_files'		=> false,
+			'inc_evocache'	=> true,
+		);
+	$dirs = get_filenames( $media_path, $filename_params );
+
 	$deleted_dirs = 0;
 	foreach( $dirs as $dir )
 	{
@@ -1100,7 +1173,7 @@ function delete_cachefolders( $Log = NULL )
 
 
 /**
- * Check and set the given FileList object fm_showhidden and fm_showevocache params 
+ * Check and set the given FileList object fm_showhidden and fm_showevocache params
  */
 function check_showparams( & $Filelist )
 {
@@ -1120,17 +1193,18 @@ function check_showparams( & $Filelist )
 
 /**
  * Process file uploads (this can process multiple file uploads at once)
- * 
+ *
  * @param string FileRoot id string
  * @param string the upload dir relative path in the FileRoot
  * @param boolean Shall we create path dirs if they do not exist?
  * @param boolean Shall we check files add permission for current_User?
  * @param boolean upload quick mode
  * @param boolean show warnings if filename is not valid
+ * @param integer minimum size for pictures in pixels (width and height)
  * @return mixed NULL if upload was impossible to complete for some reason (wrong fileroot ID, insufficient user permission, etc.)
- * 				 array, which contains uploadedFiles, failedFiles, renamedFiles and renamedMessages
+ * 				       array, which contains uploadedFiles, failedFiles, renamedFiles and renamedMessages
  */
-function process_upload( $root_ID, $path, $create_path_dirs = false, $check_perms = true, $upload_quickmode = true, $warn_invalid_filenames = true )
+function process_upload( $root_ID, $path, $create_path_dirs = false, $check_perms = true, $upload_quickmode = true, $warn_invalid_filenames = true, $min_size = 0 )
 {
 	global $Settings, $Plugins, $Messages, $current_User, $force_upload_forbiddenext;
 
@@ -1191,10 +1265,10 @@ function process_upload( $root_ID, $path, $create_path_dirs = false, $check_perm
 	}
 
 	// Get param arrays for all uploaded files:
-	$uploadfile_title = param( 'uploadfile_title', 'array', array() );
-	$uploadfile_alt = param( 'uploadfile_alt', 'array', array() );
-	$uploadfile_desc = param( 'uploadfile_desc', 'array', array() );
-	$uploadfile_name = param( 'uploadfile_name', 'array', array() );
+	$uploadfile_title = param( 'uploadfile_title', 'array/string', array() );
+	$uploadfile_alt = param( 'uploadfile_alt', 'array/string', array() );
+	$uploadfile_desc = param( 'uploadfile_desc', 'array/string', array() );
+	$uploadfile_name = param( 'uploadfile_name', 'array/string', array() );
 
 	// LOOP THROUGH ALL UPLOADED FILES AND PROCCESS EACH ONE:
 	foreach( $_FILES['uploadfile']['name'] as $lKey => $lName )
@@ -1224,6 +1298,19 @@ function process_upload( $root_ID, $path, $create_path_dirs = false, $check_perm
 			continue;
 		}
 
+		if( !empty( $min_size ) )
+		{	// Check pictures for small sizes
+			$image_sizes = imgsize( $_FILES['uploadfile']['tmp_name'][$lKey], 'widthheight' );
+			if( $image_sizes[0] < $min_size || $image_sizes[1] < $min_size )
+			{	// Abort upload for this file:
+				$failedFiles[$lKey] = sprintf(
+					T_( 'Your profile picture must have a minimum size of %dx%d pixels.' ),
+					$min_size,
+					$min_size );
+				continue;
+			}
+		}
+
 		if( $_FILES['uploadfile']['error'][$lKey] )
 		{ // PHP itself has detected an error!:
 			switch( $_FILES['uploadfile']['error'][$lKey] )
@@ -1251,14 +1338,14 @@ function process_upload( $root_ID, $path, $create_path_dirs = false, $check_perm
 					continue;
 
 				case 6: // numerical value of UPLOAD_ERR_NO_TMP_DIR
-					# (min_php: 4.3.10, 5.0.3) case UPLOAD_ERR_NO_TMP_DIR:
+				# (min_php: 4.3.10, 5.0.3) case UPLOAD_ERR_NO_TMP_DIR:
 					// Missing a temporary folder.
 					$failedFiles[$lKey] = 'Temporary upload dir is missing! (upload_tmp_dir in php.ini)'; // Configuration error, no translation
 					// Abort upload for this file:
 					continue;
 
 				default:
-					$failedFiles[$lKey] = T_('An unknown error has occured.').' Error code #'.$_FILES['uploadfile']['error'][$lKey];
+					$failedFiles[$lKey] = T_('An unknown error has occurred!').' Error code #'.$_FILES['uploadfile']['error'][$lKey];
 					// Abort upload for this file:
 					continue;
 			}
@@ -1274,13 +1361,8 @@ function process_upload( $root_ID, $path, $create_path_dirs = false, $check_perm
 
 		// Use new name on server if specified:
 		$newName = !empty( $uploadfile_name[ $lKey ] ) ? $uploadfile_name[ $lKey ] : $lName;
-
-		if( !$warn_invalid_filenames )
-		{ // Sanitize down any add characters:
-			$newName = preg_replace( '/[^a-z0-9\-_.]+/i', '_', $newName );
-		}
-
-		if( $error_filename = validate_filename( $newName ) )
+		// validate file name
+		if( $error_filename = process_filename( $newName, !$warn_invalid_filenames ) )
 		{ // Not a valid file name or not an allowed extension:
 			$failedFiles[$lKey] = $error_filename;
 			// Abort upload for this file:
@@ -1288,7 +1370,7 @@ function process_upload( $root_ID, $path, $create_path_dirs = false, $check_perm
 		}
 
 		// Check if the uploaded file type is an image, and if is an image then try to fix the file extension based on mime type
-		// If the mime type is a known mime type and user has right to upload files with this kind of file type, 
+		// If the mime type is a known mime type and user has right to upload files with this kind of file type,
 		// this part of code will check if the file extension is the same as admin defined for this file type, and will fix it if it isn't the same
 		// Note: it will also change the jpeg extensions to jpg.
 		$uploadfile_path = $_FILES['uploadfile']['tmp_name'][$lKey];
@@ -1297,8 +1379,8 @@ function process_upload( $root_ID, $path, $create_path_dirs = false, $check_perm
 		if( $image_info )
 		{ // This is an image, validate mimetype vs. extension:
 			$image_mimetype = $image_info['mime'];
-			$FiletypeCache = get_Cache('FiletypeCache');
-			// get correct file type based on mime type
+			$FiletypeCache = & get_FiletypeCache();
+			// Get correct file type based on mime type
 			$correct_Filetype = $FiletypeCache->get_by_mimetype( $image_mimetype, false, false );
 
 			// Check if file type is known by us, and if it is allowed for upload.
@@ -1321,18 +1403,18 @@ function process_upload( $root_ID, $path, $create_path_dirs = false, $check_perm
 		}
 
 		// Get File object for requested target location:
-		$oldName = $newName;
+		$oldName = strtolower( $newName );
 		list( $newFile, $oldFile_thumb ) = check_file_exists( $fm_FileRoot, $path, $newName, $image_info );
 		$newName = $newFile->get( 'name' );
 
 		// Trigger plugin event
 		if( $Plugins->trigger_event_first_false( 'AfterFileUpload', array(
-				  'File' => & $newFile,
-				  'name' => & $_FILES['uploadfile']['name'][$lKey],
-				  'type' => & $_FILES['uploadfile']['type'][$lKey],
-				  'tmp_name' => & $_FILES['uploadfile']['tmp_name'][$lKey],
-				  'size' => & $_FILES['uploadfile']['size'][$lKey],
-			  ) ) )
+					'File' => & $newFile,
+					'name' => & $_FILES['uploadfile']['name'][$lKey],
+					'type' => & $_FILES['uploadfile']['type'][$lKey],
+					'tmp_name' => & $_FILES['uploadfile']['tmp_name'][$lKey],
+					'size' => & $_FILES['uploadfile']['size'][$lKey],
+				) ) )
 		{
 			// Plugin returned 'false'.
 			// Abort upload for this file:
@@ -1377,7 +1459,7 @@ function process_upload( $root_ID, $path, $create_path_dirs = false, $check_perm
 			}
 			//$newFile_size = bytesreadable ($_FILES['uploadfile']['size'][$lKey]);
 			$renamedMessages[$lKey]['message'] = sprintf( T_('"%s was renamed to %s. Would you like to replace %s with the new version instead?'),
-													   '&laquo;'.$oldName.'&raquo;', '&laquo;'.$newName.'&raquo;', '&laquo;'.$oldName.'&raquo;' );
+														 '&laquo;'.$oldName.'&raquo;', '&laquo;'.$newName.'&raquo;', '&laquo;'.$oldName.'&raquo;' );
 			$renamedMessages[$lKey]['oldThumb'] = $oldFile_thumb;
 			$renamedMessages[$lKey]['newThumb'] = $newFile_thumb;
 			$renamedFiles[$lKey]['oldName'] = $oldName;
@@ -1403,13 +1485,166 @@ function process_upload( $root_ID, $path, $create_path_dirs = false, $check_perm
 		$uploadedFiles[] = $newFile;
 	}
 
+	prepare_uploaded_files( $uploadedFiles );
+
 	return array( 'uploadedFiles' => $uploadedFiles, 'failedFiles' => $failedFiles, 'renamedFiles' => $renamedFiles, 'renamedMessages' => $renamedMessages );
 }
 
 
 /**
+ * Prepare the uploaded files
+ *
+ * @param array Uploaded files
+ */
+function prepare_uploaded_files( $uploadedFiles )
+{
+	if( count( $uploadedFiles ) == 0 )
+	{	// No uploaded files
+		return;
+	}
+
+	foreach( $uploadedFiles as $File )
+	{
+		$Filetype = & $File->get_Filetype();
+		if( $Filetype )
+		{
+			if( in_array( $Filetype->mimetype, array( 'image/jpeg', 'image/gif', 'image/png' ) ) )
+			{	// Image file
+				prepare_uploaded_image( $File, $Filetype->mimetype );
+			}
+		}
+	}
+}
+
+
+/**
+ * Prepare image file (Resize, Rotate and etc.)
+ *
+ * @param object File
+ * @param string mimetype
+ */
+function prepare_uploaded_image( $File, $mimetype )
+{
+	global $Settings;
+
+	$thumb_width = $Settings->get( 'fm_resize_width' );
+	$thumb_height = $Settings->get( 'fm_resize_height' );
+
+	$do_resize = false;
+	if( $Settings->get( 'fm_resize_enable' ) &&
+	    $thumb_width > 0 && $thumb_height > 0 )
+	{	// Image resizing is enabled
+		list( $image_width, $image_height ) = explode( 'x', $File->get_image_size() );
+		if( $image_width > $thumb_width || $image_height > $thumb_height )
+		{	// This image should be resized
+			$do_resize = true;
+		}
+	}
+
+	load_funcs( 'files/model/_image.funcs.php' );
+
+	$resized_imh = null;
+	if( $do_resize )
+	{	// Resize image
+		list( $err, $src_imh ) = load_image( $File->get_full_path(), $mimetype );
+		if( empty( $err ) )
+		{
+			list( $err, $resized_imh ) = generate_thumb( $src_imh, 'fit', $thumb_width, $thumb_height );
+		}
+	}
+
+	if( !empty( $err ) )
+	{	// Error exists, Exit here
+		return;
+	}
+
+	if( $mimetype == 'image/jpeg' )
+	{	// JPEG, do autorotate if EXIF Orientation tag is defined
+		$save_image = !$do_resize; // If image was be resized, we should save file only in the end of this function
+		exif_orientation( $File->get_full_path(), $resized_imh, $save_image );
+	}
+
+	if( !$resized_imh )
+	{	// Image resource is incorrect
+		return;
+	}
+
+	if( $do_resize && empty( $err ) )
+	{	// Save resized image ( and also rotated image if this operation was done )
+		save_image( $resized_imh, $File->get_full_path(), $mimetype );
+	}
+}
+
+
+/**
+ * Rotate the JPEG image if EXIF Orientation tag is defined
+ *
+ * @param string File name (with full path)
+ * @param resource Image resource ( result of the function imagecreatefromjpeg() ) (by reference)
+ * @param boolean TRUE - to save the rotated image in the end of this function
+ */
+function exif_orientation( $file_name, & $imh/* = null*/, $save_image = false )
+{
+	global $Settings;
+
+	if( !$Settings->get( 'exif_orientation' ) )
+	{	// Autorotate is disabled
+		return;
+	}
+
+	if( ! function_exists('exif_read_data') )
+	{	// EXIF extension is not loaded
+		return;
+	}
+
+	$EXIF = exif_read_data( $file_name );
+	if( !( isset( $EXIF['Orientation'] ) && in_array( $EXIF['Orientation'], array( 3, 6, 8 ) ) ) )
+	{	// EXIF Orientation tag is not defined OR we don't interested in current value
+		return;
+	}
+
+	load_funcs( 'files/model/_image.funcs.php' );
+
+	if( is_null( $imh ) )
+	{	// Create image resource from file name
+		$imh = imagecreatefromjpeg( $file_name );
+	}
+
+	if( !$imh )
+	{	// Image resource is incorrect
+		return;
+	}
+
+	switch( $EXIF['Orientation'] )
+	{
+		case 3:	// Rotate for 180 degrees
+			$imh = @imagerotate( $imh, 180, 0 );
+			break;
+
+		case 6:	// Rotate for 90 degrees to the right
+			$imh = @imagerotate( $imh, 270, 0 );
+			break;
+
+		case 8:	// Rotate for 90 degrees to the left
+			$imh = @imagerotate( $imh, 90, 0 );
+			break;
+	}
+
+	if( !$imh )
+	{	// Image resource is incorrect
+		return;
+	}
+
+	if( $save_image )
+	{	// Save rotated image
+		save_image( $imh, $file_name, 'image/jpeg' );
+	}
+}
+
+
+/**
  * Check if file exists in the target location with the given name. Used during file upload.
- * 
+ *
  * @param FileRoot target file Root
  * @param string target path
  * @param string file name
@@ -1420,6 +1655,8 @@ function process_upload( $root_ID, $path, $create_path_dirs = false, $check_perm
  */
 function check_file_exists( $fm_FileRoot, $path, $newName, $image_info = NULL )
 {
+	global $filename_max_length;
+
 	// Get File object for requested target location:
 	$FileCache = & get_FileCache();
 	$newFile = & $FileCache->get_by_root_and_path( $fm_FileRoot->type, $fm_FileRoot->in_type_ID, trailing_slash($path).$newName, true );
@@ -1453,6 +1690,14 @@ function check_file_exists( $fm_FileRoot, $path, $newName, $image_info = NULL )
 			$replace_length = strlen( '-'.($num_ext-1) );
 			$newName = substr_replace( $newName, '-'.$num_ext, $ext_pos-$replace_length, $replace_length );
 		}
+		if( strlen( $newName ) > $filename_max_length )
+		{
+			$newName = fix_filename_length( $newName, strrpos( $newName, '-' ) );
+			if( $error_filename = process_filename( $newName, true ) )
+			{ // The file name is still not valid
+				debug_die( 'Invalid file name has found during file exists check: '.$error_filename );
+			}
+		}
 		$newFile = & $FileCache->get_by_root_and_path( $fm_FileRoot->type, $fm_FileRoot->in_type_ID, trailing_slash($path).$newName, true );
 	}
 
@@ -1462,9 +1707,9 @@ function check_file_exists( $fm_FileRoot, $path, $newName, $image_info = NULL )
 
 /**
  * Remove files with the given ids
- * 
+ *
  * @param array file ids to remove, default to remove all orphan file IDs
- * @param integer remove files older then the given hour, default NULL will remove all
+ * @param integer remove files older than the given hour, default NULL will remove all
  * @return integer the number of removed files
  */
 function remove_orphan_files( $file_ids = NULL, $older_then = NULL )
@@ -1475,9 +1720,9 @@ function remove_orphan_files( $file_ids = NULL, $older_then = NULL )
 	$sql = 'SELECT file_ID FROM T_files
 				WHERE ( file_path LIKE "comments/p%" OR file_path LIKE "anonymous_comments/p%" ) AND file_ID NOT IN (
 					SELECT * FROM (
-						( SELECT DISTINCT link_file_ID FROM T_links 
+						( SELECT DISTINCT link_file_ID FROM T_links
 							WHERE link_file_ID IS NOT NULL ) UNION
-						( SELECT DISTINCT user_avatar_file_ID FROM T_users 
+						( SELECT DISTINCT user_avatar_file_ID FROM T_users
 							WHERE user_avatar_file_ID IS NOT NULL ) ) AS linked_files )';
 
 	if( $file_ids != NULL )
@@ -1487,6 +1732,7 @@ function remove_orphan_files( $file_ids = NULL, $older_then = NULL )
 
 	$result = $DB->get_col( $sql );
 	$FileCache = & get_FileCache();
+	$FileCache->load_list( $result );
 	$count = 0;
 	foreach( $result as $file_ID )
 	{
@@ -1505,12 +1751,350 @@ function remove_orphan_files( $file_ids = NULL, $older_then = NULL )
 			$count++;
 		}
 	}
+	// Clear FileCache to save memory
+	$FileCache->clear();
 
 	return $count;
 }
 
 
-/*
- * $Log: _file.funcs.php,v $
+/**
+ * Get available icons for file types
+ *
+ * @return array 'key'=>'name'
  */
+function get_available_filetype_icons()
+{
+	$icons = array(
+		''               => T_('Unknown'),
+		'file_empty'     => T_('Empty'),
+		'file_image'     => T_('Image'),
+		'file_document'  => T_('Document'),
+		'file_www'       => T_('Web file'),
+		'file_log'       => T_('Log file'),
+		'file_sound'     => T_('Audio file'),
+		'file_video'     => T_('Video file'),
+		'file_message'   => T_('Message'),
+		'file_pdf'       => T_('PDF'),
+		'file_php'       => T_('PHP script'),
+		'file_encrypted' => T_('Encrypted file'),
+		'file_zip'       => T_('Zip archive'),
+		'file_tar'       => T_('Tar archive'),
+		'file_tgz'       => T_('Tgz archive'),
+		'file_pk'        => T_('Archive'),
+		'file_doc'       => T_('Microsoft Word'),
+		'file_xls'       => T_('Microsoft Excel'),
+		'file_ppt'       => T_('Microsoft PowerPoint'),
+		'file_pps'       => T_('Microsoft PowerPoint Slideshow'),
+	);
+
+	return $icons;
+}
+
+
+/**
+ * Save a vote for the file by user
+ *
+ * @param string File ID
+ * @param integer User ID
+ * @param string Action of the voting ( 'like', 'noopinion', 'dontlike', 'inappropriate', 'spam' )
+ * @param integer 1 = checked, 0 = unchecked (for checkboxes: 'Inappropriate' & 'Spam' )
+ */
+function file_vote( $file_ID, $user_ID, $vote_action, $checked = 1 )
+{
+	global $DB;
+
+	// Set modified field name and value
+	switch( $vote_action )
+	{
+		case 'like':
+			$field_name = 'fvot_like';
+			$field_value = '1';
+			break;
+
+		case 'noopinion':
+			$field_name = 'fvot_like';
+			$field_value = '0';
+			break;
+
+		case 'dontlike':
+			$field_name = 'fvot_like';
+			$field_value = '-1';
+			break;
+
+		case 'inappropriate':
+			$field_name = 'fvot_inappropriate';
+			$field_value = $checked;
+			break;
+
+		case 'spam':
+			$field_name = 'fvot_spam';
+			$field_value = $checked;
+			break;
+
+		default:
+			// invalid vote action
+			return;
+	}
+
+	$DB->begin();
+
+	$SQL = new SQL();
+	$SQL->SELECT( 'fvot_file_ID' );
+	$SQL->FROM( 'T_files__vote' );
+	$SQL->WHERE( 'fvot_file_ID = '.$DB->quote( $file_ID ) );
+	$SQL->WHERE_and( 'fvot_user_ID = '.$DB->quote( $user_ID ) );
+	$vote = $DB->get_row( $SQL->get() );
+
+	// Save a voting results in DB
+	if( empty( $vote ) )
+	{	// User replace into to avoid duplicate key conflict in case when user clicks two times fast one after the other
+		$result = $DB->query( 'REPLACE INTO T_files__vote ( fvot_file_ID, fvot_user_ID, '.$field_name.' )
+						VALUES ( '.$DB->quote( $file_ID ).', '.$DB->quote( $user_ID ).', '.$DB->quote( $field_value ).' )' );
+	}
+	else
+	{	// Update existing record, because user already has a vote for this file
+		$result = $DB->query( 'UPDATE T_files__vote
+					SET '.$field_name.' = '.$DB->quote( $field_value ).'
+					WHERE fvot_file_ID = '.$DB->quote( $file_ID ).'
+						AND fvot_user_ID = '.$DB->quote( $user_ID ) );
+	}
+
+	if( $result )
+	{
+		$DB->commit();
+	}
+	else
+	{
+		$DB->rollback();
+	}
+}
+
+
+/**
+ * Copy file from source path to destination path (Used on import)
+ *
+ * @param string Path of source file
+ * @param string FileRoot id string
+ * @param string the upload dir relative path in the FileRoot
+ * @param boolean Shall we check files add permission for current_User?
+ * @return mixed NULL if import was impossible to complete for some reason (wrong fileroot ID, insufficient user permission, etc.)
+ *               file ID of new inserted file in DB
+ */
+function copy_file( $file_path, $root_ID, $path, $check_perms = true )
+{
+	global $current_User;
+
+	$FileRootCache = & get_FileRootCache();
+	$fm_FileRoot = & $FileRootCache->get_by_ID($root_ID, true);
+	if( !$fm_FileRoot )
+	{	// fileRoot not found:
+		return NULL;
+	}
+
+	if( $check_perms && ( !isset( $current_User ) || $current_User->check_perm( 'files', 'add', false, $fm_FileRoot ) ) )
+	{	// Permission check required but current User has no permission to upload:
+		return NULL;
+	}
+
+	// Let's get into requested list dir...
+	$non_canonical_list_path = $fm_FileRoot->ads_path.$path;
+	// Dereference any /../ just to make sure, and CHECK if directory exists:
+	$ads_list_path = get_canonical_path( $non_canonical_list_path );
+
+	// check if the upload dir exists
+	if( !is_dir( $ads_list_path ) )
+	{	// Create path
+		mkdir_r( $ads_list_path );
+	}
+
+	// Get file name from full path:
+	$newName = basename( $file_path );
+	// validate file name
+	if( $error_filename = process_filename( $newName, true ) )
+	{	// Not a valid file name or not an allowed extension:
+		// Abort import for this file:
+		return NULL;
+	}
+
+	// Check if the imported file type is an image, and if is an image then try to fix the file extension based on mime type
+	// If the mime type is a known mime type and user has right to import files with this kind of file type,
+	// this part of code will check if the file extension is the same as admin defined for this file type, and will fix it if it isn't the same
+	// Note: it will also change the jpeg extensions to jpg.
+	// this image_info variable will be used again to get file thumb
+	$image_info = getimagesize( $file_path );
+	if( $image_info )
+	{	// This is an image, validate mimetype vs. extension:
+		$image_mimetype = $image_info['mime'];
+		$FiletypeCache = & get_FiletypeCache();
+		// Get correct file type based on mime type
+		$correct_Filetype = $FiletypeCache->get_by_mimetype( $image_mimetype, false, false );
+
+		// Check if file type is known by us, and if it is allowed for upload.
+		// If we don't know this file type or if it isn't allowed we don't change the extension! The current extension is allowed for sure.
+		if( $correct_Filetype && $correct_Filetype->is_allowed() )
+		{	// A FileType with the given mime type exists in database and it is an allowed file type for current User
+			// The "correct" extension is a plausible one, proceed...
+			$correct_extension = array_shift($correct_Filetype->get_extensions());
+			$path_info = pathinfo($newName);
+			$current_extension = $path_info['extension'];
+
+			// change file extension to the correct extension, but only if the correct extension is not restricted, this is an extra security check!
+			if( strtolower($current_extension) != strtolower($correct_extension) && ( !in_array( $correct_extension, $force_upload_forbiddenext ) ) )
+			{	// change the file extension to the correct extension
+				$old_name = $newName;
+				$newName = $path_info['filename'].'.'.$correct_extension;
+			}
+		}
+	}
+
+	// Get File object for requested target location:
+	$oldName = strtolower( $newName );
+	list( $newFile, $oldFile_thumb ) = check_file_exists( $fm_FileRoot, $path, $newName, $image_info );
+	$newName = $newFile->get( 'name' );
+
+	if( ! copy( $file_path, $newFile->get_full_path() ) )
+	{	// Abort import for this file:
+		return NULL;
+	}
+
+	// change to default chmod settings
+	$newFile->chmod( NULL );
+
+	// Refreshes file properties (type, size, perms...)
+	$newFile->load_properties();
+
+	// Store File object into DB:
+	if( $newFile->dbsave() )
+	{	// Success
+		return $newFile->ID;
+	}
+	else
+	{	// Failure
+		return NULL;
+	}
+}
+
+
+/**
+ * Create links between users and image files from the users profile_pictures folder
+ */
+function create_profile_picture_links()
+{
+	global $DB;
+
+	load_class( 'files/model/_filelist.class.php', 'Filelist' );
+	load_class( 'files/model/_fileroot.class.php', 'FileRoot' );
+	$path = 'profile_pictures';
+
+	$FileRootCache = & get_FileRootCache();
+	$UserCache = & get_UserCache();
+
+	// SQL query to get all users and limit by page below
+	$users_SQL = new SQL();
+	$users_SQL->SELECT( '*' );
+	$users_SQL->FROM( 'T_users' );
+	$users_SQL->ORDER_BY( 'user_ID' );
+
+	$page = 0;
+	$page_size = 100;
+	while( count( $UserCache->cache ) > 0 || $page == 0 )
+	{ // Load users by 100 at one time to avoid errors about memory exhausting
+		$users_SQL->LIMIT( ( $page * $page_size ).', '.$page_size );
+		$UserCache->clear();
+		$UserCache->load_by_sql( $users_SQL );
+
+		while( ( $iterator_User = & $UserCache->get_next(/* $user_ID, false, false */) ) != NULL )
+		{ // Iterate through UserCache)
+			$FileRootCache->clear();
+			$user_FileRoot = & $FileRootCache->get_by_type_and_ID( 'user', $iterator_User->ID );
+			if( !$user_FileRoot )
+			{ // User FileRoot doesn't exist
+				continue;
+			}
+
+			$ads_list_path = get_canonical_path( $user_FileRoot->ads_path.$path );
+			// Previously uploaded avatars
+			if( !is_dir( $ads_list_path ) )
+			{ // profile_picture folder doesn't exists in the user root dir
+				continue;
+			}
+
+			$user_avatar_Filelist = new Filelist( $user_FileRoot, $ads_list_path );
+			$user_avatar_Filelist->load();
+
+			if( $user_avatar_Filelist->count() > 0 )
+			{	// profile_pictures folder is not empty
+				$info_content = '';
+				$LinkOwner = new LinkUser( $iterator_User );
+				while( $lFile = & $user_avatar_Filelist->get_next() )
+				{ // Loop through all Files:
+					$fileName = $lFile->get_name();
+					if( process_filename( $fileName ) )
+					{ // The file has invalid file name, don't create in the database
+						syslog_insert( sprintf( 'Invalid file name has been found in a user folder' ), 'user', $iterator_User->ID );
+						// TODO: asimo> we should collect each invalid file name here, and send an email to the admin
+						continue;
+					}
+					$lFile->load_meta( true );
+					if( $lFile->is_image() )
+					{
+						$lFile->link_to_Object( $LinkOwner );
+					}
+				}
+			}
+		}
+
+		// Increase page number to get next portion of users
+		$page++;
+	}
+
+	// Clear cache data
+	$UserCache->clear();
+	$FileRootCache->clear();
+}
+
+
+/**
+ * Create .htaccess and sample.htaccess files with deny rules in the folder
+ *
+ * @param string Directory path
+ * @return boolean TRUE if files have been created successfully
+ */
+function create_htaccess_deny( $dir )
+{
+	if( ! mkdir_r( $dir, NULL ) )
+	{
+		return false;
+	}
+
+	$htaccess_files = array(
+			$dir.'.htaccess',
+			$dir.'sample.htaccess'
+		);
+
+	$htaccess_content = '# We don\'t want web users to access any file in this directory'."\r\n".
+		'Order Deny,Allow'."\r\n".
+		'Deny from All';
+
+	foreach( $htaccess_files as $htaccess_file )
+	{
+		if( file_exists( $htaccess_file ) )
+		{ // File already exists
+			continue;
+		}
+
+		$handle = @fopen( $htaccess_file, 'w' );
+
+		if( !$handle )
+		{ // File cannot be created
+			return false;
+		}
+
+		fwrite( $handle, $htaccess_content );
+		fclose( $handle );
+	}
+
+	return true;
+}
 ?>

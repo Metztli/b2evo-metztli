@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -29,7 +29,7 @@
  * @author fplanque: Francois PLANQUE.
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: plugins.ctrl.php 57 2011-10-26 08:18:58Z sam2kb $
+ * @version $Id: plugins.ctrl.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -67,70 +67,6 @@ while( $loop_Plugin = & $admin_Plugins->get_next() )
 }
 
 
-/**
- * Helper function to do the action part of DB schema upgrades for "enable" and "install"
- * actions.
- *
- * @param Plugin
- * @return boolean True, if no changes needed or done; false if we should break out to display "install_db_schema" action payload.
- */
-function install_plugin_db_schema_action( & $Plugin )
-{
-	global $action, $inc_path, $install_db_deltas, $DB, $Messages;
-
-	$action = 'list';
-	// Prepare vars for DB layout changes
-	$install_db_deltas_confirm_md5 = param( 'install_db_deltas_confirm_md5' );
-
-	$db_layout = $Plugin->GetDbLayout();
-	$install_db_deltas = array(); // This holds changes to make, if any (just all queries)
-
-	if( ! empty($db_layout) )
-	{ // The plugin has a DB layout attached
-		load_funcs('_core/model/db/_upgrade.funcs.php');
-
-		// Get the queries to make:
-		foreach( db_delta($db_layout) as $table => $queries )
-		{
-			foreach( $queries as $query_info )
-			{
-				foreach( $query_info['queries'] as $query )
-				{ // subqueries for this query (usually one, but may include required other queries)
-					$install_db_deltas[] = $query;
-				}
-			}
-		}
-
-		if( ! empty($install_db_deltas) )
-		{ // delta queries to make
-			if( empty($install_db_deltas_confirm_md5) )
-			{ // delta queries have to be confirmed in payload
-				$action = 'install_db_schema';
-				return false;
-			}
-			elseif( $install_db_deltas_confirm_md5 == md5( implode('', $install_db_deltas) ) )
-			{ // Confirmed in first step:
-				foreach( $install_db_deltas as $query )
-				{
-					$DB->query( $query );
-				}
-
-				$Messages->add( T_('The database has been updated.'), 'success' );
-			}
-			else
-			{ // should not happen
-				$Messages->add( T_('The DB schema has been changed since confirmation.'), 'error' );
-
-				// delta queries have to be confirmed (again) in payload
-				$action = 'install_db_schema';
-				return false;
-			}
-		}
-	}
-	return true;
-}
-
-
 /*
  * Action Handling part I
  * Actions that delegate to other actions (other than list):
@@ -147,6 +83,7 @@ switch( $action )
 		load_funcs('plugins/_plugin.funcs.php');
 		_set_setting_by_path( $edit_Plugin, 'Settings', $set_path, NULL );
 
+		// Don't delete from the db yet. It will be updated in the db when Save button is clicked. It works similar as the async pair of this action
 		#$edit_Plugin->Settings->dbupdate();
 
 		$action = 'edit_settings';
@@ -163,6 +100,7 @@ switch( $action )
 		load_funcs('plugins/_plugin.funcs.php');
 		_set_setting_by_path( $edit_Plugin, 'Settings', $set_path, array() );
 
+		// Don't update the db, before it is not filled. It will be saved when Save button is clicked.
 		#$edit_Plugin->Settings->dbupdate();
 
 		$action = 'edit_settings';
@@ -265,6 +203,7 @@ switch( $action )
 			break;
 		}
 
+		load_funcs('plugins/_plugin.funcs.php');
 		if( ! install_plugin_db_schema_action( $edit_Plugin ) )
 		{
 			$next_action = 'enable_plugin';
@@ -314,41 +253,8 @@ switch( $action )
 		// Check permission:
 		$current_User->check_perm( 'options', 'edit', true );
 
-		$admin_Plugins->restart();
-		$admin_Plugins->load_events();
-		$changed = false;
-		while( $loop_Plugin = & $admin_Plugins->get_next() )
-		{
-			// NOTE: we don't need to handle plug_version here, because it gets handled in Plugins::register() already.
-
-			// Discover new events:
-			if( $admin_Plugins->save_events( $loop_Plugin, array() ) )
-			{
-				$changed = true;
-			}
-
-			// Detect plugins with no code and try to have at least one plugin with the default code:
-			if( empty($loop_Plugin->code) )
-			{ // Instantiated Plugin has no code
-				$default_Plugin = & $admin_Plugins->register($loop_Plugin->classname);
-
-				if( ! empty($default_Plugin->code) // Plugin has default code
-				    && ! $admin_Plugins->get_by_code( $default_Plugin->code ) ) // Default code is not in use (anymore)
-				{ // Set the Plugin's code to the default one
-					if( $admin_Plugins->set_code( $loop_Plugin->ID, $default_Plugin->code ) )
-					{
-						$changed = true;
-					}
-				}
-
-				$admin_Plugins->unregister($default_Plugin, true);
-			}
-		}
-
-		if( $changed )
-		{
-			// invalidate all PageCaches
-			invalidate_pagecaches();
+		if( $admin_Plugins->reload_plugins() )
+		{ // Plugins have been changed
 			$Messages->add( T_('Plugins have been reloaded.'), 'success' );
 		}
 		else
@@ -406,16 +312,18 @@ switch( $action )
 				break;
 			}
 		}
-		if( ! install_plugin_db_schema_action($edit_Plugin) )
+
+		load_funcs('plugins/_plugin.funcs.php');
+		if( ! install_plugin_db_schema_action( $edit_Plugin ) )
 		{
 			$next_action = 'install_db_schema';
 			break;
 		}
 
 		$msg = sprintf( T_('Installed plugin &laquo;%s&raquo;.'), $edit_Plugin->classname );
-		if( ($edit_settings_icon = $edit_Plugin->get_edit_settings_link()) )
+		if( ($edit_settings_url = $edit_Plugin->get_edit_settings_url()) )
 		{
-			$msg .= ' '.$edit_settings_icon;
+			$msg .= ' <a href="'.$edit_settings_url.'">'.T_('Click here to configure').'</a>.';
 		}
 		$Messages->add( $msg, 'success' );
 
@@ -549,18 +457,6 @@ switch( $action )
 
 		param( 'plugin_ID', 'integer', true );
 
-		// Next default action:
-		if( isset($actionArray['update_settings'])
-			&& is_array($actionArray['update_settings'])
-			&& isset($actionArray['update_settings']['review']) )
-		{ // "Save (and review)", next action will still be to edit
-			$action = 'edit_settings';
-		}
-		else
-		{	// Save only, next action: list
-			$action = 'list';
-		}
-
 		$edit_Plugin = & $admin_Plugins->get_by_ID( $plugin_ID );
 		if( empty($edit_Plugin) )
 		{
@@ -673,12 +569,6 @@ switch( $action )
 			$action = 'edit_settings';
 		}
 
-		// Plugin "apply_rendering":
-		if( $admin_Plugins->set_apply_rendering( $edit_Plugin->ID, $edited_plugin_apply_rendering ) )
-		{
-			$Messages->add( T_('Plugin rendering updated.'), 'success' );
-		}
-
 		// Plugin specific settings:
 		if( $edit_Plugin->Settings )
 		{
@@ -719,13 +609,13 @@ switch( $action )
 		{ // there were no errors, go back to list:
 			//save fadeout item
 			$Session->set('fadeout_id', $edit_Plugin->ID);
-			
+
 			// Redirect so that a reload doesn't write to the DB twice:
 			header_redirect( '?ctrl=plugins', 303 ); // Will EXIT
-	
+
 			// We have EXITed already at this point!!
 		}
-		
+
 		// Redisplay so user can fix errors:
 		$action = 'edit_settings';
 		break;
@@ -758,7 +648,6 @@ switch( $action )
 		$edited_plugin_shortdesc = $edit_Plugin->short_desc;
 		$edited_plugin_code = $edit_Plugin->code;
 		$edited_plugin_priority = $edit_Plugin->priority;
-		$edited_plugin_apply_rendering = $edit_Plugin->apply_rendering;
 
 		break;
 
@@ -793,7 +682,6 @@ switch( $action )
 		$edited_plugin_shortdesc = $default_Plugin->short_desc;
 		$edited_plugin_code = $raw_Plugin->code;
 		$edited_plugin_priority = $default_Plugin->priority;
-		$edited_plugin_apply_rendering = $default_Plugin->apply_rendering;
 
 		// Name and short desc:
 		$DB->query( '
@@ -826,12 +714,6 @@ switch( $action )
 			{
 				$Messages->add( T_('Plugin priority updated.'), 'success' );
 			}
-		}
-
-		// apply_rendering:
-		if( $admin_Plugins->set_apply_rendering( $edit_Plugin->ID, $edited_plugin_apply_rendering ) )
-		{
-			$Messages->add( T_('Plugin rendering updated.'), 'success' );
 		}
 
 		// PluginSettings:
@@ -895,6 +777,11 @@ switch( $action )
 			}
 		}
 
+		if( $edit_Plugin->status == 'broken' )
+		{
+			$Messages->add( T_('The requested plugin doesn\'t exist!'), 'error' );
+		}
+
 		break;
 
 }
@@ -925,7 +812,7 @@ switch( $action )
 		$title = sprintf( T_('Help for plugin &laquo;%s&raquo;'), '<a href="'.$dispatcher.'?ctrl=plugins&amp;action=edit_settings&amp;plugin_ID='.$edit_Plugin->ID.'">'.$edit_Plugin->name.'</a>' );
 		if( ! empty($edit_Plugin->help_url) )
 		{
-			$title .= ' '.action_icon( T_('External help page'), 'www', $edit_Plugin->help_url );
+			$title .= ' '.action_icon( T_('External help page'), 'help', $edit_Plugin->help_url );
 		}
 		$AdminUI->append_to_titlearea( $title );
 		break;
@@ -940,11 +827,12 @@ if( isset($edit_Plugin) && is_object($edit_Plugin) && isset( $admin_Plugins->plu
 }
 
 
-$AdminUI->breadcrumbpath_init();
-$AdminUI->breadcrumbpath_add( T_('Global settings'), '?ctrl=settings',
+$AdminUI->breadcrumbpath_init( false );
+$AdminUI->breadcrumbpath_add( T_('System'), '?ctrl=system',
 		T_('Global settings are shared between all blogs; see Blog settings for more granular settings.') );
 $AdminUI->breadcrumbpath_add( T_('Plugin configuration'), '?ctrl=plugins' );
 
+init_plugins_js();
 
 // Display <html><head>...</head> section! (Note: should be done early if actions do not redirect)
 $AdminUI->disp_html_head();
@@ -1069,6 +957,11 @@ switch( $action )
 
 
 	case 'info':
+		if( $edit_Plugin->status == 'broken' )
+		{
+			break;
+		}
+
 		// Display plugin info:
 		load_funcs('plugins/_plugin.funcs.php');
 
@@ -1082,7 +975,7 @@ switch( $action )
 		// Close button:
 		$Form->global_icon( T_('Close info!'), 'close', regenerate_url() );
 
-		$Form->begin_form('fform');
+		$Form->begin_form( 'fform', '&nbsp;' );
 		$Form->hidden( 'ctrl', 'plugins' );
 		$Form->begin_fieldset('Plugin info', array('class' => 'fieldset'));
 		$Form->info_field( T_('Name'), $edit_Plugin->name );
@@ -1104,10 +997,6 @@ switch( $action )
 		if( $help_www = $edit_Plugin->get_help_link('$help_url') )
 		{
 			$help_icons[] = $help_www;
-		}
-		if( $help_README = $edit_Plugin->get_help_link('$readme') )
-		{
-			$help_icons[] = $help_README;
 		}
 		if( ! empty($help_icons) )
 		{
@@ -1158,7 +1047,4 @@ $AdminUI->disp_payload_end();
 // Display body bottom, debug info and close </html>:
 $AdminUI->disp_global_footer();
 
-/*
- * $Log: plugins.ctrl.php,v $
- */
 ?>

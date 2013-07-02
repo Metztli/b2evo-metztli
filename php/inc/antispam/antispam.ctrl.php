@@ -5,7 +5,7 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2010 by Francois PLANQUE - {@link http://fplanque.net/}.
+ * @copyright (c)2003-2013 by Francois PLANQUE - {@link http://fplanque.net/}.
  * Parts of this file are copyright (c)2004 by Vegar BERG GULDAL - {@link http://funky-m.com/}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
@@ -32,7 +32,7 @@
  *
  * @todo Allow applying / re-checking of the known data, not just after an update!
  *
- * @version $Id: antispam.ctrl.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: antispam.ctrl.php 3768 2013-05-22 06:14:32Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -40,7 +40,7 @@ param( 'display_mode', 'string' );
 
 if( $display_mode != 'js' )
 {
-	$AdminUI->set_path( 'tools', 'antispam' );
+	$AdminUI->set_path( 'options', 'antispam' );
 }
 else
 {	// This is an Ajax response
@@ -56,6 +56,7 @@ param( 'filteron', 'string', '', true );
 param( 'filter', 'array', array() );
 
 $tab3 = param( 'tab3', 'string', '', true );
+$tool = param( 'tool', 'string', '', true );
 
 if( isset($filter['off']) )
 {
@@ -65,6 +66,19 @@ if( isset($filter['off']) )
 
 // Check permission:
 $current_User->check_perm( 'spamblacklist', 'view', true );
+
+
+if( param( 'iprange_ID', 'integer', '', true) )
+{	// Load IP Range object
+	load_class( 'antispam/model/_iprange.class.php', 'IPRange' );
+	$IPRangeCache = & get_IPRangeCache();
+	if( ( $edited_IPRange = & $IPRangeCache->get_by_ID( $iprange_ID, false ) ) === false )
+	{	// We could not find the goal to edit:
+		unset( $edited_IPRange );
+		forget_param( 'iprange_ID' );
+		$Messages->add( sprintf( T_('Requested &laquo;%s&raquo; object does not exist any longer.'), T_('IP Range') ), 'error' );
+	}
+}
 
 switch( $action )
 {
@@ -77,9 +91,16 @@ switch( $action )
 
 		$keyword = evo_substr( $keyword, 0, 80 );
 		param( 'delhits', 'integer', 0 );
-		param( 'deldraft', 'integer', 0 );
-		param( 'delpublished', 'integer', 0 );
-		param( 'deldeprecated', 'integer', 0 );
+		$all_statuses = get_visibility_statuses( 'keys', array( 'trash', 'redirected' ) );
+		$delstatuses = array();
+		foreach( $all_statuses as $status )
+		{ // collect which comments should be delteded
+			if( param( 'del'.$status, 'integer', 0 ) )
+			{ // matching comments with this status should be deleted
+				$delstatuses[] = $status;
+			}
+		}
+		$delcomments = count( $delstatuses );
 		param( 'blacklist_locally', 'integer', 0 );
 		param( 'report', 'integer', 0 );
 
@@ -100,10 +121,9 @@ switch( $action )
 			$Messages->add( sprintf( T_('Deleted %d logged hits matching &laquo;%s&raquo;.'), $r, htmlspecialchars($keyword) ), 'success' );
 		}
 
-		$delcomments = $deldraft || $delpublished || $deldeprecated;
 		if( $delcomments )
 		{ // select banned comments
-			$del_condition = blog_restrict( $deldraft, $delpublished, $deldeprecated );
+			$del_condition = blog_restrict( $delstatuses );
 			$keyword_cond = '(comment_author LIKE '.$DB->quote('%'.$keyword.'%').'
 							OR comment_author_email LIKE '.$DB->quote('%'.$keyword.'%').'
 							OR comment_author_url LIKE '.$DB->quote('%'.$keyword.'%').'
@@ -252,6 +272,12 @@ switch( $action )
 			$Plugins->load_plugins_table();
 		}
 
+		// Suspicious users
+		$Settings->set( 'antispam_suspicious_group', param( 'antispam_suspicious_group', 'integer', 0 ) );
+
+		// Trust groups
+		$trust_groups = param( 'antispam_trust_groups', 'array/integer', array() );
+		$Settings->set( 'antispam_trust_groups', implode( ',', $trust_groups ) );
 
 		if( ! $Messages->has_errors() )
 		{
@@ -329,12 +355,111 @@ switch( $action )
 		}
 		$Messages->add( sprintf( T_('Deleted %d logged hits'), $rows_affected ), 'success' );
 		break;
+
+	case 'iprange_create':
+		// Create new IP Range...
+
+		// Check that this action request is not a CSRF hacked request:
+		$Session->assert_received_crumb( 'iprange' );
+
+		// Check permission:
+		$current_User->check_perm( 'spamblacklist', 'edit', true );
+
+		$edited_IPRange = new IPRange();
+
+		// load data from request
+		if( $edited_IPRange->load_from_Request() )
+		{	// We could load data from form without errors:
+			// Insert in DB:
+			$edited_IPRange->dbinsert();
+			$Messages->add( T_('New IP Range created.'), 'success' );
+
+			// Redirect so that a reload doesn't write to the DB twice:
+			header_redirect( '?ctrl=antispam&tab3=ipranges', 303 ); // Will EXIT
+			// We have EXITed already at this point!!
+		}
+		$action = 'iprange_new';
+		break;
+
+	case 'iprange_update':
+		// Update IP Range...
+
+		// Check that this action request is not a CSRF hacked request:
+		$Session->assert_received_crumb( 'iprange' );
+
+		// Check permission:
+		$current_User->check_perm( 'spamblacklist', 'edit', true );
+
+		// Make sure we got an iprange_ID:
+		param( 'iprange_ID', 'integer', true );
+
+		// load data from request
+		if( $edited_IPRange->load_from_Request() )
+		{	// We could load data from form without errors:
+			// Update IP Range in DB:
+			$edited_IPRange->dbupdate();
+			$Messages->add( T_('IP Range updated.'), 'success' );
+
+			// Redirect so that a reload doesn't write to the DB twice:
+			header_redirect( '?ctrl=antispam&tab3=ipranges', 303 ); // Will EXIT
+			// We have EXITed already at this point!!
+		}
+		$action = 'iprange_edit';
+		break;
+
+	case 'iprange_delete':
+		// Delete IP Range...
+
+		// Check that this action request is not a CSRF hacked request:
+		$Session->assert_received_crumb( 'iprange' );
+
+		// Check permission:
+		$current_User->check_perm( 'spamblacklist', 'edit', true );
+
+		// Make sure we got an iprange_ID:
+		param( 'iprange_ID', 'integer', true );
+
+		if( $edited_IPRange->dbdelete() )
+		{
+			$Messages->add( T_('IP Range deleted.'), 'success' );
+
+			// Redirect so that a reload doesn't write to the DB twice:
+			header_redirect( '?ctrl=antispam&tab3=ipranges', 303 ); // Will EXIT
+			// We have EXITed already at this point!!
+		}
+		break;
+
+	case 'bankruptcy_delete':
+		// Delete ALL comments from selected blogs
+
+		// Check that this action request is not a CSRF hacked request:
+		$Session->assert_received_crumb( 'antispam' );
+
+		// Check permission:
+		$current_User->check_perm( 'options', 'edit', true );
+
+		$bankruptcy_blogs_IDs = param( 'bankruptcy_blogs', 'array/integer', array() );
+
+		if( empty( $bankruptcy_blogs ) )
+		{
+			$Messages->add( T_('Please select at least one blog.'), 'error' );
+		}
+
+		if( !param_errors_detected() )
+		{ // Try to obtain some serious time to do some serious processing (15 minutes)
+			set_max_execution_time( 900 );
+			// Turn off the output buffering to do the correct work of the function flush()
+			@ini_set( 'output_buffering', 'off' );
+			// Set this to start deleting in the template file
+			$delete_bankruptcy_blogs = true;
+		}
+		break;
 }
 
 if( $display_mode != 'js')
 {
 	$AdminUI->breadcrumbpath_init( false );  // fp> I'm playing with the idea of keeping the current blog in the path here...
-	$AdminUI->breadcrumbpath_add( T_('Tools'), '?ctrl=crontab' );
+	$AdminUI->breadcrumbpath_add( T_('System'), '?ctrl=system' );
 	$AdminUI->breadcrumbpath_add( T_('Antispam'), '?ctrl=antispam' );
 
 	if( empty($tab3) )
@@ -353,6 +478,19 @@ if( $display_mode != 'js')
 
 		case 'blacklist':
 			$AdminUI->breadcrumbpath_add( T_('Blacklist'), '?ctrl=antispam' );
+			break;
+
+		case 'ipranges':
+			if( empty( $action ) )
+			{	// View a list of IP ranges
+				require_js( 'jquery/jquery.jeditable.js', 'rsc_url' );
+			}
+			elseif( ! $current_User->check_perm( 'spamblacklist', 'edit' ) )
+			{	// Check permission to create/edit IP range
+				$Messages->add( T_('You have no permission to edit IP range!'), 'error' );
+				$action = '';
+			}
+			$AdminUI->breadcrumbpath_add( T_('IP Ranges'), '?ctrl=antispam&amp;tab3='.$tab3 );
 			break;
 	}
 
@@ -378,7 +516,38 @@ switch( $tab3 )
 		break;
 
 	case 'tools':
-		$AdminUI->disp_view( 'antispam/views/_antispam_tools.view.php' );
+		// Check permission:
+		$current_User->check_perm( 'options', 'edit', true );
+
+		switch( $tool )
+		{
+			case 'bankruptcy':
+				$comment_status = param( 'comment_status', 'string', 'draft' );
+				$AdminUI->disp_view( 'antispam/views/_antispam_tools_bankruptcy.view.php' );
+				break;
+
+			default:
+				$AdminUI->disp_view( 'antispam/views/_antispam_tools.view.php' );
+				break;
+		}
+		break;
+
+	case 'ipranges':
+		switch( $action )
+		{
+			case 'iprange_new':
+				$edited_IPRange = new IPRange();
+				$AdminUI->disp_view( 'antispam/views/_antispam_ipranges.form.php' );
+				break;
+
+			case 'iprange_edit':
+				$AdminUI->disp_view( 'antispam/views/_antispam_ipranges.form.php' );
+				break;
+
+			default:	// View list of the IP Ranges
+				$AdminUI->disp_view( 'antispam/views/_antispam_ipranges.view.php' );
+				break;
+		}
 		break;
 
 	case 'blacklist':
@@ -403,8 +572,4 @@ if( $display_mode != 'js')
 	$AdminUI->disp_global_footer();
 }
 
-
-/*
- * $Log: antispam.ctrl.php,v $
- */
 ?>

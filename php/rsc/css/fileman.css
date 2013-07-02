@@ -18,7 +18,7 @@
 	margin:1ex 0;
 }
 
-div#fileman_toolbars_bottom {
+div.fileman_toolbars_bottom {
 	padding: 0 .5ex;
 }
 .toolbaritem {

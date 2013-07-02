@@ -5,7 +5,7 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
 *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
  *
@@ -59,8 +59,6 @@ function generate_tinyurl( $last_url = NULL )
 	if( ! $last_url )
 	{ // no tinyurl is set, used the default value for the first one
 		$last_url = 'aA0';
-		/*$Settings->set( 'tinyurl', $last_url );
-		$Settings->dbupdate();*/
 		return $last_url;
 	}
 
@@ -219,8 +217,4 @@ function getnext_tinyurl()
 	return $url;
 }
 
-
-/*
- * $Log: _slug.funcs.php,v $
- */
 ?>

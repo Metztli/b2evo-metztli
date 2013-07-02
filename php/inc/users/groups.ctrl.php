@@ -3,7 +3,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2009 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @copyright (c)2009-2013 by Francois PLANQUE - {@link http://fplanque.net/}
  * Parts of this file are copyright (c)2009 by The Evo Factory - {@link http://www.evofactory.com/}.
  *
  * {@internal License choice
@@ -27,7 +27,7 @@
  * @author efy-bogdan: Evo Factory / Bogdan.
  * @author fplanque: Francois PLANQUE
  *
- * @version $Id: groups.ctrl.php 1231 2012-04-17 05:42:06Z attila $
+ * @version $Id: groups.ctrl.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -36,7 +36,7 @@ if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.'
  */
 global $AdminUI;
 
-$AdminUI->set_path( 'users', 'users' );
+$AdminUI->set_path( 'users', 'groups' );
 
 param_action('list');
 
@@ -151,12 +151,7 @@ switch ( $action )
 			{
 				param_error( 'edited_grp_name',
 					sprintf( T_('This group name already exists! Do you want to <a %s>edit the existing group</a>?'),
-						'href="?ctrl=users&amp;grp_ID='.$q.'"' ) );
-			}
-
-			if( $edited_Group->ID != 1 )
-			{ // Groups others than #1 can be prevented from logging in or editing users
-				$edited_Group->set( 'perm_users', param( 'edited_grp_perm_users', 'string', true ) );
+						'href="?ctrl=groups&amp;action=edit&amp;grp_ID='.$q.'"' ) );
 			}
 		}
 
@@ -181,7 +176,7 @@ switch ( $action )
 		$GroupCache->add( $edited_Group );
 
 		// Redirect so that a reload doesn't write to the DB twice:
-		header_redirect( '?ctrl=users', 303 ); // Will EXIT
+		header_redirect( '?ctrl=groups', 303 ); // Will EXIT
 		// We have EXITed already at this point!!
 		break;
 
@@ -220,7 +215,7 @@ switch ( $action )
 			$Messages->add( $msg, 'success' );
 
 			// Redirect so that a reload doesn't write to the DB twice:
-			header_redirect( '?ctrl=users', 303 ); // Will EXIT
+			header_redirect( '?ctrl=groups', 303 ); // Will EXIT
 			// We have EXITed already at this point!!
 		}
 		else
@@ -236,8 +231,19 @@ switch ( $action )
 
 
 $AdminUI->breadcrumbpath_init( false );  // fp> I'm playing with the idea of keeping the current blog in the path here...
-$AdminUI->breadcrumbpath_add( T_('User groups'), '?ctrl=users' );
-$AdminUI->breadcrumbpath_add( $edited_Group->dget('name'), '?ctrl=groups&amp;group_ID='.$edited_Group->ID );
+$AdminUI->breadcrumbpath_add( T_('Users'), '?ctrl=users' );
+$AdminUI->breadcrumbpath_add( T_('User groups'), '?ctrl=groups' );
+if( !empty( $edited_Group ) )
+{
+	if( $edited_Group->ID > 0 )
+	{	// Edit group
+		$AdminUI->breadcrumbpath_add( $edited_Group->dget('name'), '?ctrl=groups&amp;action=edit&amp;grp_ID='.$edited_Group->ID );
+	}
+	else
+	{	// New group
+		$AdminUI->breadcrumbpath_add( $edited_Group->dget('name'), '?ctrl=groups&amp;action=new' );
+	}
+}
 
 // Display <html><head>...</head> section! (Note: should be done early if actions do not redirect)
 $AdminUI->disp_html_head();
@@ -251,6 +257,10 @@ $AdminUI->disp_payload_begin();
 // Display VIEW:
 switch( $action )
 {
+	case 'new':
+	case 'edit':
+		$AdminUI->disp_view( 'users/views/_group.form.php' );
+		break;
 	case 'nil':
 		// Do nothing
 		break;
@@ -260,7 +270,7 @@ switch( $action )
 					sprintf( T_('Delete group &laquo;%s&raquo;?'), $edited_Group->dget( 'name' ) ),
 					'group', $action, get_memorized( 'action' ) );
 	default:
-		$AdminUI->disp_view( 'users/views/_group.form.php' );
+		$AdminUI->disp_view( 'users/views/_group.view.php' );
 }
 
 // End payload block:
@@ -269,7 +279,4 @@ $AdminUI->disp_payload_end();
 // Display body bottom, debug info and close </html>:
 $AdminUI->disp_global_footer();
 
-/*
- * $Log: groups.ctrl.php,v $
- */
 ?>

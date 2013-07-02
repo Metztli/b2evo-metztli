@@ -5,11 +5,11 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package htsrv
  *
- * @version $Id: comment_review.php 81 2011-10-26 16:42:25Z sam2kb $
+ * @version $Id: comment_review.php 3328 2013-03-26 11:44:11Z yura $
  */
 
 /**
@@ -35,11 +35,27 @@ else
 	header_redirect( $to_dashboard );
 }
 
+$comment_Item = & $posted_Comment->get_Item();
+$comment_Blog = $comment_Item->get_Blog();
+if( $comment_Blog->get_setting( 'comment_quick_moderation' ) == 'never' )
+{ // comment quick moderation setting was set to 'never' after this comment quick moderation link was created
+	// don't allow quick moderation
+	$Messages->add( T_('Quick moderation not available.') );
+}
+
 // Check the secret parameter (This doubles as a CRUMB)
-if( $secret != $posted_Comment->get('secret') )
-{	// Invalid secret, no moderation allowed here, go to regular form with regular login requirements:
-  $Messages->add( T_('Invalid secret key. Quick moderation not available.') );
-  // fp> TODO: this does not display on login form... :/ (but works if already logged in)
+if( ( $secret != $posted_Comment->get('secret') ) || empty( $secret ) )
+{ // Invalid secret, no moderation allowed here, go to regular form with regular login requirements:
+	$Messages->add( T_('Invalid secret key. Quick moderation not available.') );
+}
+
+if( $posted_Comment->status == 'trash' )
+{ // Comment is already in trash
+	$Messages->add( T_('The comment was already deleted. Quick moderation not available.') );
+}
+
+if( $Messages->has_errors() )
+{ // quick moderation is not available, redirect to normal edit form
 	header_redirect( $to_comment_edit );
 }
 
@@ -50,8 +66,8 @@ switch( $action )
 {
 	case 'publish':
 		$posted_Comment->set('status', 'published' );
-		// Comment moderation is done, don't keep "secret" moderation access
-		$posted_Comment->set( 'secret', NULL );
+		// Comment moderation is done, handle moderation "secret"
+		$posted_Comment->handle_qm_secret();
 
 		$posted_Comment->dbupdate();	// Commit update to the DB
 
@@ -65,8 +81,8 @@ switch( $action )
 
 	case 'deprecate':
 		$posted_Comment->set('status', 'deprecated' );
-		// Comment moderation is done, don't keep "secret" moderation access
-		$posted_Comment->set( 'secret', NULL );
+		// Comment moderation is done, handle moderation "secret"
+		$posted_Comment->handle_qm_secret();
 
 		$posted_Comment->dbupdate();	// Commit update to the DB
 
@@ -130,7 +146,7 @@ if ($secret == $posted_Comment->get('secret') && ($secret != NULL) )
 	echo "\n";
 
 	// deprecate button
-	if( $posted_Comment->status != 'deprecated')
+	if( $posted_Comment->status != 'deprecated' )
 	{
 		echo '<input type="submit" name="actionArray[deprecate]"';
 		echo ' value="'.T_('Deprecate').'" title="'.T_('Deprecate this comment').'"/>';
@@ -206,8 +222,3 @@ else
 
 </body>
 </html>
-<?php
-/*
- * $Log: comment_review.php,v $
- */
-?>

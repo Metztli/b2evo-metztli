@@ -4,7 +4,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package plugins
  */
@@ -28,11 +28,11 @@ class autolinks_plugin extends Plugin
 	var $code = 'b2evALnk';
 	var $name = 'Auto Links';
 	var $priority = 60;
-	var $version = '3.3.2';
-	var $apply_rendering = 'opt-out';
+	var $version = '5.0.0';
 	var $group = 'rendering';
 	var $short_desc;
 	var $long_desc;
+	var $help_url = 'http://b2evolution.net/man/technical-reference/renderer-plugins/autolinks-plugin';
 	var $number_of_installs = null;	// Let admins install several instances with potentially different word lists
 
 	/**
@@ -44,7 +44,26 @@ class autolinks_plugin extends Plugin
 
 	var $already_linked_array;
 
+	/**
+	 * Previous word from the text during the make clickable process
+	 *
+	 * @var string
+	 */
 	var $previous_word = null;
+	/**
+	 * Previous word in lower case format
+	 *
+	 * @var string
+	 */
+	var $previous_lword = null;
+	/**
+	 * Shows if the previous word was already used/converted to a link
+	 *
+	 * @var boolean
+	 */
+	var $previous_used = false;
+
+	var $already_linked_usernames;
 
 	/**
 	 * Init
@@ -71,7 +90,7 @@ class autolinks_plugin extends Plugin
 					),
 				'autolink_defs_default' => array(
 						'label' => T_( 'Autolink definitions' ),
-						'defaultvalue' => 0,
+						'defaultvalue' => 1,
 						'type' => 'checkbox',
 						'note' => T_('As defined in definitions.default.txt'),
 					),
@@ -82,7 +101,7 @@ class autolinks_plugin extends Plugin
 						'note' => T_('As defined in definitions.local.txt'),
 					),
 				'autolink_defs_db' => array(
-						'label' => '',
+						'label' => T_('Custom definitions'),
 						'type' => 'html_textarea',
 						'rows' => 15,
 						'note' => $this->T_( 'Enter custom definitions above.' ),
@@ -99,15 +118,86 @@ class autolinks_plugin extends Plugin
 	 */
 	function get_coll_setting_definitions( & $params )
 	{
-		return array(
+		$default_values = array(
+				'autolink_defs_coll_db'              => '',
+				'autolink_username'                  => 0,
+				'autolink_post_nofollow_exist'       => 0,
+				'autolink_post_nofollow_explicit'    => 0,
+				'autolink_post_nofollow_auto'        => 0,
+				'autolink_comment_nofollow_exist'    => 1,
+				'autolink_comment_nofollow_explicit' => 1,
+				'autolink_comment_nofollow_auto'     => 0,
+			);
+
+		if( !empty( $params['blog_type'] ) )
+		{	// Set the default settings depends on blog type
+			switch( $params['blog_type'] )
+			{
+				case 'forum':
+				case 'manual':
+					$default_values['autolink_post_nofollow_exist'] = 1;
+					$default_values['autolink_post_nofollow_explicit'] = 1;
+					break;
+			}
+		}
+
+		// set params to allow rendering for comments by default
+		$default_params = array_merge( $params, array( 'default_comment_rendering' => 'stealth' ) );
+		return array_merge( parent::get_coll_setting_definitions( $default_params ),
+			array(
 				'autolink_defs_coll_db' => array(
 						'label' => T_( 'Custom autolink definitions' ),
 						'type' => 'html_textarea',
 						'rows' => 15,
 						'note' => $this->T_( 'Enter custom definitions above.' ),
-						'defaultvalue' => '',
+						'defaultvalue' => $default_values['autolink_defs_coll_db'],
 					),
-			);
+				'autolink_username' => array(
+						'label' => T_( 'Autolink usernames' ),
+						'type' => 'checkbox',
+						'note' => $this->T_( '@username will link to the user profile page' ),
+						'defaultvalue' => $default_values['autolink_username'],
+					),
+				// No follow in posts
+				'autolink_post_nofollow_exist' => array(
+						'label' => T_( 'No follow in posts' ),
+						'type' => 'checkbox',
+						'note' => $this->T_( 'Add rel="nofollow" to pre-existings links' ),
+						'defaultvalue' => $default_values['autolink_post_nofollow_exist'],
+					),
+				'autolink_post_nofollow_explicit' => array(
+						'label' => '',
+						'type' => 'checkbox',
+						'note' => $this->T_( 'Add rel="nofollow" to explicit links' ),
+						'defaultvalue' => $default_values['autolink_post_nofollow_explicit'],
+					),
+				'autolink_post_nofollow_auto' => array(
+						'label' => '',
+						'type' => 'checkbox',
+						'note' => $this->T_( 'Add rel="nofollow" to auto-links' ),
+						'defaultvalue' => $default_values['autolink_post_nofollow_auto'],
+					),
+				// No follow in comments
+				'autolink_comment_nofollow_exist' => array(
+						'label' => T_( 'No follow in comments' ),
+						'type' => 'checkbox',
+						'note' => $this->T_( 'Add rel="nofollow" to pre-existings links' ),
+						'defaultvalue' => $default_values['autolink_comment_nofollow_exist'],
+					),
+				'autolink_comment_nofollow_explicit' => array(
+						'label' => '',
+						'type' => 'checkbox',
+						'note' => $this->T_( 'Add rel="nofollow" to explicit links' ),
+						'defaultvalue' => $default_values['autolink_comment_nofollow_explicit'],
+					),
+				'autolink_comment_nofollow_auto' => array(
+						'label' => '',
+						'type' => 'checkbox',
+						'note' => $this->T_( 'Add rel="nofollow" to auto-links' ),
+						'defaultvalue' => $default_values['autolink_comment_nofollow_auto'],
+					),
+			)
+		);
 	}
 
 
@@ -153,8 +243,6 @@ class autolinks_plugin extends Plugin
 
 		// Prepare working link array:
 		$this->replacement_link_array = array_merge( $this->link_array[0], $this->link_array[$coll_ID] );
-
-		// pre_dump( $this->replacement_link_array );
 	}
 
 
@@ -208,15 +296,16 @@ class autolinks_plugin extends Plugin
 	 */
 	function read_line( $data, $coll_ID )
 	{
-		if( empty($data[0]) || empty($data[3]) )
+		if( empty( $data[0] ) )
 		{	// Skip empty and comment lines
 			return;
 		}
 
 		$word = $data[0];
-		$url = $data[3];
-		if( $url =='-' )
+		$url = isset( $data[3] ) ? $data[3] : NULL;
+		if( $url == '-' || empty( $url ) )
 		{	// Remove URL (useful to remove some defs on a specific site):
+			unset( $this->link_array[0][$word] );
 			unset( $this->link_array[$coll_ID][$word] );
 		}
 		else
@@ -237,10 +326,34 @@ class autolinks_plugin extends Plugin
 	{
 		$content = & $params['data'];
 		$Item = & $params['Item'];
-    /**
+		/**
 		 * @var Blog
 		 */
 		$item_Blog = $params['Item']->get_Blog();
+
+		// Define the setting names depending on what is rendering now
+		if( !empty( $params['Comment'] ) )
+		{	// Comment is rendering
+			$this->setting_nofollow_exist = 'autolink_comment_nofollow_exist';
+			$this->setting_nofollow_explicit = 'autolink_comment_nofollow_explicit';
+			$this->setting_nofollow_auto = 'autolink_comment_nofollow_auto';
+		}
+		else
+		{	// Item is rendering
+			$this->setting_nofollow_exist = 'autolink_post_nofollow_exist';
+			$this->setting_nofollow_explicit = 'autolink_post_nofollow_explicit';
+			$this->setting_nofollow_auto = 'autolink_post_nofollow_auto';
+		}
+
+		// Prepare existing links
+		$content = $this->prepare_existing_links( $content, $item_Blog );
+
+		// reset already linked usernames
+		$this->already_linked_usernames = array();
+		if( !empty( $item_Blog ) && $this->get_coll_setting( 'autolink_username', $item_Blog ) )
+		{	// Replace @usernames with user identity link
+			$content = replace_content_outcode( '#@([A-Za-z0-9_.]+)#i', '@', $content, array( $this, 'replace_usernames' ) );
+		}
 
 		// load global defs
 		$this->load_link_array( $item_Blog );
@@ -252,36 +365,81 @@ class autolinks_plugin extends Plugin
 			$this->already_linked_array = $matches[1];
 		}
 
-		if( $this->Settings->get( 'autolink_urls' ) )
-		{ // First, make the URLs clickable:
-			$content = make_clickable( $content );
+		$link_attrs = '';
+		if( !empty( $item_Blog ) && $this->get_coll_setting( $this->setting_nofollow_explicit, $item_Blog ) )
+		{	// Add attribute rel="nofollow" for auto-links
+			$link_attrs .= ' rel="nofollow"';
 		}
 
-		if( ! empty($this->replacement_link_array) )
-		{ // Make the desired remaining terms/definitions clickable:
-			$content = make_clickable( $content, '&amp;', array( $this, 'make_clickable_callback' ) );
+		if( $this->Settings->get( 'autolink_urls' ) )
+		{	// First, make the URLs clickable:
+			$content = make_clickable( $content, '&amp;', 'make_clickable_callback', $link_attrs );
+		}
+
+		if( !empty( $this->replacement_link_array ) )
+		{	// Make the desired remaining terms/definitions clickable:
+			$content = make_clickable( $content, '&amp;', array( $this, 'make_clickable_callback' ), $link_attrs );
 		}
 
 		return true;
 	}
 
 
+	function FilterCommentContent( & $params )
+	{
+		$Comment = & $params['Comment'];
+		$comment_Item = & $Comment->get_Item();
+		$item_Blog = & $comment_Item->get_Blog();
+		if( in_array( $this->code, $Comment->get_renderers_validated() ) )
+		{ // Always allow rendering for comment
+			$render_params = array_merge( array( 'data' => & $Comment->content, 'Item' => & $comment_Item ), $params );
+			$this->RenderItemAsHtml( $render_params );
+		}
+		return false;
+	}
+
+
 	/**
 	 * Callback function for {@link make_clickable()}.
 	 *
+	 * @param string Text
+	 * @param string Url delimeter
 	 * @return string The clickable text.
 	 */
 	function make_clickable_callback( $text, $moredelim = '&amp;' )
 	{
+		global $evo_charset;
+
+		$regexp_modifier = '';
+		if( $evo_charset == 'utf-8' )
+		{ // Add this modifier to work with UTF-8 strings correctly
+			$regexp_modifier = 'u';
+		}
+
+		// Previous word in lower case format
 		$this->previous_lword = null;
+		// Previous word was already used/converted to a link
+		$this->previous_used = false;
 
-		// Find word with 3 characters at least:
-		$text = preg_replace_callback( '/(^|\s|[(),;])([@a-z0-9_\-]{3,})/i', array( & $this, 'replace_callback' ), $text );
-
-		// pre_dump($text);
+		// Optimization: Check if the text contains words from the replacement links strings, and call replace callback only if there is at least one word which needs to be replaced.
+		$text_words = explode( ' ', evo_strtolower( $text ) );
+		foreach( $text_words as $text_word )
+		{ // Trim the signs [({/ from start and the signs ])}/.,:;!? from end of each word
+			$clear_word = preg_replace( '#^[\[\({/]?([@\p{L}0-9_\-\.]{3,})[\.,:;!\?\]\)}/]?$#i', '$1', $text_word );
+			if( $clear_word != $text_word )
+			{ // Append a clear word to array if word has the punctuation signs
+				$text_words[] = $clear_word;
+			}
+		}
+		// Check if a content has at least one definition to make an url from word
+		$text_contains_replacement = ( count( array_intersect( $text_words, array_keys( $this->replacement_link_array ) ) ) > 0 );
+		if( $text_contains_replacement )
+		{ // Find word with 3 characters at least:
+			$text = preg_replace_callback( '#(^|\s|[(),;\[{/])([@\p{L}0-9_\-\.]{3,})([\.,:;!\?\]\)}/]?)#i'.$regexp_modifier, array( & $this, 'replace_callback' ), $text );
+		}
 
 		// Cleanup words to be deleted:
-		$text = preg_replace( '/[@a-z0-9_\-]+\s*==!#DEL#!==/i', '', $text );
+		$text = preg_replace( '/[@\p{L}0-9_\-]+\s*==!#DEL#!==/i'.$regexp_modifier, '', $text );
 
 		return $text;
 	}
@@ -289,61 +447,161 @@ class autolinks_plugin extends Plugin
 
 	/**
 	 * This is the 2nd level of callback!!
+	 *
+	 * @param array The matches of regexp:
+	 *     1 => punctuation signs before word
+	 *     2 => a clear word without punctuation signs
+	 *     3 => punctuation signs after word
 	 */
 	function replace_callback( $matches )
 	{
-		$sign = $matches[1];
+		global $Blog;
+
+		$link_attrs = '';
+		if( !empty( $Blog ) && $this->get_coll_setting( $this->setting_nofollow_auto, $Blog ) )
+		{	// Add attribute rel="nofollow" for auto-links
+			$link_attrs .= ' rel="nofollow"';
+		}
+
+		$before_word = $matches[1];
 		$word = $matches[2];
-		$lword = strtolower($word);
-		$r = $sign.$word;
+		$after_word = $matches[3];
+		if( substr( $word, -1 ) == '.' )
+		{ // If word has a dot in the end
+			$word = substr( $word, 0, -1 );
+			$after_word = '.'.$after_word;
+		}
+		$lword = evo_strtolower( $word );
+		$r = $before_word.$word.$after_word;
 
-		if( isset( $this->replacement_link_array[$lword] ) )
-		{
-			$previous = $this->replacement_link_array[$lword][0];
-			$url = 'http://'.$this->replacement_link_array[$lword][1];
+		if( isset( $this->replacement_link_array[ $lword ] ) )
+		{ // There is an autolink definition with the current word
+			// An optional previous required word (allows to create groups of 2 words)
+			$previous = $this->replacement_link_array[ $lword ][0];
+			// Url for current word
+			$url = 'http://'.$this->replacement_link_array[ $lword ][1];
 
-			// pre_dump( $this->already_linked_array );
-
-			if( in_array( $url, $this->already_linked_array ) )
-			{	// Do not repeat link to same destination:
+			if( in_array( $url, $this->already_linked_array ) || in_array( $lword, $this->already_linked_usernames ) )
+			{ // Do not repeat link to same destination:
 				// pre_dump( 'already linked:'. $url );
-				// save previous word
-				$this->previous_word = $word;
-				$this->previous_lword = $lword;
+				// save previous word in original and lower case format with the after word signs
+				$this->previous_word = $word.$after_word;
+				$this->previous_lword = $lword.$after_word;
+				$this->previous_used = false;
 				return $r;
 			}
 
-			if( !empty($previous) )
-			{
-				if( $this->previous_lword != $previous )
-				{	// We do not have the required previous word
+			if( !empty( $previous ) )
+			{ // This definitions is a group of two word separated with space
+				if( $this->previous_used || ( $this->previous_lword != $previous ) )
+				{ // We do not have the required previous word or it was already used to another autolink definition
 					// pre_dump( 'previous word does not match', $this->previous_lword, $previous );
-					// save previous word
-					$this->previous_word = $word;
-					$this->previous_lword = $lword;
+					// save previous word in original and lower case format with the after word signs
+					$this->previous_word = $word.$after_word;
+					$this->previous_lword = $lword.$after_word;
+					$this->previous_used = false;
 					return $r;
 				}
-				$r = '==!#DEL#!==<a href="'.$url.'">'.$this->previous_word.' '.$word.'</a>';
+				$r = '==!#DEL#!==<a href="'.$url.'"'.$link_attrs.'>'.$this->previous_word.' '.$word.'</a>'.$after_word;
 			}
 			else
-			{
-				$r = $sign.'<a href="'.$url.'">'.$word.'</a>';
+			{ // Single word
+				$r = $before_word.'<a href="'.$url.'"'.$link_attrs.'>'.$word.'</a>'.$after_word;
 			}
 
 			// Make sure we don't link to same destination twice in the same text/post:
 			$this->already_linked_array[] = $url;
-			// pre_dump( $this->already_linked_array );
+			// Mark that the previous word was already converted to a link
+			$this->previous_used = true;
+		}
+		else
+		{ // Mark that the previous word was NOT converted to a link
+			$this->previous_used = false;
 		}
 
-		$this->previous_word = $word;
-		$this->previous_lword = $lword;
+		// save previous word in original and lower case format with the after word signs
+		// Note: after_word signs are important to be saved because in case of autlink definitions with two words the first word must have exact matching at the end!
+		$this->previous_word = $word.$after_word;
+		$this->previous_lword = $lword.$after_word;
 
 		return $r;
 	}
+
+
+	/**
+	 * Prepare existing links
+	 *
+	 * @param string Text
+	 * @param object Blog
+	 * @return string Prepared text
+	 */
+	function prepare_existing_links( $text, $Blog )
+	{
+		if( !empty( $Blog ) && $this->get_coll_setting( $this->setting_nofollow_exist, $Blog ) )
+		{	// Add attribute rel="nofollow" for preexisting links
+			// Remove all existing attributes "rel" from tag <a>
+			$text = preg_replace( '#<a([^>]*) rel="([^"]+?)"([^>]*)>#is', '<a$1$3>', $text );
+			// Add rel="nofollow"
+			$text = preg_replace( '#(<a[^>]+?)>#is', '$1 rel="nofollow">', $text );
+		}
+
+		return $text;
+	}
+
+
+	/**
+	 * Replace @usernames with link to profile page
+	 *
+	 * @param string Content
+	 * @param array Search list
+	 * @param array Replace list
+	 * @return string Content
+	 */
+	function replace_usernames( $content, $search_list, $replace_list )
+	{
+		global $Blog;
+
+		if( empty( $Blog ) )
+		{	// No Blog, Exit here
+			return $content;
+		}
+
+		if( preg_match_all( $search_list, $content, $user_matches ) )
+		{
+			$blog_url = $Blog->gen_blogurl();
+
+			// Add this for rel attribute in order to activate bubbletips on usernames
+			$link_attr_rel = 'bubbletip_user_%user_ID%';
+
+			if( $this->get_coll_setting( $this->setting_nofollow_auto, $Blog ) )
+			{	// Add attribute rel="nofollow" for auto-links
+				$link_attr_rel .= ' nofollow';
+			}
+			$link_attrs = ' rel="'.$link_attr_rel.'"';
+
+			if( !empty( $user_matches[1] ) )
+			{
+				$UserCache = & get_UserCache();
+				foreach( $user_matches[1] as $u => $username )
+				{
+					if( in_array( $username, $this->already_linked_usernames ) )
+					{	// Skip this username, it was already linked before
+						continue;
+					}
+
+					if( $User = & $UserCache->get_by_login( $username ) )
+					{	// Replace @usernames
+						$user_link_attrs = str_replace( '%user_ID%', $User->ID, $link_attrs );
+						$user_link = '<a href="'.url_add_param( $blog_url, 'disp=user&amp;user_ID='.$User->ID ).'"'.$user_link_attrs.'>'.$user_matches[0][ $u ].'</a>';
+						$content = preg_replace( '#'.$user_matches[0][ $u ].'#', $user_link, $content, 1 );
+						$this->already_linked_usernames[] = $user_matches[1][ $u ];
+					}
+				}
+			}
+		}
+
+		return $content;
+	}
 }
 
-
-/*
- * $Log: _autolinks.plugin.php,v $
- */
 ?>

@@ -3,7 +3,7 @@
  * This template generates an Atom feed for the requested blog's latest posts
  *
  * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://manual.b2evolution.net/Skins_2.0}
+ * {@link http://b2evolution.net/man/skin-structure}
  *
  * See {@link http://atompub.org/2005/07/11/draft-ietf-atompub-format-10.html}
  *
@@ -12,7 +12,7 @@
  *
  * @todo dh> isn't this missing a call to skin_init()!? - if so, other feeds are missing it, too. fp> no this is very much on purpose. there is a comment somewhere (don't know exactly)
  *
- * @version $Id: index.main.php 57 2011-10-26 08:18:58Z sam2kb $
+ * @version $Id: index.main.php 3157 2013-03-06 04:34:44Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -156,9 +156,14 @@ echo '<?xml version="1.0" encoding="'.$io_charset.'"?'.'>';
 					), 'htmlfeed' );
 
 				$Item->content_teaser( array(
-						'disppage'    => 1,
-						'stripteaser' => false,
-						'format'      => 'htmlfeed',
+						'disppage'            => 1,
+						'stripteaser'         => false,
+						'format'              => 'htmlfeed',
+						'before_image'        => '<div>',
+						'before_image_legend' => '<div><i>',
+						'after_image_legend'  => '</i></div>',
+						'after_image'         => '</div>',
+						'image_size'          => $image_size,
 					) );
 
 				if( $feed_content == 'normal' )

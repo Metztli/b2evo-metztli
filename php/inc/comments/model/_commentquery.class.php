@@ -5,7 +5,7 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
 *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
  *
@@ -20,7 +20,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author asimo: Evo Factory / Attila Simo
  *
- * @version $Id: _commentquery.class.php 3460 2013-04-11 12:54:22Z yura $
+ * @version $Id: _commentquery.class.php 3907 2013-06-04 10:34:03Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -67,10 +67,6 @@ class CommentQuery extends SQL
 		$this->dbIDname = $dbIDname;
 
 		$this->FROM( $this->dbtablename );
-
-		# Add constraints to only include comments on items visible for the current User!
-		$this->FROM_add('INNER JOIN T_items__item ON post_ID = comment_post_ID');
-		$this->WHERE_and(statuses_where_clause());
 	}
 
 
@@ -82,7 +78,10 @@ class CommentQuery extends SQL
 		$r = false;
 
 		$this->c = $c;
-		$this->author = $author;
+		if( empty( $this->author ) )
+		{ // Change $this->author only if it is empty, because possible that it was set previously 
+			$this->author = $author;
+		}
 
 		// if a comment number is specified, load that comment
 		if( !empty($c) )
@@ -173,6 +172,30 @@ class CommentQuery extends SQL
 		$this->post = implode( ',', $post_ids );
 
 		$this->WHERE_and( $this->dbprefix.'post_ID '.$eq.' ('.$this->post.')' );
+	}
+
+
+	/**
+	 * Restrict to a specific post comments by post_datestart
+	 * 
+	 * @param timestamp min - Do not show comments from posts before this timestamp
+	 * @param timestamp max - Do not show comments from posts after this timestamp
+	 */
+	function where_post_datestart( $timestamp_min, $timestamp_max )
+	{
+		if( empty( $timestamp_min ) && empty ( $timestamp_max ) )
+		{	// Don't restrict
+			return;
+		}
+
+		$dbtable = 'T_items__item';
+		$dbprefix = 'post_';
+		$dbIDname = 'ID';
+
+		$ItemQuery = new ItemQuery( $dbtable, $dbprefix, $dbIDname );
+		$ItemQuery->where_datestart( '', '', '', '', $timestamp_min, $timestamp_max );
+
+		$this->WHERE_and( $ItemQuery->get_where( '' ) );
 	}
 
 
@@ -298,18 +321,9 @@ class CommentQuery extends SQL
 			return;
 		}
 
-		if( substr( $author_IP, 0, 1 ) == '-' )
-		{	// List starts with MINUS sign:
-			$eq = 'NOT IN';
-			$author_IP_list = substr( $author_IP, 1 );
-		}
-		else
-		{
-			$eq = 'IN';
-			$author_IP_list = $author_IP;
-		}
+		global $DB;
 
-		$this->WHERE_and( $this->dbprefix.'author_IP '.$eq.' ('.$author_IP_list.')' );
+		$this->WHERE_and( $this->dbprefix.'author_IP LIKE '.$DB->quote( $author_IP ) );
 	}
 
 
@@ -369,26 +383,36 @@ class CommentQuery extends SQL
 	 * Restrict to specific statuses
 	 *
 	 * @param string List of statuses to restrict to (must have been previously validated)
+	 * @param boolean Filter by user permission. Set to false to select each comment with the correspondong visibily statuses even if current User has no permission to view them.
 	 */
-	function where_statuses( $show_statuses )
+	function where_statuses( $show_statuses, $filter_by_perm = true )
 	{
 		global $DB;
 
 		if( empty( $show_statuses ) )
 		{ // initialize if emty
-			$show_statuses = array( 'published', 'draft', 'deprecated' );
+			$show_statuses = get_visibility_statuses( 'keys', array( 'trash', 'redirected' ) );
 		}
 		$this->show_statuses = $show_statuses;
 
-		$list = '';
-		$sep = '';
-		foreach( $show_statuses as $status )
-		{
-			$list .= $sep.$DB->quote( $status );
-			$sep = ',';
+		if( $filter_by_perm )
+		{ // show not published comments corresponding to the given blog perms
+			// When Blog is empty we must set blog param to 0, this way we will check all blogs
+			$blog = empty( $this->Blog ) ? 0 : $this->Blog->ID;
+			$this->WHERE_and( statuses_where_clause( $this->show_statuses, $this->dbprefix, $blog, 'blog_comment!', true, $this->author ) );
 		}
+		else
+		{
+			$list = '';
+			$sep = '';
+			foreach( $show_statuses as $status )
+			{
+				$list .= $sep.$DB->quote( $status );
+				$sep = ',';
+			}
 
-		$this->WHERE_and( $this->dbprefix.'status IN ('.$list.')' );
+			$this->WHERE_and( $this->dbprefix.'status IN ('.$list.')' );
+		}
 	}
 
 
@@ -503,10 +527,110 @@ class CommentQuery extends SQL
 		$this->WHERE_and( $Blog->get_sql_where_aggregate_coll_IDs('othercats.cat_blog_ID') );
 	}
 
+
+	/**
+	 * Restrict to show or hide active/expired comments ( ecpired comments are older then the post expiry delay value )
+	 * By default only active comments will be allowed
+	 * 
+	 * @param array expiry statuses to show
+	 */
+	function expiry_restrict( $expiry_statuses )
+	{
+		global $localtimenow, $DB;
+
+		$show_active = empty( $expiry_statuses ) || in_array( 'active', $expiry_statuses );
+		$show_expired = !empty( $expiry_statuses ) && in_array( 'expired', $expiry_statuses );
+
+		if( !$show_expired )
+		{
+			$this->FROM_add( 'LEFT JOIN T_items__item_settings as expiry_setting ON iset_item_ID = comment_post_ID AND iset_name = "post_expiry_delay"' );
+			$this->WHERE_and( 'expiry_setting.iset_value IS NULL OR expiry_setting.iset_value = "" OR TIMESTAMPDIFF(SECOND, comment_date, '.$DB->quote( date2mysql( $localtimenow ) ).') < expiry_setting.iset_value' );
+		}
+		elseif( !$show_active )
+		{
+			$this->FROM_add( 'LEFT JOIN T_items__item_settings as expiry_setting ON iset_item_ID = comment_post_ID AND iset_name = "post_expiry_delay"' );
+			$this->WHERE_and( 'expiry_setting.iset_value IS NOT NULL AND expiry_setting.iset_value <> "" AND TIMESTAMPDIFF(SECOND, comment_date, '.$DB->quote( date2mysql( $localtimenow ) ).') >= expiry_setting.iset_value' );
+		}
+	}
+
+
+	/**
+	 * Restrict to show only those comments where user has some specific permission
+	 * 
+	 * @param string the required permission to check
+	 * @param integer the blog ID
+	 */
+	function user_perm_restrict( $user_perm, $blog_ID )
+	{
+		global $current_User, $DB;
+
+		if( !is_logged_in( false ) )
+		{ // Anonymous users can see only published comments, no need further restriction
+			return;
+		}
+
+		if( ( $user_perm !== 'moderate' ) && ( $user_perm !== 'edit' ) )
+		{ // No need furhter restriciton because the user doesn't want to edit/moderate these comments
+			return;
+		}
+
+		if( $current_User->check_perm( 'blogs', 'editall' ) )
+		{ // User has global permission one ach blog
+			return;
+		}
+
+		$BlogCache = & get_BlogCache();
+		$Blog = $BlogCache->get_by_ID( $blog_ID );
+		if( $current_User->ID == $Blog->get( 'owner_user_ID' ) )
+		{ // User is the blog owner, so has permission on edit/moderate each comment
+			return;
+		}
+
+		if( ! $Blog->get( 'advanced_perms' ) )
+		{ // Blog advanced perm settings is not enabled, user has no permission to edit/moderate comments 
+			$this->WHERE_and( 'FALSE' );
+			return;
+		}
+
+		$SQL = new SQL();
+		$SQL->SELECT( 'IF( bloguser_perm_edit_cmt + 0 > bloggroup_perm_edit_cmt + 0, bloguser_perm_edit_cmt, bloggroup_perm_edit_cmt ) as perm_edit_cmt' );
+		$SQL->FROM( 'T_blogs' );
+		$SQL->FROM_add( 'LEFT JOIN T_coll_user_perms ON bloguser_blog_ID = blog_ID AND bloguser_user_ID = '.$current_User->ID );
+		$SQL->FROM_add( 'LEFT JOIN T_coll_group_perms ON bloggroup_blog_ID = blog_ID AND bloggroup_group_ID = '.$current_User->grp_ID );
+		$SQL->WHERE( 'blog_ID = '.$blog_ID );
+
+		$perm_edit_cmt = $DB->get_var( $SQL->get() );
+		$user_level = $current_User->level;
+		$condition = '';
+
+		switch( $perm_edit_cmt )
+		{
+			case 'le':
+			case 'lt':
+				$operator = ( $perm_edit_cmt == 'le' ) ? '<=' : '<';
+				$condition = '( comment_author_ID IN ( SELECT user_ID FROM T_users WHERE user_level '.$operator.' '.$current_User->level.' ) )';
+				$condition .= ' OR ';
+			case 'anon':
+				$condition .= 'comment_author_ID IS NULL';
+				break;
+
+			case 'own':
+				$condition = 'comment_author_ID = '.$current_User->ID;
+				break;
+
+			case 'no':
+				$condtion = 'FALSE';
+				break;
+
+			case 'all': // In this case we don't add any specific permission check because everything is permitted
+				break;
+
+			default:
+				debug_die('This value of edit permission is not implemented!');
+		}
+
+		$this->WHERE_and( $condition );
+	}
 }
 
-
-/*
- * $Log: _commentquery.class.php,v $
- */
 ?>

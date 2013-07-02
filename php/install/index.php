@@ -8,10 +8,14 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package install
  */
+
+
+// Turn off the output buffering to do the correct work of the function flush()
+@ini_set( 'output_buffering', 'off' );
 
 /**
  * include config and default functions:
@@ -36,6 +40,11 @@ if( ! $config_is_done )
 
 require_once $inc_path.'_core/_class'.floor(PHP_VERSION).'.funcs.php';
 require_once $inc_path.'_core/_misc.funcs.php';
+
+/**
+ * Load locale related functions
+ */
+require_once $inc_path.'locales/_locale.funcs.php';
 
 load_class( '_core/model/_log.class.php', 'Log');
 $Debuglog = new Log();
@@ -67,6 +76,7 @@ load_class( '/_core/model/db/_db.class.php', 'DB' );
 //load_funcs( '_core/ui/forms/_form.funcs.php' );
 load_class( '_core/model/_timer.class.php', 'Timer' );
 //load_class( 'plugins/model/_plugins.class.php', 'Plugins' );
+load_funcs( '_core/_url.funcs.php' );
 
 
 require_once dirname(__FILE__).'/_functions_install.php';
@@ -80,6 +90,71 @@ modules_call_method( 'init' );
 
 
 param( 'action', 'string', 'default' );
+// check if we should try to connect to db if config is not done
+switch( $action )
+{
+	case 'evoupgrade':
+	case 'newdb':
+	case 'cafelogupgrade':
+	case 'deletedb':
+	case 'menu':
+	case 'localeinfo':
+		$try_db_connect = true;
+		break;
+	case 'start':
+	case 'conf':
+	case 'default':
+		$try_db_connect = false;
+		break;
+	default:
+		// set a valid action
+		$action = 'default';
+		$try_db_connect = false;
+		break;
+}
+
+$timestamp = time() - 120; // We start dates 2 minutes ago because their dates increase 1 second at a time and we want everything to be visible when the user watches the blogs right after install :P
+
+if( $config_is_done || $try_db_connect )
+{ // Connect to DB:
+
+	$tmp_evoconf_db = $db_config;
+
+	// We want a friendly message if we can't connect:
+	$tmp_evoconf_db['halt_on_error'] = false;
+	$tmp_evoconf_db['show_errors'] = false;
+
+	// Make sure we use the proper charset:
+	$tmp_evoconf_db['connection_charset'] = $evo_charset;
+
+	// CONNECT TO DB:
+	$DB = new DB( $tmp_evoconf_db );
+	unset($tmp_evoconf_db);
+
+	if( !$DB->error )
+	{ // restart conf
+		$DB->halt_on_error = true;  // From now on, halt on errors.
+		$DB->show_errors = true;    // From now on, show errors (they're helpful in case of errors!).
+
+		// Check MySQL version
+		$mysql_version = $DB->get_version();
+		foreach( $required_mysql_version as $key => $value )
+		{ // check required MySQL version for the whole application and for each module
+			if( version_compare( $mysql_version, $value, '<' ) )
+			{
+				if( $key == 'application' )
+				{
+					$error_message = sprintf( T_('The minimum requirement for this version of b2evolution is %s version %s but you are trying to use version %s!'), 'MySQL', $value, $mysql_version );
+				}
+				else
+				{
+					$error_message = sprintf( T_('The minimum requirement for %s module is %s version %s but you are trying to use version %s!'), $key, 'MySQL', $value, $mysql_version );
+				}
+				die( '<h1>Insufficient Requirements</h1><div class="error"><p class="error"><strong>'.$error_message.'</strong></p></div>');
+			}
+		}
+	}
+}
 
 // Load all available locale defintions:
 locales_load_available_defs();
@@ -90,7 +165,12 @@ if( preg_match('/[a-z]{2}-[A-Z]{2}(-.{1,14})?/', $locale) )
 }
 else
 { // detect language
-	$default_locale = locale_from_httpaccept();
+	// try to check if db already exists and default locale is set on it
+	$default_locale = get_default_locale_from_db();
+	if( empty( $default_locale ) )
+	{ // db doesn't exists yet
+		$default_locale = locale_from_httpaccept();
+	}
 	// echo 'detected locale: ' . $default_locale. '<br />';
 }
 // Activate default locale:
@@ -101,9 +181,6 @@ if( ! locale_activate( $default_locale ) )
 }
 
 init_charsets( $current_charset );
-
-$timestamp = time() - 120; // We start dates 2 minutes ago because their dates increase 1 second at a time and we want everything to be visible when the user watches the blogs right after install :P
-
 
 switch( $action )
 {
@@ -130,13 +207,15 @@ switch( $action )
 	case 'conf':
 	case 'menu':
 	case 'localeinfo':
+	case 'default':
 		$title = '';
 		break;
-
-	default:
-		$action = 'default';
-		$title = '';
 }
+
+// Add CSS:
+require_css( 'basic_styles.css', 'rsc_url' ); // the REAL basic styles
+require_css( 'basic.css', 'rsc_url' ); // Basic styles
+require_css( 'evo_distrib_2.css', 'rsc_url' );
 
 header('Content-Type: text/html; charset='.$io_charset);
 header('Cache-Control: no-cache'); // no request to this page should get cached!
@@ -147,11 +226,12 @@ header('Cache-Control: no-cache'); // no request to this page should get cached!
 	<!-- InstanceBeginEditable name="doctitle" -->
 	<title><?php echo T_('b2evo installer').( $title ? ': '.$title : '' ) ?></title>
 	<!-- InstanceEndEditable -->
+	<meta http-equiv="Content-Type" content="text/html; charset=<?php echo $io_charset; ?>" />
 	<meta name="viewport" content="width = 750" />
 	<meta name="robots" content="noindex, follow" />
-	<link href="../rsc/css/evo_distrib_2.css" rel="stylesheet" type="text/css" />
+	<?php include_headlines() /* Add javascript and css files included by plugins and skin */ ?>
 	<!-- InstanceBeginEditable name="head" --><!-- InstanceEndEditable -->
-	<!-- InstanceParam name="lang" type="text" value="&lt;?php locale_lang() ?&gt;" --> 
+	<!-- InstanceParam name="lang" type="text" value="&lt;?php locale_lang() ?&gt;" -->
 </head>
 
 <body>
@@ -159,10 +239,10 @@ header('Cache-Control: no-cache'); // no request to this page should get cached!
 
 	<div class="wrapper1">
 	<div class="wrapper2">
-		<span class="version_top"><!-- InstanceBeginEditable name="Version" --><?php echo T_('Installer for version ').' '. $app_version ?><!-- InstanceEndEditable --></span>	
-	
+		<span class="version_top"><!-- InstanceBeginEditable name="Version" --><?php echo T_('Installer for version ').' '. $app_version ?><!-- InstanceEndEditable --></span>
+
 		<a href="http://b2evolution.net/" target="_blank"><img src="../rsc/img/distrib/b2evolution-logo.gif" alt="b2evolution" width="237" height="92" /></a>
-		
+
 		<div class="menu_top"><!-- InstanceBeginEditable name="MenuTop" -->
 			<span class="floatright"><?php echo T_('After install') ?>: <a href="../index.php"><?php echo T_('Blogs') ?></a> &middot;
 			<a href="../<?php echo $dispatcher ?>"><?php echo T_('Admin') ?></a>
@@ -171,55 +251,23 @@ header('Cache-Control: no-cache'); // no request to this page should get cached!
 		<a href="index.php?locale=<?php echo $default_locale ?>"><?php echo T_('Install menu') ?></a> &middot;
 		<a href="phpinfo.php"><?php echo T_('PHP info') ?></a>
 		<!-- InstanceEndEditable --></div>
-		
+
 		<!-- InstanceBeginEditable name="Main" -->
 <?php
 block_open();
 
 // echo $action;
-
-if( $config_is_done || (($action != 'start') && ($action != 'default') && ($action != 'conf')) )
-{ // Connect to DB:
-
-	$tmp_evoconf_db = $db_config;
-
-	// We want a friendly message if we can't connect:
-	$tmp_evoconf_db['halt_on_error'] = false;
-	$tmp_evoconf_db['show_errors'] = false;
-
-	// Make sure we use the proper charset:
-	$tmp_evoconf_db['connection_charset'] = $evo_charset;
-
-	// CONNECT TO DB:
-	$DB = new DB( $tmp_evoconf_db );
-	unset($tmp_evoconf_db);
-
-	if( $DB->error )
-	{ // restart conf
-		echo '<div class="error"><p class="error">'.T_('Check your database config settings below and update them if necessary...').'</p></div>';
-		display_base_config_recap();
-		$action = 'start';
-	}
-	else
-	{
-		$DB->halt_on_error = true;  // From now on, halt on errors.
-		$DB->show_errors = true;    // From now on, show errors (they're helpful in case of errors!).
-
-		// Check MySQL version
-		$mysql_version = $DB->get_var( 'SELECT VERSION()' );
-		list( $mysl_version_main, $mysl_version_minor ) = explode( '.', $mysql_version );
-		if( ($mysl_version_main * 100 + $mysl_version_minor) < 401 )
-		{
-			die( '<div class="error"><p class="error"><strong>'.sprintf(T_('The minimum requirement for this version of b2evolution is %s version %s but you are trying to use version %s!'), 'MySQL', '4.1', $mysql_version ).'</strong></p></div>');
-		}
-	}
+$date_timezone = ini_get( "date.timezone" );
+if( empty( $date_timezone ) && empty( $date_default_timezone ) )
+{ // The default timezone is not set, display a warning
+	echo '<div class="error"><p class="error">'.sprintf( T_("No default time zone is set. Please open PHP.ini and set the value of 'date.timezone' (Example: date.timezone = Europe/Paris) or open /conf/_advanced.php and set the value of %s (Example: %s)"), '$date_default_timezone', '$date_default_timezone = \'Europe/Paris\';' ).'</p></div>';
 }
 
-// Check PHP version
-list( $version_main, $version_minor ) = explode( '.', phpversion() );
-if( ($version_main * 100 + $version_minor) < 401 )
-{
-	die( '<div class="error"><p class="error"><strong>'.sprintf(T_('The minimum requirement for this version of b2evolution is %s version %s but you are trying to use version %s!'), 'PHP', '4.1.0', phpversion() ).'</strong></p></div>');
+if( ( $config_is_done || $try_db_connect ) && ( $DB->error ) )
+{ // DB connect was unsuccessful, restart conf
+	echo '<div class="error"><p class="error">'.T_('Check your database config settings below and update them if necessary...').'</p></div>';
+	display_base_config_recap();
+	$action = 'start';
 }
 
 // Check other dependencies:
@@ -312,8 +360,18 @@ switch( $action )
 					'config_is_done = 1;',
 				), $conf );
 
-			$f = @fopen( $conf_filepath , 'w' );
-			if( $f == false )
+			// Write new contents:
+			if( save_to_file( $conf, $conf_filepath, 'w' ) )
+			{
+				printf( '<p>'.T_('Your configuration file [%s] has been successfully created.').'</p>', $conf_filepath );
+
+				$tableprefix = $conf_db_tableprefix;
+				$baseurl = $conf_baseurl;
+				$admin_email = $conf_admin_email;
+				$config_is_done = 1;
+				$action = 'menu';
+			}
+			else
 			{
 				?>
 				<h1><?php echo T_('Config file update') ?></h1>
@@ -347,19 +405,6 @@ switch( $action )
 				</blockquote>
 				<?php
 				break;
-			}
-			else
-			{ // Write new contents:
-				fwrite( $f, $conf );
-				fclose($f);
-
-				printf( '<p>'.T_('Your configuration file [%s] has been successfully created.').'</p>', $conf_filepath );
-
-				$tableprefix = $conf_db_tableprefix;
-				$baseurl = $conf_baseurl;
-				$admin_email = $conf_admin_email;
-				$config_is_done = 1;
-				$action = 'menu';
 			}
 		}
 		// ATTENTION: we continue here...
@@ -497,6 +542,14 @@ switch( $action )
 			<p style="margin-left: 2em;">
 				<input type="checkbox" name="create_sample_contents" id="create_sample_contents" value="1" checked="checked" />
 				<label for="create_sample_contents"><?php echo T_('Also install sample blogs &amp; sample contents. The sample posts explain several features of b2evolution. This is highly recommended for new users.')?></label>
+				<?php
+					if( $test_install_all_features )
+					{	// Checkbox to install all features
+				?>
+				<br />
+				<input type="checkbox" name="install_all_features" id="install_all_features" value="1" />
+				<label for="install_all_features"><?php echo T_('Also install all test features.')?></label>
+				<?php } ?>
 			</p>
 
 			<p><input type="radio" name="action" id="evoupgrade" value="evoupgrade"
@@ -513,7 +566,7 @@ switch( $action )
 				{
 					?>
 					<p><input type="radio" name="action" id="deletedb" value="deletedb" />
-					<label for="deletedb"><strong><?php echo T_('Delete b2evolution tables')?></strong>:
+					<label for="deletedb"><strong><?php echo T_('Delete b2evolution tables &amp; cache files')?></strong>:
 					<?php echo T_('If you have installed b2evolution tables before and wish to start anew, you must delete the b2evolution tables before you can start a new installation. <strong>WARNING: All your b2evolution tables and data will be lost!!!</strong> Any non-b2evolution tables will remain untouched though.')?></label></p>
 
 					<p><input type="radio" name="action" id="start" value="start" />
@@ -563,7 +616,7 @@ switch( $action )
 		<h3>What if there is no language pack to download?</h3>
 		<p>Nobody has contributed a language pack in your language yet. You could help by providing a translation for your language.</p>
 		<p>For now, you will have to install b2evolution with a supported language.</p>
-		<p>Once you get familiar with b2evolution you will be able to <a href="http://manual.b2evolution.net/Localization" target="_blank">create your own language pack</a> fairly easily.</p>
+		<p>Once you get familiar with b2evolution you will be able to <a href="http://b2evolution.net/man/localization" target="_blank">create your own language pack</a> fairly easily.</p>
 		<p><a href="index.php?locale=<?php echo $default_locale ?>">&laquo; <?php echo T_('Back to install menu') ?></a></p>
 		<?php
 		break;
@@ -585,6 +638,8 @@ switch( $action )
 		 * -----------------------------------------------------------------------------------
 		 * Note: auto installers should kick in directly at this step and provide all required params.
 		 */
+
+		$test_install_all_features = param( 'install_all_features', 'boolean', false );
 
 		// fp> TODO: this test should probably be made more generic and applied to upgrade too.
 		$expected_connection_charset = $DB->php_to_mysql_charmap($evo_charset);
@@ -611,9 +666,12 @@ switch( $action )
 		echo '<h2>'.T_('Installing b2evolution...').'</h2>';
 
 		echo '<h2>'.T_('Checking files...').'</h2>';
-		flush();
+		evo_flush();
 		// Check for .htaccess:
-		install_htaccess( false );
+		if( !install_htaccess( false ) )
+		{	// Exit installation here because the .htaccess file has the some errors
+			break;
+		}
 
 		// Here's the meat!
 		install_newdb();
@@ -632,12 +690,20 @@ switch( $action )
 		echo '<h2>'.T_('Upgrading b2evolution...').'</h2>';
 
 		echo '<h2>'.T_('Checking files...').'</h2>';
-		flush();
+		evo_flush();
 		// Check for .htaccess:
-		install_htaccess( true );
+		if( !install_htaccess( true ) )
+		{	// Exit installation here because the .htaccess file has the some errors
+			break;
+		}
 
 		echo '<h2>'.T_('Upgrading data in existing b2evolution database...').'</h2>';
-		flush();
+		evo_flush();
+		
+		// Try to obtain some serious time to do some serious processing (5 minutes)
+		// NOte: this must NOT be in upgrade_b2evo_tables(), otherwise it will mess with the longer setting used by the auto upgrade feature.
+		set_max_execution_time(300);
+
 		if( upgrade_b2evo_tables() )
 		{
 			?>
@@ -657,7 +723,7 @@ switch( $action )
 		require_once( dirname(__FILE__). '/_functions_delete.php' );
 
 		echo '<h2>'.T_('Deleting b2evolution tables from the datatase...').'</h2>';
-		flush();
+		evo_flush();
 
 		if( $allow_evodb_reset != 1 )
 		{
@@ -721,6 +787,33 @@ switch( $action )
 				$DB->show_errors = $DB->halt_on_error = true;
 		*/
 
+		/* REMOVE PAGE CACHE */
+		load_class( '_core/model/_pagecache.class.php', 'PageCache' );
+
+		// Remove general page cache
+		$PageCache = new PageCache( NULL );
+		$PageCache->cache_delete();
+
+		// Skip if T_blogs table is already deleted. Note that db_delete() will not throw any errors on missing tables.
+		if( $DB->query('SHOW TABLES LIKE "T_blogs"') )
+		{	// Get all blogs
+			$blogs_SQL = new SQL();
+			$blogs_SQL->SELECT( 'blog_ID' );
+			$blogs_SQL->FROM( 'T_blogs' );
+			$blogs = $DB->get_col( $blogs_SQL->get() );
+
+			foreach( $blogs as $blog_ID )
+			{
+				$BlogCache = & get_BlogCache();
+				$Blog = $BlogCache->get_by_ID( $blog_ID );
+
+				// Remove page cache of current blog
+				$PageCache = new PageCache( $Blog );
+				$PageCache->cache_delete();
+			}
+		}
+
+		/* REMOVE DATABASE */
 		db_delete();
 		?>
 		<p><?php echo T_('Reset done!')?></p>
@@ -734,16 +827,16 @@ block_close();
 
 <!-- InstanceEndEditable -->
 	</div>
-		
+
 	<div class="body_fade_out">
-		
+
 	<div class="menu_bottom"><!-- InstanceBeginEditable name="MenuBottom" -->
-			<?php echo T_('Online resources') ?>: <a href="http://b2evolution.net/" target="_blank"><?php echo T_('Official website') ?></a> &bull; <a href="http://b2evolution.net/about/recommended-hosting-lamp-best-choices.php" target="_blank"><?php echo T_('Find a host') ?></a> &bull; <a href="http://manual.b2evolution.net/" target="_blank"><?php echo T_('Manual') ?></a> &bull; <a href="http://forums.b2evolution.net/" target="_blank"><?php echo T_('Forums') ?></a>
+			<?php echo T_('Online resources') ?>: <a href="http://b2evolution.net/" target="_blank"><?php echo T_('Official website') ?></a> &bull; <a href="http://b2evolution.net/about/recommended-hosting-lamp-best-choices.php" target="_blank"><?php echo T_('Find a host') ?></a> &bull; <a href="http://b2evolution.net/man/" target="_blank"><?php echo T_('Manual') ?></a> &bull; <a href="http://forums.b2evolution.net/" target="_blank"><?php echo T_('Forums') ?></a>
 		<!-- InstanceEndEditable --></div>
 
-	<div class="copyright"><!-- InstanceBeginEditable name="CopyrightTail" -->Copyright &copy; 2003-2012 by Fran&ccedil;ois Planque &amp; others &middot; <a href="http://b2evolution.net/about/license.html" target="_blank">GNU GPL license</a> &middot; <a href="http://b2evolution.net/contact/" target="_blank">Contact</a>
+	<div class="copyright"><!-- InstanceBeginEditable name="CopyrightTail" -->Copyright &copy; 2003-2013 by Fran&ccedil;ois Planque &amp; others &middot; <a href="http://b2evolution.net/about/license.html" target="_blank">GNU GPL license</a> &middot; <a href="http://b2evolution.net/contact/" target="_blank">Contact</a>
 		<!-- InstanceEndEditable --></div>
-		
+
 	</div>
 	</div>
 
@@ -759,10 +852,3 @@ block_close();
 	<!-- InstanceEndEditable -->
 </body>
 <!-- InstanceEnd --></html>
-
-
-<?php
-/*
- * $Log: index.php,v $
- */
-?>

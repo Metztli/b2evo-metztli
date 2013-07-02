@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -27,7 +27,7 @@
  * @author fplanque: Francois PLANQUE
  * @author efy-asimo: Attila SIMO
  *
- * @version $Id: _user_advanced.form.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _user_advanced.form.php 4048 2013-06-25 11:18:25Z yura $
  */
 
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -92,7 +92,25 @@ global $AdminUI;
 // Begin payload block:
 $this->disp_payload_begin();
 
+// ------------------- PREV/NEXT USER LINKS -------------------
+user_prevnext_links( array(
+		'block_start'  => '<table class="prevnext_user"><tr>',
+		'prev_start'   => '<td width="33%">',
+		'prev_end'     => '</td>',
+		'prev_no_user' => '<td width="33%">&nbsp;</td>',
+		'back_start'   => '<td width="33%" class="back_users_list">',
+		'back_end'     => '</td>',
+		'next_start'   => '<td width="33%" class="right">',
+		'next_end'     => '</td>',
+		'next_no_user' => '<td width="33%">&nbsp;</td>',
+		'block_end'    => '</tr></table>',
+		'user_tab'     => 'advanced'
+	) );
+// ------------- END OF PREV/NEXT USER LINKS -------------------
+
 $Form = new Form( NULL, 'user_checkchanges' );
+
+$Form->title_fmt = '<span style="float:right">$global_icons$</span><div>$title$</div>'."\n";
 
 if( !$user_profile_only )
 {
@@ -145,7 +163,17 @@ if( $action != 'view' )
 	$Form->checkbox( 'edited_user_focusonfirst', $UserSettings->get( 'focus_on_first_input', $edited_User->ID ), T_('Focus on first field'), T_('The focus will automatically go to the first input text field.') );
 
 	// Number of results per page
-	$Form->text( 'edited_user_results_per_page', $UserSettings->get( 'results_per_page', $edited_User->ID ), 3, T_('Results per page'), T_('Number of rows displayed in results tables.') );
+	$results_per_page_options = array(
+			'10' => sprintf( T_('%s lines'), '10' ),
+			'20' => sprintf( T_('%s lines'), '20' ),
+			'30' => sprintf( T_('%s lines'), '30' ),
+			'40' => sprintf( T_('%s lines'), '40' ),
+			'50' => sprintf( T_('%s lines'), '50' ),
+			'100' => sprintf( T_('%s lines'), '100' ),
+			'200' => sprintf( T_('%s lines'), '200' ),
+			'500' => sprintf( T_('%s lines'), '500' ),
+		);
+	$Form->select_input_array( 'edited_user_results_page_size', $UserSettings->get( 'results_per_page', $edited_User->ID ), $results_per_page_options, T_('Results per page'), T_('Number of rows displayed in results tables.'), array( 'force_keys_as_values' => true ) );
 }
 else
 { // display only
@@ -235,8 +263,4 @@ $Form->end_form();
 // End payload block:
 $this->disp_payload_end();
 
-
-/*
- * $Log: _user_advanced.form.php,v $
- */
 ?>

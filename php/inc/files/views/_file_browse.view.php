@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -29,7 +29,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _file_browse.view.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _file_browse.view.php 3419 2013-04-05 10:25:05Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -61,9 +61,9 @@ global $fm_hide_dirtree, $create_name, $ads_list_path, $rsc_url;
 global $fm_FileRoot, $path;
 
 /**
- * @var Item
+ * @var Link Owner
  */
-global $edited_Item;
+global $LinkOwner;
 
 global $edited_User;
 
@@ -86,9 +86,9 @@ if( isset( $edited_User ) )
 		$Widget->global_icon( /* TRANS: verb */ T_('Upload...'), '', regenerate_url( 'ctrl', 'ctrl=upload' ), /* TRANS: verb */ T_('Upload ').' &raquo;', 1, 5 );
 	}
 
-	if( !empty($edited_Item) )
+	if( !empty($LinkOwner) )
 	{ // Return to post editing:
-		$Widget->global_icon( T_('Close file manager'), 'close', '?ctrl=items&amp;p='.$edited_Item->ID );
+		$Widget->global_icon( T_('Close file manager'), 'close', $LinkOwner->get_edit_url() );
 	}
 
 	$Widget->title = T_('File browser').get_manual_link('file_browser');
@@ -301,12 +301,12 @@ if( isset( $edited_User ) )
 				}
 
 				echo '<td id="fm_files">';
-				// ______________________________ Files ______________________________
 
-				require dirname(__FILE__).'/_file_list.inc.php';
+				// ______________________________ Toolbar ______________________________
+				// Start capturing toolbar panel
+				@ob_start();
 
-				// ______________________________ Toolbars ______________________________
-				echo '<div id="fileman_toolbars_bottom">';
+				echo '<div class="fileman_toolbars_bottom">';
 
 				/*
 				 * CREATE FILE/FOLDER TOOLBAR:
@@ -317,7 +317,7 @@ if( isset( $edited_User ) )
 					global $create_type;
 
 					echo '<div class="toolbaritem">';
-					$Form = new Form( NULL, 'fmbar_create_checkchanges', 'post', 'none' );
+					$Form = new Form( NULL, '', 'post', 'none' );
 					$Form->begin_form();
 						$Form->hidden( 'action', 'createnew' );
 						$Form->add_crumb( 'file' );
@@ -372,11 +372,12 @@ if( isset( $edited_User ) )
 				{	// Upload is enabled and we have permission to use it...
 					echo "<!-- QUICK UPLOAD: -->\n";
 					echo '<div class="toolbaritem">';
-					$Form = new Form( NULL, 'fmbar_quick_upload', 'post', 'none', 'multipart/form-data' );
+					$Form = new Form( NULL, '', 'post', 'none', 'multipart/form-data' );
 					$Form->begin_form();
 						$Form->add_crumb( 'file' );
 						$Form->hidden( 'ctrl', 'upload' );
 						$Form->hidden( 'upload_quickmode', 1 );
+						$Form->hidden( 'tab3_onsubmit', 'standard' );
 						// The following is mainly a hint to the browser.
 						$Form->hidden( 'MAX_FILE_SIZE', $Settings->get( 'upload_maxkb' )*1024 );
 						$Form->hiddens_by_key( get_memorized('ctrl') );
@@ -391,6 +392,18 @@ if( isset( $edited_User ) )
 				echo '</div>';
 				echo '<div class="clear"></div>';
 
+				// Get captured toolbar panel
+				$toobar_panel = @ob_get_clean();
+
+				// Display the toolbar
+				echo $toobar_panel;
+
+				// ______________________________ Files ______________________________
+				require dirname(__FILE__).'/_file_list.inc.php';
+
+				// Display the toolbar
+				echo $toobar_panel;
+
 				echo '</td>'
 			?>
 		</tr>
@@ -399,8 +412,4 @@ if( isset( $edited_User ) )
 
 <?php
 	$Widget->disp_template_raw( 'block_end' );
-
-/*
- * $Log: _file_browse.view.php,v $
- */
 ?>

@@ -5,7 +5,7 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
@@ -15,7 +15,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _item_list_track.view.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _item_list_track.view.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -66,7 +66,6 @@ echo $ItemList->get_filter_title( '<h2>', '</h2>', '<br />', NULL, 'htmlbody' );
 
 $ItemList->title = T_('Task list');
 
-
 $ItemList->cols[] = array(
 						'th' => /* TRANS: abbrev for Priority */ T_('P'),
 						'order' => 'priority',
@@ -75,38 +74,6 @@ $ItemList->cols[] = array(
 						'td' => '$post_priority$',
 					);
 
-
-/**
- * Task title
- */
-function task_title_link( $Item )
-{
-	global $current_User;
-
-	$col = '';
-
-	$Item->get_Blog();
-  if( $Item->Blog->get_setting( 'allow_comments' ) != 'never' )
-	{	// The current blog can have comments:
-		$nb_comments = generic_ctp_number($Item->ID, 'feedback');
-		$col .= '<a href="?ctrl=items&amp;blog='.$Item->get_blog_ID().'&amp;p='.$Item->ID.'"
-						title="'.sprintf( T_('%d feedbacks'), $nb_comments ).'" class="">';
-		if( $nb_comments )
-		{
-			$col .= get_icon( 'comments' );
-		}
-		else
-		{
-			$col .= get_icon( 'nocomment' );
-		}
-		$col .= '</a> ';
-	}
-
-	$col .= '<a href="?ctrl=items&amp;blog='.$Item->get_blog_ID().'&amp;p='.$Item->ID.'" class="" title="'.
-								T_('Edit this task...').'">'.$Item->dget('title').'</a></strong>';
-
-	return $col;
-}
 $ItemList->cols[] = array(
 						'th' => T_('Task'),
 						'order' => 'title',
@@ -114,20 +81,6 @@ $ItemList->cols[] = array(
 						'td' => '<strong lang="@get(\'locale\')@">%task_title_link( {Obj} )%</strong>',
 					);
 
-
-/**
- * Visibility:
- */
-function item_visibility( $Item )
-{
-	// Display publish NOW button if current user has the rights:
-	$r = $Item->get_publish_link( ' ', ' ', get_icon( 'publish' ), '#', '' );
-
-	// Display deprecate if current user has the rights:
-	$r .= $Item->get_deprecate_link( ' ', ' ', get_icon( 'deprecate' ), '#', '' );
-
-	return $r;
-}
 $ItemList->cols[] = array(
 						'th' => T_('Visibility'),
 						'order' => 'status',
@@ -135,6 +88,7 @@ $ItemList->cols[] = array(
 						'td_class' => 'shrinkwrap',
 						'td' => '%item_visibility( {Obj} )%',
 				);
+
 $ItemList->cols[] = array(
 						'th' => T_('Visibility'),
 						'order' => 'status',
@@ -142,7 +96,6 @@ $ItemList->cols[] = array(
 						'td_class' => 'tskst_$post_pst_ID$ nowrap',
 						'td' => '@get( \'t_status\' )@',
 				);
-
 
 $ItemList->cols[] = array(
 						'th' => T_('Status'),
@@ -210,36 +163,16 @@ $ItemList->cols[] = array(
 */
 
 $ItemList->cols[] = array(
-	'th' => /* TRANS: abbrev for info */ T_('i'),
-	'order' => 'datemodified',
-	'default_dir' => 'D',
-	'th_class' => 'shrinkwrap',
-	'td_class' => 'shrinkwrap',
-	'td' => '@history_info_icon()@',
-);
+		'th' => /* TRANS: abbrev for info */ T_('i'),
+		'order' => 'datemodified',
+		'default_dir' => 'D',
+		'th_class' => 'shrinkwrap',
+		'td_class' => 'shrinkwrap',
+		'td' => '@history_info_icon()@',
+	);
 
-
-
-/**
- * Edit Actions:
- */
-function item_edit_actions( $Item )
-{
-	// Display edit button if current user has the rights:
-	$r = $Item->get_edit_link( array(
-		'before' => ' ',
-		'after' => ' ',
-		'text' => get_icon( 'edit' ),
-		'title' => '#',
-		'class' => '' ) );
-
-	// Display delete button if current user has the rights:
-	$r .= $Item->get_delete_link( ' ', ' ', get_icon( 'delete' ), '#', '', false );
-
-	return $r;
-}
 $ItemList->cols[] = array(
-		'th' => T_('Act.'),
+		'th' => T_('Actions'),
 		'td_class' => 'shrinkwrap',
 		'td' => '%item_edit_actions( {Obj} )%',
 	);
@@ -266,8 +199,4 @@ $postIDarray = $ItemList->get_page_ID_array();
 // DISPLAY table now:
 $ItemList->display( NULL, $result_fadeout );
 
-
-/*
- * $Log: _item_list_track.view.php,v $
- */
 ?>

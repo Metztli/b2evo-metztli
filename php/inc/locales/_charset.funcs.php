@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://daniel.hahler.de/}.
  *
  * {@internal License choice
@@ -29,7 +29,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _charset.funcs.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _charset.funcs.php 3328 2013-03-26 11:44:11Z yura $
  *
  * @todo dh> Move this to some other directory?
  */
@@ -111,23 +111,46 @@ function evo_iconv_transliterate( $str, $post_locale = NULL )
  */
 function replace_special_chars( $str, $post_locale = NULL )
 {
-	global $evo_charset;
+	global $evo_charset, $default_locale, $current_locale, $locales;
 
 	// Decode entities to be able to transliterate the associated chars:
 	// Tblue> TODO: Check if this could have side effects.
 	$str = html_entity_decode( $str, ENT_NOQUOTES, $evo_charset );
+
+	$our_locale = $post_locale;
+	if( $our_locale === NULL )
+	{	// post locale is not set, try to guess current locale
+		if( !empty($default_locale) )
+		{
+			$our_locale = $default_locale;
+		}
+		if( !empty($current_locale) )
+		{	// Override with current locale if available
+			$our_locale = $current_locale;
+		}
+	}
+	if( $our_locale !== NULL && isset($locales[$our_locale]) && !empty($locales[$our_locale]['transliteration_map']) )
+	{	// Use locale 'transliteration_map' if present
+		if( ! array_key_exists( '', $locales[$our_locale]['transliteration_map'] ) )
+		{	// Make sure there's no empty string key, otherwise strtr() returns false
+			if( $tmp_str = strtr( $str, $locales[$our_locale]['transliteration_map'] ) );
+			{	// Use newly transliterated string
+				$str = $tmp_str;
+			}
+		}
+	}
 
 	if( ( $newstr = evo_iconv_transliterate( $str, $post_locale ) ) !== false )
 	{	// iconv allows us to get nice URL titles by transliterating non-ASCII chars.
 		// Tblue> htmlentities() does not know anything about ASCII?! ISO-8859-1 will work too, though.
 		$newstr_charset = 'ISO-8859-1';
 	}
+	// TODO: sam2kb> convert this to 'transliteration_map'
 	else if( can_convert_charsets('UTF-8', $evo_charset) && can_convert_charsets('UTF-8', 'ISO-8859-1') /* source */ )
 	{	// Fallback to the limited old method: Transliterate only a few known chars.
 		$newstr = convert_charset( $str, 'UTF-8', $evo_charset );
 		$newstr_charset = 'UTF-8';
 
-		// TODO: add more...?!
 		$search = array( 'Ä', 'ä', 'Ö', 'ö', 'Ü', 'ü', 'ß', 'à', 'ç', 'è', 'é', 'ì', 'ò', 'ô', 'ù' ); // iso-8859-1
 		$replace = array( 'Ae', 'ae', 'Oe', 'oe', 'Ue', 'ue', 'ss', 'a', 'c', 'e', 'e', 'i', 'o', 'o', 'u' );
 
@@ -168,8 +191,4 @@ function replace_special_chars( $str, $post_locale = NULL )
 	return $newstr;
 }
 
-
-/*
- * $Log: _charset.funcs.php,v $
- */
 ?>

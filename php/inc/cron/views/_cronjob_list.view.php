@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -21,7 +21,7 @@
  *
  * @package admin
  *
- * @version $Id: _cronjob_list.view.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _cronjob_list.view.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -40,7 +40,7 @@ if( !$ctst_pending && !$ctst_started && !$ctst_timeout && !$ctst_error && !$ctst
  * Create result set :
  */
 $SQL = new SQL();
-$SQL->SELECT( 'ctsk_ID, ctsk_start_datetime, ctsk_name, ctsk_repeat_after, IFNULL( clog_status, "pending" ) as status' );
+$SQL->SELECT( 'ctsk_ID, ctsk_start_datetime, ctsk_name, ctsk_controller, ctsk_repeat_after, IFNULL( clog_status, "pending" ) as status' );
 $SQL->FROM( 'T_cron__task LEFT JOIN T_cron__log ON ctsk_ID = clog_ctsk_ID' );
 if( $ctst_pending )
 {
@@ -64,7 +64,7 @@ if( $ctst_finished )
 }
 $SQL->ORDER_BY( '*, ctsk_ID' );
 
-$Results = new Results( $SQL->get(), 'crontab_', '-A' );
+$Results = new Results( $SQL->get(), 'crontab_', '-D' );
 
 $Results->title = T_('Scheduled jobs').get_manual_link('scheduler');
 
@@ -119,7 +119,7 @@ $Results->cols[] = array(
 $Results->cols[] = array(
 						'th' => T_('Name'),
 						'order' => 'ctsk_name',
-						'td' => '<a href="%regenerate_url(\'action,cjob_ID\',\'action=view&amp;cjob_ID=$ctsk_ID$\')%">$ctsk_name$</a>',
+						'td' => '<a href="%regenerate_url(\'action,cjob_ID\',\'action=view&amp;cjob_ID=$ctsk_ID$\')%">$ctsk_name$</a>%cron_job_manual_link( #ctsk_controller# )%',
 					);
 
 $Results->cols[] = array(
@@ -127,25 +127,38 @@ $Results->cols[] = array(
 						'order' => 'status',
 						'td_class' => 'shrinkwrap cron_$status$',
 						'td' => '$status$',
+						'extra' => array ( 'style' => 'background-color: %cron_status_color( "#status#" )%;', 'format_to_output' => false )
 					);
 
 $Results->cols[] = array(
 						'th' => T_('Repeat'),
 						'order' => 'ctsk_repeat_after',
 						'td_class' => 'shrinkwrap',
-						'td' => '$ctsk_repeat_after$',
+						'td' => '%seconds_to_period( #ctsk_repeat_after# )%',
 					);
 
 function crontab_actions( $ctsk_ID, $status )
 {
-	global $current_User;
+	global $current_User, $admin_url;
 
 	$col = '';
 
-	if( $status != 'started' && $current_User->check_perm( 'options', 'edit', false, NULL ) )
+	if( $current_User->check_perm( 'options', 'edit', false, NULL ) )
 	{	// User can edit options:
-    $col = action_icon( T_('Delete this job!'), 'delete',
-												regenerate_url( 'action', 'ctsk_ID='.$ctsk_ID.'&amp;action=delete&amp;'.url_crumb('crontask') ) );
+		if( $status == 'pending' )
+		{	// Icon for edit action
+			$col .= action_icon( T_('Edit this job'), 'edit', $admin_url.'?ctrl=crontab&amp;action=edit&amp;ctsk_ID='.$ctsk_ID );
+		}
+		elseif( $status == 'error' )
+		{	// Icon for copy action
+			$col .= action_icon( T_('Duplicate this job'), 'copy', $admin_url.'?ctrl=crontab&amp;action=copy&amp;ctsk_ID='.$ctsk_ID );
+		}
+
+		if( $status != 'started' )
+		{	// Icon for delete action
+			$col .= action_icon( T_('Delete this job!'), 'delete',
+													regenerate_url( 'action', 'ctsk_ID='.$ctsk_ID.'&amp;action=delete&amp;'.url_crumb('crontask') ) );
+		}
 	}
 
 	return $col;
@@ -165,8 +178,4 @@ $Results->display();
 global $cron_url;
 echo '<p>[<a href="'.$cron_url.'cron_exec.php" onclick="return pop_up_window( \''.$cron_url.'cron_exec.php\', \'evo_cron\' )" target="evo_cron">'.T_('Execute pending jobs in a popup window now!').'</a>]</p>';
 
-
-/*
- * $Log: _cronjob_list.view.php,v $
- */
 ?>

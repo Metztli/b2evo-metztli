@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -25,7 +25,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE
  *
- * @version $Id: _menu.class.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _menu.class.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -62,8 +62,9 @@ class Menu extends Widget
 	 *     DEPRECATED 'style': CSS style for this entry.
 	 *     DEPRECATED 'onclick': onclick property for this entry.
 	 *     DEPRECATED 'name': name attribute of the link/entry.
+	 * @param string Node name after which we should insert the menu entries, NULL - to insert to the end
 	 */
-	function add_menu_entries( $path, $new_entries )
+	function add_menu_entries( $path, $new_entries, $after_node = NULL )
 	{
 		// Get a reference to the node in the menu list.
 		$node = & $this->get_node_by_path( $path, true );
@@ -75,9 +76,36 @@ class Menu extends Widget
 		}
 		*/
 
-		foreach( $new_entries as $l_key => $l_new_entry )
-		{
-			$node['entries'][$l_key] = $l_new_entry;
+		$new_entires_are_inserted = false;
+
+		if( !is_null( $after_node ) )
+		{	// We should insert new entries after specific node
+			$new_node = $node;
+			$new_node['entries'] = array();
+			if( isset( $node['entries'] ) )
+			{
+				foreach( $node['entries'] as $node_key => $node_entry )
+				{
+					$new_node['entries'][ $node_key ] = $node_entry;
+					if( $node_key == $after_node )
+					{	// Insert new entires here after specific node
+						foreach( $new_entries as $l_key => $l_new_entry )
+						{
+							$new_node['entries'][$l_key] = $l_new_entry;
+						}
+						$new_entires_are_inserted = true;
+					}
+				}
+			}
+			$node = $new_node;
+		}
+
+		if( !$new_entires_are_inserted )
+		{	// Insert new entries to the end if they are still not inserted after specific node
+			foreach( $new_entries as $l_key => $l_new_entry )
+			{
+				$node['entries'][$l_key] = $l_new_entry;
+			}
 		}
 	}
 
@@ -403,9 +431,17 @@ class Menu extends Widget
 				debug_die( 'Unknown $name for Menu::get_template(): '.var_export($name, true) );
 		}
 	}
+
+
+	/**
+	 * Check if menu is empty or contains at least one entry
+	 * 
+	 * @return boolean true if the menu is not empty | false otherwise
+	 */
+	function has_entires()
+	{
+		return !empty( $this->_menus );
+	}
 }
 
-/*
- * $Log: _menu.class.php,v $
- */
 ?>

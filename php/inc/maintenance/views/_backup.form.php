@@ -3,7 +3,7 @@
  * This file is part of b2evolution - {@link http://b2evolution.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2009 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @copyright (c)2009-2013 by Francois PLANQUE - {@link http://fplanque.net/}
  * Parts of this file are copyright (c)2009 by The Evo Factory - {@link http://www.evofactory.com/}.
  *
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
@@ -20,7 +20,7 @@
  * @author efy-maxim: Evo Factory / Maxim.
  * @author fplanque: Francois Planque.
  *
- * @version $Id: _backup.form.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _backup.form.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -72,7 +72,12 @@ function get_affected_paths( $path )
 	}
 	elseif( $path == '*' )
 	{
-		$affected_paths .= implode( ', ', get_filenames( $basepath, false, true, true, false, true ) );
+		$filename_params = array(
+				'inc_files'	=> false,
+				'recurse'	=> false,
+				'basename'	=> true,
+			);
+		$affected_paths .= implode( ', ', get_filenames( $basepath, $filename_params ) );
 	}
 	else
 	{
@@ -167,8 +172,4 @@ $Form->end_fieldset();
 $Form->end_form( array( array( 'submit', 'actionArray[backup]', T_('Backup'), 'SaveButton' ),
 												array( 'reset', '', T_('Reset'), 'ResetButton' ) ) );
 
-
-/*
- * $Log: _backup.form.php,v $
- */
 ?>

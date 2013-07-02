@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -24,7 +24,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE
  *
- * @version $Id: _file_properties.form.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _file_properties.form.php 3430 2013-04-09 10:56:48Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -33,7 +33,7 @@ if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.'
  */
 global $edited_File;
 
-global $blog;
+global $blog, $filename_max_length;
 
 $Form = new Form( NULL, 'fm_properties_checkchanges' );
 
@@ -49,7 +49,7 @@ $Form->begin_form( 'fform', T_('File properties') );
 	$Form->begin_fieldset( T_('Properties') );
 		if( $current_User->check_perm( 'files', 'edit', false, $blog ? $blog : NULL ) )
 		{ // User can edit: 
-			$Form->text( 'name', $edited_File->dget('name'), 32, T_('Filename'), T_('This is the name of the file on the server hard drive.'), 128 );
+			$Form->text( 'name', $edited_File->dget('name'), 32, T_('Filename'), T_('This is the name of the file on the server hard drive.'), $filename_max_length );
 		}
 		else
 		{ // User can view only:
@@ -83,7 +83,4 @@ else
 	$Form->end_form();
 }
 
-/*
- * $Log: _file_properties.form.php,v $
- */
 ?>

@@ -3,7 +3,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2009 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @copyright (c)2009-2013 by Francois PLANQUE - {@link http://fplanque.net/}
  * Parts of this file are copyright (c)2009 by The Evo Factory - {@link http://www.evofactory.com/}.
  *
  * {@internal License choice
@@ -27,12 +27,13 @@
  * @author efy-maxim: Evo Factory / Maxim.
  * @author fplanque: Francois Planque.
  *
- * @version $Id: _country_list.view.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _country_list.view.php 3328 2013-03-26 11:44:11Z yura $
  */
 
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
 load_class( 'regional/model/_currency.class.php', 'Currency' );
+load_funcs( 'regional/model/_regional.funcs.php' );
 
 global $dispatcher;
 
@@ -41,8 +42,10 @@ $s = param( 's', 'string', '', true );
 
 // Create query
 $SQL = new SQL();
-$SQL->SELECT( 'ctry_ID, ctry_code, ctry_name, curr_shortcut, curr_code, ctry_enabled' );
-$SQL->FROM( 'T_country	LEFT JOIN T_currency ON ctry_curr_ID=curr_ID' );
+$SQL->SELECT( 'ctry_ID, ctry_code, ctry_name, curr_shortcut, curr_code, ctry_enabled, ctry_preferred' );
+$SQL->FROM( 'T_regional__country' );
+$SQL->FROM_add( 'LEFT JOIN T_regional__currency ON ctry_curr_ID=curr_ID' );
+$SQL->ORDER_BY( '*, ctry_code ASC' );
 
 if( !empty($s) )
 {	// We want to filter on search keyword:
@@ -51,9 +54,9 @@ if( !empty($s) )
 }
 
 // Create result set:
-$Results = new Results( $SQL->get(), 'ctry_', '-A' );
+$Results = new Results( $SQL->get(), 'ctry_', '-D' );
 
-$Results->title = T_('Countries list').get_manual_link('countries_list');
+$Results->title = T_('Countries').get_manual_link('countries_list');
 
 /*
  * STATUS TD:
@@ -61,21 +64,66 @@ $Results->title = T_('Countries list').get_manual_link('countries_list');
 function ctry_td_enabled( $ctry_enabled, $ctry_ID )
 {
 
+	global $dispatcher;
+
+	$r = '';
+
 	if( $ctry_enabled == true )
 	{
-		return get_icon('enabled', 'imgtag', array('title'=>T_('The country is enabled.')) );
+		$r .= action_icon( T_('Disable the country!'), 'bullet_full',
+										regenerate_url( 'action', 'action=disable_country&amp;ctry_ID='.$ctry_ID.'&amp;'.url_crumb('country') ) );
 	}
 	else
 	{
-		return get_icon('disabled', 'imgtag', array('title'=>T_('The country is disabled.')) );
+		$r .= action_icon( T_('Enable the country!'), 'bullet_empty',
+										regenerate_url( 'action', 'action=enable_country&amp;ctry_ID='.$ctry_ID.'&amp;'.url_crumb('country') ) );
 	}
+	return $r;
+
 }
+
+function ctry_td_preferred( $ctry_preferred, $ctry_ID )
+{
+
+	global $dispatcher;
+
+	$r = '';
+
+	if( $ctry_preferred == true )
+	{
+		$r .= action_icon( T_('Remove from preferred countries'), 'bullet_full',
+										regenerate_url( 'action', 'action=disable_country_pref&amp;ctry_ID='.$ctry_ID.'&amp;'.url_crumb('country') ) );
+	}
+	else
+	{
+		$r .= action_icon( T_('Add to preferred countries'), 'bullet_empty',
+										regenerate_url( 'action', 'action=enable_country_pref&amp;ctry_ID='.$ctry_ID.'&amp;'.url_crumb('country') ) );
+	}
+	return $r;
+
+}
+
+
+
 $Results->cols[] = array(
 		'th' => /* TRANS: shortcut for enabled */ T_('En'),
+		'th_title' => T_('Enabled'),
 		'order' => 'ctry_enabled',
 		'td' => '%ctry_td_enabled( #ctry_enabled#, #ctry_ID# )%',
-		'td_class' => 'center'
+		'th_class' => 'shrinkwrap',
+		'td_class' => 'shrinkwrap'
 	);
+
+$Results->cols[] = array(
+		'th' => /* TRANS: shortcut for preferred */ T_('Pref'),
+		'th_title' => T_('Preferred'),
+		'order' => 'ctry_preferred',
+		'default_dir' => 'D',
+		'td' => '%ctry_td_preferred( #ctry_preferred# , #ctry_ID# )%',
+		'th_class' => 'shrinkwrap',
+		'td_class' => 'shrinkwrap'
+	);
+
 
 /**
  * Callback to add filters on top of the result set
@@ -101,60 +149,15 @@ $Results->cols[] = array(
 						'td' => '<strong>$ctry_code$</strong>',
 					);
 
-/**
- * Template function: Display country flag
- *
- * @todo factor with locale_flag()
- *
- * @param string country code to use
- * @param string country name to use
- * @param string collection name (subdir of img/flags)
- * @param string name of class for IMG tag
- * @param string deprecated HTML align attribute
- * @param boolean to echo or not
- * @param mixed use absolute url (===true) or path to flags directory
- */
-function country_flag( $country_code, $country_name, $collection = 'w16px', $class = 'flag', $align = '', $disp = true, $absoluteurl = true )
-{
-	global $rsc_path, $rsc_url;
-
-	if( ! is_file( $rsc_path.'flags/'.$collection.'/'.$country_code.'.gif') )
-	{ // File does not exist
-		$country_code = 'default';
-	}
-
-	if( $absoluteurl !== true )
-	{
-		$iurl = $absoluteurl;
-	}
-	else
-	{
-		$iurl = $rsc_url.'flags';
-	}
-
-	$r = '<img src="'.$iurl.'/'.$collection.'/'.$country_code.'.gif" alt="' .
-				$country_name .
-				'"';
-	if( !empty( $class ) ) $r .= ' class="'.$class.'"';
-	if( !empty( $align ) ) $r .= ' align="'.$align.'"';
-	$r .= ' /> ';
-
-	if( $disp )
-		echo $r;   // echo it
-	else
-		return $r; // return it
-
-}
-
 
 if( $current_User->check_perm( 'options', 'edit', false ) )
 { // We have permission to modify:
 	$Results->cols[] = array(
 							'th' => T_('Name'),
 							'order' => 'ctry_name',
-										'td' => '<a href="?ctrl=countries&amp;ctry_ID=$ctry_ID$&amp;action=edit" title="'.T_('Edit this country...')
-											.'">%country_flag( #ctry_code#, #ctry_name# )%
-								<strong>$ctry_name$</strong></a>',
+							'td' => '<a href="?ctrl=countries&amp;ctry_ID=$ctry_ID$&amp;action=edit" title="'.T_('Edit this country...').'">
+									%country_flag( #ctry_code#, #ctry_name# )% <strong>$ctry_name$</strong>
+								</a>',
 						);
 }
 else
@@ -162,10 +165,36 @@ else
 	$Results->cols[] = array(
 							'th' => T_('Name'),
 							'order' => 'ctry_name',
-							'td' => '%country_flag( #ctry_code#, #ctry_name# )%  $ctry_name$',
+							'td' => '%country_flag( #ctry_code#, #ctry_name# )% $ctry_name$',
 						);
 
 }
+
+function country_regions_count( $country_ID )
+{
+	global $DB, $admin_url;
+	
+	$regions_count = $DB->get_var( '
+		SELECT COUNT(rgn_ID)
+		  FROM T_regional__region
+		 WHERE rgn_ctry_ID = "'.$country_ID.'"' );
+	
+	if( $regions_count > 0 )
+	{
+		$regions_count = '<a href="'.$admin_url.'?ctrl=regions&amp;c='.$country_ID.'">'.$regions_count.'</a>';
+	}
+
+	return $regions_count;
+}
+
+$Results->cols[] = array(
+						'th' => T_('Regions'),
+						'td_class' => 'center',
+						'td' => '%country_regions_count( #ctry_ID# )%',
+						'th_class' => 'shrinkwrap',
+						'td_class' => 'shrinkwrap'
+					);
+
 $Results->cols[] = array(
 						'th' => T_('Default Currency'),
 						'td_class' => 'center',
@@ -215,7 +244,4 @@ if( $current_User->check_perm( 'options', 'edit', false ) )
 
 $Results->display();
 
-/*
- * $Log: _country_list.view.php,v $
- */
 ?>

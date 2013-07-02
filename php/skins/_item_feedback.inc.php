@@ -14,7 +14,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  */
@@ -26,28 +26,51 @@ if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.'
 
 // Default params:
 $params = array_merge( array(
+		'Item'                 => NULL,
 		'disp_comments'        => true,
 		'disp_comment_form'    => true,
 		'disp_trackbacks'      => true,
 		'disp_trackback_url'   => true,
 		'disp_pingbacks'       => true,
+		'disp_section_title'   => true,
+		'disp_rating_summary'  => true,
 		'before_section_title' => '<h3>',
 		'after_section_title'  => '</h3>',
+		'comments_title_text'  => '',
 		'comment_list_start'   => "\n\n",
 		'comment_list_end'     => "\n\n",
 		'comment_start'        => '<div class="bComment">',
 		'comment_end'          => '</div>',
 		'preview_start'        => '<div class="bComment" id="comment_preview">',
 		'preview_end'          => '</div>',
+		'comment_error_start'  => '<div class="bComment" id="comment_error">',
+		'comment_error_end'    => '</div>',
 		'comment_template'     => '_item_comment.inc.php',	// The template used for displaying individual comments (including preview)
-		'link_to'		           => 'userurl>userpage',		    // 'userpage' or 'userurl' or 'userurl>userpage' or 'userpage>userurl'
+		'link_to'              => 'userurl>userpage',		    // 'userpage' or 'userurl' or 'userurl>userpage' or 'userpage>userurl'
 		'form_title_start'     => '<h3>',
 		'form_title_end'       => '</h3>',
+		'disp_notification'    => true,
+		'notification_before'  => '<div class="comment_notification">',
+		'notification_text'    => T_( 'This is your post. You are receiving notifications when anyone comments on your posts.' ),
+		'notification_text2'   => T_( 'You will be notified by email when someone comments here.' ),
+		'notification_text3'   => T_( 'Notify me by email when someone comments here.' ),
+		'notification_after'   => '</div>',
+		'feed_title'           => '#',
 	), $params );
 
 
 global $c, $tb, $pb, $redir;
 
+if( !empty( $params['Item'] ) && is_object( $params['Item'] ) )
+{	// Set Item object from params
+	$Item = $params['Item'];
+	// Unset params Item object because the params array should be json encodable and we must avoid recursions. We already have the Item for further use.
+	unset( $params['Item'] );
+}
+
+// ----------------- MODULES "Before Comments" EVENT -----------------
+modules_call_method( 'before_comments', $params );
+// -------------------- END OF MODULES EVENT ---------------------
 
 // Check if user is allowed to see comments, display corresponding message if not allowed
 if( $Item->can_see_comments( true ) )
@@ -78,19 +101,29 @@ if( $Item->can_see_comments( true ) )
 
 	$type_list = array();
 	$disp_title = array();
+	$rating_summary = '';
 
 	if( $params['disp_comments'] )
 	{	// We requested to display comments
 		if( $Item->can_see_comments() )
-		{ // User can see a comments
+		{	// User can see a comments
 			$type_list[] = 'comment';
-			if( $title = $Item->get_feedback_title( 'comments' ) )
+			if( !empty( $params['comments_title_text'] ) )
+			{
+				$disp_title[] = $params['comments_title_text'];
+			}
+			else if( $title = $Item->get_feedback_title( 'comments' ) )
 			{
 				$disp_title[] = $title;
 			}
+
+			if( $params['disp_rating_summary'] )
+			{	// We requested to display rating summary
+				$rating_summary = $Item->get_rating_summary( $params );
+			}
 		}
 		else
-		{ // Use cannot see comments
+		{	// User cannot see comments
 			$params['disp_comments'] = false;
 		}
 		echo '<a id="comments"></a>';
@@ -137,7 +170,7 @@ if( $Item->can_see_comments( true ) )
 	{
 		if( empty($disp_title) )
 		{	// No title yet
-			if( $title = $Item->get_feedback_title( 'feedbacks', '', T_('Feedback awaiting moderation'), T_('Feedback awaiting moderation'), 'draft' ) )
+			if( $title = $Item->get_feedback_title( 'feedbacks', '', T_('Feedback awaiting moderation'), T_('Feedback awaiting moderation'), array( 'review', 'draft' ), false ) )
 			{ // We have some feedback awaiting moderation: we'll want to show that in the title
 				$disp_title[] = $title;
 			}
@@ -148,18 +181,24 @@ if( $Item->can_see_comments( true ) )
 			$disp_title[] = T_('No feedback yet');
 		}
 
-		echo $params['before_section_title'];
-		echo implode( ', ', $disp_title);
-		echo $params['after_section_title'];
+		if( $params['disp_section_title'] )
+		{	// Display title
+			echo $params['before_section_title'];
+			echo implode( ', ', $disp_title);
+			echo $params['after_section_title'];
+		}
+		echo $rating_summary;
 
-		$CommentList = new CommentList2( $Blog, $Blog->get_setting('comments_per_page'), 'CommentCache', 'c_' );
+		$comments_per_page = !$Blog->get_setting( 'threaded_comments' ) ? $Blog->get_setting( 'comments_per_page' ) : 1000;
+		$CommentList = new CommentList2( $Blog, $comments_per_page, 'CommentCache', 'c_' );
 
 		// Filter list:
 		$CommentList->set_default_filters( array(
 				'types' => $type_list,
-				'statuses' => array ( 'published' ),
+				'statuses' => get_inskin_statuses(),
 				'post_ID' => $Item->ID,
 				'order' => $Blog->get_setting( 'comments_orderdir' ),
+				'threaded_comments' => $Blog->get_setting( 'threaded_comments' ),
 			) );
 
 		$CommentList->load_from_Request();
@@ -178,6 +217,20 @@ if( $Item->can_see_comments( true ) )
 		}
 
 
+		if( $Blog->get_setting( 'threaded_comments' ) )
+		{	// Array to store the comment replies
+			global $CommentReplies;
+			$CommentReplies = array();
+
+			if( $Comment = $Session->get('core.preview_Comment') )
+			{	// Init PREVIEW comment
+				if( $Comment->item_ID == $Item->ID )
+				{
+					$CommentReplies[ $Comment->in_reply_to_cmt_ID ] = array( $Comment );
+				}
+			}
+		}
+
 		echo $params['comment_list_start'];
 		/**
 		 * @var Comment
@@ -185,17 +238,31 @@ if( $Item->can_see_comments( true ) )
 		while( $Comment = & $CommentList->get_next() )
 		{	// Loop through comments:
 
+			if( $Blog->get_setting( 'threaded_comments' ) && $Comment->in_reply_to_cmt_ID > 0 )
+			{	// Store the replies in a special array
+				if( !isset( $CommentReplies[ $Comment->in_reply_to_cmt_ID ] ) )
+				{
+					$CommentReplies[ $Comment->in_reply_to_cmt_ID ] = array();
+				}
+				$CommentReplies[ $Comment->in_reply_to_cmt_ID ][] = $Comment;
+				continue; // Skip dispay a comment reply here in order to dispay it after parent comment by function display_comment_replies()
+			}
+
 			// ------------------ COMMENT INCLUDED HERE ------------------
 			skin_include( $params['comment_template'], array(
 					'Comment'         => & $Comment,
-				  'comment_start'   => $params['comment_start'],
-				  'comment_end'     => $params['comment_end'],
-					'link_to'		      => $params['link_to'],		// 'userpage' or 'userurl' or 'userurl>userpage' or 'userpage>userurl'
+					'comment_start'   => $params['comment_start'],
+					'comment_end'     => $params['comment_end'],
+					'link_to'         => $params['link_to'],		// 'userpage' or 'userurl' or 'userurl>userpage' or 'userpage>userurl'
 				) );
 			// Note: You can customize the default item feedback by copying the generic
 			// /skins/_item_comment.inc.php file into the current skin folder.
 			// ---------------------- END OF COMMENT ---------------------
 
+			if( $Blog->get_setting( 'threaded_comments' ) )
+			{	// Display the comment replies
+				display_comment_replies( $Comment->ID, $params );
+			}
 		}	// End of comment list loop.
 		echo $params['comment_list_end'];
 
@@ -216,16 +283,37 @@ if( $Item->can_see_comments( true ) )
 				T_('This post has 1 feedback awaiting moderation... %s'),
 				T_('This post has %d feedbacks awaiting moderation... %s') );
 		// _______________________________________________________________
-
-		// Display link for comments feed:
-		$Item->feedback_feed_link( '_rss2', '<div class="feedback_feed_msg"><p>', '</p></div>' );
 	}
 }
+
+// ------------------ COMMENT FORM INCLUDED HERE ------------------
+if( $params['disp_comment_form'] )
+{
+	if( $Blog->get_ajax_form_enabled() )
+	{
+		$json_params = array(
+			'action' => 'get_comment_form',
+			'p' => $Item->ID,
+			'blog' => $Blog->ID,
+			'disp' => $disp,
+			'params' => $params );
+		display_ajax_form( $json_params );
+	}
+	else
+	{
+		skin_include( '_item_comment_form.inc.php', $params );
+	}
+	// Note: You can customize the default item feedback by copying the generic
+	// /skins/_item_comment_form.inc.php file into the current skin folder.
+}
+// ---------------------- END OF COMMENT FORM ---------------------
 
 // ----------- Register for item's comment notification -----------
 if( is_logged_in() && $Item->can_comment( NULL ) )
 {
 	global $DB, $htsrv_url;
+	global $UserSettings;
+
 	$not_subscribed = true;
 	$creator_User = $Item->get_creator_User();
 
@@ -241,47 +329,40 @@ if( is_logged_in() && $Item->can_comment( NULL ) )
 		}
 	}
 
-	if( $not_subscribed && ( $creator_User->ID == $current_User->ID ) && ( $current_User->get( 'notify' ) != 0 ) )
-	{
-		echo '<p>'.T_( 'This is your post. You are receiving notifications when anyone comments on your posts.' );
-		echo ' <a href="'.$Blog->get('subsurl').'">'.T_( 'Click here to manage your subscriptions.' ).'</a></p>';
-		$not_subscribed = false;
-	}
-	if( $not_subscribed && $Blog->get_setting( 'allow_item_subscriptions' ) )
-	{
-		if( get_user_isubscription( $current_User->ID, $Item->ID ) )
+	if( $params['disp_notification'] )
+	{	// Display notification link
+		echo $params['notification_before'];
+
+		$notification_icon = get_icon( 'notification' );
+
+		if( $not_subscribed && ( $creator_User->ID == $current_User->ID ) && ( $UserSettings->get( 'notify_published_comments', $current_User->ID ) != 0 ) )
 		{
-			echo '<p>'.T_( 'You will be notified by email when someone comments here.' );
-			echo ' <a href="'.$htsrv_url.'isubs_update.php?p='.$Item->ID.'&amp;notify=0&amp;'.url_crumb( 'itemsubs' ).'">'.T_( 'Click here to unsubscribe.' ).'</a></p>';
+			echo '<p>'.$notification_icon.' <span>'.$params['notification_text'];
+			echo ' <a href="'.$Blog->get('subsurl').'">'.T_( 'Click here to manage your subscriptions.' ).'</a></span></p>';
+			$not_subscribed = false;
 		}
-		else
+		if( $not_subscribed && $Blog->get_setting( 'allow_item_subscriptions' ) )
 		{
-			echo '<p><a href="'.$htsrv_url.'isubs_update.php?p='.$Item->ID.'&amp;notify=1&amp;'.url_crumb( 'itemsubs' ).'">'.T_( 'Notify me by email when someone comments here.' ).'</a></p>';
+			if( get_user_isubscription( $current_User->ID, $Item->ID ) )
+			{
+				echo '<p>'.$notification_icon.' <span>'.$params['notification_text2'];
+				echo ' <a href="'.$samedomain_htsrv_url.'action.php?mname=collections&action=isubs_update&p='.$Item->ID.'&amp;notify=0&amp;'.url_crumb( 'collections_isubs_update' ).'">'.T_( 'Click here to unsubscribe.' ).'</a></span></p>';
+			}
+			else
+			{
+				echo '<p>'.$notification_icon.' <span><a href="'.$samedomain_htsrv_url.'action.php?mname=collections&action=isubs_update&p='.$Item->ID.'&amp;notify=1&amp;'.url_crumb( 'collections_isubs_update' ).'">'.$params['notification_text3'].'</a></span></p>';
+			}
 		}
+
+		echo $params['notification_after'];
 	}
 }
 
-// ------------------ COMMENT FORM INCLUDED HERE ------------------
-if( $Blog->get_setting( 'ajax_form_enabled' ) )
-{
-	$json_params = array(
-		'action' => 'get_comment_form',
-		'p' => $Item->ID,
-		'blog' => $Blog->ID,
-		'disp' => $disp,
-		'params' => $params );
-	display_ajax_form( $json_params );
-}
-else
-{
-	skin_include( '_item_comment_form.inc.php', $params );
-}
-// Note: You can customize the default item feedback by copying the generic
-// /skins/_item_comment_form.inc.php file into the current skin folder.
-// ---------------------- END OF COMMENT FORM ---------------------
 
+if( $Item->can_see_comments( false ) && ( $params['disp_comments'] || $params['disp_trackbacks'] || $params['disp_pingbacks'] ) )
+{	// user is allowed to see comments
+	// Display link for comments feed:
+	$Item->feedback_feed_link( '_rss2', '<div class="feedback_feed_msg"><p>', '</p></div>', $params['feed_title'] );
+}
 
-/*
- * $Log: _item_feedback.inc.php,v $
- */
 ?>

@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
@@ -35,7 +35,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author mbruneau: Marc BRUNEAU / PROGIDISTRI
  *
- * @version $Id: file_settings.ctrl.php 577 2011-12-15 23:23:31Z fplanque $
+ * @version $Id: file_settings.ctrl.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -75,7 +75,11 @@ switch( $action )
 					'fm_default_chmod_file',
 					'upload_enabled',
 					'upload_maxkb',
-					'regexp_filename' ) );
+					'regexp_filename',
+					'exif_orientation',
+					'fm_resize_enable',
+					'fm_resize_width',
+					'fm_resize_height' ) );
 			if( $Settings->dbupdate() )
 			{
 				$Messages->add( T_('Restored default values.'), 'success' );
@@ -161,6 +165,16 @@ switch( $action )
 				$Settings->set( 'evocache_foldername', $evocache_foldername );
 			}
 
+			// Save Image options
+			param( 'exif_orientation', 'integer', 0 );
+			$Settings->set( 'exif_orientation', $exif_orientation );
+			param( 'fm_resize_enable', 'integer', 0 );
+			$Settings->set( 'fm_resize_enable', $fm_resize_enable );
+			param( 'fm_resize_width', 'integer', 0 );
+			$Settings->set( 'fm_resize_width', $fm_resize_width );
+			param( 'fm_resize_height', 'integer', 0 );
+			$Settings->set( 'fm_resize_height', $fm_resize_height );
+
 			if( ! $Messages->has_errors() )
 			{
 				if( $Settings->dbupdate() )
@@ -191,9 +205,8 @@ $AdminUI->set_path( 'files', 'settings', 'settings' );
 
 // fp> TODO: this here is a bit sketchy since we have Blog & fileroot not necessarilly in sync. Needs investigation / propositions.
 // Note: having both allows to post from any media dir into any blog.
-$AdminUI->breadcrumbpath_init();
+$AdminUI->breadcrumbpath_init( false );
 $AdminUI->breadcrumbpath_add( T_('Files'), '?ctrl=files&amp;blog=$blog$' );
-$AdminUI->breadcrumbpath_add( T_('Settings'), '?ctrl=settings' );
 $AdminUI->breadcrumbpath_add( T_('Settings'), '?ctrl=fileset' );
 
 
@@ -215,7 +228,4 @@ $AdminUI->disp_payload_end();
 // Display body bottom, debug info and close </html>:
 $AdminUI->disp_global_footer();
 
-/*
- * $Log: file_settings.ctrl.php,v $
- */
 ?>

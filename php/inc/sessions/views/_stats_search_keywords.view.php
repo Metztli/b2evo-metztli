@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -21,7 +21,7 @@
  *
  * @package admin
  *
- * @version $Id: _stats_search_keywords.view.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _stats_search_keywords.view.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -31,6 +31,7 @@ if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.'
 require_once dirname(__FILE__).'/_stats_view.funcs.php';
 
 load_class( '/sessions/model/_goal.class.php', 'Goal' );
+load_funcs('/cron/_cron.funcs.php');
 
 global $blog, $admin_url, $rsc_url, $goal_ID, $localtimenow;
 global $datestartinput, $datestart, $datestopinput, $datestop;
@@ -73,6 +74,10 @@ if( param_errors_detected() )
 }
 else
 {
+// fp> WTF? Are you kidding me? This MUST be factorized with the cron task!
+
+	keyphrase_job();
+
 	$SQL = new SQL();
 	if( empty( $goal_ID ) && empty($goal_name)  )
 	{	// We're not restricting to one or more Goals, get ALL possible keyphrases:
@@ -116,8 +121,7 @@ else
 			$SQL->WHERE_and( 'goalhit_hit.hit_datetime <= '.$DB->quote($datestop.' 23:59:59') );
 		}
 	}
-	$SQL->WHERE_and( ' T_hitlog.hit_referer_type = "search"
-						 				AND hit_agent_type = "browser"' );
+	$SQL->WHERE_and( 'hit_agent_type = "browser"' );
 	if( $split_engines )
 	{
 		$SQL->GROUP_BY( 'keyp_ID, T_hitlog.hit_referer_dom_ID' );
@@ -149,6 +153,7 @@ else
 
 	// DATA:
 	$SQL->SELECT_add( ', keyp_phrase' );
+	$SQL->SELECT_add( ', keyp_count_refered_searches, keyp_count_internal_searches' );
 
 	if( $split_engines )
 	{
@@ -164,7 +169,7 @@ else
 }
 
 // Create result set:
-$Results = new Results( $sql, '', $split_engines ? '--D' : '-D' , NULL, $sql_count );
+$Results = new Results( $sql, 'keywords_', $split_engines ? '--D' : '-D' , NULL, $sql_count );
 
 $Results->title = T_('Keyphrases');
 
@@ -250,6 +255,20 @@ else
 }
 
 $Results->cols[] = array(
+		'th' => T_('Refered searches'),
+		'order' => 'keyp_count_refered_searches',
+		'td' => '$keyp_count_refered_searches$',
+		'td_class' => 'nowrap right',
+);
+
+$Results->cols[] = array(
+		'th' => T_('Internal searches'),
+		'order' => 'keyp_count_internal_searches',
+		'td' => '$keyp_count_internal_searches$',
+		'td_class' => 'nowrap right',
+);
+
+$Results->cols[] = array(
 		'th' => '%',
 		'order' => 'count',
 		'default_dir' => 'D',
@@ -265,10 +284,8 @@ $Results->cols[] = array(
 		'td' => '%addup_percentage( #count#, '.$total.' )%',
 	);
 
+$Results->global_icon( T_('Reset counters'), 'file_delete', regenerate_url( 'action', 'action=reset_counters' ), T_('Reset counters').' &raquo;', 3, 4  );
 // Display results:
 $Results->display();
 
-/*
- * $Log: _stats_search_keywords.view.php,v $
- */
 ?>

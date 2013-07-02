@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -33,48 +33,25 @@ if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.'
 /**
  * Include page header:
  */
-$page_title = T_('Email address validation');
-$page_icon = 'icon_register.gif';
+$page_title = T_( 'Account activation' );
+$page_icon = 'register';
 require dirname(__FILE__).'/_html_header.inc.php';
 
-$Form = new Form( $htsrv_url_sensitive.'login.php', 'form_validatemail', 'post', 'fieldset' );
+display_activateinfo( array( 'redirect_to' => url_rel_to_same_host($redirect_to, $secure_htsrv_url) ) );
 
-$Form->begin_form( 'fform' );
-
-$Form->add_crumb( 'validateform' );
-$Form->hidden( 'action', 'req_validatemail');
-$Form->hidden( 'redirect_to', url_rel_to_same_host($redirect_to, $htsrv_url_sensitive) );
-$Form->hidden( 'req_validatemail_submit', 1 ); // to know if the form has been submitted
-
-$Form->begin_fieldset( T_('Email address validation') );
-
-	echo '<ol>';
-	echo '<li>'.T_('Please confirm your email address below.').'</li>';
-	echo '<li>'.T_('An email will be sent to this address immediately.').'</li>';
-	echo '<li>'.T_('As soon as you receive the email, click on the link therein to activate your account.').'</li>';
-	echo '</ol>';
-
-	$Form->text_input( $dummy_fields[ 'email' ], $email, 16, T_('Email'), '', array( 'maxlength'=>255, 'class'=>'input_text', 'required'=>true ) );
-
-	$Plugins->trigger_event( 'DisplayValidateAccountFormFieldset', array( 'Form' => & $Form ) );
-
-// TODO: the form submit value is too wide (in Konqueror and most probably in IE!)
-$Form->end_form( array(array( 'name'=>'form_validatemail_submit', 'value'=>T_('Send me an email now!'), 'class'=>'ActionButton' )) ); // display hidden fields etc
-
-
-if( $current_User->group_ID == 1 )
+if( $current_User->grp_ID == 1 )
 { // allow admin users to validate themselves by a single click:
-	$Form = new Form( $htsrv_url_sensitive.'login.php', 'form_validatemail', 'post', 'fieldset' );
+	$Form = new Form( $secure_htsrv_url.'login.php', 'form_validatemail', 'post', 'fieldset' );
 	$Form->begin_form( 'fform' );
 
 	$Form->add_crumb( 'validateform' );
 	$Form->hidden( 'action', 'validatemail');
-	$Form->hidden( 'redirect_to', url_rel_to_same_host($redirect_to, $htsrv_url_sensitive) );
+	$Form->hidden( 'redirect_to', url_rel_to_same_host($redirect_to, $secure_htsrv_url) );
 	$Form->hidden( 'reqID', 1 );
 	$Form->hidden( 'sessID', $Session->ID );
 
 	$Form->begin_fieldset();
-	echo '<p>'.sprintf( T_('Since you are an admin user, you can validate your email address (%s) by a single click.' ), $current_User->email ).'</p>';
+	echo '<p>'.sprintf( T_('Since you are an admin user, you can activate your account (%s) by a single click.' ), $current_User->email ).'</p>';
 	// TODO: the form submit value is too wide (in Konqueror and most probably in IE!)
 	$Form->end_form( array(array( 'name'=>'form_validatemail_admin_submit', 'value'=>T_('Activate my account!'), 'class'=>'ActionButton' )) ); // display hidden fields etc
 }
@@ -89,8 +66,4 @@ if( $current_User->group_ID == 1 )
 <?php
 require dirname(__FILE__).'/_html_footer.inc.php';
 
-
-/*
- * $Log: _validate_form.main.php,v $
- */
 ?>

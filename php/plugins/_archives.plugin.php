@@ -6,7 +6,7 @@
  *
  * This file is part of the b2evolution project - {@link http://b2evolution.net/}
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -31,13 +31,13 @@
  * @author fplanque: Francois PLANQUE - {@link http://fplanque.net/}
  * @author cafelog (group)
  *
- * @version $Id: _archives.plugin.php 2040 2012-10-03 11:55:02Z yura $
+ * @version $Id: _archives.plugin.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
 
 load_class( '_core/ui/results/_results.class.php', 'Results' );
-
+load_class( '/items/model/_itemlistlight.class.php', 'ItemListLight' );
 
 
 /**
@@ -55,7 +55,7 @@ class archives_plugin extends Plugin
 	var $name;
 	var $code = 'evo_Arch';
 	var $priority = 50;
-	var $version = '3.2';
+	var $version = '5.0.0';
 	var $author = 'The b2evo Group';
 	var $group = 'widget';
 
@@ -301,7 +301,7 @@ class archives_plugin extends Plugin
 		return true;
 	}
 
-	
+
   /**
    * Get definitions for widget specific editable params
    *
@@ -370,8 +370,8 @@ class ArchiveList extends Results
 		global $Blog;
 		global $show_statuses;
 		global $author, $assgn, $status, $types;
-		global $timestamp_min, $timestamp_max;
 		global $s, $sentence, $exact;
+		global $posttypes_specialtypes;
 
 		$this->dbtable = $dbtable;
 		$this->dbprefix = $dbprefix;
@@ -386,6 +386,17 @@ class ArchiveList extends Results
 
 		// - - Select a specific Item:
 		// $this->ItemQuery->where_ID( $p, $title );
+
+		if( is_admin_page() )
+		{	// Don't restrict by date in the Back-office
+			$timestamp_min = NULL;
+			$timestamp_max = NULL;
+		}
+		else
+		{	// Restrict posts by date started
+			$timestamp_min = $Blog->get_timestamp_min();
+			$timestamp_max = $Blog->get_timestamp_max();
+		}
 
 		if( $preserve_context )
 		{	// We want to preserve the current context:
@@ -424,7 +435,7 @@ class ArchiveList extends Results
 			$this->ItemQuery->where_datestart( '', '', '', '', $timestamp_min, $timestamp_max );
 
 			// Include all types except pages, intros and sidebar links:
-			$this->ItemQuery->where_types( '-1000,1500,1520,1530,1570,1600,3000' );
+			$this->ItemQuery->where_types( '-'.implode(',',$posttypes_specialtypes) );
 		}
 
 
@@ -468,15 +479,13 @@ class ArchiveList extends Results
 
 			case 'postbypost':
 			default:
-				// ----------------------------- POST BY POST ARCHIVES --------------------------------
-				global $timestamp_min, $timestamp_max;
+				// ----------------------------- POSY BY POST ARCHIVES --------------------------------
 				$this->count_total_rows();
-				load_class( '/items/model/_itemlistlight.class.php', 'ItemListLight' );
-				$archives_list = new ItemListLight( $Blog , $timestamp_min, $timestamp_max, $this->total_rows );
+				$archives_list = new ItemListLight( $Blog , $Blog->get_timestamp_min(), $Blog->get_timestamp_max(), $this->total_rows );
 				$archives_list->set_filters( array(
-				'visibility_array' => array( 'published' ),  // We only want to advertised published items
-				'types' => '-1000,1500,1520,1530,1570,1600,3000',	// Include all types except pages, intros and sidebar links:
-	) );
+						'visibility_array' => array( 'published' ),  // We only want to advertised published items
+						'types' =>  '-'.implode(',',$posttypes_specialtypes),	// Include all types except pages, intros and sidebar links
+					) );
 
 				if($sort_order == 'title')
 				{
@@ -484,7 +493,7 @@ class ArchiveList extends Results
 					'orderby' => 'title',
 					'order' => 'ASC') );
 				}
-			
+
 				$archives_list->query();
 				$this->rows = array();
 				while ($Item = $archives_list->get_item())
@@ -502,7 +511,7 @@ class ArchiveList extends Results
 		// See http://forums.b2evolution.net/viewtopic.php?p=42529#42529
 		if( in_array($this->archive_mode, array('monthly', 'daily', 'weekly')) )
 		{
-			$sql_version = $DB->get_var('SELECT VERSION()'); // fp> TODO: $DB->get_mysql_version()
+			$sql_version = $DB->get_version();
 			if( version_compare($sql_version, '4', '>') )
 			{
 				$sql = 'SELECT SQL_CALC_FOUND_ROWS '.substr( $sql, 7 ); // "SQL_CALC_FOUND_ROWS" available since MySQL 4
@@ -626,10 +635,4 @@ class ArchiveList extends Results
 	}
 }
 
-
-
-
-/*
- * $Log: _archives.plugin.php,v $
- */
 ?>

@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2006 by Daniel HAHLER - {@link http://daniel.hahler.de/}.
  *
  * {@internal License choice
@@ -29,7 +29,7 @@
  * @author fplanque: Francois PLANQUE.
  * @author blueyed
  *
- * @version $Id: system.ctrl.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: system.ctrl.php 3525 2013-04-22 07:22:44Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -38,12 +38,12 @@ load_funcs( 'tools/model/_system.funcs.php' );
 // Check minimum permission:
 $current_User->check_perm( 'options', 'view', true );
 
-$AdminUI->set_path( 'tools', 'system' );
+$AdminUI->set_path( 'options', 'system' );
 
 
 $AdminUI->breadcrumbpath_init( false );  // fp> I'm playing with the idea of keeping the current blog in the path here...
-$AdminUI->breadcrumbpath_add( T_('Tools'), '?ctrl=crontab' );
-$AdminUI->breadcrumbpath_add( T_('System status'), '?ctrl=system' );
+$AdminUI->breadcrumbpath_add( T_('System'), '?ctrl=system' );
+$AdminUI->breadcrumbpath_add( T_('Status'), '?ctrl=system' );
 
 
 // Display <html><head>...</head> section! (Note: should be done early if actions do not redirect)
@@ -288,13 +288,9 @@ $block_item_Widget->disp_template_replaced( 'block_start' );
 
 // Version:
 init_system_check( T_( 'MySQL version' ), $DB->version_long );
-if( version_compare( $system_stats['db_version'], '4.0' ) < 0 )
+if( version_compare( $system_stats['db_version'], $required_mysql_version['application'] ) < 0 )
 {
-	disp_system_check( 'error', T_('This version is too old. The minimum recommended MySQL version is 4.1.') );
-}
-elseif( version_compare( $system_stats['db_version'], '4.1' ) < 0 )
-{
-	disp_system_check( 'warning', T_('This version is not guaranteed to work. The minimum recommended MySQL version is 4.1.') );
+	disp_system_check( 'error', sprintf( T_('This version is too old. The minimum recommended MySQL version is %s.'), $required_mysql_version['application'] ) );
 }
 else
 {
@@ -339,11 +335,11 @@ $phpinfo_url = '?ctrl=tools&amp;action=view_phpinfo&amp;'.url_crumb('tools');
 $phpinfo_link = action_icon( T_('View PHP info'), 'info', $phpinfo_url, '', 5, '', array( 'target'=>'_blank', 'onclick'=>'return pop_up_window( \''.$phpinfo_url.'\', \'phpinfo\', 650 )' ) );
 init_system_check( 'PHP version', $system_stats['php_version'].' '.$phpinfo_link );
 
-if( version_compare( $system_stats['php_version'], '4.1', '<' ) )
+if( version_compare( $system_stats['php_version'], $required_php_version['application'], '<' ) )
 {
 	disp_system_check( 'error', T_('This version is too old. b2evolution will not run correctly. You must ask your host to upgrade PHP before you can run b2evolution.') );
 }
-elseif( version_compare( $system_stats['php_version'], '4.3', '<' ) )
+elseif( version_compare( $system_stats['php_version'], '5.2', '<' ) )
 {
 	disp_system_check( 'warning', T_('This version is old. b2evolution may run but some features may fail. You should ask your host to upgrade PHP before running b2evolution.') );
 }
@@ -452,11 +448,11 @@ if( empty($memory_limit) )
 else
 {
 	init_system_check( 'PHP memory_limit', ini_get('memory_limit') );
-	if( $memory_limit < 8096 )
+	if( $memory_limit < get_php_bytes_size( '8M' ) )
 	{
 		disp_system_check( 'error', T_('The memory_limit is very low. Some features of b2evolution will fail to work;') );
 	}
-	elseif( $memory_limit < 12288 )
+	elseif( $memory_limit < get_php_bytes_size( '12M' ) )
 	{
 		disp_system_check( 'warning', T_('The memory_limit is low. Some features of b2evolution may fail to work;') );
 	}
@@ -466,6 +462,35 @@ else
 	}
 }
 
+// Maximum execution time of each script
+$max_execution_time = system_check_max_execution_time();
+if( empty( $max_execution_time ) )
+{
+	init_system_check( 'PHP max_execution_time', T_('Unlimited') );
+	disp_system_check( 'ok' );
+}
+else
+{
+	init_system_check( 'PHP max_execution_time', sprintf( T_('%s seconds'), $max_execution_time ) );
+	if( $max_execution_time <= 5 * 60 )
+	{
+		disp_system_check( 'error' );
+	}
+	elseif( $max_execution_time > 5 * 60 )
+	{
+		disp_system_check( 'warning' );
+	}
+}
+if( $max_execution_time < 600 )
+{ // Force max_execution_time to 10 minutes
+	$result = ini_set( 'max_execution_time', 600 );
+	if( $result !== false )
+	{
+		$max_execution_time = system_check_max_execution_time();
+		init_system_check( 'PHP forced max_execution_time', sprintf( T_('%s seconds'), $max_execution_time ) );
+		disp_system_check( 'warning' );
+	}
+}
 
 // mbstring extension
 init_system_check( 'PHP mbstring extension', extension_loaded('mbstring') ?  T_('Loaded') : T_('Not loaded') );
@@ -498,14 +523,14 @@ $imap_loaded = extension_loaded( 'imap' );
 init_system_check( 'PHP IMAP extension', $imap_loaded ? T_( 'Loaded' ) : T_( 'Not loaded' ) );
 if ( ! $imap_loaded )
 {
-	disp_system_check( 'warning', T_( 'You will not be able to use the Blog by email feature of b2evolution. Enable the IMAP extension in your php.ini file or ask your hosting provider about it.' ) );
+	disp_system_check( 'warning', T_( 'You will not be able to use the Post by Email feature and the Return Path email processing of b2evolution. Enable the IMAP extension in your php.ini file or ask your hosting provider about it.' ) );
 }
 else
 {
 	disp_system_check( 'ok' );
 }
 
-// APC extension
+// Opcode cache
 $opcode_cache = get_active_opcode_cache();
 init_system_check( 'PHP opcode cache', $opcode_cache );
 if( $opcode_cache == 'none' )
@@ -609,15 +634,21 @@ else
 $block_item_Widget->disp_template_raw( 'block_end' );
 
 
+/*
+ * Info pages
+ */
+$block_item_Widget->title = T_('Info pages');
+$block_item_Widget->disp_template_replaced( 'block_start' );
 
-// TODO: dh> memory_limit!
+init_system_check( 'Default page:', '<a href="'.$baseurl.'default.php">'.$baseurl.'default.php</a>' );
+disp_system_check( 'note' );
+
+$block_item_Widget->disp_template_raw( 'block_end' );
+
 // TODO: dh> output_buffering (recommend off)
 // TODO: dh> session.auto_start (recommend off)
 // TODO: dh> How to change ini settings in .htaccess (for mod_php), link to manual
 // fp> all good ideas :)
-// fp> MySQL version
-// TODO: dh> link to phpinfo()? It's included in the /install/ folder, but that is supposed to be deleted
-// fp> we can just include it a second time as an 'action' here.
 // TODO: dh> submit the report into a central database
 // fp>yope, with a Globally unique identifier in order to avoid duplicates.
 
@@ -630,7 +661,4 @@ $AdminUI->disp_payload_end();
 // Display body bottom, debug info and close </html>:
 $AdminUI->disp_global_footer();
 
-/*
- * $Log: system.ctrl.php,v $
- */
 ?>

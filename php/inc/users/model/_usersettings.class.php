@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -29,7 +29,7 @@
  * @author fplanque: Francois PLANQUE
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: _usersettings.class.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _usersettings.class.php 3908 2013-06-04 10:41:52Z attila $
  *
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -40,7 +40,7 @@ if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.'
 load_class( 'settings/model/_abstractsettings.class.php', 'AbstractSettings' );
 
 /**
- * Class to handle the settings for users
+ * Class to handle the settings for users, and any user name-value pair which is not frequently used 
  *
  * @package evocore
  */
@@ -67,7 +67,7 @@ class UserSettings extends AbstractSettings
 		'fm_showdate'       => 'compact',
 		'fm_allowfiltering' => 'simple',
 
-		'blogperms_layout' => 'default',	// selected view in blog (user/group) perms
+		'blogperms_layout' => 'wide',	// selected view in blog (user/group) perms
 
 		'login_multiple_sessions' => 0, 	// disallow multiple concurrent sessions by default
 		'timeout_sessions' => NULL,			// user session timeout (NULL means application default)
@@ -77,6 +77,63 @@ class UserSettings extends AbstractSettings
 		'show_evobar' => 1,
 		'show_breadcrumbs' => 1,
 		'show_menu' => 1,
+
+		'last_activation_email' => NULL, // It should be the date of the last account activation email. If it is not set, and users is not activated means activation email wasn't sent.
+		'last_unread_messages_reminder' => NULL, // It will be the date when the last unread message reminder email was sent
+		'last_notification_email' => NULL, // It must have a 'timestamp_number' format, where the timestamp ( servertime ) is the last notification email ts, and the number is how many notification email was sent on that day
+		'last_newsletter' => NULL, // It must have a 'timestamp_number' format, where the timestamp ( servertime ) is the last newsletter ts, and the number is how many newsletter was sent on that day
+		'last_activation_reminder_key' => NULL, // It will be set at the first time when activation reminder email will be sent
+		'activation_reminder_count' => 0, // How many activation reminder was sent since the user is not activated
+		'send_activation_reminder' => 1, // Send reminder to activate my account if it is not activated
+
+		// admin user notifications
+		'send_cmt_moderation_reminder' => 1, // Send reminders about comments awaiting moderation
+		'notify_new_user_registration' => 1, // Notify admin user when a new user has registered
+		'notify_activated_account' => 1, // Notify admin user when an account has been activated by email
+		'notify_closed_account' => 1, // Notify admin user when an account has been closed by the account owner
+		'notify_reported_account' => 1, // Notify admin user when an account has been reported by another user
+		'notify_cronjob_error' => 1, // Notify admin user when a scheduled task ends with an error or timeout
+
+		'account_close_ts' => NULL, // It will be the date when the account was closed. Until the account is not closed this will be NULL.
+		'account_close_reason' => NULL, // It will be the reason why the account was closed. Until the account is not closed this will be NULL.
+
+		'last_new_thread' => NULL, // It is the date when the user has created the last new thread, NULL if User has never create a new thread
+		'new_thread_count' => 0, // How many new thread was created by this user TODAY!
+
+		'show_online' => 1,     // Show if user is online or not
+		'user_domain' => NULL,  // User domain
+		'user_browser' => NULL, // User browser
+
+		'email_format' => 'auto', // Email format: auto | html | text
+
+		'admin_skin' => 'chicago',  // User default admin skin
+	);
+
+	/**
+	 * The configurable default settings.
+	 * Add those settings below, which default value is saved in GeneralSettings.
+	 * For these option we didn't add a default value here intentionally, this way it will get the default value from general settings!
+	 * All of this options must have a pair with a 'def_' prefix in GeneralSettings class.
+	 * We use this array when we are reseting the default settings.
+	 *
+	 * @access protected
+	 * @var array
+	 */
+	var $_configurable_defaults = array(
+		'notify_messages' => 1, 	// Notify user when receives a private message
+		'notify_unread_messages' => 1, // Notify user when he has unread messages more then 24 hour, and he was not notified in the last 3 days
+		'notify_published_comments' => 1, // Notify user when a comment is published in an own post
+		'notify_comment_moderation' => 1, // Notify when a comment is awaiting moderation and the user has right to moderate that comment
+		'notify_post_moderation' => 1, // Notify when a post is awaiting moderation and the user has right to moderate that post
+
+		'enable_PM' => 1,
+		'enable_email' => 1,
+
+		'newsletter_news' => 1, // Send news
+		'newsletter_ads'  => 0, // Send ADs
+
+		'notification_email_limit' => 3, // How many notification email is allowed per day for this user
+		'newsletter_limit' => 1, // How many newsletter email is allowed per day for this user
 	);
 
 
@@ -97,19 +154,31 @@ class UserSettings extends AbstractSettings
 	 */
 	function get( $setting, $user_ID = NULL )
 	{
+		global $Settings;
+
 		if( ! isset($user_ID) )
 		{
 			global $current_User;
 
 			if( ! isset($current_User) )
 			{ // no current/logged in user:
-				return $this->get_default($setting);
+				$result = $this->get_default($setting);
+				if( $result == NULL )
+				{
+					$result = $Settings->get( 'def_'.$setting );
+				}
+				return $result;
 			}
 
 			$user_ID = $current_User->ID;
 		}
 
-		return parent::get( $user_ID, $setting );
+		$result = parent::get( $user_ID, $setting );
+		if( $result == NULL )
+		{
+			$result = $Settings->get( 'def_'.$setting );
+		}
+		return $result;
 	}
 
 
@@ -210,10 +279,26 @@ class UserSettings extends AbstractSettings
 		set_param( $param_name, $value );
 		return get_param($param_name);
 	}
+
+
+	/**
+	 * Reset a user settings to the default values
+	 * 
+	 * @param integer user ID
+	 * @param boolean set to true to save modifications
+	 */
+	function reset_to_defaults( $user_ID, $db_save = true )
+	{
+		// Remove all UserSettings where a default or configurable default exists:
+		foreach( $this->_defaults as $k => $v )
+		{
+			$this->delete( $k, $user_ID );
+		}
+		foreach( $this->_configurable_defaults as $k => $v )
+		{
+			$this->delete( $k, $user_ID );
+		}
+	}
 }
 
-
-/*
- * $Log: _usersettings.class.php,v $
- */
 ?>

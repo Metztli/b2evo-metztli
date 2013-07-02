@@ -8,7 +8,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
@@ -39,7 +39,7 @@
  * @author mfollett: Matt FOLLETT
  * @author mbruneau: Marc BRUNEAU / PROGIDISTRI
  *
- * @version $Id: _init_base.inc.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _init_base.inc.php 3360 2013-03-29 12:42:27Z yura $
  */
 if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page directly.' );
 
@@ -52,15 +52,15 @@ $is_web = ! $is_cli;
 
 
 if( $maintenance_mode )
-{	// Maintenance mode with a conf switch
+{ // Maintenance mode with a conf switch
 	header('HTTP/1.0 503 Service Unavailable');
 	echo '<h1>503 Service Unavailable</h1>';
 	die( 'The site is temporarily down for maintenance.' );
 }
-elseif( file_exists( $conf_path.'imaintenance.html') )
-{	// Maintenance mode with a file - "imaintenance.html" with an "i" prevents access to the site but NOT to install
+elseif( file_exists( $conf_path.'imaintenance.html' ) )
+{ // Maintenance mode with a file - "imaintenance.html" with an "i" prevents access to the site but NOT to install
 	header('HTTP/1.0 503 Service Unavailable');
-	readfile( $conf_path.'imaintenance.html');
+	readfile( $conf_path.'imaintenance.html' );
 	die();
 }
 
@@ -114,9 +114,15 @@ require_once $inc_path.'_core/_class'.floor(PHP_VERSION).'.funcs.php';
 
 
 /**
+ * Locale related functions
+ */
+require_once $inc_path.'locales/_locale.funcs.php';
+
+
+/**
  * Miscellaneous functions
  */
-require_once $inc_path.'/_core/_misc.funcs.php';
+require_once $inc_path.'_core/_misc.funcs.php';
 
 
 /**
@@ -244,17 +250,6 @@ $month_abbrev['11'] = NT_('Nov');
 // TRANS: abbrev. for December
 $month_abbrev['12'] = NT_('Dec');
 
-// the post statuses:
-$post_statuses = array (
-	'published' => NT_('Published'),
-	'deprecated' => NT_('Deprecated'),
-	'redirected' => NT_('Redirected'),
-	'protected' => NT_('Protected'),
-	'private' => NT_('Private'),
-	'draft' => NT_('Draft'),
-	'trash' => NT_('Recycled'),
-);
-
 
 /**
  * IDs of items for which we should increment the view count on shutdown
@@ -278,7 +273,4 @@ foreach( $modules as $module )
 
 $Timer->pause( '_init_base' );
 
-/*
- * $Log: _init_base.inc.php,v $
- */
 ?>

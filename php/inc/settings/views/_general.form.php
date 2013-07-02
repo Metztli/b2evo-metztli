@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -25,7 +25,7 @@
  * @author fplanque: Francois PLANQUE.
  * @author blueyed: Daniel HAHLER.
  *
- * @version $Id: _general.form.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _general.form.php 3462 2013-04-12 04:37:35Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -43,7 +43,7 @@ global $dispatcher;
 global $collections_Module;
 
 $Form = new Form( NULL, 'settings_checkchanges' );
-$Form->begin_form( 'fform', T_('General Settings'),
+$Form->begin_form( 'fform', '',
 	// enable all form elements on submit (so values get sent):
 	array( 'onsubmit'=>'var es=this.elements; for( var i=0; i < es.length; i++ ) { es[i].disabled=false; };' ) );
 
@@ -53,41 +53,14 @@ $Form->hidden( 'action', 'update' );
 
 // --------------------------------------------
 
-if( isset($collections_Module) )
+if( $current_User->check_perm( 'users', 'edit' ) )
 {
-	$Form->begin_fieldset( T_('Display options').get_manual_link('display_options') );
-
-	$BlogCache = & get_BlogCache();
-
-		$Form->select_input_object( 'default_blog_ID', $Settings->get('default_blog_ID'), $BlogCache, T_('Default blog to display'), array(
-				'note' => T_('This blog will be displayed on index.php.').' <a href="'.$dispatcher.'?ctrl=collections&action=new">'.T_('Create new blog').' &raquo;</a>',
-				'allow_none' => true,
-				'class' => '',
-				'loop_object_method' => 'get_maxlen_name',
-				'onchange' => '' )  );
-
+	$Form->begin_fieldset( T_('Locking down b2evolution for maintenance, upgrade or server switching...') );
+		$Form->checkbox_input( 'system_lock', $Settings->get('system_lock'), T_('Lock system'), array(
+				'note' => T_('check this to prevent login (except for admins) and sending comments/messages. This prevents the DB from receiving updates (other than logging)').'<br />'.
+				          T_('Note: for a more complete lock down, rename the file /conf/_maintenance.html to /conf/maintenance.html (complete lock) or /conf/imaintenance.html (gives access to /install)') ) );
 	$Form->end_fieldset();
 }
-
-// --------------------------------------------
-
-$Form->begin_fieldset( T_('Timeouts') );
-
-	// fp>TODO: enhance UI with a general Form method for Days:Hours:Minutes:Seconds
-
-	$Form->duration_input( 'timeout_sessions', $Settings->get('timeout_sessions'), T_('Session timeout'), 'months', 'seconds', array( 'minutes_step' => 1, 'required'=>true ) );
-	// $Form->text_input( 'timeout_sessions', $Settings->get('timeout_sessions'), 9, T_('Session timeout'), T_('seconds. How long can a user stay inactive before automatic logout?'), array( 'required'=>true) );
-
-	// fp>TODO: It may make sense to have a different (smaller) timeout for sessions with no logged user.
-	// fp>This might reduce the size of the Sessions table. But this needs to be checked against the hit logging feature.
-
-	$Form->duration_input( 'reloadpage_timeout', (int)$Settings->get('reloadpage_timeout'), T_('Reload-page timeout'), 'minutes', 'seconds', array( 'minutes_step' => 1, 'required' => true ) );
-	// $Form->text_input( 'reloadpage_timeout', (int)$Settings->get('reloadpage_timeout'), 5,
-	// T_('Reload-page timeout'), T_('Time (in seconds) that must pass before a request to the same URI from the same IP and useragent is considered as a new hit.'), array( 'maxlength'=>5, 'required'=>true ) );
-
-	$Form->checkbox_input( 'smart_hit_count', $Settings->get( 'smart_hit_count' ), T_( 'Smart view counting' ), array( 'note' => T_( 'Check this to count post views only once per session and ignore reloads.' ) ) );
-
-$Form->end_fieldset();
 
 // --------------------------------------------
 
@@ -95,15 +68,53 @@ $Form->begin_fieldset( T_('Caching') );
 
 	$Form->checkbox_input( 'general_cache_enabled', $Settings->get('general_cache_enabled'), T_('Enable general cache'), array( 'note'=>T_('Cache rendered pages that are not controlled by a skin. See Blog Settings for skin output caching.') ) );
 
-	$cache_note = '('.T_( 'See Blog Settings for existing' ).')';
-	$Form->checklist( array(
-			array( 'newblog_cache_enabled', 1, T_( 'Enable page cache for NEW blogs' ), $Settings->get('newblog_cache_enabled'), false, $cache_note ),
-			array( 'newblog_cache_enabled_widget', 1, T_( 'Enable widget cache for NEW blogs' ), $Settings->get('newblog_cache_enabled_widget'), false, $cache_note )
-			), 'new_blogs_cahe', T_( 'Enable for new blogs' ) );
-
 $Form->end_fieldset();
 
 // --------------------------------------------
+
+$Form->begin_fieldset( T_('Online Help').get_manual_link('online help'));
+	$Form->checkbox_input( 'webhelp_enabled', $Settings->get('webhelp_enabled'), T_('Online Help links'), array( 'note' => T_('Online help links provide context sensitive help to certain features.' ) ) );
+$Form->end_fieldset();
+
+// --------------------------------------------
+
+$Form->begin_fieldset( T_('Hit & session logging').get_manual_link('hit_logging') );
+
+	$Form->checklist( array(
+			array( 'log_public_hits', 1, T_('on every public page'), $Settings->get('log_public_hits') ),
+			array( 'log_admin_hits', 1, T_('on every admin page'), $Settings->get('log_admin_hits') ) ),
+		'log_hits', T_('Log hits') );
+
+	// TODO: draw a warning sign if set to off
+	$Form->radio_input( 'auto_prune_stats_mode', $Settings->get('auto_prune_stats_mode'), array(
+			array(
+				'value'=>'off',
+				'label'=>T_('Off'),
+				'note'=>T_('Not recommended! Your database will grow very large!'),
+				'onclick'=>'jQuery("#auto_prune_stats_container").hide();' ),
+			array(
+				'value'=>'page',
+				'label'=>T_('On every page'),
+				'note'=>T_('This is guaranteed to work but uses extra resources with every page displayed.'),
+				'onclick'=>'jQuery("#auto_prune_stats_container").show();' ),
+			array(
+				'value'=>'cron',
+				'label'=>T_('With a scheduled job'),
+				'note'=>T_('Recommended if you have your scheduled jobs properly set up.'), 'onclick'=>'jQuery("#auto_prune_stats_container").show();' ) ),
+		T_('Auto pruning'),
+		array( 'note' => T_('Note: Even if you don\'t log hits, you still need to prune sessions!'),
+		'lines' => true ) );
+
+	echo '<div id="auto_prune_stats_container">';
+	$Form->text_input( 'auto_prune_stats', $Settings->get('auto_prune_stats'), 5, T_('Prune after'), T_('days. How many days of hits & sessions do you want to keep in the database for stats?') );
+	echo '</div>';
+
+	if( $Settings->get('auto_prune_stats_mode') == 'off' )
+	{ // hide the "days" input field, if mode set to off:
+		echo '<script type="text/javascript">jQuery("#auto_prune_stats_container").hide();</script>';
+	}
+
+$Form->end_fieldset();
 
 if( $current_User->check_perm( 'options', 'edit' ) )
 {
@@ -111,7 +122,4 @@ if( $current_User->check_perm( 'options', 'edit' ) )
 													array( 'reset', '', T_('Reset'), 'ResetButton' ) ) );
 }
 
-/*
- * $Log: _general.form.php,v $
- */
 ?>

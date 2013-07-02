@@ -13,7 +13,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
@@ -38,7 +38,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _param.funcs.php 2499 2012-11-22 10:47:09Z attila $
+ * @version $Id: _param.funcs.php 4096 2013-06-28 10:39:15Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -64,7 +64,10 @@ $GLOBALS['debug_params'] = false;
  * - float, double
  * - string (strips (HTML-)Tags, trims whitespace)
  * - text like string but allows multiple lines
- * - array	(TODO:  array/integer  , array/array/string )
+ * - array/integer (elements of array must be integer)
+ * - array/string (strips (HTML-)Tags, trims whitespace of array's elements)
+ * - array/array/integer (two dimensional array and the elements must be integers)
+ * - array/array/string (strips (HTML-)Tags, trims whitespace of the two dimensional array's elements)
  * - html (does nothing, for now)
  * - raw (does nothing)
  * - '' (does nothing) -- DEPRECATED, use "raw" instead
@@ -117,7 +120,7 @@ function param( $var, $type = 'raw', $default = '', $memorize = false,
 		}
 		elseif( $use_default )
 		{	// We haven't set any value yet and we really want one: use default:
-			if( $type == 'array' && $default === '' )
+			if( in_array( $type, array( 'array', 'array/integer', 'array/string', 'array/array/integer', 'array/array/string' ) ) && $default === '' )
 			{ // Change default '' into array() (otherwise there would be a notice with settype() below)
 				$default = array();
 			}
@@ -164,6 +167,19 @@ function param( $var, $type = 'raw', $default = '', $memorize = false,
 				if( isset($Debuglog) ) $Debuglog->add( 'param(-): <strong>'.$var.'</strong> as RAW Unsecure HTML', 'params' );
 				break;
 
+			case 'htmlspecialchars':
+				if( ! is_scalar($GLOBALS[$var]) )
+				{ // This happens if someone uses "foo[]=x" where "foo" is expected as string
+					debug_die( 'param(-): <strong>'.$var.'</strong> is not scalar!' );
+				}
+
+				// convert all html to special characters:
+				$GLOBALS[$var] = trim( htmlspecialchars( $GLOBALS[$var] ) );
+				// cross-platform newlines:
+				$GLOBALS[$var] = preg_replace( "~(\r\n|\r)~", "\n", $GLOBALS[$var] );
+				$Debuglog->add( 'param(-): <strong>'.$var.'</strong> as text with html special chars', 'params' );
+				break;
+
 			case 'text':
 				if( ! is_scalar($GLOBALS[$var]) )
 				{ // This happens if someone uses "foo[]=x" where "foo" is expected as string
@@ -191,6 +207,70 @@ function param( $var, $type = 'raw', $default = '', $memorize = false,
 
 				$Debuglog->add( 'param(-): <strong>'.$var.'</strong> as string', 'params' );
 				break;
+
+			case 'array':
+			case 'array/integer':
+			case 'array/string':
+			case 'array/array/integer':
+			case 'array/array/string':
+				if( ! is_array( $GLOBALS[$var] ) )
+				{ // This param must be array
+					debug_die( 'param(-): <strong>'.$var.'</strong> is not array!' );
+				}
+
+				// Store current array in temp var for checking and preparing
+				$globals_var = $GLOBALS[$var];
+				// Check if the given array type is one dimensional array
+				$one_dimensional = ( ( $type == 'array' ) || ( $type == 'array/integer' ) || ( $type == 'array/string' ) );
+				// Check if the given array type should contains string elements
+				$contains_strings = ( ( $type == 'array/string' ) || ( $type == 'array/array/string' ) );
+				if( $one_dimensional )
+				{ // Convert to a two dimensional array to handle one and two dimensional arrays the same way
+					$globals_var = array( $globals_var );
+				}
+
+				foreach( $globals_var as $i => $var_array )
+				{
+					if( ! is_array( $var_array ) )
+					{ // This param must be array
+						// Note: In case of one dimensional array params this will never happen
+						debug_die( 'param(-): <strong>'.$var.'['.$i.']</strong> is not array!' );
+					}
+
+					foreach( $var_array as $j => $var_value )
+					{
+						if( $type != 'array' && ! is_scalar( $var_value ) )
+						{ // This happens if someone uses "foo[][]=x" where "foo[]" is expected as string
+							debug_die( 'param(-): element of array <strong>'.$var.'</strong> is not scalar!' );
+						}
+
+						if( $contains_strings )
+						{ // Prepare string elements of array
+							// Make sure the string is a single line
+							$var_value = preg_replace( '~\r|\n~', '', $var_value );
+							// strip out any html:
+							$globals_var[$i][$j] = trim( strip_tags( $var_value ) );
+						}
+					}
+				}
+
+				if( $one_dimensional )
+				{ // Extract real array from temp array
+					$globals_var = $globals_var[0];
+				}
+				// Restore current array with prepared data
+				$GLOBALS[$var] = $globals_var;
+
+				$Debuglog->add( 'param(-): <strong>'.$var.'</strong> as '.$type, 'params' );
+
+				if( $contains_strings || $type == 'array' )
+				{ // This is an array with string elements so it was processed. The array with integer elements must be checked with regexp, so we can't break in that case.
+					if( $GLOBALS[$var] === array() && ( $strict_typing === false ) && $use_default )
+					{ // We want to consider empty values as invalid and fall back to the default value:
+						$GLOBALS[$var] = $default;
+					}
+					break;
+				}
 
 			default:
 				if( substr( $type, 0, 1 ) == '/' )
@@ -252,6 +332,9 @@ function param( $var, $type = 'raw', $default = '', $memorize = false,
 								$regexp = '/^(0|1|false|true)$/i';
 								break;
 
+							case 'array/integer':
+							case 'array/array/integer':
+								$type = 'array';
 							case 'integer':
 								$regexp = '/^(\+|-)?[0-9]+$/';
 								break;
@@ -264,12 +347,42 @@ function param( $var, $type = 'raw', $default = '', $memorize = false,
 							// Note: other types are not tested here.
 						}
 						if( $strict_typing == 'allow_empty' && empty($GLOBALS[$var]) )
-						{	// We have an empty value and we accept it
+						{ // We have an empty value and we accept it
 							// ok..
 						}
-						elseif( !empty( $regexp ) && ( !is_scalar($GLOBALS[$var]) || !preg_match( $regexp, $GLOBALS[$var] ) ) )
-						{	// Value does not match!
-							bad_request_die( sprintf( T_('Illegal value received for parameter &laquo;%s&raquo;!'), $var ) );
+						elseif( !empty( $regexp ) )
+						{
+							if( $type == 'array' )
+							{ // Check format of array elements
+								$globals_var = $GLOBALS[$var];
+								if( $one_dimensional )
+								{ // Convert to a two dimensional array to handle one and two dimensional arrays the same way
+									$globals_var = array( $globals_var );
+								}
+								// Loop through the two dimensional array content and make sure each element is an integer and also set the type
+								foreach( $globals_var as $i => $var_array )
+								{
+									foreach( $var_array as $j => $var_value )
+									{
+										if( !is_scalar( $var_value ) || !preg_match( $regexp, $var_value ) )
+										{ // Value of array item does not match!
+											bad_request_die( sprintf( T_('Illegal value received for parameter &laquo;%s&raquo;!'), $var ) );
+										}
+										// Set the type of the array elements to integer
+										settype( $globals_var[$i][$j], 'integer' );
+									}
+								}
+								if( $one_dimensional )
+								{ // Extract real array from temp array
+									$globals_var = $globals_var[0];
+								}
+								// Restore current array with prepared data
+								$GLOBALS[$var] = $globals_var;
+							}
+							elseif( !is_scalar( $GLOBALS[$var] ) || !preg_match( $regexp, $GLOBALS[$var] ) )
+							{ // Value of scalar var does not match!
+								bad_request_die( sprintf( T_('Illegal value received for parameter &laquo;%s&raquo;!'), $var ) );
+							}
 						}
 					}
 
@@ -454,6 +567,43 @@ function param_check_number( $var, $err_msg, $required = false )
 
 
 /**
+ * Check for interval params
+ *
+ * @param string Min param name
+ * @param string Max param name
+ * @param string error message if value is NOT a number
+ * @param string error message if min value greater than max
+ * @return boolean true if OK
+ */
+function param_check_interval( $var_min, $var_max, $err_msg_number, $err_msg_compare, $required = false )
+{
+	$result_min = param_validate( $var_min, 'check_is_number', $required, $err_msg_number );
+	$result_max = param_validate( $var_max, 'check_is_number', $required, $err_msg_number );
+	$result_compare = true;
+
+	if( $result_min && $result_max )
+	{
+		if( empty( $GLOBALS[$var_min] ) && !empty( $GLOBALS[$var_max] ) )
+		{	// Get min value from max value
+			$GLOBALS[$var_min] = $GLOBALS[$var_max];
+		}
+		if( !empty( $GLOBALS[$var_min] ) && empty( $GLOBALS[$var_max] ) )
+		{	// Get max value from min value
+			$GLOBALS[$var_max] = $GLOBALS[$var_min];
+		}
+
+		$result_compare = $GLOBALS[$var_min] <= $GLOBALS[$var_max];
+		if( !$result_compare )
+		{	// Min value greater than max
+			param_error( $var_min, $err_msg_compare );
+		}
+	}
+
+	return $result_min && $result_max && $result_compare;
+}
+
+
+/**
  * Checks if the param is an integer (no float, e.g. 3.14).
  *
  * @param string number to check
@@ -567,28 +717,34 @@ function check_is_email( $email )
  * Check if the value is a valid login (in terms of allowed chars)
  *
  * @param string param name
- * @param string regexp
- * @param string error message
- * @param string|NULL error message for form field ($err_msg gets used if === NULL).
  * @return boolean true if OK
  */
 function param_check_valid_login( $var )
 {
+	global $Settings;
+
 	if( empty( $GLOBALS[$var] ) )
 	{ // empty variable is OK
 		return T_('Please choose a username.' );
 	}
 
-	// WARNING: allowing ' or " or > or < will open security issues!
-	// WARNING: allowing special chars like latin 1 accented chars ( \xDF-\xF6\xF8-\xFF ) will create issues with
-	// user media directory names (tested on Max OS X) -- Do no allow any of this until we have a clean & safe media dir name generator.
-	// NOTE: allowing @ will make some "average" users use their email address (not good for their spam health)
-	// NOTE: in some places usernames are typed in by other users (messaging) or admins.
-	// Having cryptic logins with hard to type letters is a PITA.
-	if( ! preg_match( '~^[A-Za-z0-9_.]*$~', $GLOBALS[$var] ) )
+	$check = is_valid_login($GLOBALS[$var]);
+
+	if( ! $check || $check === 'usr' )
 	{
-		param_error( $var, T_('Logins can only contain letters, digits and the following characters: _ .') );
-		// fp> TODO: check why a dash '-' prevents renaming the fileroot
+		if( $check === 'usr' )
+		{	// Special case, the login is valid however we forbid it's usage.
+			$msg = T_('Logins cannot start with "usr_", this prefix is reserved for system use.');
+		}
+		elseif( $Settings->get('strict_logins') )
+		{
+			$msg = T_('Logins can only contain letters, digits and the following characters: _ .');
+		}
+		else
+		{
+			$msg = sprintf( T_('Logins cannot contain whitespace and the following characters: %s'), '\', ", >, <, @' );
+		}
+		param_error( $var, $msg );
 		return false;
 	}
 	return true;
@@ -634,7 +790,27 @@ function param_check_url( $var, $context, $field_err_msg = NULL )
 
 	$Group = $current_User->get_Group();
 
-	if( $error_detail = validate_url( $GLOBALS[$var], $context, ! $Group->perm_bypass_antispam ) )
+	if( strpos( $var, '[' ) !== false )
+	{	// Variable is array, for example 'input_name[group_name][123][]'
+		// We should get a value from $GLOBALS[input_name][group_name][123][0]
+		$var_array = explode( '[', $var );
+		$url_value = $GLOBALS;
+		foreach( $var_array as $var_item )
+		{
+			$var_item = str_replace( ']', '', $var_item);
+			if( empty( $var_item ) )
+			{	// Case for []
+				$var_item = '0';
+			}
+			$url_value = $url_value[$var_item];
+		}
+	}
+	else
+	{	// Variable with simple name
+		$url_value = $GLOBALS[$var];
+	}
+
+	if( $error_detail = validate_url( $url_value, $context, ! $Group->perm_bypass_antispam ) )
 	{
 		param_error( $var, /* TRANS: %s contains error details */ sprintf( T_('Supplied URL is invalid. (%s)'), $error_detail ), $field_err_msg );
 		return false;
@@ -1029,7 +1205,7 @@ function param_compile_cat_array( $restrict_to_blog = 0, $cat_default = NULL, $c
 	global $cat_array, $cat_modifier;
 
 	$cat = param( 'cat', '/^[*\-]?([0-9]+(,[0-9]+)*)?$/', $cat_default, true ); // List of cats to restrict to
-	$catsel = param( 'catsel', 'array', $catsel_default, true );  // Array of cats to restrict to
+	$catsel = param( 'catsel', 'array/integer', $catsel_default, true );  // Array of cats to restrict to
 
 	$cat_array = array();
 	$cat_modifier = '';
@@ -1788,11 +1964,12 @@ function param_html( $var, $default = '', $memorize = false, $err_msg )
  * @param string error message
  * @return boolean|string
  */
-function param_check_html( $var, $err_msg = '#', $field_err_msg = '#', $autobr = 0 )
+function param_check_html( $var, $err_msg = '#', $field_err_msg = '#' )
 {
-	global $Messages;
+	global $Messages, $evo_charset;
 
-	$altered_html = check_html_sanity( $GLOBALS[$var], 'posting', $autobr );
+	// The param was already converted to the $evo_charset in the param() function, we need to use that charset!
+	$altered_html = check_html_sanity( $GLOBALS[$var], 'posting', NULL, $evo_charset );
 
  	if( $altered_html === false )
 	{	// We have errors, do not keep sanitization attemps:
@@ -1824,11 +2001,20 @@ function param_check_html( $var, $err_msg = '#', $field_err_msg = '#', $autobr =
 function param_check_gender( $var, $required = false )
 {
 	if( empty( $GLOBALS[$var] ) )
-	{ // empty is OK if not required:
+	{	// empty is OK if not required:
+		global $current_User;
 		if( $required )
 		{
-			param_error( $var, T_( 'Please select a gender.' ) );
-			return false;
+			if( $current_User->check_perm( 'users', 'edit' ) )
+			{	// Display a note message if user can edit all users
+				param_add_message_to_Log( $var, T_('Please select a gender.'), 'note' );
+				return true;
+			}
+			else
+			{	// Display an error message
+				param_error( $var, T_( 'Please select a gender.' ) );
+				return false;
+			}
 		}
 		return true;
 	}
@@ -1847,11 +2033,11 @@ function param_check_gender( $var, $required = false )
 /**
  * DEPRECATED Stub for plugin compatibility:
  */
-function format_to_post( $content, $autobr = 0, $is_comment = 0, $encoding = NULL )
+function format_to_post( $content, $is_comment = 0, $encoding = NULL )
 {
 	global $current_User;
 
-	$ret = check_html_sanity( $content, ( $is_comment ? 'commenting' : 'posting' ), $autobr, $current_User, $encoding );
+	$ret = check_html_sanity( $content, ( $is_comment ? 'commenting' : 'posting' ), $current_User, $encoding );
 	if( $ret === false )
 	{	// ERROR
 		return $content;
@@ -1878,12 +2064,11 @@ function format_to_post( $content, $autobr = 0, $is_comment = 0, $encoding = NUL
  *
  * @param string The content to format
  * @param string
- * @param integer Create automated <br /> tags?
  * @param User User (used for "posting" and "xmlrpc_posting" context). Default: $current_User
  * @param string Encoding (used for XHTML_Validator only!); defaults to $io_charset
  * @return boolean|string
  */
-function check_html_sanity( $content, $context = 'posting', $autobr = false, $User = NULL, $encoding = NULL )
+function check_html_sanity( $content, $context = 'posting', $User = NULL, $encoding = NULL )
 {
 	global $use_balanceTags, $admin_url;
 	global $io_charset, $use_xhtmlvalidation_for_comments, $comment_allowed_tags, $comments_allow_css_tweaks;
@@ -1957,13 +2142,6 @@ function check_html_sanity( $content, $context = 'posting', $autobr = false, $Us
 
 		$Messages->add(	$errmsg, 'error' );
 		$error = true;
-	}
-
-	if( $autobr )
-	{ // Auto <br />:
-		// may put brs in the middle of multiline tags...
-		// TODO: this may create "<br />" tags in "<UL>" (outside of <LI>) and make the HTML invalid! -> use autoP pugin?
-		$content = autobrize( $content );
 	}
 
 	$content = trim( $content );
@@ -2181,7 +2359,4 @@ function isset_param( $var )
 	return isset($_POST[$var]) || isset($_GET[$var]);
 }
 
-/*
- * $Log: _param.funcs.php,v $
- */
 ?>

@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
  * {@internal License choice
@@ -30,7 +30,7 @@
  * @author mbruneau: Marc BRUNEAU / PROGIDISTRI
  * @author fsaya: Fabrice SAYA-GASNIER / PROGIDISTRI
  *
- * @version $Id: _file_settings.form.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _file_settings.form.php 3520 2013-04-22 06:12:04Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -227,10 +227,23 @@ $Form->begin_fieldset( T_('Advanced options'), array( 'id' => 'ffset_fileadvance
 
 $Form->end_fieldset();
 
+$Form->begin_fieldset( T_('Image options') );
+
+	$Form->checkbox( 'exif_orientation', $Settings->get( 'exif_orientation' ), T_('Use EXIF info in photos'), T_('Use orientation tag to automatically rotate thumbnails to upright position.') );
+
+	$resize_input_suffix = ' '.T_('Fit to').' ';
+	$resize_input_suffix .= '<input type="text" id="fm_resize_width" name="fm_resize_width" class="form_text_input" size="4" maxlength="4" value="'.$Settings->get( 'fm_resize_width' ).'" />';
+	$resize_input_suffix .= ' x ';
+	$resize_input_suffix .= '<input type="text" id="fm_resize_height" name="fm_resize_height" class="form_text_input" size="4" maxlength="4" value="'.$Settings->get( 'fm_resize_height' ).'" />';
+	$resize_input_suffix .= ' '.T_('pixels').' ';
+	$Form->checkbox_input( 'fm_resize_enable', $Settings->get( 'fm_resize_enable' ), T_('Resize large images after upload'), array( 'input_suffix' => $resize_input_suffix ) );
+
+$Form->end_fieldset();
+
 if( $current_User->check_perm( 'options', 'edit', false ) )
 { // We have permission to modify:
 	$Form->buttons( array(
-			array( 'submit', 'submit', T_('Update'), 'SaveButton' ),
+			array( 'submit', 'submit[update]', T_('Update'), 'SaveButton' ),
 			array( 'reset', '', T_('Reset'), 'ResetButton' ),
 			array( 'submit', 'submit[restore_defaults]', T_('Restore defaults'), 'ResetButton' ),
 		) );
@@ -244,8 +257,4 @@ if( $current_User->check_perm( 'options', 'edit', false ) )
 	echo T_('Blog Settings').' &gt; '.T_('Advanced').' &gt; '.T_('Media directory location');
 }
 
-
-/*
- * $Log: _file_settings.form.php,v $
- */
 ?>

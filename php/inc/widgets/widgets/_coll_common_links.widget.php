@@ -1,11 +1,11 @@
 <?php
 /**
- * This file implements the coll_common_links_Widget class.
+ * This file implements the Common links Widget class.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -21,7 +21,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _coll_common_links.widget.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _coll_common_links.widget.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -224,8 +224,8 @@ class coll_common_links_Widget extends ComponentWidget
 			echo $this->disp_params['item_end'];
 		}
 
-		if( $this->disp_params['show_latestcomments'] )
-		{
+		if( $this->disp_params['show_latestcomments'] && $Blog->get_setting( 'comments_latest' ) )
+		{ // Display link to latest comments if this feature is enabled for current blog
 			echo $this->disp_params['item_start'];
 			echo '<strong><a href="'.$Blog->get('lastcommentsurl').'">'.T_('Latest comments').'</a></strong>';
 			echo $this->disp_params['item_end'];
@@ -234,7 +234,7 @@ class coll_common_links_Widget extends ComponentWidget
 		if( $this->disp_params['show_owneruserinfo'] )
 		{
 			echo $this->disp_params['item_start'];
-			echo '<strong><a href="'.$Blog->get('userurl').'">'.T_('Owner details').'</a></strong>';
+			echo '<strong><a href="'.url_add_param( $Blog->get('userurl'), 'user_ID='.$Blog->owner_user_ID ).'">'.T_('Owner details').'</a></strong>';
 			echo $this->disp_params['item_end'];
 		}
 
@@ -259,8 +259,4 @@ class coll_common_links_Widget extends ComponentWidget
 	}
 }
 
-
-/*
- * $Log: _coll_common_links.widget.php,v $
- */
 ?>

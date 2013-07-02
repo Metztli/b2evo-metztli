@@ -5,7 +5,7 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2004-2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
@@ -22,7 +22,7 @@
  * @author blueyed: Daniel HAHLER
  * @author fplanque: Francois PLANQUE
  *
- * @version $Id: _blog_main.inc.php 842 2012-02-15 21:47:56Z sam2kb $
+ * @version $Id: _blog_main.inc.php 4096 2013-06-28 10:39:15Z attila $
  */
 if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page directly.' );
 
@@ -70,7 +70,7 @@ if( empty( $Blog ) )
 
 
 // Init $disp
-param( 'disp', 'string', 'posts', true );
+param( 'disp', '/^[a-z0-9\-_]+$/', 'posts', true );
 $disp_detail = '';
 
 
@@ -95,6 +95,12 @@ if( init_charsets( $current_charset ) )
   $BlogCache->clear();
 
   $Blog = & $BlogCache->get_by_ID( $blog );
+  if( is_logged_in() )
+  { // We also need to reload the current User with the new final charset
+  	$UserCache = & get_UserCache();
+	$UserCache->clear();
+	$current_User = & $UserCache->get_by_ID( $current_User->ID );
+  }
 }
 
 
@@ -118,7 +124,7 @@ if( ! isset( $resolve_extra_path ) ) { $resolve_extra_path = true; }
 if( $resolve_extra_path )
 {
 	// Check and Remove blog base URI from ReqPath:
-	$blog_baseuri = substr( $Blog->gen_baseurl(), strlen( $Blog->get('baseurlroot') ) );
+	$blog_baseuri = substr( $Blog->gen_baseurl(), strlen( $Blog->get_baseurl_root() ) );
 	$Debuglog->add( 'blog_baseuri: "'.$blog_baseuri.'"', 'params' );
 
 	// Remove trailer:
@@ -289,6 +295,7 @@ if( $resolve_extra_path )
 							{ // use blog default
 								$posts = $Blog->get_setting( 'posts_per_page' );
 							}
+							$disp = 'posts';
 						}
 					}
 					else
@@ -316,10 +323,6 @@ param( 'redir', 'string', 'yes', false );				// Do we allow redirection to canon
 param( 'preview', 'integer', 0, true );         // Is this preview ?
 param( 'stats', 'integer', 0 );									// Deprecated but might still be used by spambots
 
-// In case these were not set by the stub:
-if( !isset($timestamp_min) ) $timestamp_min = '';
-if( !isset($timestamp_max) ) $timestamp_max = '';
-
 
 
 // Front page detection & selection should probably occur here.
@@ -342,7 +345,7 @@ if( !empty($p) || !empty($title) )
 	{	// Get from post title:
 		$orig_title = $title;
 		$title = preg_replace( '/[^A-Za-z0-9_]/', '-', $title );
-		$Item = & $ItemCache->get_by_urltitle( $title, false );
+		$Item = & $ItemCache->get_by_urltitle( $title, false, false );
 
 		if( ( !empty( $Item ) ) && ( $Item !== false ) && (! $Item->is_part_of_blog( $blog ) ) )
 		{ // we have found an Item object, but it doesn't belong to the current blog
@@ -448,11 +451,11 @@ elseif( !empty($preview) )
 {	// Preview
 	$disp = 'single';
 	// Consider this as an admin hit!
-	$Hit->referer_type = 'admin';
+	$Hit->hit_type = 'admin';
 }
 elseif( $disp == 'posts' && !empty($Item) )
 { // We are going to display a single post
-	// if( in_array( $Item->ptyp_ID, array( 1000, 1500, 1520, 1530, 1570 ) ) ) // pages and intros
+	// if( in_array( $Item->ptyp_ID, $posttypes_specialtypes ) )
 	if( $Item->ptyp_ID == 1000 )
 	{
 		$disp = 'page';
@@ -524,10 +527,11 @@ if( isset( $skin ) )
 	}
 }
 
-if( !isset( $skin ) && !empty($Blog->skin_ID) )	// Note: if $skin is set to '', then we want to do a "no skin" display
+$blog_skin_ID = $Blog->get_skin_ID();
+if( !isset( $skin ) && !empty( $blog_skin_ID ) )	// Note: if $skin is set to '', then we want to do a "no skin" display
 { // Use default skin from the database
 	$SkinCache = & get_SkinCache();
-	$Skin = & $SkinCache->get_by_ID( $Blog->skin_ID );
+	$Skin = & $SkinCache->get_by_ID( $blog_skin_ID );
 	$skin = $Skin->folder;
 }
 
@@ -555,7 +559,6 @@ $Timer->pause( '_BLOG_MAIN.inc');
 // Trigger plugin event:
 // fp> TODO: please doc with example of what this can be used for
 $Plugins->trigger_event( 'BeforeBlogDisplay', array('skin'=>$skin) );
-
 
 if( !empty( $skin ) )
 { // We want to display with a skin now:
@@ -586,10 +589,12 @@ if( !empty( $skin ) )
 
 			$disp_handlers = array(
 					'404'            => '404_not_found.main.php',
+					'activateinfo'   => 'activateinfo.main.php',
 					'arcdir'         => 'arcdir.main.php',
 					'catdir'         => 'catdir.main.php',
 					'comments'       => 'comments.main.php',
 					'feedback-popup' => 'feedback_popup.main.php',
+					'login'          => 'login.main.php',
 					'mediaidx'       => 'mediaidx.main.php',
 					'msgform'        => 'msgform.main.php',
 					'page'           => 'page.main.php',
@@ -600,6 +605,15 @@ if( !empty( $skin ) )
 					'single'         => 'single.main.php',
 					'sitemap'        => 'sitemap.main.php',
 					'subs'           => 'subs.main.php',
+					'threads'        => 'threads.main.php',
+					'messages'       => 'messages.main.php',
+					'contacts'       => 'contacts.main.php',
+					'user'           => 'user.main.php',
+					'users'          => 'users.main.php',
+					'edit'           => 'edit.main.php',
+					'edit_comment'   => 'edit_comment.main.php',
+					'useritems'      => 'useritems.main.php',
+					'usercomments'   => 'usercomments.main.php',
 					// All others will default to index.main.php
 				);
 
@@ -614,6 +628,11 @@ if( !empty( $skin ) )
 				if( file_exists( $disp_handler = $ads_current_skin_path.$disp_handlers[$disp] ) )
 				{	// The skin has a customized page handler for this display:
 					$Debuglog->add('blog_main: include '.rel_path_to_base($disp_handler).' (custom to this skin)', 'skins' );
+					require $disp_handler;
+				}
+				elseif( file_exists( $disp_handler = $skins_path.$disp_handlers[$disp] ) )
+				{	// Skins have a general page handler for this display:
+					$Debuglog->add('blog_main: include '.rel_path_to_base($disp_handler).' (for CSS include -- added in v 4.1)', 'skins' );
 					require $disp_handler;
 				}
 				elseif( $disp_handlers[$disp] == 'posts.main.php' && file_exists( $disp_handler = $ads_current_skin_path.'items.main.php' ) )
@@ -663,8 +682,4 @@ else
 	// We'll just return to the caller now... (if we have not used a skin, the caller should do the display after this)
 }
 
-
-/*
- * $Log: _blog_main.inc.php,v $
- */
 ?>

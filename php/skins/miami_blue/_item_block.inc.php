@@ -7,7 +7,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  */
@@ -32,9 +32,17 @@ $params = array_merge( array(
 		$Item->locale_temp_switch(); // Temporarily switch to post locale (useful for multilingual blogs)
 	?>
 
-	<h2 class="bTitle"><?php $Item->title(); ?></h2>
+	<h2 class="bTitle linked"><?php
+		$Item->title( array(
+			'link_type' => 'permalink'
+			) );
+	?></h2>
 	<div class="bSmallHead">
 	<?php
+		if( $Item->status != 'published' )
+		{
+			$Item->status( array( 'format' => 'styled' ) );
+		}
 		$Item->issue_date( array(
 				'before'      => ' ',
 				'after'       => ' ',
@@ -46,7 +54,7 @@ $params = array_merge( array(
 				'after'        => '</strong>',
 			) );
 		$Item->msgform_link( array(
-				'text'    => '<img src="img/envelope.gif" alt="[mail]" width="13" height="10" class="middle" />',
+				'text'    => '<span class="mb_icon envelope"></span>',
 			) );
 	?>
 	<?php
@@ -100,12 +108,12 @@ $params = array_merge( array(
 				) );
 
 			$Item->permanent_link( array(
-					'text' => '<img src="img/page.gif" alt="Permalink" width="9" height="12" class="middle" />',
+					'text' => '<span class="mb_icon page"></span>',
 				) );
 		?>
 	</div>
-	<img src="../../rsc/img/blank.gif" width="1" height="1" alt="" />
 	<?php
+		echo get_icon( 'pixel' );
 		// ------------------ FEEDBACK (COMMENTS/TRACKBACKS) INCLUDED HERE ------------------
 		skin_include( '_item_feedback.inc.php', array(
 				'before_section_title' => '<h4>',
@@ -120,10 +128,3 @@ $params = array_merge( array(
 		locale_restore_previous();	// Restore previous locale (Blog locale)
 	?>
 </div>
-
-<?php
-
-/*
- * $Log: _item_block.inc.php,v $
- */
-?>

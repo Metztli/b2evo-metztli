@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -29,7 +29,7 @@
  * @author fplanque: Francois PLANQUE.
  * @author blueyed: Daniel HAHLER.
  *
- * @version $Id: _plugin_list_available.view.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _plugin_list_available.view.php 3508 2013-04-19 06:58:02Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -156,10 +156,6 @@ while( $loop_Plugin = & $AvailablePlugins->get_next() )
 			{
 				$help_icons[] = $help_external;
 			}
-			if( $help_internal = $loop_Plugin->get_help_link('$readme') )
-			{
-				$help_icons[] = $help_internal;
-			}
 			if( ! empty($help_icons) )
 			{
 				echo ' '.implode( ' ', $help_icons );
@@ -187,7 +183,7 @@ while( $loop_Plugin = & $AvailablePlugins->get_next() )
 
 	$Table->display_line_end();
 
-	flush();
+	evo_flush();
 	// free memory:
 	$AvailablePlugins->unregister($loop_Plugin);
 }
@@ -211,8 +207,4 @@ printf( T_('To make a plugin available for installation, extract it into the "%s
 	rel_path_to_base($plugins_path) );
 echo '</p>';
 
-
-/*
- * $Log: _plugin_list_available.view.php,v $
- */
 ?>

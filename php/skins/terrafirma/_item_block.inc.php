@@ -7,7 +7,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  */
@@ -45,8 +45,18 @@ $params = array_merge( array(
 			));
 	?>
 	</div>
-	<h2 class="bTitle"><?php $Item->title(); ?></h2>
+	<h2 class="bTitle"><?php
+		$Item->title( array(
+			'link_type' => 'permalink'
+			) );
+	?></h2>
 	</div>
+	<?php
+	if( $Item->status != 'published' )
+	{
+		$Item->status( array( 'format' => 'styled' ) );
+	}
+	?>
 
 	<?php
 		// ---------------------- POST CONTENT INCLUDED HERE ----------------------
@@ -131,8 +141,3 @@ $params = array_merge( array(
 	?>
 
 </div>
-<?php
-/*
- * $Log: _item_block.inc.php,v $
- */
-?>

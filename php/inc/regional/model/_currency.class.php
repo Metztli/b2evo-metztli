@@ -3,7 +3,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2009 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @copyright (c)2009-2013 by Francois PLANQUE - {@link http://fplanque.net/}
  * Parts of this file are copyright (c)2009 by The Evo Factory - {@link http://www.evofactory.com/}.
  *
  * {@internal License choice
@@ -27,7 +27,7 @@
  * @author efy-maxim: Evo Factory / Maxim.
  * @author fplanque: Francois Planque.
  *
- * @version $Id: _currency.class.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _currency.class.php 3328 2013-03-26 11:44:11Z yura $
  */
 
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -52,10 +52,10 @@ class Currency extends DataObject
 	function Currency( $db_row = NULL )
 	{
 		// Call parent constructor:
-		parent::DataObject( 'T_currency', 'curr_', 'curr_ID' );
+		parent::DataObject( 'T_regional__currency', 'curr_', 'curr_ID' );
 
 		$this->delete_restrictions = array(
-				array( 'table'=>'T_country', 'fk'=>'ctry_curr_ID', 'msg'=>T_('%d related countries') ),
+				array( 'table'=>'T_regional__country', 'fk'=>'ctry_curr_ID', 'msg'=>T_('%d related countries') ),
 			);
 
 		$this->delete_cascades = array();
@@ -175,8 +175,4 @@ class Currency extends DataObject
 	}
 }
 
-
-/*
- * $Log: _currency.class.php,v $
- */
 ?>

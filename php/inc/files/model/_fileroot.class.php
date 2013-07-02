@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -24,7 +24,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _fileroot.class.php 1150 2012-04-03 05:10:07Z attila $
+ * @version $Id: _fileroot.class.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -90,6 +90,7 @@ class FileRoot
 		global $current_User;
 		global $Messages;
  		global $Settings, $Debuglog;
+ 		global $Blog;
 
 		// Store type:
 		$this->type = $root_type;
@@ -147,7 +148,14 @@ class FileRoot
 				{
 					$this->name = T_('Shared');
 					$this->ads_path = $ads_shared_dir;
-					$this->ads_url = $media_url.'shared/global/';
+					if( isset($Blog) )
+					{	// (for now) Let's make shared files appear as being part of the currently displayed blog:
+						$this->ads_url = $Blog->get_local_media_url().'shared/global/';
+					}
+					else
+					{
+						$this->ads_url = $media_url.'shared/global/';
+					}
 				}
 				return;
 
@@ -157,7 +165,7 @@ class FileRoot
 				{ // Skins root is disabled:
 					$Debuglog->add( 'Attempt to access skins dir, but this feature is globally disabled', 'files' );
 				}
-				elseif( ! $current_User->check_perm( 'templates' ) )
+				elseif( empty( $current_User ) || ( ! $current_User->check_perm( 'templates' ) ) )
 				{	// No perm to access templates:
 					$Debuglog->add( 'Attempt to access skins dir, but no permission', 'files' );
 				}
@@ -166,7 +174,14 @@ class FileRoot
 					global $skins_path, $skins_url;
 					$this->name = T_('Skins');
 					$this->ads_path = $skins_path;
-					$this->ads_url = $skins_url;
+					if( isset($Blog) )
+					{	// (for now) Let's make skin files appear as being part of the currently displayed blog:
+						$this->ads_url = $Blog->get_local_skins_url();
+					}
+					else
+					{
+						$this->ads_url = $skins_url;
+					}
 				}
 				return;
 		}
@@ -214,8 +229,4 @@ class FileRoot
 
 }
 
-
-/*
- * $Log: _fileroot.class.php,v $
- */
 ?>

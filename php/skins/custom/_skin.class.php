@@ -8,7 +8,7 @@
  * @package skins
  * @subpackage custom
  *
- * @version $Id: _skin.class.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _skin.class.php 3432 2013-04-09 23:03:55Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -51,15 +51,13 @@ class custom_Skin extends Skin
 					'label' => T_('Header Background Color'),
 					'note' => T_('E-g: #ff0000 for red'),
 					'defaultvalue' => '#78a',
-					'valid_pattern' => array( 'pattern'=>'¤^(#([a-f0-9]{3}){1,2})?$¤i',
-																		'error'=>T_('Invalid color code.') ),
+					'type' => 'color',
 				),
 				'menu_bg_color' => array(
 					'label' => T_('Menu Background Color'),
 					'note' => T_('E-g: #ff0000 for red'),
 					'defaultvalue' => '#ddd',
-					'valid_pattern' => array( 'pattern'=>'¤^(#([a-f0-9]{3}){1,2})?$¤i',
-																		'error'=>T_('Invalid color code.') ),
+					'type' => 'color',
 				),
 				'display_post_time' => array(
 					'label' => T_('Post time'),
@@ -79,7 +77,19 @@ class custom_Skin extends Skin
 					'note' => T_('Check to enable javascript zooming on images (using the colorbox script)'),
 					'defaultvalue' => 1,
 					'type'	=>	'checkbox',
-				),							
+				),
+				'gender_colored' => array(
+					'label' => T_('Display gender'),
+					'note' => T_('Use colored usernames to differentiate men & women.'),
+					'defaultvalue' => 0,
+					'type' => 'checkbox',
+				),
+				'bubbletip' => array(
+					'label' => T_('Username bubble tips'),
+					'note' => T_('Check to enable bubble tips on usernames'),
+					'defaultvalue' => 0,
+					'type' => 'checkbox',
+				),
 			), parent::get_param_definitions( $params )	);
 
 		return $r;
@@ -96,8 +106,14 @@ class custom_Skin extends Skin
 		// call parent:
 		parent::display_init();
 
+		// Add CSS:
+		require_css( 'basic_styles.css', 'blog' ); // the REAL basic styles
+		require_css( 'basic.css', 'blog' ); // Basic styles
+		require_css( 'blog_base.css', 'blog' ); // Default styles for the blog navigation
+		require_css( 'item_base.css', 'blog' ); // Default styles for the post CONTENT
+
 		// Make sure standard CSS is called ahead of custom CSS generated below:
-		require_css( 'style.css', true );
+		require_css( 'style.css', 'relative' );
 
 		// Add custom CSS:
 		$custom_css = '';
@@ -122,15 +138,12 @@ class custom_Skin extends Skin
 		}
 
 		// Colorbox (a lightweight Lightbox alternative) allows to zoom on images and do slideshows with groups of images:
-		if($this->get_setting("colorbox")) 
+		if($this->get_setting("colorbox"))
 		{
-			require_js_helper( 'colorbox' );
+			require_js_helper( 'colorbox', 'blog' );
 		}
 	}
 
 }
 
-/*
- * $Log: _skin.class.php,v $
- */
 ?>

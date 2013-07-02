@@ -1,7 +1,4 @@
 <?php
-
-if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page directly.' );
-
 /**
  * Controller mappings.
  *
@@ -16,6 +13,19 @@ if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page direct
  *
  * @global array
  */
+if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page directly.' );
+
+
+/**
+ * Minimum PHP version required for maintenance module to function properly
+ */
+$required_php_version[ 'maintenance' ] = '5.0';
+
+/**
+ * Minimum MYSQL version required for maintenance module to function properly
+ */
+$required_mysql_version[ 'maintenance' ] = '5.0.3';
+
 $ctrl_mappings['backup'] = 'maintenance/backup.ctrl.php';
 $ctrl_mappings['upgrade'] = 'maintenance/upgrade.ctrl.php';
 
@@ -36,6 +46,8 @@ class maintenance_Module extends Module
 	 */
 	function init()
 	{
+		$this->check_required_php_version( 'maintenance' );
+
 		load_funcs( 'maintenance/model/_maintenance.funcs.php' );
 	}
 
@@ -164,8 +176,8 @@ class maintenance_Module extends Module
 
 		if( $current_User->check_perm( 'perm_maintenance', 'backup' ) )
 		{
-			// Display Backup tab in Tools menu
-			$AdminUI->add_menu_entries( 'tools', array(
+			// Display Backup tab in System -> Maintenance menu
+			$AdminUI->add_menu_entries( array( 'options', 'misc' ), array(
 									'backup' => array(
 									'text' => T_('Backup'),
 									'href' => '?ctrl=backup'	),
@@ -174,11 +186,16 @@ class maintenance_Module extends Module
 
 		if( $current_User->check_perm( 'perm_maintenance', 'upgrade' ) )
 		{
-			// Display Updates tab in Tools menu
-			$AdminUI->add_menu_entries( 'tools', array(
+			// Display Updates tab in System -> Maintenance menu
+			$AdminUI->add_menu_entries( array( 'options', 'misc' ), array(
 									'upgrade' => array(
-									'text' => T_('Check for updates'),
-									'href' => '?ctrl=upgrade'	),
+									'text' => T_('Auto Update'),
+									'href' => '?ctrl=upgrade' ),
+							) );
+			$AdminUI->add_menu_entries( array( 'options', 'misc' ), array(
+									'upgradesvn' => array(
+									'text' => T_('Update from SVN'),
+									'href' => '?ctrl=upgrade&amp;tab=svn' ),
 							) );
 		}
 	}
@@ -186,8 +203,4 @@ class maintenance_Module extends Module
 
 $maintenance_Module = new maintenance_Module();
 
-
-/*
- * $Log: _maintenance.init.php,v $
- */
 ?>

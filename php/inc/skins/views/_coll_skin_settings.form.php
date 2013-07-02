@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -23,17 +23,15 @@
  *
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _coll_skin_settings.form.php 1201 2012-04-07 04:03:31Z sam2kb $
+ * @version $Id: _coll_skin_settings.form.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
 /**
  * @var Skin
  */
-global $edited_Skin;
 
 global $Blog, $current_User;
-
 
 $Form = new Form( NULL, 'skin_settings_checkchanges' );
 
@@ -45,64 +43,31 @@ $Form->begin_form( 'fform' );
 	$Form->hidden( 'action', 'update' );
 	$Form->hidden( 'blog', $Blog->ID );
 
-	$fieldset_title_links = '<span class="floatright">&nbsp;'.action_icon( T_('Select another skin...'), 'edit', regenerate_url( 'action', 'ctrl=coll_settings&amp;skinpage=selection' ), T_('Use a different skin').' &raquo;', 3, 4 ).'</span>';
-	if( $current_User->check_perm( 'options', 'view' ) )
+	$skin_type_params = array(
+		'normal' => array(
+			'skin_ID' => $Blog->get_setting( 'normal_skin_ID' ),
+			'fieldset_title' => T_('Default skin'),
+		),
+		'mobile' => array(
+			'skin_ID' => $Blog->get_setting( 'mobile_skin_ID', true ),
+			'fieldset_title' => T_('Default mobile phone skin'),
+		),
+		'tablet' => array(
+			'skin_ID' => $Blog->get_setting( 'tablet_skin_ID', true ),
+			'fieldset_title' => T_('Default tablet skin'),
+		),
+	);
+
+	foreach( $skin_type_params as $type => $params )
 	{
-		$fieldset_title_links .= ' <span class="floatright">'.action_icon( T_('Reset params'), 'reload', regenerate_url( 'action', 'ctrl=skins&amp;skin_ID='.$edited_Skin->ID.'&amp;blog='.$Blog->ID.'&amp;action=reset&amp;'.url_crumb('skin') ), ' '.T_('Reset params'), 3, 4 ).'&nbsp;</span>';
+		$fieldset_title_links = '<span class="floatright">&nbsp;'.action_icon( T_('Select another skin...'), 'edit', regenerate_url( 'action', 'ctrl=coll_settings&amp;skinpage=selection&amp;skin_type='.$type ), T_('Use a different skin').' &raquo;', 3, 4 ).'</span>';
+		if( $current_User->check_perm( 'options', 'view' ) && ( $params[ 'skin_ID' ] ) )
+		{ // display Reset params only when skin ID has a real value ( when skin_ID = 0 means it must be the same as the normal skin value )
+			$fieldset_title_links .= ' <span class="floatright">'.action_icon( T_('Reset params'), 'reload', regenerate_url( 'action', 'ctrl=skins&amp;skin_ID='.$params[ 'skin_ID' ].'&amp;blog='.$Blog->ID.'&amp;action=reset&amp;'.url_crumb('skin') ), ' '.T_('Reset params'), 3, 4 ).'&nbsp;</span>';
+		}
+		display_skin_fieldset( $Form, $params[ 'skin_ID' ], array( 'fieldset_title' => $params[ 'fieldset_title' ], 'fieldset_links' => $fieldset_title_links ) );
 	}
 
-	$Form->begin_fieldset( T_('Current skin').get_manual_link('blog_skin_settings').' '.$fieldset_title_links );
+$Form->end_form( array( array( 'submit', 'submit', T_('Save changes'), 'SaveButton' ) ) );
 
-		Skin::disp_skinshot( $edited_Skin->folder, $edited_Skin->name );
-
-		$Form->info( T_('Skin name'), $edited_Skin->name );
-
-		if( isset($edited_Skin->version) )
-		{
-				$Form->info( T_('Skin version'), $edited_Skin->version );
-		}
-
-		$Form->info( T_('Skin type'), $edited_Skin->type );
-
-		if( $skin_containers = $edited_Skin->get_containers() )
-		{
-			$container_ul = '<ul><li>'.implode( '</li><li>', $skin_containers ).'</li></ul>';
-		}
-		else
-		{
-			$container_ul = '-';
-		}
-		$Form->info( T_('Containers'), $container_ul );
-
-	$Form->end_fieldset();
-
-	$skin_params = $edited_Skin->get_param_definitions( $tmp_params = array('for_editing'=>true) );
-
-	$Form->begin_fieldset( T_('Params') );
-
-		if( empty($skin_params) )
-		{	// Advertise this feature!!
-			echo '<p>'.T_('This skin does not provide any configurable settings.').'</p>';
-		}
-		else
-		{
-			load_funcs( 'plugins/_plugin.funcs.php' );
-
-			// Loop through all widget params:
-			foreach( $skin_params as $l_name => $l_meta )
-			{
-				// Display field:
-				autoform_display_field( $l_name, $l_meta, $Form, 'Skin', $edited_Skin );
-			}
-		}
-
-	$Form->end_fieldset();
-
-$Form->end_form( array( array( 'submit', 'submit', T_('Update'), 'SaveButton' ),
-													array( 'reset', '', T_('Reset'), 'ResetButton' ) ) );
-
-
-/*
- * $Log: _coll_skin_settings.form.php,v $
- */
 ?>

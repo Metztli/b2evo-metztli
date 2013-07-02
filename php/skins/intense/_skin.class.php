@@ -8,7 +8,7 @@
  * @package skins
  * @subpackage intense
  *
- * @version $Id: _skin.class.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _skin.class.php 1214 2012-04-12 10:24:02Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -57,7 +57,19 @@ class intense_Skin extends Skin
 					'note' => T_('Check to enable javascript zooming on images (using the colorbox script)'),
 					'defaultvalue' => 1,
 					'type'	=>	'checkbox',
-				),							
+				),
+				'gender_colored' => array(
+					'label' => T_('Display gender'),
+					'note' => T_('Use colored usernames to differentiate men & women.'),
+					'defaultvalue' => 0,
+					'type' => 'checkbox',
+				),
+				'bubbletip' => array(
+					'label' => T_('Username bubble tips'),
+					'note' => T_('Check to enable bubble tips on usernames'),
+					'defaultvalue' => 0,
+					'type' => 'checkbox',
+				),
 			), parent::get_param_definitions( $params )	);
 
 		return $r;
@@ -72,9 +84,19 @@ class intense_Skin extends Skin
 	{
 		// call parent:
 		parent::display_init();
+
+		require_css( 'basic_styles.css', 'blog' ); // the REAL basic styles
+		require_css( 'basic.css', 'blog' ); // Basic styles
+		require_css( 'img.css', 'blog' ); // Standard image styles
+		require_css( 'blog_base.css', 'blog' ); // Default styles for the blog navigation
+		require_css( 'item_base.css', 'blog' ); // Default styles for the post CONTENT
+		require_css( 'forms.css', 'blog' ); // Default form styles
+		require_css( 'comments.css', 'blog' ); // Default comment styles
+		add_headline( '<!--[if IE]><link rel="stylesheet" type="text/css" href="ie.css" /><![endif]-->' );
+
 		if($this->get_setting("colorbox")) 
 		{
-			require_js_helper( 'colorbox' );
+			require_js_helper( 'colorbox', 'blog' );
 		}
 	}
 }

@@ -10,7 +10,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _goal.class.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _goal.class.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -47,8 +47,7 @@ class Goal extends DataObject
 				array( 'table'=>'T_track__goalhit', 'fk'=>'ghit_goal_ID', 'msg'=>T_('%d related goal hits') ),
 			);
 
-  	$this->delete_cascades = array(
-			);
+		$this->delete_cascades = array();
 
  		if( $db_row )
 		{
@@ -171,8 +170,4 @@ class Goal extends DataObject
 	}
 }
 
-
-/*
- * $Log: _goal.class.php,v $
- */
 ?>

@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -28,7 +28,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: _antispam_settings.form.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _antispam_settings.form.php 3768 2013-05-22 06:14:32Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -83,6 +83,21 @@ else foreach( $karma_plugins as $loop_Plugin )
 
 $Form->end_fieldset();
 
+$Form->begin_fieldset( T_('Suspicious users') );
+
+	$GroupCache = & get_GroupCache( true, T_('Don\'t move suspicious users') );
+	$Form->select_object( 'antispam_suspicious_group', $Settings->get('antispam_suspicious_group'), $GroupCache, T_('Move suspicious users to'), '', true );
+
+	$trust_groups = $Settings->get('antispam_trust_groups') != '' ? explode( ',', $Settings->get('antispam_trust_groups') ) : array();
+	$groups_options = array();
+	$groups = $GroupCache->get_option_array();
+	foreach( $groups as $group_ID => $group_name )
+	{
+		$groups_options[] = array( 'antispam_trust_groups[]', $group_ID, $group_name, in_array( $group_ID, $trust_groups ) );
+	}
+	$Form->checklist( $groups_options, 'antispam_trust_groups', T_('Never touch users from these groups') );
+
+$Form->end_fieldset();
 
 if( $current_User->check_perm( 'options', 'edit' ) )
 {
@@ -93,8 +108,4 @@ if( $current_User->check_perm( 'options', 'edit' ) )
 		) );
 }
 
-
-/*
- * $Log: _antispam_settings.form.php,v $
- */
 ?>

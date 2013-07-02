@@ -5,13 +5,13 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
  *
  * @package admin
  *
- * @version $Id: _widget_list.view.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _widget_list.view.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -70,7 +70,7 @@ function display_container( $container, $legend_suffix = '' )
 	$Table->display_init( NULL, array('fadeouts' => true) );
 	// add ID for jQuery
 	// TODO: fp> Awfully dirty. This should be handled by the Table object
-	$Table->params['head_title'] = str_replace( '<table', '<table id="'.$table_id.'"', $Table->params['head_title'] );
+	$Table->params['list_start'] = str_replace( '<table', '<table id="'.$table_id.'"', $Table->params['list_start'] );
 
 	/*
 	if( $legend_suffix )
@@ -212,15 +212,11 @@ foreach( $container_Widget_array as $container=>$dummy )
 
 global $rsc_url;
 
-echo '<!--[if IE]><img src="'.$rsc_url.'img/blank.gif" width="1" height="1" alt="" /><![endif]-->';
+echo '<!--[if IE]>'.get_icon( 'pixel' ).'<![endif]-->';
 
 echo '</fieldset>'."\n";
 
 
-echo '<img src="'.$rsc_url.'/img/blank.gif" alt="" class="clear" />';
+echo get_icon( 'pixel', 'imgtag', array( 'class' => 'clear' ) );
 
-
-/*
- * $Log: _widget_list.view.php,v $
- */
 ?>

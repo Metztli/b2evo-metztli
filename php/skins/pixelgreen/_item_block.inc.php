@@ -7,7 +7,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  */
@@ -32,7 +32,15 @@ $params = array_merge( array(
 		$Item->locale_temp_switch(); // Temporarily switch to post locale (useful for multilingual blogs)
 	?>
 
-	<h3 class="bTitle"><?php $Item->title(); ?></h3>
+	<h3 class="bTitle linked"><?php
+		$Item->title( array(
+			'link_type' => 'permalink'
+			) );
+		if( $Item->status != 'published' )
+		{
+			$Item->status( array( 'format' => 'styled' ) );
+		}
+	?></h3>
 	<p><?php
 		$Item->author( array(
 				'before'    => T_('by').' <strong>',
@@ -76,16 +84,13 @@ $params = array_merge( array(
 
 		// Permalink:
 		$Item->issue_date( array(
-				'before'    => '<img src="img/clock.gif" alt="" class="middle" />',
+				'before'    => '<span class="date">',
 				'after'     => ' ',
 			));
 		$Item->issue_time( array(
 				'before'    => ' ',
-				'after'     => '',
+				'after'     => ',</span> ',
 			));
-
-
-		echo ', ';
 
 		/*$Item->wordcount();
 		echo ' '.T_('words');*/
@@ -101,8 +106,8 @@ $params = array_merge( array(
 		// Link to comments, trackbacks, etc.:
 		$Item->feedback_link( array(
 						'type' => 'comments',
-						'link_before' => '<img src="img/comment.gif" alt="" class="middle" />',
-						'link_after' => '',
+						'link_before' => '<span class="comments">',
+						'link_after' => '</span>',
 						'link_text_zero' => '#',
 						'link_text_one' => '#',
 						'link_text_more' => '#',
@@ -146,8 +151,3 @@ $params = array_merge( array(
 	?>
 
 </div>
-<?php
-/*
- * $Log: _item_block.inc.php,v $
- */
-?>

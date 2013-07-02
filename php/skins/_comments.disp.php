@@ -9,7 +9,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  */
@@ -21,9 +21,12 @@ $CommentList = new CommentList2( $Blog );
 // Filter list:
 $CommentList->set_filters( array(
 		'types' => array( 'comment', 'trackback', 'pingback' ),
-		'statuses' => array ( 'published' ),
+		'statuses' => get_inskin_statuses(),
 		'order' => 'DESC',
 		'comments' => 50,
+		// fp> I don't think it's necessary to add a restriction here. (use case?)
+		// 'timestamp_min' => $Blog->get_timestamp_min(),
+		// 'timestamp_max' => $Blog->get_timestamp_max(),
 	) );
 
 // Get ready for display (runs the query):
@@ -31,6 +34,7 @@ $CommentList->display_init();
 
 $CommentList->display_if_empty();
 
+echo '<div id="styled_content_block">';
 while( $Comment = & $CommentList->get_next() )
 { // Loop through comments:
 	// Load comment's Item object:
@@ -40,6 +44,10 @@ while( $Comment = & $CommentList->get_next() )
 	<?php $Comment->anchor() ?>
 	<div class="bComment">
 		<?php
+		if( $Comment->status != 'published' )
+		{
+			$Comment->status( 'styled' );
+		}
 		$Comment->avatar();
 		?>
 		<h3 class="bTitle">
@@ -78,9 +86,6 @@ while( $Comment = & $CommentList->get_next() )
 	<!-- ========== END of a COMMENT ========== -->
 	<?php
 }	// End of comment loop.
+echo '</div>';
 
-
-/*
- * $Log: _comments.disp.php,v $
- */
 ?>

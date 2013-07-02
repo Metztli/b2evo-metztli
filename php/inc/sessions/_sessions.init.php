@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -24,10 +24,20 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _sessions.init.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _sessions.init.php 3525 2013-04-22 07:22:44Z attila $
  */
 if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page directly.' );
 
+
+/**
+ * Minimum PHP version required for sessions module to function properly
+ */
+$required_php_version[ 'sessions' ] = '5.0';
+
+/**
+ * Minimum MYSQL version required for sessions module to function properly
+ */
+$required_mysql_version[ 'sessions' ] = '5.0.3';
 
 /**
  * Aliases for table names:
@@ -42,6 +52,7 @@ $db_config['aliases']['T_track__keyphrase'] = $tableprefix.'track__keyphrase';
 $db_config['aliases']['T_sessions'] = $tableprefix.'sessions';
 $db_config['aliases']['T_track__goal'] = $tableprefix.'track__goal';
 $db_config['aliases']['T_track__goalhit'] = $tableprefix.'track__goalhit';
+$db_config['aliases']['T_logs__internal_searches'] = $tableprefix.'logs__internal_searches';
 
 
 /**
@@ -60,6 +71,7 @@ $db_config['aliases']['T_track__goalhit'] = $tableprefix.'track__goalhit';
  */
 $ctrl_mappings['stats'] = 'sessions/stats.ctrl.php';
 $ctrl_mappings['goals'] = 'sessions/goals.ctrl.php';
+$ctrl_mappings['internalsearches'] = 'sessions/internal_searches.ctrl.php';
 
 
 /**
@@ -79,6 +91,23 @@ function & get_GoalCache()
 	return $GoalCache;
 }
 
+/**
+ * Get the Internal Searches Cache
+ *
+ * @return InternalSearchesCache
+ */
+function & get_InternalSearchesCache()
+{
+	global $InternalSearchesCache;
+
+	if( ! isset( $InternalSearchesCache ) )
+	{	// Cache doesn't exist yet:
+		$InternalSearchesCache = new DataObjectCache( 'InternalSearches', false, 'T_logs__internal_searches', 'isrch_', 'isrch_ID', 'isrch_sessionID', 'isrch_keywords' ); // COPY (FUNC)
+	}
+
+	return $InternalSearchesCache;
+}
+
 
 /**
  * sessions_Module definition
@@ -96,6 +125,7 @@ class sessions_Module extends Module
 	 */
 	function init()
 	{
+		$this->check_required_php_version( 'sessions' );
 	}
 
 	/**
@@ -123,8 +153,28 @@ class sessions_Module extends Module
 				'separator' => true,
 			);
 			$entries['stats'] = array(
-				'text' => T_('Blog stats').'&hellip;',
+				'text' => T_('Blog analytics'),
 				'href' => $admin_url.'?ctrl=stats&amp;tab=summary&amp;tab3=global&amp;blog='.$Blog->ID,
+				'entries' => array(
+					'summary' => array(
+						'text' => T_('Hit summary').'&hellip;',
+						'href' => $admin_url.'?ctrl=stats&amp;tab=summary&amp;tab3=global&amp;blog='.$Blog->ID ),
+					'refsearches' => array(
+						'text' => T_('Search B-hits').'&hellip;',
+						'href' => $admin_url.'?ctrl=stats&amp;tab=refsearches&amp;tab3=hits&amp;blog='.$Blog->ID ),
+					'referers' => array(
+						'text' => T_('Referered B-hits').'&hellip;',
+						'href' => $admin_url.'?ctrl=stats&amp;tab=referers&amp;blog='.$Blog->ID ),
+					'other' => array(
+						'text' => T_('Direct B-hits').'&hellip;',
+						'href' => $admin_url.'?ctrl=stats&amp;tab=other&amp;blog='.$Blog->ID ),
+					'hits' => array(
+						'text' => T_('All Hits').'&hellip;',
+						'href' => $admin_url.'?ctrl=stats&amp;tab=hits&amp;blog='.$Blog->ID ),
+					'domains' => array(
+						'text' => T_('Referring domains').'&hellip;',
+						'href' => $admin_url.'?ctrl=stats&amp;tab=domains&amp;blog='.$Blog->ID ),
+					)
 			);
 
 			$topleft_Menu->add_menu_entries( 'blog', $entries );
@@ -147,20 +197,43 @@ class sessions_Module extends Module
 				);
 			}
 
-			$entries = array(
-				'stats' => array(
-						'text' => T_('Global Stats').'&hellip;',
-						'href' => $admin_url.'?ctrl=stats&amp;tab=summary&amp;tab3=global&amp;blog=0',
-					 ),
-				'sessions' => array(
-						'text' => T_('User sessions').'&hellip;',
-						'href' => $admin_url.'?ctrl=stats&amp;tab=sessions&amp;tab3=login&amp;blog=0',
-					 ),
-				'goals' => array(
-						'text' => T_('Goals').'&hellip;',
-						'href' => $admin_url.'?ctrl=goals',
-					 ),
+			$entries = array();
+			$entries['stats'] = array(
+					'text' => T_('Global analytics'),
+					'href' => $admin_url.'?ctrl=stats&amp;tab=summary&amp;tab3=global&amp;blog=0',
+					'entries' => array(
+						'summary' => array(
+							'text' => T_('Hit summary').'&hellip;',
+							'href' => $admin_url.'?ctrl=stats&amp;tab=summary&amp;tab3=global&amp;blog=0' ),
+						'refsearches' => array(
+							'text' => T_('Search B-hits').'&hellip;',
+							'href' => $admin_url.'?ctrl=stats&amp;tab=refsearches&amp;tab3=hits&amp;blog=0' ),
+						'referers' => array(
+							'text' => T_('Referered B-hits').'&hellip;',
+							'href' => $admin_url.'?ctrl=stats&amp;tab=referers&amp;blog=0' ),
+						'other' => array(
+							'text' => T_('Direct B-hits').'&hellip;',
+							'href' => $admin_url.'?ctrl=stats&amp;tab=other&amp;blog=0' ),
+						'hits' => array(
+							'text' => T_('All Hits').'&hellip;',
+							'href' => $admin_url.'?ctrl=stats&amp;tab=hits&amp;blog=0' ),
+						'domains' => array(
+							'text' => T_('Referring domains').'&hellip;',
+							'href' => $admin_url.'?ctrl=stats&amp;tab=domains&amp;blog=0' ),
+						'goals' => array(
+							'text' => T_('Goals').'&hellip;',
+							'href' => $admin_url.'?ctrl=goals' ),
+						)
 				);
+
+			if( !is_admin_page() )
+			{
+				$blog_ID = empty( $Blog ) ? 0 : $Blog->ID;
+				$entries['stats_page'] = array(
+						'text' => T_('Page stats').'&hellip;',
+						'href' => $admin_url.'?ctrl=stats&tab=hits&blog='.$blog_ID.'&reqURI='.rawurlencode( $_SERVER['REQUEST_URI'] ),
+					);
+			}
 
 			$topleft_Menu->add_menu_entries( 'tools', $entries );
 		}
@@ -194,7 +267,7 @@ class sessions_Module extends Module
 					NULL, // root
 					array(
 						'stats' => array(
-							'text' => T_('Stats'),
+							'text' => T_('Analytics'),
 							'href' => $dispatcher.'?ctrl=stats&amp;tab=summary&amp;tab3=global',
 							'entries' => array(
 								'summary' => array(
@@ -242,6 +315,9 @@ class sessions_Module extends Module
 								'other' => array(
 									'text' => T_('Direct B-hits'),
 									'href' => $dispatcher.'?ctrl=stats&amp;tab=other&amp;blog='.$blog ),
+								'hits' => array(
+									'text' => T_('All Hits'),
+									'href' => $dispatcher.'?ctrl=stats&amp;tab=hits&amp;blog='.$blog ),
 								'domains' => array(
 									'text' => T_('Referring domains'),
 									'href' => $dispatcher.'?ctrl=stats&amp;tab=domains&amp;blog='.$blog ),
@@ -276,66 +352,8 @@ class sessions_Module extends Module
 				);
 		}
 	}
-
-	/**
-	 * Builds the 3rd half of the menu. This is the one with the configuration features
-	 *
-	 * At some point this might be displayed differently than the 1st half.
-	 */
-	function build_menu_3()
-	{
-
-		global $blog, $dispatcher, $ctrl;
-		/**
-		 * @var User
-		 */
-		global $current_User;
-		global $Blog;
-		/**
-		 * @var AdminUI_general
-		 */
-		global $AdminUI;
-
-		if( !$current_User->check_perm( 'admin', 'normal' ) )
-		{
-			return;
-		}
-
-		if( $current_User->check_perm( 'stats', 'view' ) )
-		{	// Viewing aggregate + Permission to view stats for ALL blogs:
-			$sessions_menu = array(
-				'sessions' => array(
-					'text' => T_('User sessions'),
-					'href' => $dispatcher.'?ctrl=stats&amp;tab=sessions&amp;tab3=login&amp;blog=0',
-					'entries' => array(
-						'login' => array(
-							'text' => T_('Users'),
-							'href' => $dispatcher.'?ctrl=stats&amp;tab=sessions&amp;tab3=login&amp;blog=0'
-							),
-						'sessid' => array(
-							'text' => T_('Sessions'),
-							'href' => $dispatcher.'?ctrl=stats&amp;tab=sessions&amp;tab3=sessid&amp;blog=0'
-							),
-						'hits' => array(
-							'text' => T_('Hits'),
-							'href' => $dispatcher.'?ctrl=stats&amp;tab=sessions&amp;tab3=hits&amp;blog=0'
-							),
-						),
-					),
-			 	);
-			// insert at 2nd position:
-			if( ! $AdminUI->insert_menu_entries_after( 'users', $sessions_menu, 0 )	)
-			{
-				$AdminUI->add_menu_entries( 'user', $sessions_menu );
-			}
-		}
-	}
 }
 
 $sessions_Module = new sessions_Module();
 
-
-/*
- * $Log: _sessions.init.php,v $
- */
 ?>

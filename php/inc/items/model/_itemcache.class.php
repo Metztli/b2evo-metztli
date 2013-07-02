@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -29,7 +29,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _itemcache.class.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _itemcache.class.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -62,6 +62,7 @@ class ItemCache extends DataObjectCache
 		parent::DataObjectCache( $objType, false, $dbtablename, $dbprefix, $dbIDname );
 	}
 
+
 	/**
 	 * Get an object from cache by its urltitle
 	 *
@@ -80,11 +81,12 @@ class ItemCache extends DataObjectCache
 	    // Get from SlugCache
 			$SlugCache = & get_SlugCache();
 			$req_Slug =  $SlugCache->get_by_name( $req_urltitle, $halt_on_error, $halt_on_empty );
+
 			if( $req_Slug && $req_Slug->get( 'type' ) == 'item' )
 			{	// It is in SlugCache
-				if( $Item = $this->get_by_ID( $req_Slug->get( 'itm_ID' ), $halt_on_error ) !== false )
+				$itm_ID = $req_Slug->get( 'itm_ID' );
+				if( $Item = $this->get_by_ID( $itm_ID, $halt_on_error, $halt_on_empty ) )
 				{
-					$Item = $this->get_by_ID( $req_Slug->get( 'itm_ID' ), $halt_on_error );
 					$this->urltitle_index[$req_urltitle] = $Item;
 				}
 				else
@@ -140,14 +142,16 @@ class ItemCache extends DataObjectCache
 			if( !isset( $this->urltitle_index[$urltitle] ) )
 			{ // not yet in cache:
 				$SlugCache = & get_SlugCache();
-				$req_Slug =  $SlugCache->get_by_name( $urltitle, false, false );
-				if( $req_Slug->get( 'type' ) == 'item' )
-				{	// Is item slug
-					if( $Item = $this->get_by_ID( $req_Slug->get( 'itm_ID' ), false ) )
-					{	// Set cahce 
-						$this->urltitle_index[$urltitle] = $Item;
-						$Debuglog->add( "Cached <strong>$this->objtype($urltitle)</strong>" );
-						continue;
+				if( $req_Slug = $SlugCache->get_by_name( $urltitle, false, false ) )
+				{
+					if( $req_Slug->get( 'type' ) == 'item' )
+					{	// Is item slug
+						if( $Item = $this->get_by_ID( $req_Slug->get( 'itm_ID' ), false ) )
+						{	// Set cache 
+							$this->urltitle_index[$urltitle] = $Item;
+							$Debuglog->add( "Cached <strong>$this->objtype($urltitle)</strong>" );
+							continue;
+						}
 					}
 				}
 				// Set cache for non found objects:
@@ -159,7 +163,4 @@ class ItemCache extends DataObjectCache
 
 }
 
-/*
- * $Log: _itemcache.class.php,v $
- */
 ?>

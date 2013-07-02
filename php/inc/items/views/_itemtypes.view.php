@@ -3,7 +3,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2009 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @copyright (c)2009-2013 by Francois PLANQUE - {@link http://fplanque.net/}
  * Parts of this file are copyright (c)2009 by The Evo Factory - {@link http://www.evofactory.com/}.
  *
  * {@internal License choice
@@ -27,7 +27,7 @@
  * @author efy-sergey: Evo Factory / Sergey.
  * @author fplanque: Francois Planque.
  *
- * @version $Id: _itemtypes.view.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _itemtypes.view.php 3328 2013-03-26 11:44:11Z yura $
  */
 
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -120,7 +120,4 @@ if( $current_User->check_perm( 'options', 'edit', false ) )
 // Display results:
 $Results->display();
 
-/**
- * $Log: _itemtypes.view.php,v $
- */
 ?>

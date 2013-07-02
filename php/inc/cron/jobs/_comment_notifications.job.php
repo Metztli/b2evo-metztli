@@ -4,11 +4,11 @@
  *
  * @author efy-asimo: Attila Simo
  *
- * @version $Id: _comment_notifications.job.php 817 2012-02-12 06:12:55Z sam2kb $
+ * @version $Id: _comment_notifications.job.php 3924 2013-06-05 07:28:33Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
-global $Settings, $Messages;
+global $Settings, $Messages, $UserSettings;
 
 // Get the ID of the comment we are supposed notify:
 if( empty( $job_params['comment_ID'] ) )
@@ -17,11 +17,14 @@ if( empty( $job_params['comment_ID'] ) )
 	return 3;
 }
 
-$except_moderators = false;
-if( ! empty( $job_params['except_moderators'] ) )
-{
-	$except_moderators = $job_params['except_moderators'];
+if( empty( $UserSettings ) )
+{ // initialize UserSettings, because in CLI mode is not initialized yet
+	load_class( 'users/model/_usersettings.class.php', 'UserSettings' );
+	$UserSettings = new UserSettings();
 }
+
+$except_moderators = ( ! empty( $job_params['except_moderators'] ) ) ? $job_params['except_moderators'] : false;
+$executed_by_userid = ( ! empty( $job_params['executed_by_userid'] ) ) ? $job_params['executed_by_userid'] : NULL;
 
 $comment_ID = $job_params['comment_ID'];
 
@@ -38,9 +41,6 @@ if( $DB->rows_affected != 1 )
 	return 4;
 }
 
-// Load required functions ( we need to load here, because in CLI mode it is not loaded )
-load_funcs( '_core/_url.funcs.php' );
-
 // Get the Comment:
 $CommentCache = & get_CommentCache();
 /**
@@ -49,7 +49,7 @@ $CommentCache = & get_CommentCache();
 $edited_Comment = & $CommentCache->get_by_ID( $comment_ID );
 
 // Send email notifications now!
-$edited_Comment->send_email_notifications( false, $except_moderators );
+$edited_Comment->send_email_notifications( false, $except_moderators, $executed_by_userid );
 
 // Record that processing has been done:
 $edited_Comment->set( 'notif_status', 'finished' );
@@ -65,7 +65,4 @@ if( empty( $result_message ) )
 
 return 1; /* ok */
 
-/*
- * $Log: _comment_notifications.job.php,v $
- */
 ?>

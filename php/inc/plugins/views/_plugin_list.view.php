@@ -9,7 +9,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -33,7 +33,7 @@
  * @author fplanque: Francois PLANQUE.
  * @author blueyed: Daniel HAHLER.
  *
- * @version $Id: _plugin_list.view.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _plugin_list.view.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -54,10 +54,10 @@ $fadeout_id = $Session->get('fadeout_id');
 load_funcs('plugins/_plugin.funcs.php');
 
 $SQL = new SQL();
-$SQL->SELECT( 'plug_status, plug_ID, plug_priority, plug_code, plug_apply_rendering' );
+$SQL->SELECT( 'plug_status, plug_ID, plug_priority, plug_code' );
 $SQL->FROM( 'T_plugins' );
 
-$Results = new Results( $SQL->get(), 'plug_', '-A-' /* by name */, 0 /* no limit */ );
+$Results = new Results( $SQL->get(), 'plug_', '--A' /* by name */, 0 /* no limit */ );
 
 $Results->Cache = & $admin_Plugins;
 
@@ -77,6 +77,23 @@ $Results->grp_cols[] = array(
 */
 
 $Results->title = T_('Installed plugins').get_manual_link('installed_plugins');
+
+if( count( $admin_Plugins->get_plugin_groups() ) )
+{
+	/*
+	 * Grouping params:
+	 */
+	$Results->group_by_obj_prop = 'group';
+
+
+	/*
+	 * Group columns:
+	 */
+	$Results->grp_cols[] = array(
+			'td_colspan' => 0,
+			'td' => '% {Obj}->group %',
+		);
+}
 
 /*
  * STATUS TD:
@@ -111,6 +128,7 @@ function plugin_results_td_status( $plug_status, $plug_ID )
 }
 $Results->cols[] = array(
 		'th' => /* TRANS: shortcut for enabled */ T_('En'),
+		'th_title' => T_('Enabled'),
 		'order' => 'plug_status',
 		'td' => '%plugin_results_td_status( \'$plug_status$\', $plug_ID$ )%',
 		'td_class' => 'center',
@@ -143,26 +161,6 @@ $Results->cols[] = array(
 		'td' => '% plugin_results_td_name( {Obj} ) %',
 	);
 
-if( count($admin_Plugins->get_plugin_groups()) )
-{
-	/*
-	 * PLUGIN GROUP TD:
-	 */
-	function plugin_results_group_order_callback( $a, $b, $order )
-	{
-		global $admin_Plugins;
-
-		$r = $admin_Plugins->sort_Plugin_group( $a->ID, $b->ID );
-		if( $order == 'DESC' ) { $r = -$r; }
-		return $r;
-	}
-	$Results->cols[] = array(
-			'th' => T_('Group'),
-			'order_objects_callback' => 'plugin_results_group_order_callback',
-			'td' => '% {Obj}->group %',
-		);
-}
-
 /*
  * PRIORITY TD:
  */
@@ -171,34 +169,6 @@ $Results->cols[] = array(
 		'order' => 'plug_priority',
 		'td' => '$plug_priority$',
 		'td_class' => 'right',
-	);
-
-/*
- * APPLY RENDERING TD:
- */
-$apply_rendering_values = $admin_Plugins->get_apply_rendering_values(true); // with descs
-function plugin_results_td_apply_rendering($apply_rendering)
-{
-	global $admin_Plugins, $apply_rendering_values;
-
-	return '<span title="'.format_to_output( $apply_rendering_values[$apply_rendering], 'htmlattr' )
-			.'">'.$apply_rendering.'</span>';
-}
-$Results->cols[] = array(
-		'th' => T_('Apply'),
-		'th_title' => T_('When should rendering apply?'),
-		'order' => 'plug_apply_rendering',
-		'td' => '%plugin_results_td_apply_rendering( \'$plug_apply_rendering$\' )%',
-	);
-
-/*
- * PLUGIN CODE TD:
- */
-$Results->cols[] = array(
-		'th' => /* TRANS: Code of a plugin */ T_('Code'),
-		'th_title' => T_('The code to call the plugin by code (SkinTag) or as Renderer.'),
-		'order' => 'plug_code',
-		'td' => '% {Obj}->code %',
 	);
 
 /*
@@ -217,14 +187,23 @@ $Results->cols[] = array(
 	);
 
 /*
+ * PLUGIN CODE TD:
+ */
+$Results->cols[] = array(
+		'th' => /* TRANS: Code of a plugin */ T_('Code'),
+		'th_title' => T_('The code to call the plugin by code (SkinTag) or as Renderer.'),
+		'order' => 'plug_code',
+		'td' => '% {Obj}->code %',
+	);
+
+/*
  * HELP TD:
  */
 function plugin_results_td_help( $Plugin )
 {
 	return action_icon( T_('Display info'), 'info', regenerate_url( 'action,plugin_class', 'action=info&amp;plugin_class='.$Plugin->classname ) )
 		// Help icons, if available:
-		.$Plugin->get_help_link('$help_url')
-		.' '.$Plugin->get_help_link('$readme');
+		.$Plugin->get_help_link('$help_url');
 }
 $Results->cols[] = array(
 		'th' => T_('Help'),
@@ -282,8 +261,4 @@ unset($Results); // free memory
 //Flush fadeout
 $Session->delete( 'fadeout_id');
 
-
-/*
- * $Log: _plugin_list.view.php,v $
- */
 ?>

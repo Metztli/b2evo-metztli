@@ -3,12 +3,12 @@
  * This template generates a sitemap feed for the requested blog's latest posts
  *
  * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://manual.b2evolution.net/Skins_2.0}
+ * {@link http://b2evolution.net/man/skin-structure}
  *
  * @package evoskins
  * @subpackage rss
  *
- * @version $Id: index.main.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: index.main.php 3157 2013-03-06 04:34:44Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -17,7 +17,7 @@ $Timer->resume( 'prepare list' );
 load_class( '/items/model/_itemlistlight.class.php', 'ItemListLight' );
 
 // Use a LIGHT Item List:  (Sitemap = 50000 entries max)
-$MainList = new ItemListLight( $Blog, $timestamp_min, $timestamp_max, 50000 );
+$MainList = new ItemListLight( $Blog, $Blog->get_timestamp_min(), $Blog->get_timestamp_max(), 50000 );
 
 // By default we only want items that have the MAIN cat in this blog,
 // i-e with its canonical URL in this blog (cross posted stuff will be listed in its main blog)
@@ -27,7 +27,7 @@ param( 'cat_focus', 'string', 'main' );
 // Filter list:
 $MainList->set_filters( array(
 		'visibility_array' => array( 'published' ),  // We only want to advertised published items
-		'types' => '-1500,1520,1530,1570,1600,3000',	// INCLUDE pages BUT STILL EXCLUDE intros and sidebar links
+		'types' =>  '-'.implode(',',$posttypes_nopermanentURL),	// keep normal posts & pages BUT STILL EXCLUDE intros and sidebar links
 	  'unit' => 'all',						// We want to advertise all items (not just a page or a day)
 	  'cat_focus' => $cat_focus,
 	) );

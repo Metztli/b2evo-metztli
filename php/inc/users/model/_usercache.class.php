@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -29,7 +29,7 @@
  * @author fplanque: Francois PLANQUE
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: _usercache.class.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _usercache.class.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -81,13 +81,22 @@ class UserCache extends DataObjectCache
 	 *
 	 * Does not halt on error.
 	 *
+	 * @param string user login
+	 * @param boolean force to run db query to get user by the given login.
+	 *        !IMPORTANT! Set this to false only if it's sure that this user was already loaded if it exists on DB!
+	 *
 	 * @return false|User Reference to the user object or false if not found
 	 */
-	function & get_by_login( $login )
+	function & get_by_login( $login, $force_db_check = true )
 	{
 		// Make sure we have a lowercase login:
 		// We want all logins to be lowercase to guarantee uniqueness regardless of the database case handling for UNIQUE indexes.
 		$login = evo_strtolower( $login );
+
+		if( !( $force_db_check || isset( $this->cache_login[$login] ) ) )
+		{ // force db check is false and this login is not set in the cache it means that user with the given login doesn't exists
+			$this->cache_login[$login] = false;
+		}
 
 		if( !isset( $this->cache_login[$login] ) )
 		{
@@ -136,6 +145,86 @@ class UserCache extends DataObjectCache
 		}
 
 		return $User;
+	}
+
+
+	/**
+	 * Get a user object by email and password
+	 * If multiple accounts match, give priority to:
+	 *  -accounts that are activated over non activated accounts
+	 *  -accounts that were used more recently than others
+	 *
+	 * @param string email address
+	 * @param string md5 hashed password
+	 * @param string hashed password - If this is set, it means we need to check the hasshed password instead of the md5 password
+	 * @param string password salt
+	 * @return false|array false if user with this email not exists, array( $User, $exists_more ) pair otherwise
+	 */
+	function get_by_emailAndPwd( $email, $pass_md5, $pwd_hashed = NULL, $pwd_salt = NULL )
+	{
+		global $DB;
+
+		// Get all users with matching email address
+		$result = $DB->get_results('SELECT * FROM T_users
+					WHERE LOWER(user_email) = '.$DB->quote( evo_strtolower($email) ).'
+					ORDER BY user_lastseen_ts DESC, user_status ASC');
+
+		if( empty( $result ) )
+		{ // user was not found with the given email address
+			return false;
+		}
+
+		// check if exists more user with the same email address
+		$exists_more = ( count( $result ) > 1 );
+		$index = -1;
+		$first_matched_index = false;
+		// iterate through the result list
+		foreach( $result as $row )
+		{
+			$index++;
+			if( empty( $pwd_hashed ) )
+			{
+				if( $row->user_pass != $pass_md5 )
+				{ // password doesn't match
+					continue;
+				}
+			}
+			elseif( sha1($row->user_pass.$pwd_salt) != $pwd_hashed )
+			{ // password doesn't match
+				continue;
+			}
+			// a user with matched password was found
+			$first_matched_index = $index;
+			if( ( $row->user_status == 'activated' ) || ( $row->user_status == 'autoactivated' ) )
+			{ // an activated user was found, break from the iteration
+				$User = new User( $row );
+				break;
+			}
+			if( ( !isset( $first_notclosed_User ) ) && ( $row->user_status != 'closed' ) )
+			{
+				$first_notclosed_User = new User( $row );
+			}
+		}
+
+		if( !isset( $User ) )
+		{ // There is no activated user with the given email and password
+			if( isset( $first_notclosed_User ) )
+			{ // Get first not closed user with the given email and password
+				$User = $first_notclosed_User;
+			}
+			elseif( $first_matched_index !== false )
+			{ // There is only closed user with the given email and password
+				$User = new User( $result[$first_matched_index] );
+			}
+			else
+			{ // No matched user was found
+				return false;
+			}
+		}
+
+		// Add user to the cache and return result
+		$this->add( $User );
+		return array( & $User, $exists_more );
 	}
 
 
@@ -255,18 +344,15 @@ class UserCache extends DataObjectCache
 	/**
 	 * Handle our login cache.
 	 */
-	function remove_by_ID( $reg_ID )
+	function remove_by_ID( $req_ID )
 	{
 		if( isset($this->cache[$req_ID]) )
 		{
-			unset( $this->cache_login[ $this->cache[$req_ID] ] );
+			$Obj = & $this->cache[$req_ID];
+			unset( $this->cache_login[ evo_strtolower($Obj->login) ] );
 		}
 		parent::remove_by_ID($req_ID);
 	}
 }
 
-
-/*
- * $Log: _usercache.class.php,v $
- */
 ?>

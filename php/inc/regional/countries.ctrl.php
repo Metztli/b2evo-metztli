@@ -3,7 +3,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2009 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @copyright (c)2009-2013 by Francois PLANQUE - {@link http://fplanque.net/}
  * Parts of this file are copyright (c)2009 by The Evo Factory - {@link http://www.evofactory.com/}.
  *
  * {@internal License choice
@@ -27,7 +27,7 @@
  * @author efy-maxim: Evo Factory / Maxim.
  * @author fplanque: Francois Planque.
  *
- * @version $Id: countries.ctrl.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: countries.ctrl.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -42,12 +42,13 @@ global $current_User;
 // Check minimum permission:
 $current_User->check_perm( 'options', 'view', true );
 
-// Memorize this as the last "tab" used in the Blog Settings:
+// Memorize this as the last "tab" used in the Global Settings:
 $UserSettings->set( 'pref_glob_settings_tab', $ctrl );
+$UserSettings->set( 'pref_glob_regional_tab', $ctrl );
 $UserSettings->dbupdate();
 
 // Set options path:
-$AdminUI->set_path( 'options', 'countries' );
+$AdminUI->set_path( 'options', 'regional', 'countries' );
 
 // Get action parameter from request:
 param_action();
@@ -94,8 +95,46 @@ switch( $action )
 		// Update db with new flag value.
 		$edited_Country->dbupdate();
 
-		param( 'results_ctry_page', integer, '', true );
-		param( 'results_ctry_order', string, '', true );
+		param( 'results_ctry_page', 'integer', '', true );
+		param( 'results_ctry_order', 'string', '', true );
+
+		// Redirect so that a reload doesn't write to the DB twice:
+		header_redirect( regenerate_url( '', '', '', '&' ), 303 ); // Will EXIT
+		// We have EXITed already at this point!!
+		break;
+
+	case 'enable_country_pref':
+	case 'disable_country_pref':
+
+		// Check that this action request is not a CSRF hacked request:
+		$Session->assert_received_crumb( 'country' );
+
+		// Disable a country only if it is enabled, and user has edit access.
+		$current_User->check_perm( 'options', 'edit', true );
+
+		// Make sure the country information was loaded. If not, just exit with error.
+		if( empty($edited_Country) )
+		{
+			$Messages->add( sprintf( 'The country with ID %d could not be instantiated.', $ctry_ID ), 'error' );
+			break;
+		}
+
+		if ( $action == 'disable_country_pref' )
+		{	// Disable this country by setting flag to false.
+			$edited_Country->set( 'preferred', 0 );
+			$Messages->add( sprintf( T_('Removed from preferred countries (%s, #%d).'), $edited_Country->name, $edited_Country->ID ), 'success' );
+		}
+		elseif ( $action == 'enable_country_pref' )
+		{	// Enable country by setting flag to true.
+			$edited_Country->set( 'preferred', 1 );
+			$Messages->add( sprintf( T_('Added to preferred countries (%s, #%d).'), $edited_Country->name, $edited_Country->ID ), 'success' );
+		}
+
+		// Update db with new flag value.
+		$edited_Country->dbupdate();
+
+		param( 'results_ctry_page', 'integer', '', true );
+		param( 'results_ctry_order', 'string', '', true );
 
 		// Redirect so that a reload doesn't write to the DB twice:
 		header_redirect( regenerate_url( '', '', '', '&' ), 303 ); // Will EXIT
@@ -258,9 +297,10 @@ switch( $action )
 }
 
 
-$AdminUI->breadcrumbpath_init();
-$AdminUI->breadcrumbpath_add( T_('Global settings'), '?ctrl=settings',
+$AdminUI->breadcrumbpath_init( false );
+$AdminUI->breadcrumbpath_add( T_('System'), '?ctrl=system',
 		T_('Global settings are shared between all blogs; see Blog settings for more granular settings.') );
+$AdminUI->breadcrumbpath_add( T_('Regional settings'), '?ctrl=locales' );
 $AdminUI->breadcrumbpath_add( T_('Countries'), '?ctrl=countries' );
 
 
@@ -309,7 +349,4 @@ $AdminUI->disp_payload_end();
 // Display body bottom, debug info and close </html>:
 $AdminUI->disp_global_footer();
 
-/*
- * $Log: countries.ctrl.php,v $
- */
 ?>

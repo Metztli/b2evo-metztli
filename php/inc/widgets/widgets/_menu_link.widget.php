@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -21,7 +21,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _menu_link.widget.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _menu_link.widget.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -30,21 +30,29 @@ load_class( 'widgets/model/_widget.class.php', 'ComponentWidget' );
 global $menu_link_widget_link_types;
 $menu_link_widget_link_types = array(
 		'home' => T_('Blog home'),
+		'search' => T_('Search page'),
 		'arcdir' => T_('Archive directory'),
 		'catdir' => T_('Category directory'),
 		'postidx' => T_('Post index'),
 		'mediaidx' => T_('Photo index'),
 		'sitemap' => T_('Site Map'),
 		'latestcomments' => T_('Latest comments'),
-		'owneruserinfo' => T_('Blog owner details'),
+
 		'ownercontact' => T_('Blog owner contact form'),
-		'search' => T_('Search page'),
+		'owneruserinfo' => T_('Blog owner profile'),
+
+		'users' => T_('User directory'),
+
 		'login' => T_('Log in form'),
 		'register' => T_('Registration form'),
-		'profile' => T_('Profile form'),
-		'avatar' => T_('Profile picture editing'),
+		'myprofile' => T_('My profile'),
+		'profile' => T_('Edit profile'),
+		'avatar' => T_('Edit profile picture'),
+
 		'item' => T_('Any item (post, page, etc...)'),
 		'url' => T_('Any URL'),
+
+		'postnew' => T_('Write a new post'),
 	);
 
 /**
@@ -169,49 +177,92 @@ class menu_link_Widget extends ComponentWidget
 		* @var Blog
 		*/
 		global $Blog;
+		global $disp;
 
 		$this->init_display( $params );
+
+		// Default link class
+		$link_class = $this->disp_params['link_default_class'];
 
 		switch(	$this->disp_params['link_type'] )
 		{
 			case 'search':
 				$url = $Blog->get('searchurl');
 				$text = T_('Search');
+				// Is this the current display?
+				if( $disp == 'search' )
+				{	// Let's display the link as selected
+					$link_class = $this->disp_params['link_selected_class'];
+				}
 				break;
 
 			case 'arcdir':
 				$url = $Blog->get('arcdirurl');
 				$text = T_('Archives');
+				if( $disp == 'arcdir' )
+				{	// Let's display the link as selected
+					$link_class = $this->disp_params['link_selected_class'];
+				}
 				break;
 
 			case 'catdir':
 				$url = $Blog->get('catdirurl');
 				$text = T_('Categories');
+				if( $disp == 'catdir' )
+				{	// Let's display the link as selected
+					$link_class = $this->disp_params['link_selected_class'];
+				}
 				break;
 
 			case 'postidx':
 				$url = $Blog->get('postidxurl');
 				$text = T_('Post index');
+				if( $disp == 'postidx' )
+				{	// Let's display the link as selected
+					$link_class = $this->disp_params['link_selected_class'];
+				}
 				break;
 
 			case 'mediaidx':
 				$url = $Blog->get('mediaidxurl');
 				$text = T_('Photo index');
+				if( $disp == 'mediaidx' )
+				{	// Let's display the link as selected
+					$link_class = $this->disp_params['link_selected_class'];
+				}
 				break;
 
 			case 'sitemap':
 				$url = $Blog->get('sitemapurl');
 				$text = T_('Site map');
+				if( $disp == 'sitemap' )
+				{	// Let's display the link as selected
+					$link_class = $this->disp_params['link_selected_class'];
+				}
 				break;
 
 			case 'latestcomments':
+				if( !$Blog->get_setting( 'comments_latest' ) )
+				{ // This page is disabled
+					return false;
+				}
 				$url = $Blog->get('lastcommentsurl');
 				$text = T_('Latest comments');
+				if( $disp == 'comments' )
+				{	// Let's display the link as selected
+					$link_class = $this->disp_params['link_selected_class'];
+				}
 				break;
 
 			case 'owneruserinfo':
-				$url = $Blog->get('userurl');
+				$url = url_add_param( $Blog->get('userurl'), 'user_ID='.$Blog->owner_user_ID );
 				$text = T_('Owner details');
+				// Is this the current display?
+				global $User;
+				if( $disp == 'user' && !empty($User) && $User->ID == $Blog->owner_user_ID )
+				{	// Let's display the link as selected
+					$link_class = $this->disp_params['link_selected_class'];
+				}
 				break;
 
 			case 'ownercontact':
@@ -220,19 +271,30 @@ class menu_link_Widget extends ComponentWidget
 					return;
 				}
 				$text = T_('Contact');
+				// Is this the current display?
+				if( $disp == 'msgform' )
+				{	// Let's display the link as selected
+					// fp> I think it's interesting to select this link , even if the recipient ID is different from the owner
+					// odds are there is no other link to highlight in this case
+					$link_class = $this->disp_params['link_selected_class'];
+				}
 				break;
 
 			case 'login':
 				if( is_logged_in() ) return false;
-				$url = get_login_url();
+				$url = get_login_url( 'menu link' );
 				if( isset($this->BlockCache) )
 				{	// Do NOT cache because some of these links are using a redirect_to param, which makes it page dependent.
 					// so this will be cached by the PageCache; there is no added benefit to cache it in the BlockCache
 					// (which could have been shared between several pages):
 					$this->BlockCache->abort_collect();
 				}
-
 				$text = T_('Log in');
+				// Is this the current display?
+				if( $disp == 'login' )
+				{	// Let's display the link as selected
+					$link_class = $this->disp_params['link_selected_class'];
+				}
 				break;
 
 			case 'register':
@@ -247,20 +309,48 @@ class menu_link_Widget extends ComponentWidget
 					// (which could have been shared between several pages):
 					$this->BlockCache->abort_collect();
 				}
-
 				$text = T_('Register');
+				// Is this the current display?
+				if( $disp == 'register' )
+				{	// Let's display the link as selected
+					$link_class = $this->disp_params['link_selected_class'];
+				}
 				break;
 
 			case 'profile':
 				if( ! is_logged_in() ) return false;
 				$url = get_user_profile_url();
-				$text = T_('Profile');
+				$text = T_('Edit profile');
+				// Is this the current display?  (Edit my Profile)
+				if( in_array( $disp, array( 'profile', 'avatar', 'pwdchange', 'userprefs', 'subs' ) ) )
+				{	// Let's display the link as selected
+					$link_class = $this->disp_params['link_selected_class'];
+				}
 				break;
 
 			case 'avatar':
 				if( ! is_logged_in() ) return false;
 				$url = get_user_avatar_url();
 				$text = T_('Profile picture');
+				// Note: we never highlight this, it will always highlight 'profile' instead
+				break;
+
+			case 'users':
+				global $Settings;
+				if( ! is_logged_in() && ! $Settings->get( 'allow_anonymous_user_list' ) )
+				{	// Don't allow anonymous users to see users list
+					return false;
+				}
+				$url = $Blog->get( 'usersurl' );
+				$text = T_('User directory');
+				// Is this the current display?
+				// Note: If $user_ID is not set, it means we are viewing "My Profile" instead
+				global $user_ID;
+				if( $disp == 'users' || ($disp == 'user' && !empty($user_ID)) )
+				{	// Let's display the link as selected
+					// Note: we also highlight this for any user profile that is displayed
+					$link_class = $this->disp_params['link_selected_class'];
+				}
 				break;
 
 			case 'item':
@@ -269,18 +359,57 @@ class menu_link_Widget extends ComponentWidget
 				* @var Item
 				*/
 				$item_ID = (integer)($this->disp_params['item_ID']);
-				$Item = & $ItemCache->get_by_ID( $item_ID, false, false );
-				if( empty($Item) )
+				$disp_Item = & $ItemCache->get_by_ID( $item_ID, false, false );
+				if( empty($disp_Item) )
 				{	// Item not found
 					return false;
 				}
-				$url = $Item->get_permanent_url();
-				$text = $Item->title;
+				$url = $disp_Item->get_permanent_url();
+				$text = $disp_Item->title;
+				// Is this the current item?
+				global $Item;
+				if( !empty($Item) && $disp_Item->ID == $Item->ID )
+				{	// The current page is currently displaying the Item this link is pointing to
+					// Let's display it as selected
+					$link_class = $this->disp_params['link_selected_class'];
+				}
 				break;
 
 			case 'url':
 				$url = $this->disp_params['link_href'];
 				$text = '[URL]';	// should normally be overriden below...
+				// Note: we never highlight this link
+				break;
+
+			case 'postnew':
+				if( ! check_item_perm_create() )
+				{	// Don't allow users to create a new post
+					return false;
+				}
+				$url = url_add_param( $Blog->get( 'url' ), 'disp=edit' );
+				$text = T_('Write a new post');
+				// Is this the current display?
+				if( $disp == 'edit' )
+				{	// Let's display the link as selected
+					$link_class = $this->disp_params['link_selected_class'];
+				}
+				break;
+
+			case 'myprofile':
+				if( ! is_logged_in() )
+				{	// Don't show this link for not logged in users
+					return false;
+				}
+				$url = url_add_param( $Blog->get( 'url' ), 'disp=user' );
+				$text = T_('My profile');
+				// Is this the current display?  (Edit my Profile)
+				global $user_ID, $current_User;
+				// If $user_ID is not set, it means we will fall back to the current user, so it's ok
+				// If $user_ID is set, it means we are browsing the directory instead
+				if( $disp == 'user' && empty($user_ID) )
+				{	// Let's display the link as selected
+					$link_class = $this->disp_params['link_selected_class'];
+				}
 				break;
 
 			case 'home':
@@ -299,7 +428,7 @@ class menu_link_Widget extends ComponentWidget
 		echo $this->disp_params['list_start'];
 
 		echo $this->disp_params['item_start'];
-		echo '<a href="'.$url.'">'.$text.'</a>';
+		echo '<a href="'.$url.'" class="'.$link_class.'">'.$text.'</a>';
 		echo $this->disp_params['item_end'];
 
 		echo $this->disp_params['list_end'];
@@ -338,8 +467,4 @@ class menu_link_Widget extends ComponentWidget
 	}
 }
 
-
-/*
- * $Log: _menu_link.widget.php,v $
- */
 ?>

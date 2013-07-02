@@ -17,7 +17,7 @@
  *
  * @todo add 5 plugin hooks. Will be widgetized later (same as SkinTag became Widgets)
  *
- * @version $Id: dashboard.ctrl.php 272 2011-11-11 09:58:01Z attila $
+ * @version $Id: dashboard.ctrl.php 3914 2013-06-04 11:34:47Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -26,7 +26,7 @@ if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.'
  */
 global $current_User;
 
-global $dispatcher, $allow_evo_stats;
+global $dispatcher, $allow_evo_stats, $blog;
 
 if( $blog )
 {
@@ -42,6 +42,10 @@ $AdminUI->set_coll_list_params( 'blog_ismember', 'view', array(), T_('Global'), 
 $AdminUI->set_path( 'dashboard' );
 
 require_js( 'communication.js' ); // auto requires jQuery
+// Load the appropriate blog navigation styles (including calendar, comment forms...):
+require_css( $rsc_url.'css/blog_base.css' ); // Default styles for the blog navigation
+// Colorbox (a lightweight Lightbox alternative) allows to zoom on images and do slideshows with groups of images:
+require_js_helper( 'colorbox' );
 
 $AdminUI->breadcrumbpath_init();
 
@@ -53,8 +57,11 @@ $AdminUI->disp_body_top();
 
 if( $blog )
 {	// We want to look at a specific blog:
-	// Begin payload block:
 
+	// load dashboard functions
+	load_funcs( 'dashboard/model/_dashboard.funcs.php' );
+
+	// Begin payload block:
 	// This div is to know where to display the message after overlay close:
 	echo '<div class="first_payload_block">'."\n";
 
@@ -70,9 +77,20 @@ if( $blog )
 
 	$nb_blocks_displayed = 0;
 
-	$user_draftc_perm = $current_User->check_perm( 'blog_draft_comments', 'edit', false, $blog );
+	$blog_moderation_statuses = explode( ',', $Blog->get_setting( 'moderation_statuses' ) );
+	$highest_publish_status = get_highest_publish_status( 'comment', $Blog->ID, false );
+	$user_modeartion_statuses = array();
 
-	if( $user_draftc_perm )
+	foreach( $blog_moderation_statuses as $status )
+	{
+		if( ( $status !== $highest_publish_status ) && $current_User->check_perm( 'blog_comment!'.$status, 'edit', false, $blog ) )
+		{
+			$user_modeartion_statuses[] = $status;
+		}
+	}
+	$user_perm_moderate_cmt = count( $user_modeartion_statuses );
+
+	if( $user_perm_moderate_cmt )
 	{
 		/*
 		 * COMMENTS:
@@ -82,17 +100,26 @@ if( $blog )
 		// Filter list:
 		$CommentList->set_filters( array(
 				'types' => array( 'comment','trackback','pingback' ),
-				'statuses' => array ( 'draft' ),
+				'statuses' => $user_modeartion_statuses,
+				'user_perm' => 'moderate',
+				'post_statuses' => array( 'published', 'community', 'protected' ),
 				'order' => 'DESC',
 				'comments' => 5,
 			) );
+
+		// Set param prefix for URLs
+		$param_prefix = 'cmnt_fullview_';
+		if( !empty( $CommentList->param_prefix ) )
+		{
+			$param_prefix = $CommentList->param_prefix;
+		}
 
 		// Get ready for display (runs the query):
 		$CommentList->display_init();
 	}
 
-	if( $user_draftc_perm && $CommentList->result_num_rows )
-	{	// We have drafts
+	if( $user_perm_moderate_cmt && $CommentList->result_num_rows )
+	{	// We have comments awaiting moderation
 
 		global $htsrv_url;
 
@@ -106,33 +133,33 @@ if( $blog )
 			// Process result after publish/deprecate/delete action has been completed
 			function processResult(result, modifiedlist)
 			{
-				$('#comments_container').html(result);
+				jQuery('#comments_container').html(result);
 				for(var id in modifiedlist)
 				{
 					switch(modifiedlist[id])
 					{
 						case 'published':
-							fadeIn(id, '#339900');
+							jQuery('#' + id).css( 'backgroundColor', '#339900' );
 							break;
 						case 'deprecated':
-							fadeIn(id, '#656565');
+							jQuery('#' + id).css( 'backgroundColor', '#656565' );
 							break;
 						case 'deleted':
-							fadeIn(id, '#fcc');
+							jQuery('#' + id).css( 'backgroundColor', '#fcc' );
 							break;
-					};
+					}
 				}
 
-				var comments_number = $('#new_badge').val();
+				var comments_number = jQuery('#new_badge').val();
 				if(comments_number == '0')
 				{
 					var options = {};
-					$('#comments_block').effect('blind', options, 200);
-					$('#comments_block').remove();
+					jQuery('#comments_block').effect('blind', options, 200);
+					jQuery('#comments_block').remove();
 				}
 				else
 				{
-					$('#badge').text(comments_number);
+					jQuery('#badge').text(comments_number);
 				}
 			}
 
@@ -152,7 +179,7 @@ if( $blog )
 
 				modifieds[divid] = status;
 
-				$.ajax({
+				jQuery.ajax({
 				type: 'POST',
 				url: '<?php echo $htsrv_url; ?>async.php',
 				data: 'blogid=' + <?php echo $Blog->ID; ?> + '&commentid=' + id + '&status=' + status + '&action=set_comment_status&' + <?php echo '\''.url_crumb('comment').'\''; ?>,
@@ -160,7 +187,58 @@ if( $blog )
 					{
 						// var divid = 'comment_' + id;
 						delete modifieds[divid];
-						processResult(result, modifieds);
+						processResult( ajax_debug_clear( result ), modifieds);
+					}
+				});
+			}
+
+			// Display voting tool when JS is enable
+			jQuery( 'document' ).ready( function() { jQuery( '.vote_spam' ).show(); } );
+			// Set comments vote
+			function setCommentVote(id, type, vote)
+			{
+				var divid = 'comment_' + id;
+				var highlight_class = '';
+				var color = '';
+				switch(vote)
+				{
+					case 'spam':
+						color = fadeIn(divid, '#ffc9c9');
+						highlight_class = 'roundbutton_red';
+						break;
+					case 'notsure':
+						color = fadeIn(divid, '#bbbbbb');
+						break;
+					case 'ok':
+						color = fadeIn(divid, '#bcffb5');
+						highlight_class = 'roundbutton_green';
+						break;
+				};
+
+				if( highlight_class != '' )
+				{
+					jQuery( '#vote_'+type+'_'+id ).find( 'a.roundbutton, span.roundbutton' ).addClass( highlight_class );
+				}
+
+				jQuery.ajax({
+				type: 'POST',
+				url: '<?php echo $htsrv_url; ?>anon_async.php',
+				data:
+					{ 'blogid': <?php echo '\''.$Blog->ID.'\''; ?>,
+						'commentid': id,
+						'type': type,
+						'vote': vote,
+						'action': 'set_comment_vote',
+						'crumb_comment': <?php echo '\''.get_crumb('comment').'\''; ?>,
+					},
+				success: function(result)
+					{
+						if( color != '' )
+						{ // Revert back color
+							fadeIn( divid, color );
+						}
+						jQuery('#vote_'+type+'_'+id).after( ajax_debug_clear( result ) );
+						jQuery('#vote_'+type+'_'+id).remove();
 					}
 				});
 			}
@@ -173,7 +251,7 @@ if( $blog )
 
 				modifieds[divid] = 'deleted';
 
-				$.ajax({
+				jQuery.ajax({
 				type: 'POST',
 				url: '<?php echo $htsrv_url; ?>async.php',
 				data: 'action=get_opentrash_link&' + <?php echo '\''.url_crumb('comment').'\''; ?>,
@@ -182,20 +260,20 @@ if( $blog )
 						var recycle_bin = jQuery('#recycle_bin');
 						if( recycle_bin.length )
 						{
-							recycle_bin.replaceWith( result );
+							recycle_bin.replaceWith( ajax_debug_clear( result ) );
 						}
 					}
 				});
 
-				$.ajax({
+				jQuery.ajax({
 				type: 'POST',
 				url: '<?php echo $htsrv_url; ?>async.php',
 				data: 'blogid=' + <?php echo $Blog->ID; ?> + '&commentid=' + id + '&action=delete_comment&' + <?php echo '\''.url_crumb('comment').'\''; ?>,
 				success: function(result)
 					{
-						jQuery('#' + divid).effect('transfer', { to: $('#recycle_bin') }, 700, function() {
+						jQuery('#' + divid).effect('transfer', { to: jQuery('#recycle_bin') }, 700, function() {
 							delete modifieds[divid];
-							processResult(result, modifieds);
+							processResult( ajax_debug_clear( result ), modifieds);
 						});
 					}
 				});
@@ -204,7 +282,9 @@ if( $blog )
 			// Fade in background color
 			function fadeIn(id, color)
 			{
+				var bg_color = jQuery('#' + id).css( 'backgroundColor' );
 				jQuery('#' + id).animate({ backgroundColor: color }, 200);
+				return bg_color;
 			}
 
 			// Delete comment author_url
@@ -213,11 +293,11 @@ if( $blog )
 				var divid = 'commenturl_' + id;
 				fadeIn(divid, '#fcc');
 
-				$.ajax({
+				jQuery.ajax({
 					type: 'POST',
 					url: '<?php echo $htsrv_url; ?>async.php',
 					data: 'blogid=' + <?php echo $Blog->ID; ?> + '&commentid=' + id + '&action=delete_comment_url' + '&' + <?php echo '\''.url_crumb('comment').'\''; ?>,
-					success: function(result) { $('#' + divid).remove(); }
+					success: function(result) { jQuery('#' + divid).remove(); }
 				});
 			}
 
@@ -259,7 +339,9 @@ if( $blog )
 			// Ban comment url
 			function ban_url(authorurl)
 			{
-				$.ajax({
+				<?php global $rsc_url; ?>
+				antispamSettings( '<img src="<?php echo $rsc_url; ?>img/ajax-loader2.gif" alt="<?php echo T_('Loading...'); ?>" title="<?php echo T_('Loading...'); ?>" style="display:block;margin:auto;position:absolute;top:0;bottom:0;left:0;right:0;" />' );
+				jQuery.ajax({
 					type: 'POST',
 					url: '<?php echo $admin_url; ?>',
 					data: 'ctrl=antispam&action=ban&display_mode=js&mode=iframe&request=checkban&keyword=' + authorurl +
@@ -276,7 +358,7 @@ if( $blog )
 			{
 				var parameters = jQuery( '#antispam_add' ).serialize();
 
-				$.ajax({
+				jQuery.ajax({
 					type: 'POST',
 					url: '<?php echo $admin_url; ?>',
 					data: 'action=ban&display_mode=js&mode=iframe&request=checkban&' + parameters,
@@ -298,33 +380,33 @@ if( $blog )
 					fadeIn(divid, '#fcc');
 				}
 
-				$.ajax({
+				jQuery.ajax({
 					type: 'POST',
 					url: '<?php echo $htsrv_url; ?>async.php',
 					data: 'blogid=' + <?php echo $Blog->ID; ?> + '&action=refresh_comments&' + <?php echo '\''.url_crumb('comment').'\''; ?>,
 					success: function(result)
 					{
-						processResult(result, modifieds);
+						processResult( ajax_debug_clear( result ), modifieds);
 					}
 				});
 			}
 
 			function startRefreshComments()
 			{
-				$('#comments_container').slideUp('fast', refreshComments());
+				jQuery('#comments_container').slideUp('fast', refreshComments());
 			}
 
 			// Absolute refresh comment list
 			function refreshComments()
 			{
-				$.ajax({
+				jQuery.ajax({
 					type: 'POST',
 					url: '<?php echo $htsrv_url; ?>async.php',
 					data: 'blogid=' + <?php echo $Blog->ID; ?> + '&action=refresh_comments&' + <?php echo '\''.url_crumb('comment').'\''; ?>,
 					success: function(result)
 					{
-						processResult(result, modifieds);
-						$('#comments_container').slideDown('fast');
+						processResult( ajax_debug_clear( result ), modifieds);
+						jQuery('#comments_container').slideDown('fast');
 					}
 				});
 			}
@@ -338,91 +420,43 @@ if( $blog )
 		$opentrash_link = get_opentrash_link();
 		$refresh_link = '<span class="floatright">'.action_icon( T_('Refresh comment list'), 'refresh', 'javascript:startRefreshComments()' ).'</span> ';
 
+		$show_statuses_param = $param_prefix.'show_statuses[]='.implode( '&amp;'.$param_prefix.'show_statuses[]=', $user_modeartion_statuses );
 		$block_item_Widget->title = $refresh_link.$opentrash_link.T_('Comments awaiting moderation').
-			' <a href="'.$admin_url.'?ctrl=comments&amp;show_statuses[]=draft'.'">'.
-			'<span id="badge" class="badge">'.get_comments_awaiting_moderation_number( $Blog->ID ).'</span></a>';
+			' <a href="'.$admin_url.'?ctrl=comments&amp;'.$show_statuses_param.'" style="text-decoration:none">'.
+			'<span id="badge" class="badge badge-important">'.$CommentList->total_rows.'</span></a>';
 
+		echo '<div id="styled_content_block">';
 		echo '<div id="comments_block">';
 
 		$block_item_Widget->disp_template_replaced( 'block_start' );
 
 		echo '<div id="comments_container">';
 
-		load_funcs( 'dashboard/model/_dashboard.funcs.php' );
 		// GET COMMENTS AWAITING MODERATION (the code generation is shared with the AJAX callback):
-		show_comments_awaiting_moderation( $Blog->ID );
+		show_comments_awaiting_moderation( $Blog->ID, $CommentList );
 
 		echo '</div>';
 
 		$block_item_Widget->disp_template_raw( 'block_end' );
 
+		echo '</div>';
 		echo '</div>';
 	}
 
 	/*
-	 * RECENT DRAFTS
+	 * RECENT POSTS awaiting moderation
 	 */
-	// Create empty List:
-	$ItemList = new ItemList2( $Blog, NULL, NULL );
-
-	// Filter list:
-	$ItemList->set_filters( array(
-			'visibility_array' => array( 'draft' ),
-			'orderby' => 'datemodified',
-			'order' => 'DESC',
-			'posts' => 5,
-		) );
-
-	// Get ready for display (runs the query):
-	$ItemList->display_init();
-
-	if( $ItemList->result_num_rows )
-	{	// We have drafts
-
-		$nb_blocks_displayed++;
-
-		$block_item_Widget->title = T_('Recent drafts');
-		$block_item_Widget->disp_template_replaced( 'block_start' );
-
-		while( $Item = & $ItemList->get_item() )
-		{
-			echo '<div class="dashboard_post dashboard_post_'.($ItemList->current_idx % 2 ? 'even' : 'odd' ).'" lang="'.$Item->get('locale').'">';
-			// We don't switch locales in the backoffice, since we use the user pref anyway
-			// Load item's creator user:
-			$Item->get_creator_User();
-
-			echo '<div class="dashboard_float_actions">';
-			$Item->edit_link( array( // Link to backoffice for editing
-					'before'    => ' ',
-					'after'     => ' ',
-					'class'     => 'ActionButton'
-				) );
-			$Item->publish_link( '', '', '#', '#', 'PublishButton' );
-			echo '<img src="'.$rsc_url.'/img/blank.gif" alt="" />';
-			echo '</div>';
-
-			echo '<h3 class="dashboard_post_title">';
-			$item_title = $Item->dget('title');
-			if( ! strlen($item_title) )
-			{
-				$item_title = '['.format_to_output(T_('No title')).']';
-			}
-			echo '<a href="?ctrl=items&amp;blog='.$Blog->ID.'&amp;p='.$Item->ID.'">'.$item_title.'</a>';
-			echo ' <span class="dashboard_post_details">';
-			$Item->status( array(
-					'before' => '<div class="floatright"><span class="status_'.$Item->status.'">',
-					'after'  => '</span></div>',
-				) );
-			echo '</span>';
-			echo '</h3>';
-
-			echo '</div>';
-
+	// TODO: asimo> Make this configurable per blogs the same way as we have in case of comments
+	echo '<div id="styled_content_block" class="items_container">';
+	$default_moderation_statuses = get_visibility_statuses( 'moderation' );
+	foreach( $default_moderation_statuses as $status )
+	{ // go through all statuses
+		if( display_posts_awaiting_moderation( $status, $block_item_Widget ) )
+		{ // a block was dispalyed for this status
+			$nb_blocks_displayed++;
 		}
-
-		$block_item_Widget->disp_template_raw( 'block_end' );
 	}
-
+	echo '</div>';
 
 	/*
 	 * RECENTLY EDITED
@@ -432,7 +466,7 @@ if( $blog )
 
 	// Filter list:
 	$ItemList->set_filters( array(
-			'visibility_array' => array( 'published', 'protected', 'private', 'deprecated', 'redirected' ),
+			'visibility_array' => get_visibility_statuses( 'keys', array('trash') ),
 			'orderby' => 'datemodified',
 			'order' => 'DESC',
 			'posts' => 5,
@@ -454,6 +488,8 @@ if( $blog )
 		$block_item_Widget->title = T_('Recently edited');
 		$block_item_Widget->disp_template_replaced( 'block_start' );
 
+		echo '<div id="styled_content_block" class="items_container">';
+
 		while( $Item = & $ItemList->get_item() )
 		{
 			echo '<div class="dashboard_post dashboard_post_'.($ItemList->current_idx % 2 ? 'even' : 'odd' ).'" lang="'.$Item->get('locale').'">';
@@ -461,11 +497,16 @@ if( $blog )
 			// Load item's creator user:
 			$Item->get_creator_User();
 
+			$Item->status( array(
+					'before' => '<div class="floatright"><span class="note status_'.$Item->status.'"><span>',
+					'after'  => '</span></span></div>',
+				) );
+
 			echo '<div class="dashboard_float_actions">';
 			$Item->edit_link( array( // Link to backoffice for editing
 					'before'    => ' ',
 					'after'     => ' ',
-					'class'     => 'ActionButton'
+					'class'     => 'ActionButton btn'
 				) );
 			echo '</div>';
 
@@ -477,10 +518,6 @@ if( $blog )
 			}
 			echo '<a href="?ctrl=items&amp;blog='.$Blog->ID.'&amp;p='.$Item->ID.'">'.$item_title.'</a>';
 			echo ' <span class="dashboard_post_details">';
-			$Item->status( array(
-					'before' => '<div class="floatright"><span class="status_'.$Item->status.'">',
-					'after'  => '</span></div>',
-				) );
 			$Item->views();
 			echo '</span>';
 			echo '</h3>';
@@ -497,11 +534,13 @@ if( $blog )
 					'restrict_to_image_position' => 'teaser',	// Optionally restrict to files/images linked to specific position: 'teaser'|'aftermore'
 				) );
 
-			echo '<div class="small">'.$Item->get_content_excerpt( 150 ).'</div>';
+			echo '<span class="small">'.$Item->get_content_excerpt( 150 ).'</span>';
 
 			echo '<div style="clear:left;">'.get_icon('pixel').'</div>'; // IE crap
 			echo '</div>';
 		}
+
+		echo '</div>';
 
 		$block_item_Widget->disp_template_raw( 'block_end' );
 	}
@@ -563,11 +602,6 @@ if( $blog )
 		if( $current_User->check_perm( 'blog_cats', '', false, $Blog->ID ) )
 		{
 			echo '<li><a href="'.$dispatcher.'?ctrl=chapters&blog='.$Blog->ID.'">'.T_('Edit categories').' &raquo;</a></li>';
-		}
-
-		if( $current_User->check_perm( 'blog_genstatic', 'any', false, $Blog->ID ) )
-		{
-			echo '<li><a href="'.$dispatcher.'?ctrl=collections&amp;action=GenStatic&amp;blog='.$Blog->ID.'&amp;redir_after_genstatic='.rawurlencode(regenerate_url( '', '', '', '&' )).'">'.T_('Generate static page!').'</a></li>';
 		}
 
  		echo '<li><a href="'.$Blog->get('url').'">'.T_('View this blog').'</a></li>';
@@ -632,6 +666,12 @@ else
 
 if( $current_User->check_perm( 'options', 'edit' ) )
 {	// We have some serious admin privilege:
+
+	/**
+	 * @var AbstractSettings
+	 */
+	global $global_Cache;
+
 	// Begin payload block:
 	$AdminUI->disp_payload_begin();
 
@@ -655,10 +695,6 @@ if( $current_User->check_perm( 'options', 'edit' ) )
 		// Display info & error messages
 		echo $Messages->display( NULL, NULL, false, 'action_messages' );
 
-		/**
-		 * @var AbstractSettings
-		 */
-		global $global_Cache;
 		$version_status_msg = $global_Cache->get( 'version_status_msg' );
 		if( !empty($version_status_msg) )
 		{	// We have managed to get updates (right now or in the past):
@@ -691,24 +727,25 @@ if( $current_User->check_perm( 'options', 'edit' ) )
 	 */
 	$side_item_Widget = new Widget( 'side_item' );
 
-	$side_item_Widget->title = T_('Administrative tasks');
+	$side_item_Widget->title = T_('System stats');
 	$side_item_Widget->disp_template_replaced( 'block_start' );
 
 	echo '<div class="dashboard_sidebar">';
 	echo '<ul>';
-		if( $current_User->check_perm( 'users', 'edit' ) )
-		{
-			echo '<li><a href="'.$dispatcher.'?ctrl=user&amp;user_tab=profile&amp;action=new">'.T_('Create new user').' &raquo;</a></li>';
-		}
-		if( $current_User->check_perm( 'blogs', 'create' ) )
-		{
-			echo '<li><a href="'.$dispatcher.'?ctrl=collections&amp;action=new">'.T_('Create new blog').' &raquo;</a></li>';
-		}
-		echo '<li><a href="'.$dispatcher.'?ctrl=skins">'.T_('Install a skin').' &raquo;</a></li>';
-		echo '<li><a href="'.$dispatcher.'?ctrl=plugins">'.T_('Install a plugin').' &raquo;</a></li>';
-		// TODO: remember system date check and only remind every 3 months
-		echo '<li><a href="'.$dispatcher.'?ctrl=system">'.T_('Check system &amp; security').' &raquo;</a></li>';
-		echo '<li><a href="'.$baseurl.'default.php">'.T_('View default page').' &raquo;</a></li>';
+		echo '<li>'.sprintf( T_('%s Users'), get_table_count( 'T_users' ) ).'</li>';
+		echo '<li>'.sprintf( T_('%s Blogs'), get_table_count( 'T_blogs' ) ).'</li>';
+		echo '<li>'.sprintf( T_('%s Posts'), $post_all_counter = (int)get_table_count( 'T_items__item' ) ).'</li>';
+		echo '<ul>';
+			echo '<li>'.sprintf( T_('%s on web'), $post_through_admin = (int)$global_Cache->get( 'post_through_admin' ) ).'</li>';
+			echo '<li>'.sprintf( T_('%s by XMLRPC'), $post_through_xmlrpc = (int)$global_Cache->get( 'post_through_xmlrpc' ) ).'</li>';
+			echo '<li>'.sprintf( T_('%s by email'), $post_through_email = (int)$global_Cache->get( 'post_through_email' ) ).'</li>';
+			echo '<li>'.sprintf( T_('%s unknown'), $post_all_counter - $post_through_admin - $post_through_xmlrpc - $post_through_email ).'</li>';
+		echo '</ul>';
+		echo '<li>'.sprintf( T_('%s Slugs'), get_table_count( 'T_slug' ) ).'</li>';
+		echo '<li>'.sprintf( T_('%s Comments'), get_table_count( 'T_comments' ) ).'</li>';
+		echo '<li>'.sprintf( T_('%s Files'), get_table_count( 'T_files' ) ).'</li>';
+		echo '<li>'.sprintf( T_('%s Conversations'), get_table_count( 'T_messaging__thread' ) ).'</li>';
+		echo '<li>'.sprintf( T_('%s Messages'), get_table_count( 'T_messaging__message' ) ).'</li>';
 	echo '</ul>';
 	echo '</div>';
 
@@ -718,16 +755,13 @@ if( $current_User->check_perm( 'options', 'edit' ) )
 	 * DashboardAdminSide to be added here (anyone?)
 	 */
 
- 	echo '</td></tr></table>';
+	echo '</td></tr></table>';
 
- 	// End payload block:
+	// End payload block:
 	$AdminUI->disp_payload_end();
 }
 
 // Display body bottom, debug info and close </html>:
 $AdminUI->disp_global_footer();
 
-/*
- * $Log: dashboard.ctrl.php,v $
- */
 ?>

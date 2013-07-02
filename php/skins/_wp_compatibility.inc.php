@@ -7,7 +7,7 @@
  * This should not be used in redistributed skins as this will NOT provide FULL b2evo functionality.
  *
  * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://manual.b2evolution.net/Skins_2.0}
+ * {@link http://b2evolution.net/man/skin-structure}
  *
  * @package evoskins
  */
@@ -316,8 +316,4 @@ function next_posts_link( $link_text = 'Next' )
 			) );
 }
 
-
-/*
- * $Log: _wp_compatibility.inc.php,v $
- */
 ?>

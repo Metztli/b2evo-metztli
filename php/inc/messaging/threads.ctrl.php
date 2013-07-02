@@ -12,10 +12,14 @@ load_class( 'messaging/model/_message.class.php', 'Message' );
 global $current_User;
 
 // Check minimum permission:
-$current_User->check_perm( 'perm_messaging', 'write', true );
+if( !$current_User->check_perm( 'perm_messaging', 'reply' ) )
+{
+	$Messages->add( 'Sorry, you are not allowed to view threads!' );
+	header_redirect( $admin_url );
+}
 
 // Set options path:
-$AdminUI->set_path( 'messaging', 'messages' );
+$AdminUI->set_path( 'messaging', 'threads' );
 
 // Get action parameter from request:
 param_action();
@@ -31,26 +35,34 @@ if( param( 'thrd_ID', 'integer', '', true) )
 	}
 }
 
-if( param( 'msg_ID', 'integer', '', true) )
-{// Load message from cache:
-	$MessageCache = & get_MessageCache();
-	if( ($edited_Message = & $MessageCache->get_by_ID( $msg_ID, false )) === false )
-	{	unset( $edited_Message );
-		forget_param( 'msg_ID' );
-		$Messages->add( sprintf( T_('Requested &laquo;%s&raquo; object does not exist any longer.'), T_('Message') ), 'error' );
-		$action = 'nil';
-	}
+// check params
+switch( $action )
+{
+	case 'create':
+		// Check that this action request is not a CSRF hacked request:
+		$Session->assert_received_crumb( 'messaging_threads' );
+		break;
+	case 'delete':
+	case 'leave':
+	case 'close':
+	case 'close_and_block':
+		// Check that this action request is not a CSRF hacked request:
+		$Session->assert_received_crumb( 'messaging_threads' );
+
+		// Make sure we got a thrd_ID:
+		param( 'thrd_ID', 'integer', true );
+		break;
 }
 
-// Preload users to show theirs avatars
-
-load_messaging_threads_recipients( $current_User->ID );
-
+// handle action
 switch( $action )
 {
 	case 'new':
-		// Check permission:
-		$current_User->check_perm( 'perm_messaging', 'write', true );
+		if( check_create_thread_limit( true ) )
+		{ // user has already reached his limit, don't allow to create new thread
+			$action = '';
+			break;
+		}
 
 		if( ! isset($edited_Message) )
 		{	// We don't have a model to use, start with blank object:
@@ -65,72 +77,31 @@ switch( $action )
 		}
 		$edited_Message->Thread = & $edited_Thread;
 
+		init_tokeninput_js();
+
 		break;
 
 	case 'create': // Record new thread
-		// Check that this action request is not a CSRF hacked request:
-		$Session->assert_received_crumb( 'thread' );
-		
-		// Insert new thread:
-		$edited_Thread = new Thread();
-		$edited_Message = new Message();
-		$edited_Message->Thread = & $edited_Thread;
-
-		// Check permission:
-		$current_User->check_perm( 'perm_messaging', 'write', true );
-
-		param( 'thrd_recipients', 'string' );
-
-		// Load data from request
-		if( $edited_Message->load_from_Request() )
-		{	// We could load data from form without errors:
-
-			if( $current_User->check_perm( 'perm_messaging', 'reply' ) )
-			{
-				$blocked_contacts = check_blocked_contacts( $edited_Thread->recipients_list );
-				if( !empty( $blocked_contacts ) )
-				{
-					param_error( 'thrd_recipients', T_( 'You don\'t have permission to initiate conversations with the following users: ' ). implode( ', ', $blocked_contacts ) );
-				}
-			}
-
-			if( ! param_errors_detected() )
-			{
-				// Insert in DB:
-				if( param( 'thrdtype', 'string', 'discussion' ) == 'discussion' )
-				{
-					$edited_Message->dbinsert_discussion();
-				}
-				else
-				{
-					$edited_Message->dbinsert_individual();
-				}
-
-				$Messages->add( T_('New thread created.'), 'success' );
-
-				// What next?
-				switch( $action )
-				{
-					case 'create':
-						// Redirect so that a reload doesn't write to the DB twice:
-						header_redirect( '?ctrl=threads', 303 ); // Will EXIT
-						// We have EXITed already at this point!!
-						break;
-				}
-			}
+		if( check_create_thread_limit() )
+		{ // max new threads limit reached, don't allow to create new thread
+			debug_die( 'Invalid request, new conversation limit already reached!' );
 		}
+
+		// the create_new_thread() funciton will create required Thread and Message objects
+		if( create_new_thread() )
+		{ // new thread has been created successful
+			// Redirect so that a reload doesn't write to the DB twice:
+			header_redirect( '?ctrl=threads', 303 ); // Will EXIT
+			// We have EXITed already at this point!!
+		}
+
+		init_tokeninput_js();
+
 		break;
 
-	case 'delete':
-		// Delete thread:
-		// Check that this action request is not a CSRF hacked request:
-		$Session->assert_received_crumb( 'thread' );
-
+	case 'delete': // Delete thread:
 		// Check permission:
 		$current_User->check_perm( 'perm_messaging', 'delete', true );
-
-		// Make sure we got an thrd_ID:
-		param( 'thrd_ID', 'integer', true );
 
 		if( param( 'confirm', 'integer', 0 ) )
 		{ // confirmed, Delete from DB:
@@ -142,18 +113,40 @@ switch( $action )
 			forget_param( 'msg_ID' );
 			$Messages->add( $msg, 'success' );
 			// Redirect so that a reload doesn't write to the DB twice:
-			header_redirect( '?ctrl=threads', 303 ); // Will EXIT
+			$redirect_to = param( 'redirect_to', 'string', '?ctrl=threads' );
+			header_redirect( $redirect_to, 303 ); // Will EXIT
 			// We have EXITed already at this point!!
 		}
 		else
-		{	// not confirmed, Check for restrictions:
+		{ // not confirmed, Check for restrictions:
 			if( ! $edited_Thread->check_delete( sprintf( T_('Cannot delete thread &laquo;%s&raquo;'), $edited_Thread->dget('title') ) ) )
-			{	// There are restrictions:
+			{ // There are restrictions:
 				$action = 'view';
 			}
 		}
 		break;
 
+	case 'leave': // Leave thread:
+		leave_thread( $edited_Thread->ID, $current_User->ID, false );
+
+		$Messages->add( sprintf( T_( 'You have successfuly left the &laquo;%s&raquo; conversation!' ), $edited_Thread->get( 'title' ) ), 'success' );
+		break;
+
+	case 'close': // Close thread:
+	case 'close_and_block': // Close thread and block contact:
+		leave_thread( $edited_Thread->ID, $current_User->ID, true );
+
+		$Messages->add( sprintf( T_( 'You have successfuly closed the &laquo;%s&raquo; conversation!' ), $edited_Thread->get( 'title' ) ), 'success' );
+		if( $action == 'close_and_block' )
+		{ // also block the given contact
+			$block_user_ID = param( 'block_ID', 'integer', true );
+			$UserCache = & get_UserCache();
+			$blocked_User = $UserCache->get_by_ID( $block_user_ID );
+
+			set_contact_blocked( $block_user_ID, true );
+			$Messages->add( sprintf( T_( '&laquo;%s&raquo; was blocked.' ), $blocked_User->get( 'login' ) ), 'success' );
+		}
+		break;
 }
 
 $AdminUI->breadcrumbpath_init( false );  // fp> I'm playing with the idea of keeping the current blog in the path here...
@@ -181,7 +174,7 @@ switch( $action )
 		// We need to ask for confirmation:
 		$edited_Thread->confirm_delete(
 				sprintf( T_('Delete thread &laquo;%s&raquo;?'), $edited_Thread->dget('title') ),
-				'thread', $action, get_memorized( 'action' ) );
+				'messaging_threads', $action, get_memorized( 'action' ) );
 		$AdminUI->disp_view( 'messaging/views/_thread_list.view.php' );
 		break;
 
@@ -205,7 +198,4 @@ $AdminUI->disp_payload_end();
 // Display body bottom, debug info and close </html>:
 $AdminUI->disp_global_footer();
 
-/*
- * $Log: threads.ctrl.php,v $
- */
 ?>

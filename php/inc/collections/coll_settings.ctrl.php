@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -31,7 +31,7 @@
  * @todo (sessions) When creating a blog, provide "edit options" (3 tabs) instead of a single long "New" form (storing the new Blog object with the session data).
  * @todo Currently if you change the name of a blog it gets not reflected in the blog list buttons!
  *
- * @version $Id: coll_settings.ctrl.php 1201 2012-04-07 04:03:31Z sam2kb $
+ * @version $Id: coll_settings.ctrl.php 3332 2013-03-26 12:40:36Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -40,8 +40,13 @@ if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.'
 $UserSettings->param_Request( 'tab', 'pref_coll_settings_tab', 'string', 'general', true /* memorize */, true /* force */ );
 if( $tab == 'widgets' )
 {	// This is another controller!
-   require_once dirname(__FILE__).'/../widgets/widgets.ctrl.php';
-   return;
+	require_once dirname(__FILE__).'/../widgets/widgets.ctrl.php';
+	return;
+}
+else if( $tab == 'manage_skins' )
+{	// This is another controller!
+	require_once dirname(__FILE__).'/../skins/skins.ctrl.php';
+	return;
 }
 
 
@@ -86,7 +91,9 @@ if( $tab == 'skin' && $skinpage != 'selection' )	// If not screen selection => s
 	/**
 	 * @var Skin
 	 */
-	$edited_Skin = & $SkinCache->get_by_ID( $Blog->skin_ID );
+	$normal_Skin = & $SkinCache->get_by_ID( $Blog->get_setting( 'normal_skin_ID' ) );
+	$mobile_Skin = & $SkinCache->get_by_ID( $Blog->get_setting( 'mobile_skin_ID' ) );
+	$tablet_Skin = & $SkinCache->get_by_ID( $Blog->get_setting( 'tablet_skin_ID' ) );
 }
 
 
@@ -105,19 +112,6 @@ if( ( $tab == 'perm' || $tab == 'permgroup' )
  */
 switch( $action )
 {
-	case 'edit':
-	case 'filter1':
-	case 'filter2':
-		// Edit collection form (depending on tab):
-		// Check permissions:
-		$current_User->check_perm( 'blog_properties', 'edit', true, $blog );
-
-		param( 'preset', 'string', '' );
-
-		$edited_Blog->load_presets( $preset );
-
-		break;
-
 	case 'update':
 		// Update DB:
 
@@ -142,7 +136,9 @@ switch( $action )
 				break;
 
 			case 'features':
-				if( $edited_Blog->load_from_Request( array( 'features' ) ) )
+			case 'comments':
+			case 'other':
+				if( $edited_Blog->load_from_Request( array( $tab ) ) )
 				{ // Commit update to the DB:
 					$edited_Blog->dbupdate();
 					$Messages->add( T_('The blog settings have been updated'), 'success' );
@@ -169,16 +165,29 @@ switch( $action )
 						$edited_Blog->dbupdate();
 						$Messages->add( T_('The blog skin has been changed.')
 											.' <a href="'.$admin_url.'?ctrl=coll_settings&amp;tab=skin&amp;blog='.$edited_Blog->ID.'">'.T_('Edit...').'</a>', 'success' );
-						header_redirect( $edited_Blog->gen_blogurl() );
+						if( ( !$Session->is_mobile_session() && !$Session->is_tablet_session() && param( 'normal_skin_ID', 'integer', NULL ) !== NULL ) ||
+						    ( $Session->is_mobile_session() && param( 'mobile_skin_ID', 'integer', NULL ) !== NULL ) ||
+						    ( $Session->is_tablet_session() && param( 'tablet_skin_ID', 'integer', NULL ) !== NULL ) )
+						{	// Redirect to blog home page if we change the skin for current device type
+							header_redirect( $edited_Blog->gen_blogurl() );
+						}
+						else
+						{	// Redirect to admin skins page if we change the skin for another device type
+							header_redirect( $admin_url.'?ctrl=coll_settings&tab=skin&blog='.$edited_Blog->ID );
+						}
 					}
 				}
 				else
 				{ // Update params/Settings
-					$edited_Skin->load_params_from_Request();
+					$normal_Skin->load_params_from_Request();
+					$mobile_Skin->load_params_from_Request();
+					$tablet_Skin->load_params_from_Request();
 
 					if(	! param_errors_detected() )
 					{	// Update settings:
-						$edited_Skin->dbupdate_settings();
+						$normal_Skin->dbupdate_settings();
+						$mobile_Skin->dbupdate_settings();
+						$tablet_Skin->dbupdate_settings();
 						$Messages->add( T_('Skin settings have been updated'), 'success' );
 						// Redirect so that a reload doesn't write to the DB twice:
 						header_redirect( $update_redirect_url, 303 ); // Will EXIT
@@ -204,6 +213,9 @@ switch( $action )
 					{
 						autoform_set_param_from_request( $set_name, $set_meta, $loop_Plugin, 'CollSettings', $Blog );
 					}
+
+					// Let plugins process settings
+					$Plugins->call_method( $loop_Plugin->ID, 'PluginCollSettingsUpdateAction', $tmp_params = array() );
 				}
 
 				if(	! param_errors_detected() )
@@ -216,7 +228,7 @@ switch( $action )
 				break;
 
 			case 'advanced':
-				if( $edited_Blog->load_from_Request( array( 'pings', 'cache', 'authors', 'login' ) ) )
+				if( $edited_Blog->load_from_Request( array( 'pings', 'cache', 'authors', 'login', 'styles' ) ) )
 				{ // Commit update to the DB:
 					if( $current_User->check_perm( 'blog_admin', 'edit', false, $edited_Blog->ID ) )
 					{
@@ -249,6 +261,47 @@ switch( $action )
 		}
 
 		break;
+
+	case 'update_type':
+		// Update DB:
+
+		// Check that this action request is not a CSRF hacked request:
+		$Session->assert_received_crumb( 'collection' );
+
+		// Check permissions:
+		$current_User->check_perm( 'blog_properties', 'edit', true, $blog );
+		$update_redirect_url = '?ctrl=coll_settings&tab='.$tab.'&blog='.$blog;
+
+		param( 'reset', 'boolean', '' );
+		param( 'type', 'string', '' );
+		param_check_not_empty( 'type', T_('Please select a type') );
+
+		if( param_errors_detected() )
+		{
+			$action = 'type';
+			break;
+		}
+
+		if( $reset )
+		{	// Reset all settings
+			// Remove previous widgets, plugin and skin settings
+			$DB->query( 'DELETE FROM T_widget WHERE wi_coll_ID = '.$DB->quote( $edited_Blog->ID ) );
+			$DB->query( 'DELETE FROM T_coll_settings
+				WHERE cset_coll_ID = '.$DB->quote( $edited_Blog->ID ).'
+				AND ( cset_name LIKE "skin%" OR cset_name LIKE "plugin%" )' );
+			// ADD DEFAULT WIDGETS:
+			load_funcs( 'widgets/_widgets.funcs.php' );
+			insert_basic_widgets( $edited_Blog->ID, false, $type );
+		}
+
+		$edited_Blog->init_by_kind( $type, $edited_Blog->get( 'name' ), $edited_Blog->get( 'shortname' ), $edited_Blog->get( 'urlname' ) );
+		$edited_Blog->dbupdate();
+
+		$Messages->add( T_('The collection type has been updated'), 'success' );
+		// Redirect so that a reload doesn't write to the DB twice:
+		header_redirect( $update_redirect_url, 303 ); // Will EXIT
+
+		break;
 }
 
 $AdminUI->set_path( 'blogs',  $tab  );
@@ -259,28 +312,49 @@ $AdminUI->set_path( 'blogs',  $tab  );
  */
 $AdminUI->set_coll_list_params( 'blog_properties', 'edit',
 											array( 'ctrl' => 'coll_settings', 'tab' => $tab, 'action' => 'edit' ),
-											T_('List'), '?ctrl=collections&amp;blog=0' );
+											T_('All'), '?ctrl=collections&amp;blog=0' );
 
 
-$AdminUI->breadcrumbpath_init( false );
-$AdminUI->breadcrumbpath_add( T_('Blog settings'), '?ctrl=coll_settings&amp;blog=$blog$' );
+$AdminUI->breadcrumbpath_init( true );
+$AdminUI->breadcrumbpath_add( T_('Settings'), '?ctrl=coll_settings&amp;blog=$blog$' );
 switch( $AdminUI->get_path(1) )
 {
 	case 'general':
 		$AdminUI->breadcrumbpath_add( T_('General'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab='.$tab );
+		if( $action == 'type' )
+		{
+			$AdminUI->breadcrumbpath_add( T_('Collection type'), '?ctrl=coll_settings&amp;blog=$blog$&amp;action=type&amp;tab='.$tab );
+		}
 		break;
 
 	case 'features':
+		$AdminUI->set_path( 'blogs', 'features', $tab );
 		$AdminUI->breadcrumbpath_add( T_('Features'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab='.$tab );
+		$AdminUI->breadcrumbpath_add( T_('Posts'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab='.$tab );
+		break;
+
+	case 'comments':
+		$AdminUI->set_path( 'blogs', 'features', $tab );
+		$AdminUI->breadcrumbpath_add( T_('Features'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab=features' );
+		$AdminUI->breadcrumbpath_add( T_('Comments'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab='.$tab );
+		break;
+
+	case 'other':
+		$AdminUI->set_path( 'blogs', 'features', $tab );
+		$AdminUI->breadcrumbpath_add( T_('Features'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab=features' );
+		$AdminUI->breadcrumbpath_add( T_('Other'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab='.$tab );
 		break;
 
 	case 'skin':
+		$AdminUI->set_path( 'blogs', 'skin', 'current_skin' );
+		$AdminUI->breadcrumbpath_add( T_('Skin'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab='.$tab );
 		if( $skinpage == 'selection' )
 		{
 			$AdminUI->breadcrumbpath_add( T_('Skin selection'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab='.$tab.'&amp;skinpage=selection' );
 		}
 		else
 		{
+			init_colorpicker_js();
 			$AdminUI->breadcrumbpath_add( T_('Settings for current skin'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab='.$tab );
 		}
 		break;
@@ -302,10 +376,12 @@ switch( $AdminUI->get_path(1) )
 		break;
 
 	case 'perm':
+		load_funcs( 'collections/views/_coll_perm_view.funcs.php' );
 		$AdminUI->breadcrumbpath_add( T_('User permissions'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab='.$tab );
 		break;
 
 	case 'permgroup':
+		load_funcs( 'collections/views/_coll_perm_view.funcs.php' );
 		$AdminUI->breadcrumbpath_add( T_('Group permissions'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab='.$tab );
 		break;
 }
@@ -326,12 +402,30 @@ $AdminUI->disp_payload_begin();
 switch( $AdminUI->get_path(1) )
 {
 	case 'general':
-		$next_action = 'update';
-		$AdminUI->disp_view( 'collections/views/_coll_general.form.php' );
+		if( $action == 'type' )
+		{	// Form to change type
+			$AdminUI->disp_view( 'collections/views/_coll_type.form.php' );
+		}
+		else
+		{	// General settings of blog
+			$next_action = 'update';
+			$AdminUI->disp_view( 'collections/views/_coll_general.form.php' );
+		}
 		break;
 
 	case 'features':
-		$AdminUI->disp_view( 'collections/views/_coll_features.form.php' );
+		switch( $AdminUI->get_path(2) )
+		{
+			case 'comments';
+				$AdminUI->disp_view( 'collections/views/_coll_comments.form.php' );
+				break;
+			case 'other';
+				$AdminUI->disp_view( 'collections/views/_coll_other.form.php' );
+				break;
+			default:
+				$AdminUI->disp_view( 'collections/views/_coll_features.form.php' );
+				break;
+		}
 		break;
 
 	case 'skin':
@@ -377,8 +471,4 @@ $AdminUI->disp_payload_end();
 // Display body bottom, debug info and close </html>:
 $AdminUI->disp_global_footer();
 
-
-/*
- * $Log: coll_settings.ctrl.php,v $
- */
 ?>

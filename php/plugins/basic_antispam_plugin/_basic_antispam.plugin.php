@@ -4,7 +4,7 @@
  *
  * This file is part of the b2evolution project - {@link http://b2evolution.net/}
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -27,7 +27,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author blueyed: Daniel HAHLER - {@link http://daniel.hahler.de/}
  *
- * @version $Id: _basic_antispam.plugin.php 57 2011-10-26 08:18:58Z sam2kb $
+ * @version $Id: _basic_antispam.plugin.php 3508 2013-04-19 06:58:02Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -50,7 +50,7 @@ class basic_antispam_plugin extends Plugin
 	var $name = 'Basic Antispam';
 	var $code = '';
 	var $priority = 60;
-	var $version = '4.1.1';
+	var $version = '5.0.0';
 	var $author = 'The b2evo Group';
 	var $group = 'antispam';
 	var $number_of_installs = 1;
@@ -94,6 +94,12 @@ class basic_antispam_plugin extends Plugin
 					'label' => T_('Remove repetitive characters'),
 					'note'=>T_('Remove repetitive characters in name and content. The string like "Thaaaaaaaaaanks!" becomes "Thaaanks!".'),
 					'defaultvalue' => 0,
+				),
+				'block_common_spam' => array(
+					'type' => 'checkbox',
+					'label' => T_('Block common spam comments'),
+					'note'=>T_('Block comments with both "[link=" and "[url=" tags.'),
+					'defaultvalue' => 1,
 				),
 				'nofollow_for_hours' => array(
 					'type' => 'integer',
@@ -205,6 +211,14 @@ class basic_antispam_plugin extends Plugin
 		if( $this->is_duplicate_comment( $params['Comment'] ) )
 		{
 			$this->msg( T_('The comment seems to be a duplicate.'), 'error' );
+		}
+
+		if( $this->Settings->get('block_common_spam') && preg_match_all( '~\[(link|url)=~', $params['Comment']->content, $m ) )
+		{	// Block common bbcode spam comments with both [url= and [link= tags
+			if( !empty($m[1]) && count($m[1]) > 1 )
+			{
+				$this->msg( T_('Your comment was rejected because it appeared to be spam.'), 'error' );
+			}
 		}
 	}
 
@@ -346,7 +360,7 @@ class basic_antispam_plugin extends Plugin
 		else
 		{
 			// flush now, so that the meat of the page will get shown before it tries to check back against the refering URL.
-			flush();
+			evo_flush();
 
 			$this->debug_log( 'AppendHitLog: loading referering page..' );
 
@@ -573,6 +587,11 @@ class basic_antispam_plugin extends Plugin
 			return false;
 		}
 
+		if( $Comment->content == '' )
+		{ // User may has many comments with empty content but with attachment pictures
+			return false;
+		}
+
 		$sql = '
 				SELECT comment_ID
 				  FROM T_comments
@@ -623,8 +642,4 @@ class basic_antispam_plugin extends Plugin
 
 }
 
-
-/*
- * $Log: _basic_antispam.plugin.php,v $
- */
 ?>

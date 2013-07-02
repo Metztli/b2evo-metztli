@@ -4,7 +4,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * @todo fp> do we want to restrict API definitions to a specific blog with blogID="" ?
  *
@@ -14,7 +14,7 @@
  *
  * @package xmlsrv
  *
- * @version $Id: rsd.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: rsd.php 3328 2013-03-26 11:44:11Z yura $
  */
 header('Content-type: text/xml; charset=UTF-8', true);
 
@@ -32,40 +32,41 @@ echo '<?xml version="1.0" encoding="UTF-8"?'.'>';
 	  <engineLink>http://b2evolution.net/</engineLink>
 	  <homePageLink><?php echo $baseurl; ?></homePageLink>
 	  <apis>
-	    <api name="MetaWeblog" preferred="true" apiLink="<?php echo $xmlsrv_url; ?>xmlrpc.php"<?php
+	    <api name="WordPress" preferred="true" apiLink="<?php echo $xmlsrv_url; ?>xmlrpc.php"<?php
 	    	if( !empty($blog) ) { echo ' blogID="'.$blog.'"'; }
 	    	?>>
 				<settings>
-					<docs>http://manual.b2evolution.net/MetaWeblog_API</docs>
+					<docs>https://codex.wordpress.org/XML-RPC_wp</docs>
+				</settings>
+			</api>
+	    <api name="MetaWeblog" preferred="false" apiLink="<?php echo $xmlsrv_url; ?>xmlrpc.php"<?php
+	    	if( !empty($blog) ) { echo ' blogID="'.$blog.'"'; }
+	    	?>>
+				<settings>
+					<docs>http://b2evolution.net/man/metaweblog-api</docs>
 				</settings>
 			</api>
 	    <api name="MovableType" preferred="false" apiLink="<?php echo $xmlsrv_url; ?>xmlrpc.php"<?php
 	    	if( !empty($blog) ) { echo ' blogID="'.$blog.'"'; }
 	    	?>>
 				<settings>
-					<docs>http://manual.b2evolution.net/MovableType_API</docs>
+					<docs>http://b2evolution.net/man/movabletype-api</docs>
 				</settings>
 			</api>
 	    <api name="Blogger" preferred="false" apiLink="<?php echo $xmlsrv_url; ?>xmlrpc.php"<?php
 	    	if( !empty($blog) ) { echo ' blogID="'.$blog.'"'; }
 	    	?>>
 				<settings>
-					<docs>http://manual.b2evolution.net/Blogger_API</docs>
+					<docs>http://b2evolution.net/man/blogger-api</docs>
 				</settings>
 			</api>
 	    <api name="b2" preferred="false" apiLink="<?php echo $xmlsrv_url; ?>xmlrpc.php"<?php
 	    	if( !empty($blog) ) { echo ' blogID="'.$blog.'"'; }
 	    	?>>
 				<settings>
-					<docs>http://manual.b2evolution.net/B2_API</docs>
+					<docs>http://b2evolution.net/man/b2-api</docs>
 				</settings>
 			</api>
 	  </apis>
 	</service>
 </rsd>
-<?php
-
-/*
- * $Log: rsd.php,v $
- */
-?>

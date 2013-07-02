@@ -1,13 +1,10 @@
 /* AstonishMe code plugin styles */
 
 .codespan {
-	background-color: #efefef;
+	background-color: #F2F1F0;
+	border: 1px solid #CCCCCC;
+	border-radius: 2px 2px 2px 2px;
 	padding: 0 .5ex;
-}
-
-.amcode {
-	font-weight:bold;
-	margin:.5em 0 .4em 1em;
 }
 
 .codeblock.amc_long {
@@ -19,14 +16,13 @@
 	border-collapse:collapse;
 }
 .codeblock td {
-	border:1px solid #666;
 	width:100%;
-	padding:0 5px 0 33px;
+	padding: 0px 5px 0px 33px;
 	text-indent:-28px;
 }
 
-.amc_code_odd { background:#f0f0f0; color:#666; }
-.amc_code_even{ background:#e8e8e8; color:#666; }
+.amc_code_odd { background:#FBFAF9; color:#666; }
+.amc_code_even{ background:#F2F1F0; color:#666; }
 
 /* code plugin line numbers */
 

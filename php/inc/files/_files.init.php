@@ -2,13 +2,23 @@
 /**
  * This is the init file for the files module
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
  *
- * @version $Id: _files.init.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _files.init.php 3525 2013-04-22 07:22:44Z attila $
  */
 if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page directly.' );
+
+/**
+ * Minimum PHP version required for files module to function properly
+ */
+$required_php_version[ 'files' ] = '5.0';
+
+/**
+ * Minimum MYSQL version required for files module to function properly
+ */
+$required_mysql_version[ 'files' ] = '5.0.3';
 
 /**
  * Aliases for table names:
@@ -20,6 +30,7 @@ if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page direct
 $db_config['aliases'] = array_merge( $db_config['aliases'], array(
 		'T_files'               => $tableprefix.'files',
 		'T_filetypes'           => $tableprefix.'filetypes',
+		'T_files__vote'         => $tableprefix.'files__vote',
 	) );
 
 /**
@@ -40,6 +51,7 @@ $ctrl_mappings = array_merge( $ctrl_mappings, array(
 		'files'        => 'files/files.ctrl.php',
 		'fileset'      => 'files/file_settings.ctrl.php',
 		'filetypes'    => 'files/file_types.ctrl.php',
+		'filemod'      => 'files/file_moderation.ctrl.php',
 	) );
 
 
@@ -115,6 +127,8 @@ class files_Module extends Module
 	 */
 	function init()
 	{
+		$this->check_required_php_version( 'files' );
+
 		load_class( 'files/model/_file.class.php', 'File' );
 		load_class( 'files/model/_filetype.class.php', 'FileType' );
 		load_class( 'files/model/_filetypecache.class.php', 'FileTypeCache' );
@@ -420,6 +434,33 @@ $files_Module = new files_Module();
 
 
 /*
- * $Log: _files.init.php,v $
+ * _files.init.php,v
+ * Revision 1.16  2011/09/13 15:31:35  fplanque
+ * Enhanced back-office navigation.
+ *
+ * Revision 1.15  2011/09/04 22:13:15  fplanque
+ * copyright 2011
+ *
+ * Revision 1.14  2011/04/05 12:41:39  efy-asimo
+ * file perms check and file delete - fix
+ *
+ * Revision 1.13  2011/02/15 15:37:00  efy-asimo
+ * Change access to admin permission
+ *
+ * Revision 1.12  2011/01/18 16:23:02  efy-asimo
+ * add shared_root perm and refactor file perms - part1
+ *
+ * Revision 1.11  2010/10/19 02:00:54  fplanque
+ * MFB
+ *
+ * Revision 1.9.2.3  2010/10/19 01:04:48  fplanque
+ * doc
+ *
+ * Revision 1.3  2009/08/30 12:31:44  tblue246
+ * Fixed CVS keywords
+ *
+ * Revision 1.1  2009/08/30 00:30:52  fplanque
+ * increased modularity
+ *
  */
 ?>

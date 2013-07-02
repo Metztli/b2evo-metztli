@@ -7,7 +7,7 @@
  *
  * This file is part of the b2evolution project - {@link http://b2evolution.net/}
  *
- * @copyright (c)2009 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @copyright (c)2009-2013 by Francois PLANQUE - {@link http://fplanque.net/}
  * @copyright (c)2007 by Lee Turner - {@link http://leeturner.org/}.
  *
  * @license GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
@@ -19,7 +19,7 @@
  *
  * @todo dh> use OAuth instead of username/password: http://apiwiki.twitter.com/Authentication
  *
- * @version $Id: _twitter.plugin.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _twitter.plugin.php 4051 2013-06-25 12:30:23Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -49,16 +49,15 @@ class twitter_plugin extends Plugin
 	 */
 	var $code = 'evo_twitter';
 	var $priority = 50;
-	var $version = '4.1';
+	var $version = '5.0.0';
 	var $author = 'b2evolution Group';
 
 	/*
 	 * These variables MAY be overriden.
 	 */
-	var $apply_rendering = 'never';
 	var $group = 'ping';
 	var $number_of_installs = 1;
-
+	var $message_length_limit = 140; // The maximum allowed number of characters in a message
 
 	/**
 	 * Init
@@ -137,18 +136,13 @@ class twitter_plugin extends Plugin
 	 */
 	function ItemSendPing( & $params )
 	{
-		/**
-		 * @var Blog
-		 */
-		$item_Blog = $params['Item']->get_Blog();
-
 		$content = array(
 				'title'		=> $params['Item']->dget('title', 'xml'),
 				'excerpt'	=> $params['Item']->dget('excerpt', 'xml'),
 				'url'		=> $params['Item']->get_tinyurl(),
 			);
 
-		return $this->send_a_tweet( $content, $item_Blog, $params['xmlrpcresp'] );
+		return $this->send_a_tweet( $content, $params['Item'], $params['xmlrpcresp'] );
 	}
 
 	/**
@@ -222,59 +216,36 @@ class twitter_plugin extends Plugin
 	 */
 	function get_twitter_link( $target_type, $target_id )
 	{
+		global $Blog;
+
 		require_once 'twitteroauth/twitteroauth.php';
-		global $BlogCache;
 
-		// decide to set Plugin CollSettings or UserSettings
-		if( $target_type == 'blog' )
-		{ // CollSettings
-			// get setting from db
-			$Blog = $BlogCache->get_by_ID( $target_id, false, false );
-			if( empty( $Blog ) ) {
-				return '<p>Could not initialize</p>';
-			}
-			$oauth_token = $this->get_coll_setting( 'twitter_token', $Blog );
-			if( !empty( $oauth_token ) )
-			{ // blog has already a linked twitter user, get token secret
-				$oauth_token_secret = $this->get_coll_setting( 'twitter_secret', $Blog );
-				$oauth_contact = $this->get_coll_setting( 'twitter_contact', $Blog );
-			}
-		}
-		elseif ( $target_type == 'user' )
-		{ // UserSettings
-			// get setting from db
-			if( empty( $this->UserSettings ) ) 
-			{
-				return NULL;
-			}
-			$oauth_token = $this->UserSettings->get( 'twitter_token', $target_id );
-			if( !empty( $oauth_token ) )
-			{ // user has already a linked twitter user, get token secret
-				$oauth_token_secret = $this->UserSettings->get( 'twitter_secret', $target_id );
-				$oauth_contact = $this->UserSettings->get( 'twitter_contact', $target_id );
-			}
-		}
+		// Uses either plugin CollSettings or UserSettings
+		$oauth = $this->get_oauth_info( array(
+				'type'	=> $target_type,
+				'ID'	=> $target_id,
+			) );
 
-		if( !empty( $oauth_token ) )
+		if( !empty( $oauth['token'] ) )
 		{ // already linked
-			if( empty( $oauth_contact ) )
+			if( empty( $oauth['contact'] ) )
 			{
-				$oauth_contact = $this->get_twitter_contact( $oauth_token, $oauth_token_secret );
-				if( ! empty( $oauth_contact ) )
+				$oauth['contact'] = $this->get_twitter_contact( $oauth['token'], $oauth['token_secret'] );
+				if( ! empty( $oauth['contact'] ) )
 				{
 					if( $target_type == 'blog' )
 					{ // CollSettings
-						$this->set_coll_setting( 'twitter_contact', $oauth_contact, $Blog->ID );
+						$this->set_coll_setting( 'twitter_contact', $oauth['contact'], $Blog->ID );
 						$Blog->dbupdate();
 					}
 					else if( $target_type == 'user' )
 					{ // UserSettings
-						$this->UserSettings->set( 'twitter_contact', $oauth_contact, $target_id );
+						$this->UserSettings->set( 'twitter_contact', $oauth['contact'], $target_id );
 						$this->UserSettings->dbupdate();
 					}
 				}
 			}
-			$result = T_('Linked to').': @'.$oauth_contact.'. ';
+			$result = T_('Linked to').': @'.$oauth['contact'].'. ';
 		}
 
 		// create new connection
@@ -330,7 +301,7 @@ class twitter_plugin extends Plugin
 		$connection = new TwitterOAuth(TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET, $oauth_token, $oauth_token_secret );
 		// get linked user account
 		$account = $connection->get('account/verify_credentials');
-		if( empty($account->error) )
+		if( empty( $account->errors ) )
 		{
 			return $account->screen_name;
 		}
@@ -505,32 +476,81 @@ class twitter_plugin extends Plugin
 		header_redirect( $redirect_to );
 		// We have EXITed already at this point!!
 	}
-	
-	
-	function send_a_tweet( $content, $item_Blog, & $xmlrpcresp )
+
+
+	function get_oauth_info( $params = array() )
 	{
-		// Try to get twitter account for Blog:
-		$oauth_token = $this->get_coll_setting( 'twitter_token', $item_Blog );
-		$oauth_token_secret = $this->get_coll_setting( 'twitter_secret', $item_Blog );
-		if( empty($oauth_token) || empty($oauth_token_secret) )
-		{ // Not found, fallback to Trying to get twitter account for User:
-			$oauth_token = $this->UserSettings->get( 'twitter_token' );
-			$oauth_token_secret = $this->UserSettings->get( 'twitter_secret' );
-			if( empty($oauth_token) || empty($oauth_token_secret) )
-			{	// Still no twitter account found:
-				$xmlrpcresp = T_('You must configure a twitter username/password before you can post to twitter.');
-				return false;
-			}
-			else
-			{	// Get additional params from User Setttings:
-				$msg = $this->UserSettings->get( 'twitter_msg_format' );
-				$oauth_contact = $this->UserSettings->get( 'twitter_contact' );
-			}
+		$params = array_merge( array(
+				'type'		=> '',
+				'ID'		=> '',
+				'blog_ID'	=> '',
+				'user_ID'	=> '',
+			), $params );
+
+		if( $params['type'] == 'blog' )
+		{	// Get from CollSettings
+			$blog_ID = $params['ID'];
+			$try_user = false;
+		}
+		elseif( $params['type'] == 'user' )
+		{	// Get from UserSettings
+			$user_ID = $params['ID'];
+			$try_user = true;
 		}
 		else
-		{	// Get additional params from Blog Setttings:
-			$msg = $this->get_coll_setting( 'twitter_msg_format', $item_Blog );
-			$oauth_contact = $this->get_coll_setting( 'twitter_contact', $item_Blog );
+		{	// Get from any
+			$blog_ID = $params['blog_ID'];
+			$user_ID = $params['user_ID'];
+			$try_user = true;
+		}
+
+		$r = array();
+
+		if( ! empty($blog_ID) )
+		{	// CollSettings
+			$BlogCache = & get_Cache('BlogCache');
+			$Blog = & $BlogCache->get_by_ID( $blog_ID, false, false );
+			if( !empty( $Blog ) )
+			{
+				$r['token'] = $this->get_coll_setting( 'twitter_token', $Blog );
+				if( !empty($r['token']) )
+				{	// There is already a linked twitter user in this Blog, get token secret
+					$r['token_secret'] = $this->get_coll_setting( 'twitter_secret', $Blog );
+					$r['contact'] = $this->get_coll_setting( 'twitter_contact', $Blog );
+					$r['msg_format'] = $this->get_coll_setting( 'twitter_msg_format', $Blog );
+
+					$try_user = false; // Do not overwrite
+				}
+			}
+		}
+
+		if( $try_user && ! empty($user_ID) )
+		{	// UserSettings
+			$r['token'] = $this->UserSettings->get( 'twitter_token', $user_ID );
+			if( !empty( $r['token'] ) )
+			{	// There is already a linked twitter user in this User, get token secret
+				$r['token_secret'] = $this->UserSettings->get( 'twitter_secret', $user_ID );
+				$r['contact'] = $this->UserSettings->get( 'twitter_contact', $user_ID );
+				$r['msg_format'] = $this->UserSettings->get( 'twitter_msg_format', $user_ID );
+			}
+		}
+
+		return $r;
+	}
+
+
+	function send_a_tweet( $content, & $Item, & $xmlrpcresp )
+	{
+		// Uses either plugin CollSettings or UserSettings
+		$oauth = $this->get_oauth_info( array(
+				'user_ID'	=> $Item->get_creator_User()->ID,
+				'blog_ID'	=> $Item->get_Blog()->ID,
+			) );
+
+		if( empty($oauth['msg_format']) || empty($oauth['token']) || empty($oauth['token_secret']) )
+		{ // Not found, fallback to Trying to get twitter account for User:
+			$xmlrpcresp = T_('You must configure a twitter username/password before you can post to twitter.');
+			return false;
 		}
 
 		$content = array_merge( array(
@@ -539,17 +559,52 @@ class twitter_plugin extends Plugin
 					'url'		=> ''
 				), $content );
 
-		$msg = str_replace( array( '$title$', '$excerpt$', '$url$' ),
-							array( $content['title'], $content['excerpt'], $content['url'] ), $msg );
+		$msg = str_replace(
+				array( '$title$', '$excerpt$' ),
+				array( $content['title'], $content['excerpt'] ),
+				$oauth['msg_format']
+			);
+
+		$msg_len = evo_strlen($msg);
+		$full_url_len = evo_strlen( $content['url'] );
+		$base_url_len = evo_strlen( $Item->get_Blog()->get_baseurl_root() );
+
+		if( (evo_strpos($msg, '$url$') === 0) && ($base_url_len + $msg_len - 5) > $this->message_length_limit )
+		{	// The message is too long and is starting with $url$
+			$max_len = $this->message_length_limit + $full_url_len - $base_url_len;
+			$msg = strmaxlen( str_replace( '$url$', $content['url'], $msg ), $max_len, '...' );
+		}
+		elseif( (evo_strpos(strrev($msg), 'p2b# $lru$') === 0) && ($base_url_len + $msg_len - 10) > $this->message_length_limit )
+		{	// The message is too long and is ending on '$url$ #b2p'
+			// Strip $url$, crop the message, and add URL to the end
+			$max_len = $this->message_length_limit - $base_url_len -1; // save room for space character
+			$msg = strmaxlen( str_replace( '$url$ #b2p', '', $msg ), $max_len, '...' );
+			$msg .= ' '.$content['url'].' #b2p';
+		}
+		elseif( (evo_strpos(strrev($msg), '$lru$') === 0) && ($base_url_len + $msg_len - 5) > $this->message_length_limit )
+		{	// Same as above, but without '#b2p' suffix
+			$max_len = $this->message_length_limit - $base_url_len -1; // save room for space character
+			$msg = strmaxlen( str_replace( '$url$', '', $msg ), $max_len, '...' );
+			$msg .= ' '.$content['url'];
+		}
+		elseif( (evo_strpos($msg, '$url$') !== false) && ($base_url_len + $msg_len - 5) > $this->message_length_limit )
+		{	// Message is too long and $url$ is somewhere in the middle
+			// We can't do much, it will be rejected by Twitter
+			// TODO: find a way to trim X chars before the URL and Y chars after
+			$msg = str_replace( '$url$', $content['url'], $msg );
+		}
+		else
+		{	// We don't want to add URL. Crop the message if needed
+			$msg = strmaxlen( str_replace( '$url$', $content['url'], $msg ), $this->message_length_limit, '...' );
+		}
 
 		require_once 'twitteroauth/twitteroauth.php';
-		$connection = new TwitterOAuth(TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET, $oauth_token, $oauth_token_secret );
-
+		$connection = new TwitterOAuth(TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET, $oauth['token'], $oauth['token_secret'] );
 		$result = $connection->post('statuses/update', array( 'status' => $msg ));
 
 		if( empty($result) )
 		{
-			$xmlrpcresp = 'Unknown error while posting "'.$msg.'" to account @'.$oauth_contact;
+			$xmlrpcresp = 'Unknown error while posting "'.$msg.'" to account @'.$oauth['contact'];
 			return false;
 		}
 		elseif( !empty($result->error) )
@@ -558,17 +613,14 @@ class twitter_plugin extends Plugin
 			return false;
 		}
 
-		if( empty( $oauth_contact ) )
+		if( empty($oauth['contact']) )
 		{
-			$oauth_contact = $this->get_twitter_contact( $oauth_token, $oauth_token_secret );
+			$oauth['contact'] = $this->get_twitter_contact( $oauth['token'], $oauth['token_secret'] );
 		}
 
-		$xmlrpcresp = T_('Posted to account @').$oauth_contact;
+		$xmlrpcresp = T_('Posted to account @').$oauth['contact'];
 		return true;
 	}
 }
 
-/*
- * $Log: _twitter.plugin.php,v $
- */
 ?>

@@ -3,7 +3,7 @@
  * This is the main/default page template.
  *
  * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://manual.b2evolution.net/Skins_2.0}
+ * {@link http://b2evolution.net/man/skin-structure}
  *
  * The main page template is used to display the blog when no specific page template is available
  * to handle the request (based on $disp).
@@ -11,7 +11,7 @@
  * @package evoskins
  * @subpackage evocamp
  *
- * @version $Id: single.main.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: single.main.php 3157 2013-03-06 04:34:44Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -69,20 +69,30 @@ skin_include( '_body_header.inc.php' );
 		// Display message if no post:
 		display_if_empty();
 
+		echo '<div id="styled_content_block">';
 		while( $Item = & mainlist_get_item() )
 		{	// For each blog post, do everything below up to the closing curly brace "}"
 		?>
 		<div id="<?php $Item->anchor_id() ?>" class="post post<?php $Item->status_raw() ?>" lang="<?php $Item->lang() ?>">
 
 			<?php
+				if( $Item->status != 'published' )
+				{
+					$Item->status( array( 'format' => 'styled' ) );
+				}
 				$Item->locale_temp_switch(); // Temporarily switch to post locale (useful for multilingual blogs)
 			?>
 
-			<h2><?php $Item->title(); ?></h2>
+			<h2><?php
+				$Item->title( array(
+					'link_type' => 'permalink'
+				) );
+			?></h2>
 
 			<p class="postinfo">
 			<?php
-      	$Item->author( array(
+			$Item->author( array(
+					'profile_tab'  => 'user',
 					'before'       => T_('By').' ',
 					'after'        => ' ',
 				) );
@@ -161,6 +171,7 @@ skin_include( '_body_header.inc.php' );
 		<?php
 			locale_restore_previous();	// Restore previous locale (Blog locale)
 		}
+		echo '</div>';
 	?>
 
 	<?php

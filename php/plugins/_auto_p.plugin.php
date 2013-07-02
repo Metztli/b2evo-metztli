@@ -22,11 +22,11 @@ class auto_p_plugin extends Plugin
 	var $code = 'b2WPAutP';
 	var $name = 'Auto P';
 	var $priority = 70;
-	var $version = '3.3';
-	var $apply_rendering = 'opt-in';
+	var $version = '5.0.0';
 	var $group = 'rendering';
 	var $short_desc;
 	var $long_desc;
+	var $help_url = 'http://b2evolution.net/man/technical-reference/renderer-plugins/auto-p-plugin';
 	var $number_of_installs = 1;
 
 	/**
@@ -52,7 +52,7 @@ class auto_p_plugin extends Plugin
 	function PluginInit( & $params )
 	{
 		$this->short_desc = T_('Automatic &lt;P&gt; and &lt;BR&gt; tags');
-		$this->long_desc = T_('This renderer will automatically detect paragraphs on double line-breaks. and mark them with appropriate HTML &lt;P&gt; tags.<br />
+		$this->long_desc = T_('This renderer will automatically detect paragraphs on double line-breaks and mark them with appropriate HTML &lt;P&gt; tags.<br />
 			Optionally, it will also mark single line breaks with HTML &lt;BR&gt; tags.');
 	}
 
@@ -108,11 +108,43 @@ class auto_p_plugin extends Plugin
 		$content = '';
 		for( $i = 0; $i < count($content_parts); $i = $i+2 )
 		{
-			$content .= $this->handle_blocks( $content_parts[$i] );
+			/*
+			yura: If it is used to render outside code/pre tags it closes a <p> tag before each <code>/<pre> block and again open new <p> after that.
+			      So it looks as blocks <code>/<pre> is contained in separate <p>, and the line is broken.
+			      Probably we should forgot about preventing this render plugin in <code>/<pre> blocks.
+			if( stristr( $content_parts[$i], '<code' ) !== false || stristr( $content_parts[$i], '<pre' ) !== false )
+			{	// Call handle_blocks() on everything outside code/pre:
+				$content .= callback_on_non_matching_blocks( $content_parts[$i],
+					'~<(code|pre)[^>]*>.*?</\1>~is',
+					array( $this, 'handle_blocks' ) );
+			}
+			else
+			{	// No code/pre blocks, replace on the whole thing
+			*/
+				$content .= $this->handle_blocks( $content_parts[$i] );
+			//}
 			$content .= $content_parts[$i+1];
 		}
 
 		return true;
+	}
+
+
+	/**
+	 * Define here default collection/blog settings that are to be made available in the backoffice.
+	 *
+	 * @param array Associative array of parameters.
+	 * @return array See {@link Plugin::get_coll_setting_definitions()}.
+	 */
+	function get_coll_setting_definitions( & $params )
+	{
+		$default_params = array_merge( $params,
+			array(
+				'default_comment_rendering' => 'stealth',
+				'default_post_rendering' => 'opt-out'
+			)
+		);
+		return parent::get_coll_setting_definitions( $default_params );
 	}
 
 
@@ -630,8 +662,4 @@ class auto_p_plugin extends Plugin
 
 }
 
-
-/*
- * $Log: _auto_p.plugin.php,v $
- */
 ?>

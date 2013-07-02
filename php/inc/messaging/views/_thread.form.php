@@ -3,7 +3,7 @@
  * This file is part of b2evolution - {@link http://b2evolution.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2009 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @copyright (c)2009-2013 by Francois PLANQUE - {@link http://fplanque.net/}
  * Parts of this file are copyright (c)2009 by The Evo Factory - {@link http://www.evofactory.com/}.
  *
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
@@ -20,7 +20,7 @@
  * @author efy-maxim: Evo Factory / Maxim.
  * @author fplanque: Francois Planque.
  *
- * @version $Id: _thread.form.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _thread.form.php 4096 2013-06-28 10:39:15Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -32,43 +32,173 @@ global $edited_Thread;
 
 global $DB, $action;
 
+global $Blog;
+
 $creating = is_create_action( $action );
 
-$Form = new Form( NULL, 'thread_checkchanges', 'post', 'compact' );
+if( !isset( $params ) )
+{
+	$params = array();
+}
+$params = array_merge( array(
+	'form_class' => 'fform',
+	'form_title' => T_('New thread'),
+	'form_action' => NULL,
+	'form_name' => 'thread_checkchanges',
+	'form_layout' => 'compact',
+	'redirect_to' => regenerate_url( 'action', '', '', '&' ),
+	'cols' => 80,
+	'thrdtype' => param( 'thrdtype', 'string', 'discussion' ),  // alternative: individual
+	'skin_form_params' => array(),
+	'allow_select_recipients' => true,
+	), $params );
 
-$Form->global_icon( T_('Cancel editing!'), 'close', regenerate_url( 'action' ) );
+$Form = new Form( $params['form_action'], $params['form_name'], 'post', $params['form_layout'] );
 
-$Form->begin_form( 'fform', T_('New thread') );
+$Form->switch_template_parts( $params['skin_form_params'] );
 
-	$Form->add_crumb( 'thread' );
+if( is_admin_page() )
+{
+	$Form->global_icon( T_('Cancel editing!'), 'close', regenerate_url( 'action' ) );
+}
+
+$Form->begin_form( $params['form_class'], $params['form_title'], array( 'onsubmit' => 'return check_form_thread()') );
+
+	$Form->add_crumb( 'messaging_threads' );
 	$Form->hiddens_by_key( get_memorized( 'action'.( $creating ? ',msg_ID' : '' ) ) ); // (this allows to come back to the right list order & page)
+	$Form->hidden( 'redirect_to', $params[ 'redirect_to' ] );
+	if( !empty( $Blog ) )
+	{ // Set blog as hidden param, because we may need the blog locale after submit
+		// This issues should be solved differently
+		$Form->hidden( 'blog', $Blog->ID );
+	}
 
-$recent_recipients = $DB->get_var('SELECT GROUP_CONCAT(DISTINCT user_login SEPARATOR \', \')
-									FROM (SELECT u.user_login
-											FROM T_messaging__threadstatus t
-													LEFT OUTER JOIN T_messaging__thread td ON t.tsta_thread_ID = td.thrd_ID
-													LEFT OUTER JOIN T_messaging__threadstatus tu
-																ON t.tsta_thread_ID = tu.tsta_thread_ID AND tu.tsta_user_ID <> '.$current_User->ID.'
-													LEFT OUTER JOIN T_users u ON tu.tsta_user_ID = u.user_ID
-											WHERE t.tsta_user_ID = '.$current_User->ID.' ORDER BY td.thrd_datemodified DESC LIMIT 20) AS users');
+if( $params['allow_select_recipients'] )
+{	// User can select recipients
+	$Form->text_input( 'thrd_recipients', $edited_Thread->recipients, $params['cols'], T_('Recipients'),
+		'<noscript>'.T_('Enter usernames. Separate with comma (,)').'</noscript>', array( 'maxlength'=> 255, 'required'=>true, 'class'=>'wide_input' ) );
 
-$user_login = param( 'user_login', 'string', '');
+	echo '<div id="multiple_recipients">';
+	$Form->radio( 'thrdtype', $params['thrdtype'], array(
+									array( 'discussion', T_( 'Start a group discussion' ) ),
+									array( 'individual', T_( 'Send individual messages' ) )
+								), T_('Multiple recipients'), true );
+	echo '</div>';
+}
+else
+{	// No available to select recipients, Used in /contact.php
+	$Form->info( T_('Recipients'), $edited_Thread->recipients );
+	foreach( $recipients_selected as $recipient )
+	{
+		$Form->hidden( 'thrd_recipients_array[id][]', $recipient['id'] );
+		$Form->hidden( 'thrd_recipients_array[title][]', $recipient['title'] );
+	}
+}
 
-$Form->text_input( 'thrd_recipients', empty( $user_login ) ? $edited_Thread->recipients : $user_login, 70, T_('Recipients'), T_('Enter comma or space separated logins').'<br />'.get_avatar_imgtags( $recent_recipients ), array( 'maxlength'=> 255, 'required'=>true ) );
+$Form->text_input( 'thrd_title', $edited_Thread->title, $params['cols'], T_('Subject'), '', array( 'maxlength'=> 255, 'required'=>true, 'class'=>'wide_input' ) );
 
-$Form->text_input( 'thrd_title', $edited_Thread->title, 70, T_('Subject'), '', array( 'maxlength'=> 255, 'required'=>true ) );
+$Form->textarea_input( 'msg_text', isset( $edited_Thread->text ) ? $edited_Thread->text : $edited_Message->text, 10, T_('Message'), array( 'cols'=>$params['cols'], 'class'=>'wide_textarea', 'required'=>true ) );
 
-$Form->textarea_input( 'msg_text', $edited_Message->text, 10, T_('Message'), array( 'cols'=>80 ) );
+global $thrd_recipients_array, $recipients_selected;
+if( !empty( $thrd_recipients_array ) )
+{	// Initialize the preselected users (from post request or when user send a message to own contacts)
+	foreach( $thrd_recipients_array['id'] as $rnum => $recipient_ID )
+	{
+		$recipients_selected[] = array(
+			'id'    => $recipient_ID,
+			'title' => $thrd_recipients_array['title'][$rnum]
+		);
+	}
+}
 
-$Form->radio( 'thrdtype', param( 'thrdtype', 'string', 'discussion' ), array(
-								array( 'discussion', T_( 'Group discussion' ) ),
-								array( 'individual', T_( 'Individual messages' ) )
-							), T_('Multiple recipients'), true );
+// display submit button, but only if enabled
+$Form->end_form( array( array( 'submit', 'actionArray[create]', T_('Send message'), 'SaveButton' ) ) );
 
-$Form->end_form( array( array( 'submit', 'actionArray[create]', T_('Record'), 'SaveButton' ),
-												array( 'reset', '', T_('Reset'), 'ResetButton' ) ) );
+if( $params['allow_select_recipients'] )
+{	// User can select recipients
+?>
+<script type="text/javascript">
+jQuery( document ).ready( function()
+{
+	check_multiple_recipients();
+} );
 
-/*
- * $Log: _thread.form.php,v $
+jQuery( '#thrd_recipients' ).tokenInput(
+	'<?php echo get_samedomain_htsrv_url(); ?>anon_async.php?action=get_recipients',
+	{
+		theme: 'facebook',
+		queryParam: 'term',
+		propertyToSearch: 'title',
+		preventDuplicates: true,
+		prePopulate: <?php echo evo_json_encode( $recipients_selected ) ?>,
+		hintText: '<?php echo TS_('Type in a username') ?>',
+		noResultsText: '<?php echo TS_('No results') ?>',
+		searchingText: '<?php echo TS_('Searching...') ?>',
+		tokenFormatter: function( item )
+		{
+			return '<li>' +
+					item.title +
+					'<input type="hidden" name="thrd_recipients_array[id][]" value="' + item.id + '" />' +
+					'<input type="hidden" name="thrd_recipients_array[title][]" value="' + item.title + '" />' +
+				'</li>';
+		},
+		resultsFormatter: function( item )
+		{
+			var title = item.title;
+			if( item.fullname != null && item.fullname !== undefined )
+			{
+				title += '<br />' + item.fullname;
+			}
+			return '<li>' +
+					item.picture +
+					'<div>' +
+						title +
+					'</div><span></span>' +
+				'</li>';
+		},
+		onAdd: function()
+		{
+			check_multiple_recipients();
+		},
+		onDelete: function()
+		{
+			check_multiple_recipients();
+		},
+	}
+);
+
+/**
+ * Show the multiple recipients radio selection if the number of recipients more than one
  */
+function check_multiple_recipients()
+{
+	if( jQuery( 'input[name="thrd_recipients_array[title][]"]' ).length > 1 )
+	{
+		jQuery( '#multiple_recipients' ).show();
+	}
+	else
+	{
+		jQuery( '#multiple_recipients' ).hide();
+	}
+}
+
+/**
+ * Check form fields before send a thread data
+ *
+ * @return boolean TRUE - success filling of the fields, FALSE - some erros, stop a submitting of the form
+ */
+function check_form_thread()
+{
+	if( jQuery( 'input#token-input-thrd_recipients' ).val() != '' )
+	{	// Don't submit a form with incomplete username
+		alert( '<?php echo TS_('Please complete the entering of an username.') ?>' );
+		jQuery( 'input#token-input-thrd_recipients' ).focus();
+		return false;
+	}
+
+	return true;
+}
+</script>
+<?php
+}
 ?>

@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -21,11 +21,11 @@
  *
  * @package admin
  *
- * @version $Id: _stats_browserhits.view.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _stats_browserhits.view.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
-global $blog, $admin_url, $AdminUI;
+global $blog, $admin_url, $AdminUI, $referer_type_color, $hit_type_color;
 
 echo '<h2>'.T_('Hits from web browsers - Summary').get_manual_link('browser_hits_summary').'</h2>';
 
@@ -41,18 +41,18 @@ echo '<h2>'.T_('Hits from web browsers - Summary').get_manual_link('browser_hits
 // TODO: I've also limited this to agent_type "browser" here, according to the change for "referers" (Rev 1.6)
 //       -> an RSS service that sends a referer is not a real referer (though it should be listed in the robots list)! (blueyed)
 $sql = '
-	SELECT SQL_NO_CACHE COUNT(*) AS hits, CONCAT(hit_referer_type) AS referer_type, EXTRACT(YEAR FROM hit_datetime) AS year,
+	SELECT SQL_NO_CACHE COUNT(*) AS hits, CONCAT(hit_referer_type) AS referer_type, hit_type,  EXTRACT(YEAR FROM hit_datetime) AS year,
 			   EXTRACT(MONTH FROM hit_datetime) AS month, EXTRACT(DAY FROM hit_datetime) AS day
 		FROM T_hitlog
 	 WHERE hit_agent_type = "browser"';
+
 if( $blog > 0 )
 {
 	$sql .= ' AND hit_blog_ID = '.$blog;
 }
-$sql .= ' GROUP BY year, month, day, referer_type
-					ORDER BY year DESC, month DESC, day DESC, referer_type';
+$sql .= ' GROUP BY year, month, day, referer_type, hit_type
+					ORDER BY year DESC, month DESC, day DESC, referer_type, hit_type';
 $res_hits = $DB->get_results( $sql, ARRAY_A, 'Get hit summary' );
-
 
 /*
  * Chart
@@ -66,9 +66,10 @@ if( count($res_hits) )
 			'referer' => 2,
 			'direct'  => 3,
 			'self'    => 4,
-			'blacklist' => 5,
-			'spam'    => 6,
-			'admin'   => 7,
+			'ajax'    => 5,
+			'special' => 6,
+			'spam'    => 7,
+			'admin'   => 8,
 		);
 
 	$chart[ 'chart_data' ][ 0 ] = array();
@@ -79,6 +80,7 @@ if( count($res_hits) )
 	$chart[ 'chart_data' ][ 5 ] = array();
 	$chart[ 'chart_data' ][ 6 ] = array();
 	$chart[ 'chart_data' ][ 7 ] = array();
+	$chart[ 'chart_data' ][ 8 ] = array();
 
 	$count = 0;
 	foreach( $res_hits as $row_stats )
@@ -96,9 +98,29 @@ if( count($res_hits) )
 				array_unshift( $chart[ 'chart_data' ][ 5 ], 0 );
 				array_unshift( $chart[ 'chart_data' ][ 6 ], 0 );
 				array_unshift( $chart[ 'chart_data' ][ 7 ], 0 );
+				array_unshift( $chart[ 'chart_data' ][ 8 ], 0 );
 		}
-		$col = $col_mapping[$row_stats['referer_type']];
-		$chart [ 'chart_data' ][$col][0] = $row_stats['hits'];
+
+		if ( $row_stats['hit_type'] == 'ajax' )
+		{	// hit_type = ajax is the highest priority. If hit_type = ajax, then hit gets only to this column.
+			$col = $col_mapping['ajax'];
+			$chart [ 'chart_data' ][$col][0] += $row_stats['hits'];
+		}
+		else
+		{
+			if ( $row_stats['hit_type'] == 'admin' )
+			{	// if hit_type = admin, then hits get only to this column.
+				$col = $col_mapping['admin'];
+				$chart [ 'chart_data' ][$col][0] += $row_stats['hits'];
+			}
+			else
+			{	// all other hits come to this column
+				$col = $col_mapping[$row_stats['referer_type']];
+				$chart [ 'chart_data' ][$col][0] += $row_stats['hits'];
+			}
+		}
+
+
 	}
 
 	array_unshift( $chart[ 'chart_data' ][ 0 ], '' );
@@ -106,23 +128,24 @@ if( count($res_hits) )
 	array_unshift( $chart[ 'chart_data' ][ 2 ], 'Referers' );
 	array_unshift( $chart[ 'chart_data' ][ 3 ], 'Direct accesses' );	// Translations need to be UTF-8
 	array_unshift( $chart[ 'chart_data' ][ 4 ], 'Self referred' );
-	array_unshift( $chart[ 'chart_data' ][ 5 ], 'Special referrers' );
-	array_unshift( $chart[ 'chart_data' ][ 6 ], 'Referer spam' );
-	array_unshift( $chart[ 'chart_data' ][ 7 ], 'Admin' );
+	array_unshift( $chart[ 'chart_data' ][ 5 ], 'Ajax' );
+	array_unshift( $chart[ 'chart_data' ][ 6 ], 'Special referrers' );
+	array_unshift( $chart[ 'chart_data' ][ 7 ], 'Referer spam' );
+	array_unshift( $chart[ 'chart_data' ][ 8 ], 'Admin' );
 
 	// Include common chart properties:
 	require dirname(__FILE__).'/inc/_bar_chart.inc.php';
 
+
 	$chart[ 'series_color' ] = array (
-			'0099ff',
-			'00ccff',
-			'00ffcc',
-			'00ff99',
-
-			'ff00ff',
-			'ff0000',
-
-			'999999',
+			$referer_type_color['search'],
+			$referer_type_color['referer'],
+			$referer_type_color['direct'],
+			$referer_type_color['self'],
+			$hit_type_color['ajax'],
+			$referer_type_color['special'],
+			$referer_type_color['spam'],
+			$referer_type_color['admin'],
 		);
 
 	echo '<div class="center">';
@@ -139,7 +162,8 @@ if( count($res_hits) )
 		'referer' => 0,
 		'search' => 0,
 		'self' => 0,
-		'blacklist' => 0,
+		'ajax' => 0,
+		'special' => 0,
 		'spam' => 0,
 		'admin' => 0,
 	);
@@ -152,13 +176,14 @@ if( count($res_hits) )
 	<table class="grouped" cellspacing="0">
 		<tr>
 			<th class="firstcol"><?php echo T_('Date') ?></th>
-			<th style="background-color: #0099ff"><?php echo T_('Refering searches') ?></th>
-			<th style="background-color: #00ccff"><?php echo T_('Referers') ?></th>
-			<th style="background-color: #00ffcc"><?php echo T_('Direct accesses') ?></th>
-			<th style="background-color: #00ff99"><?php echo T_('Self referred') ?></th>
-			<th style="background-color: #ff00ff"><?php	echo T_('Special referrers') ?></th>
-			<th style="background-color: #ff0000"><?php echo T_('Referer spam') ?></th>
-			<th style="background-color: #999999"><?php echo T_('Admin') ?></th>
+			<th style="background-color: #<?php echo $referer_type_color['search'] ?>"><?php echo T_('Refering searches') ?></th>
+			<th style="background-color: #<?php echo $referer_type_color['referer'] ?>"><?php echo T_('Referers') ?></th>
+			<th style="background-color: #<?php echo $referer_type_color['direct'] ?>"><?php echo T_('Direct accesses') ?></th>
+			<th style="background-color: #<?php echo $referer_type_color['self'] ?>"><?php echo T_('Self referred') ?></th>
+			<th style="background-color: #<?php echo $hit_type_color['ajax'] ?>"><?php echo T_('Ajax') ?></th>
+			<th style="background-color: #<?php echo $referer_type_color['special'] ?>"><?php echo T_('Special referrers') ?></th>
+			<th style="background-color: #<?php echo $referer_type_color['spam'] ?>"><?php echo T_('Referer spam') ?></th>
+			<th style="background-color: #<?php echo $referer_type_color['admin'] ?>"><?php echo T_('Admin') ?></th>
 			<th class="lastcol"><?php echo T_('Total') ?></th>
 		</tr>
 		<?php
@@ -166,7 +191,12 @@ if( count($res_hits) )
 		foreach( $res_hits as $row_stats )
 		{
 			$this_date = mktime( 0, 0, 0, $row_stats['month'], $row_stats['day'], $row_stats['year'] );
+
 			if( $last_date == 0 ) $last_date = $this_date;	// that'll be the first one
+
+			$link_text = $admin_url.'?ctrl=stats&tab=hits&datestartinput='.urlencode( date( locale_datefmt() , $last_date ) ).'&datestopinput='.urlencode( date( locale_datefmt(), $last_date ) ).'&blog='.$blog.'&agent_type=browser';
+			$link_text_total_day = $admin_url.'?ctrl=stats&tab=hits&datestartinput='.urlencode( date( locale_datefmt() , $last_date ) ).'&datestopinput='.urlencode( date( locale_datefmt(), $last_date ) ).'&blog='.$blog.'&agent_type=browser';
+
 			if( $last_date != $this_date )
 			{ // We just hit a new day, let's display the previous one:
 				?>
@@ -177,14 +207,15 @@ if( count($res_hits) )
 						}
 						echo date( locale_datefmt(), $last_date ) ?>
 					</td>
-					<td class="right"><?php echo $hits['search'] ?></td>
-					<td class="right"><?php echo $hits['referer'] ?></td>
-					<td class="right"><?php echo $hits['direct'] ?></td>
-					<td class="right"><?php echo $hits['self'] ?></td>
-					<td class="right"><?php echo $hits['blacklist'] ?></td>
-					<td class="right"><?php echo $hits['spam'] ?></td>
-					<td class="right"><?php echo $hits['admin'] ?></td>
-					<td class="lastcol right"><?php echo array_sum($hits) ?></td>
+				<td class="right"><a href="<?php echo $link_text.'&referer_type=search'?>"><?php echo $hits['search'] ?></a></td>
+				<td class="right"><a href="<?php echo $link_text.'&referer_type=referer'?>"><?php echo $hits['referer'] ?></a></td>
+				<td class="right"><a href="<?php echo $link_text.'&referer_type=direct'?>"><?php echo $hits['direct'] ?></a></td>
+				<td class="right"><a href="<?php echo $link_text.'&referer_type=self'?>"><?php echo $hits['self'] ?></a></td>
+				<td class="right"><a href="<?php echo $link_text.'&hit_type=ajax'?>"><?php echo $hits['ajax'] ?></a></td>
+				<td class="right"><a href="<?php echo $link_text.'&referer_type=special'?>"><?php echo $hits['special'] ?></a></td>
+				<td class="right"><a href="<?php echo $link_text.'&referer_type=spam'?>"><?php echo $hits['spam'] ?></a></td>
+				<td class="right"><a href="<?php echo $link_text.'&hit_type=admin'?>"><?php echo $hits['admin'] ?></a></td>
+				<td class="lastcol right"><a href="<?php echo $link_text_total_day ?>"><?php echo array_sum($hits) ?></a></td>
 				</tr>
 				<?php
 					$hits = array(
@@ -192,7 +223,8 @@ if( count($res_hits) )
 						'referer' => 0,
 						'search' => 0,
 						'self' => 0,
-						'blacklist' => 0,
+						'ajax' => 0,
+						'special' => 0,
 						'spam' => 0,
 						'admin' => 0,
 					);
@@ -201,12 +233,34 @@ if( count($res_hits) )
 			}
 
 			// Increment hitcounter:
-			$hits[$row_stats['referer_type']] = $row_stats['hits'];
-			$hits_total[$row_stats['referer_type']] += $row_stats['hits'];
+
+			if ( $row_stats['hit_type'] == 'ajax' )
+			{
+				$hits['ajax'] += $row_stats['hits'];
+				$hits_total['ajax'] += $row_stats['hits'];
+			}
+			else
+			{
+				if ( $row_stats['hit_type'] == 'admin' )
+				{
+					$hits['admin'] += $row_stats['hits'];
+					$hits_total['admin'] += $row_stats['hits'];
+				}
+				else
+				{
+					$hits[$row_stats['referer_type']] += $row_stats['hits'];
+					$hits_total[$row_stats['referer_type']] += $row_stats['hits'];
+				}
+			}
+
 		}
 
 		if( $last_date != 0 )
 		{ // We had a day pending:
+			$this_date = mktime( 0, 0, 0, $row_stats['month'], $row_stats['day'], $row_stats['year'] );
+
+			$link_text = $admin_url.'?ctrl=stats&tab=hits&datestartinput='.urlencode( date( locale_datefmt() , $last_date ) ).'&datestopinput='.urlencode( date( locale_datefmt(), $last_date ) ).'&blog='.$blog.'&agent_type=browser';
+			$link_text_total_day = $admin_url.'?ctrl=stats&tab=hits&datestartinput='.urlencode( date( locale_datefmt() , $last_date ) ).'&datestopinput='.urlencode( date( locale_datefmt(), $last_date ) ).'&blog='.$blog.'&agent_type=browser';
 			?>
 				<tr class="<?php echo ( $count%2 == 1 ) ? 'odd' : 'even'; ?>">
 				<td class="firstcol"><?php if( $current_User->check_perm( 'stats', 'edit' ) )
@@ -215,40 +269,41 @@ if( count($res_hits) )
 					}
 					echo date( locale_datefmt(), $this_date ) ?>
 				</td>
-				<td class="right"><?php echo $hits['search'] ?></td>
-				<td class="right"><?php echo $hits['referer'] ?></td>
-				<td class="right"><?php echo $hits['direct'] ?></td>
-				<td class="right"><?php echo $hits['self'] ?></td>
-				<td class="right"><?php echo $hits['blacklist'] ?></td>
-				<td class="right"><?php echo $hits['spam'] ?></td>
-				<td class="right"><?php echo $hits['admin'] ?></td>
-				<td class="lastcol right"><?php echo array_sum($hits) ?></td>
+				<td class="right"><a href="<?php echo $link_text.'&referer_type=search'?>"><?php echo $hits['search'] ?></a></td>
+				<td class="right"><a href="<?php echo $link_text.'&referer_type=referer'?>"><?php echo $hits['referer'] ?></a></td>
+				<td class="right"><a href="<?php echo $link_text.'&referer_type=direct'?>"><?php echo $hits['direct'] ?></a></td>
+				<td class="right"><a href="<?php echo $link_text.'&referer_type=self'?>"><?php echo $hits['self'] ?></a></td>
+				<td class="right"><a href="<?php echo $link_text.'&hit_type=ajax'?>"><?php echo $hits['ajax'] ?></a></td>
+				<td class="right"><a href="<?php echo $link_text.'&referer_type=special'?>"><?php echo $hits['special'] ?></a></td>
+				<td class="right"><a href="<?php echo $link_text.'&referer_type=spam'?>"><?php echo $hits['spam'] ?></a></td>
+				<td class="right"><a href="<?php echo $link_text.'&hit_type=admin'?>"><?php echo $hits['admin'] ?></a></td>
+				<td class="lastcol right"><a href="<?php echo $link_text_total_day ?>"><?php echo array_sum($hits) ?></a></td>
 			</tr>
 			<?php
 		}
 
 		// Total numbers:
+
+		$link_text_total = $admin_url.'?ctrl=stats&tab=hits&blog='.$blog.'&agent_type=browser';
 		?>
 
 		<tr class="total">
 		<td class="firstcol"><?php echo T_('Total') ?></td>
-		<td class="right"><?php echo $hits_total['search'] ?></td>
-		<td class="right"><?php echo $hits_total['referer'] ?></td>
-		<td class="right"><?php echo $hits_total['direct'] ?></td>
-		<td class="right"><?php echo $hits_total['self'] ?></td>
-		<td class="right"><?php echo $hits_total['blacklist'] ?></td>
-		<td class="right"><?php echo $hits_total['spam'] ?></td>
-		<td class="right"><?php echo $hits_total['admin'] ?></td>
-		<td class="lastcol right"><?php echo array_sum($hits_total) ?></td>
+		<td class="right"><a href="<?php echo $link_text_total.'&referer_type=search'?>"><?php echo $hits_total['search'] ?></a></td>
+		<td class="right"><a href="<?php echo $link_text_total.'&referer_type=referer'?>"><?php echo $hits_total['referer'] ?></a></td>
+		<td class="right"><a href="<?php echo $link_text_total.'&referer_type=direct'?>"><?php echo $hits_total['direct'] ?></a></td>
+		<td class="right"><a href="<?php echo $link_text_total.'&referer_type=self'?>"><?php echo $hits_total['self'] ?></a></td>
+		<td class="right"><a href="<?php echo $link_text_total.'&hit_type=ajax'?>"><?php echo $hits_total['ajax'] ?></a></td>
+		<td class="right"><a href="<?php echo $link_text_total.'&referer_type=special'?>"><?php echo $hits_total['special'] ?></a></td>
+		<td class="right"><a href="<?php echo $link_text_total.'&referer_type=spam'?>"><?php echo $hits_total['spam'] ?></a></td>
+		<td class="right"><a href="<?php echo $link_text_total.'&hit_type=admin'?>"><?php echo $hits_total['admin'] ?></a></td>
+		<td class="lastcol right"><a href="<?php echo $link_text_total?>"><?php echo array_sum($hits_total) ?></a></td>
 		</tr>
 
 	</table>
 
-	<!--[if IE]><img src="<?php global $rsc_url; echo $rsc_url ?>img/blank.gif" width="1" height="1" alt="" /><![endif]-->
+	<!--[if IE]><?php echo get_icon( 'pixel' ); ?><![endif]-->
 	<?php
 }
 
-/*
- * $Log: _stats_browserhits.view.php,v $
- */
 ?>

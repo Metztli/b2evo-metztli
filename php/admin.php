@@ -9,7 +9,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
@@ -34,7 +34,7 @@
  *
  * @package main
  *
- * @version $Id: admin.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: admin.php 3328 2013-03-26 11:44:11Z yura $
  */
 
 
@@ -49,22 +49,42 @@ require_once dirname(__FILE__).'/conf/_config.php';
  */
 $is_admin_page = true;
 
-
+// user must be logged in and his/her account must be validated before access to admin 
 $login_required = true;
+$validate_required = true;
 require_once $inc_path.'_main.inc.php';
 
 
 // Check global permission:
 if( ! $current_User->check_perm( 'admin', 'restricted' ) )
 {	// No permission to access admin...
-	require $adminskins_path.'_access_denied.main.php';
+	// asimo> This should always denied access, but we insert a hack to create a temporary solution
+	// We do allow comments and items actions, if the redirect is set to the front office! This way users without admin access may use the comments, and items controls.
+	$test_ctrl = param( 'ctrl', '/^[a-z0-9_]+$/', '', false );
+	$test_redirect_to = param( 'redirect_to', 'string', '', false );
+	$test_action = param_action();
+	// asimo> If we also would like to allow publish, deprecate and delete item/comment actions for users without admin access, we must uncomment the commented part below.
+	if( ( ( $test_ctrl !== 'comments' ) && ( $test_ctrl !== 'items' ) )
+		|| empty( $test_redirect_to ) || ( strpos( $test_redirect_to, $admin_url ) === 0 )
+		|| empty( $test_action ) || !in_array( $test_action, array( 'update', 'publish'/*, 'deprecate', 'delete'*/ ) ) )
+	{
+		require $adminskins_path.'_access_denied.main.php';
+	}
 }
 
-
-/*
- * Asynchronous processing options that may be required on any page
- */
-require_once $inc_path.'_async.inc.php';
+// Check user email is validated to make sure users can never has access to admin without a validated email address
+if( !$current_User->check_status( 'can_access_admin' ) )
+{
+	if( $current_User->check_status( 'can_be_validated' ) )
+	{ // redirect back to the login page
+		$action = 'req_validatemail';
+		require $htsrv_path.'login.php';
+	}
+	else
+	{ // show access denied
+		require $adminskins_path.'_access_denied.main.php';
+	}
+}
 
 
 /*
@@ -178,51 +198,51 @@ $AdminUI = new AdminUI();
 // Get requested controller and memorize it:
 param( 'ctrl', '/^[a-z0-9_]+$/', $default_ctrl, true );
 
+if( empty( $dont_request_controller ) || !$dont_request_controller )
+{	// Don't request the controller if we want initialize only the admin configs above (Used on AJAX refreshing of results table)
 
-// Redirect old-style URLs (e.g. /admin/plugins.php), if they come here because the webserver maps "/admin/" to "/admin.php"
-// NOTE: this is just meant as a transformation from pre-1.8 to 1.8!
-if( ! empty( $_SERVER['PATH_INFO'] ) && $_SERVER['PATH_INFO'] != $_SERVER['PHP_SELF'] ) // the "!= PHP_SELF" check seems needed by IIS..
-{
-	// Try to find the appropriate controller (ctrl) setting
-	foreach( $ctrl_mappings as $k => $v )
+	// Redirect old-style URLs (e.g. /admin/plugins.php), if they come here because the webserver maps "/admin/" to "/admin.php"
+	// NOTE: this is just meant as a transformation from pre-1.8 to 1.8!
+	if( ! empty( $_SERVER['PATH_INFO'] ) && $_SERVER['PATH_INFO'] != $_SERVER['PHP_SELF'] ) // the "!= PHP_SELF" check seems needed by IIS..
 	{
-		if( preg_match( '~'.preg_quote( $_SERVER['PATH_INFO'], '~' ).'$~', $v ) )
+		// Try to find the appropriate controller (ctrl) setting
+		foreach( $ctrl_mappings as $k => $v )
 		{
-			$ctrl = $k;
-			break;
+			if( preg_match( '~'.preg_quote( $_SERVER['PATH_INFO'], '~' ).'$~', $v ) )
+			{
+				$ctrl = $k;
+				break;
+			}
 		}
-	}
 
-	// Sanitize QUERY_STRING
-	if( ! empty( $_SERVER['QUERY_STRING'] ) )
-	{
-		$query_string = explode( '&', $_SERVER['QUERY_STRING'] );
-		foreach( $query_string as $k => $v )
+		// Sanitize QUERY_STRING
+		if( ! empty( $_SERVER['QUERY_STRING'] ) )
 		{
-			$query_string[$k] = strip_tags($v);
+			$query_string = explode( '&', $_SERVER['QUERY_STRING'] );
+			foreach( $query_string as $k => $v )
+			{
+				$query_string[$k] = strip_tags($v);
+			}
+			$query_string = '&'.implode( '&', $query_string );
 		}
-		$query_string = '&'.implode( '&', $query_string );
-	}
-	else
-	{
-		$query_string = '';
+		else
+		{
+			$query_string = '';
+		}
+
+		header_redirect( url_add_param( $admin_url, 'ctrl='.$ctrl.$query_string, '&' ), true );
+		exit(0);
 	}
 
-	header_redirect( url_add_param( $admin_url, 'ctrl='.$ctrl.$query_string, '&' ), true );
-	exit(0);
+
+	// Check matching controller file:
+	if( !isset($ctrl_mappings[$ctrl]) )
+	{
+		debug_die( 'The requested controller ['.$ctrl.'] does not exist.' );
+	}
+
+	// Call the requested controller:
+	require $inc_path.$ctrl_mappings[$ctrl];
 }
 
-
-// Check matching controller file:
-if( !isset($ctrl_mappings[$ctrl]) )
-{
-	debug_die( 'The requested controller ['.$ctrl.'] does not exist.' );
-}
-
-// Call the requested controller:
-require $inc_path.$ctrl_mappings[$ctrl];
-
-/*
- * $Log: admin.php,v $
- */
 ?>

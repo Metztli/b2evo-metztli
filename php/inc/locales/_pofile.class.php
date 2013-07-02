@@ -356,7 +356,4 @@ class POTFile extends POFile
 
 }
 
-/*
- * $Log: _pofile.class.php,v $
- */
 ?>

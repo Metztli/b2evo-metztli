@@ -4,7 +4,7 @@
  *
  * This file is part of the b2evolution project - {@link http://b2evolution.net/}
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2005-2007 by Yabba/Scott - {@link http://astonishme.co.uk/contact/}.
  *
  * {@internal License choice
@@ -108,12 +108,12 @@ class am_php_highlighter
 		if( empty( $this->highlight_colours ) )
 		{	// get the users php_ini colours for highlight_string()
 			$this->highlight_colours = array(
-					'highlight_bg' => '<span class="'.ini_get( 'highlight.bg' ),
-					'highlight_comment' => '<span class="'.ini_get( 'highlight.comment' ),
-					'highlight_default' => '<span class="'.ini_get( 'highlight.default' ),
-					'highlight_html' => '<span class="'.ini_get( 'highlight.html' ),
-					'highlight_keyword' => '<span class="'.ini_get( 'highlight.keyword' ),
-					'highlight_string' => '<span class="'.ini_get( 'highlight.string' ),
+					'highlight_bg' => '<span class="#FFFFFF',
+					'highlight_comment' => '<span class="#FF8000',
+					'highlight_default' => '<span class="#0000BB',
+					'highlight_html' => '<span class="#000000',
+					'highlight_keyword' => '<span class="#007700',
+					'highlight_string' => '<span class="#DD0000',
 				);
 		}
 		// lets sort out the code and highlighting
@@ -135,7 +135,7 @@ class am_php_highlighter
 			// top code with < ?php & to ensure highlight occurs
 			highlight_string( '<?php'."\n"
 			// convert relevant entities back for highlighting
-			.str_replace( array( '&lt;', '&gt;', '&amp;' ), array( '<', '>', '&' ),
+			.str_replace( array( '&lt;', '&gt;', '&amp;', '&quot;' ), array( '<', '>', '&', '"' ),
 			// get rid of empty start/end lines, and add */ to the end to overcome highlight_string() bug with unterminated comments
 			 trim( $block ) )."\n".'*/', true)
 			) ) ) ), '<br />' )
@@ -159,8 +159,4 @@ class am_php_highlighter
 
 }
 
-
-/*
- * $Log: php.highlighter.php,v $
- */
 ?>

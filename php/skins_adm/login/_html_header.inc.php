@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -26,6 +26,11 @@
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
+// Add CSS:
+require_css( 'basic_styles.css', 'rsc_url' ); // the REAL basic styles
+require_css( 'basic.css', 'rsc_url' ); // Basic styles
+require_css( 'login.css', 'rsc_url' );
+
 headers_content_mightcache( 'text/html', 0 );		// NEVER cache the login pages!
 ?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -34,7 +39,6 @@ headers_content_mightcache( 'text/html', 0 );		// NEVER cache the login pages!
 	<title><?php echo $page_title ?></title>
 	<meta name="ROBOTS" content="NOINDEX" />
 	<meta name="viewport" content="width = 600" />
-	<link href="<?php echo $rsc_url ?>css/login.css" rel="stylesheet" type="text/css" />
 	<?php include_headlines() /* Add javascript and css files included by plugins and skin */ ?>
 </head>
 <body>
@@ -42,9 +46,12 @@ headers_content_mightcache( 'text/html', 0 );		// NEVER cache the login pages!
 
 <div class="loginblock">
 
-<?php if( isset($page_icon) ) { ?>
-<img src="<?php echo $rsc_url.'icons/'.$page_icon ?>" width="24" height="24" style="float:left; margin-right:4px" alt="" />
-<?php } ?>
+<?php
+if( isset($page_icon) )
+{
+	echo get_icon($page_icon, 'imgtag', array( 'style' => 'float:left' ) );
+}
+?>
 
 <h2 class="logintitle"><?php echo $page_title ?></h2>
 
@@ -63,7 +70,4 @@ else
 	$Messages->display();
 }
 
-/*
- * $Log: _html_header.inc.php,v $
- */
 ?>

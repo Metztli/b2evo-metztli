@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -21,7 +21,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE
  *
- * @version $Id: settings_dispatch.ctrl.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: settings_dispatch.ctrl.php 3032 2013-02-20 09:33:39Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -29,7 +29,7 @@ if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.'
 $UserSettings->param_Request( 'tab', 'pref_glob_settings_tab', 'string', 'gensettings', true /* memorize */, true /* force */ );
 
 // Avoid infernal loop:
-if( $tab == 'settings' )
+if( $tab == 'settings' || $tab == 'skins' )
 {
 	$ctrl = 'gensettings';
 }
@@ -47,7 +47,4 @@ if( !isset($ctrl_mappings[$ctrl]) )
 // Call the requested controller:
 require $inc_path.$ctrl_mappings[$ctrl];
 
-/*
- * $Log: settings_dispatch.ctrl.php,v $
- */
 ?>

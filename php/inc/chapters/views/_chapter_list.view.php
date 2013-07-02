@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -21,7 +21,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _chapter_list.view.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _chapter_list.view.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 //____________________ Callbacks functions to display categories list _____________________
@@ -70,6 +70,7 @@ function cat_line( $Chapter, $level )
 
 	$line_class = $line_class == 'even' ? 'odd' : 'even';
 
+	// ID
 	$r = '<tr id="tr-'.$Chapter->ID.'"class="'.$line_class.
 					' chapter_parent_'.( $Chapter->parent_ID ? $Chapter->parent_ID : '0' ).
 					// Fadeout?
@@ -78,19 +79,20 @@ function cat_line( $Chapter, $level )
 						$Chapter->ID.'
 				</td>';
 
-	$makedef_url = regenerate_url( 'action,cat_ID', 'cat_ID='.$Chapter->ID.'&amp;action=make_default&amp;'.url_crumb('element') );
-	$makedef_title = format_to_output( T_('Click to make this the default category'), 'htmlattr' );
-
+	// Default
 	if( $current_default_cat_ID == $Chapter->ID )
 	{
-		$makedef_icon = 'enabled';
+		$makedef_icon = get_icon( 'enabled', 'imgtag', array( 'title' => format_to_output( T_( 'This is default category' ), 'htmlattr' ) ) );
 	}
 	else
 	{
-		$makedef_icon = 'disabled';
+		$makedef_url = regenerate_url( 'action,cat_ID', 'cat_ID='.$Chapter->ID.'&amp;action=make_default&amp;'.url_crumb('element') );
+		$makedef_title = format_to_output( T_('Click to make this the default category'), 'htmlattr' );
+		$makedef_icon = '<a href="'.$makedef_url.'" title="'.$makedef_title.'">'.get_icon( 'disabled', 'imgtag', array( 'title' => $makedef_title ) ).'</a>';
 	}
-	$r .= '<td class="center"><a href="'.$makedef_url.'" title="'.$makedef_title.'">'.get_icon($makedef_icon, 'imgtag').'</a></td>';
+	$r .= '<td class="center">'.$makedef_icon.'</td>';
 
+	// Name
 	if( $permission_to_edit )
 	{	// We have permission permission to edit:
 		$edit_url = regenerate_url( 'action,cat_ID', 'cat_ID='.$Chapter->ID.'&amp;action=edit' );
@@ -105,14 +107,53 @@ function cat_line( $Chapter, $level )
 					 </td>';
 	}
 
+	// URL "slug"
 	$edit_url = regenerate_url( 'action,cat_ID', 'cat_ID='.$Chapter->ID.'&amp;action=edit' );
 	$r .= '<td><a href="'.htmlspecialchars($Chapter->get_permanent_url()).'">'.$Chapter->dget('urlname').'</a></td>';
 
+	// Order
 	if( $Settings->get('chapter_ordering') == 'manual' )
 	{
 		$r .= '<td class="center">'.$Chapter->dget('order').'</td>';
 	}
 
+	if( $permission_to_edit )
+	{	// We have permission permission to edit, so display these columns:
+
+		if( $Chapter->meta )
+		{
+			$makemeta_icon = 'enabled';
+			$makemeta_title = format_to_output( T_('Click to revert this from meta category'), 'htmlattr' );
+			$action = 'unset_meta';
+		}
+		else
+		{
+			$makemeta_icon = 'disabled';
+			$makemeta_title = format_to_output( T_('Click to make this as meta category'), 'htmlattr' );
+			$action = 'set_meta';
+		}
+		// Meta
+		$makemeta_url = regenerate_url( 'action,cat_ID', 'cat_ID='.$Chapter->ID.'&amp;action='.$action.'&amp;'.url_crumb('element') );
+		$r .= '<td class="center"><a href="'.$makemeta_url.'" title="'.$makemeta_title.'">'.get_icon( $makemeta_icon, 'imgtag', array( 'title' => $makemeta_title ) ).'</a></td>';
+
+		// Lock
+		if( $Chapter->lock )
+		{
+			$makelock_icon = 'file_not_allowed';
+			$makelock_title = format_to_output( T_('Unlock category'), 'htmlattr' );
+			$action = 'unlock';
+		}
+		else
+		{
+			$makelock_icon = 'file_allowed';
+			$makelock_title = format_to_output( T_('Lock category'), 'htmlattr' );
+			$action = 'lock';
+		}
+		$makelock_url = regenerate_url( 'action,cat_ID', 'cat_ID='.$Chapter->ID.'&amp;action='.$action.'&amp;'.url_crumb('element') );
+		$r .= '<td class="center"><a href="'.$makelock_url.'" title="'.$makelock_title.'">'.get_icon( $makelock_icon, 'imgtag', array( 'title' => $makelock_title ) ).'</a></td>';
+	}
+
+	// Posts
 	if( isset($number_of_posts_in_cat[$Chapter->ID]) )
 	{
 		$r .= '<td class="center">'.(int)$number_of_posts_in_cat[$Chapter->ID].'</td>';
@@ -122,10 +163,10 @@ function cat_line( $Chapter, $level )
 		$r .= '<td class="center"> - </td>';
 	}
 
+	// Actions
 	$r .= '<td class="lastcol shrinkwrap">';
 	if( $permission_to_edit )
 	{	// We have permission permission to edit, so display action column:
-		$r .= '<a href="'.$makedef_url.'" title="'.$makedef_title.'">'.get_icon('activate', 'imgtag').'</a>';
 		$r .= action_icon( T_('Edit...'), 'edit', $edit_url );
 		if( $Settings->get('allow_moving_chapters') )
 		{ // If moving cats between blogs is allowed:
@@ -212,6 +253,18 @@ if( $Settings->get('chapter_ordering') == 'manual' )
 							'th_class' => 'shrinkwrap',
 						);
 }
+if( $permission_to_edit )
+{	// We have permission permission to edit, so display these columns:
+	$Table->cols[] = array(
+						'th' => T_('Meta'),
+						'th_class' => 'shrinkwrap',
+					);
+
+	$Table->cols[] = array(
+						'th' => T_('Lock'),
+						'th_class' => 'shrinkwrap',
+					);
+}
 
 // TODO: dh> would be useful to sort by this
 $Table->cols[] = array(
@@ -238,17 +291,21 @@ $Table->display_init( NULL, $result_fadeout );
 
 // add an id for jquery to hook into
 // TODO: fp> Awfully dirty. This should be handled by the Table object
-$Table->params['head_title'] = str_replace( '<table', '<table id="chapter_list"', $Table->params['head_title'] );
-
-$Table->display_list_start();
+$Table->params['list_start'] = str_replace( '<table', '<table id="chapter_list"', $Table->params['list_start'] );
 
 $Table->display_head();
 
-$Table->display_body_start();
+echo $Table->params['content_start'];
 
-echo $GenericCategoryCache->recurse( $callbacks, $subset_ID );
+$Table->display_list_start();
 
-$Table->display_body_end();
+	$Table->display_col_headers();
+
+	$Table->display_body_start();
+
+	echo $GenericCategoryCache->recurse( $callbacks, $subset_ID );
+
+	$Table->display_body_end();
 
 $Table->display_list_end();
 
@@ -258,17 +315,16 @@ echo '<p class="note">'.T_('<strong>Note:</strong> Deleting a category does not 
 */
 
 global $Settings, $dispatcher;
-if( ! $Settings->get('allow_moving_chapters') )
-{	// TODO: check perm
-	echo '<p class="note">'.sprintf( T_('<strong>Note:</strong> Moving categories across blogs is currently disabled in the %sglobal settings%s.'), '<a href="'.$dispatcher.'?ctrl=features#categories">', '</a>' ).'</p> ';
-}
 
-echo '<p class="note">'.sprintf( T_('<strong>Note:</strong> Ordering of categories is currently set to %s in the %sglobal settings%s.'),
-	$Settings->get('chapter_ordering') == 'manual' ? /* TRANS: Manual here = "by hand" */ T_('Manual ') : T_('Alphabetical'), '<a href="'.$dispatcher.'?ctrl=features#categories">', '</a>' ).'</p> ';
+echo '<p class="note">'.sprintf( T_('<strong>Note:</strong> Ordering of categories is currently set to %s in the %sblogs settings%s.'),
+	$Settings->get('chapter_ordering') == 'manual' ? /* TRANS: Manual here = "by hand" */ T_('Manual ') : T_('Alphabetical'), '<a href="'.$dispatcher.'?ctrl=collections&tab=settings#categories">', '</a>' ).'</p> ';
+
+if( ! $Settings->get('allow_moving_chapters') )
+{ // TODO: check perm
+	echo '<p class="note">'.sprintf( T_('<strong>Note:</strong> Moving categories across blogs is currently disabled in the %sblogs settings%s.'), '<a href="'.$dispatcher.'?ctrl=collections&tab=settings#categories">', '</a>' ).'</p> ';
+}
 
 //Flush fadeout
 $Session->delete( 'fadeout_array');
-/*
- * $Log: _chapter_list.view.php,v $
- */
+
 ?>

@@ -17,8 +17,7 @@ class texturize_plugin extends Plugin
 	var $code = 'b2WPTxrz';
 	var $name = 'Texturize';
 	var $priority = 90;
-	var $version = '2.2-dev';
-	var $apply_rendering = 'opt-in';
+	var $version = '5.0.0';
 	var $group = 'rendering';
 	var $short_desc;
 	var $long_desc;
@@ -38,6 +37,22 @@ class texturize_plugin extends Plugin
 			<li>-- to &#8211;</li>
 			<li>... to &#8230;</li>
 		</ul>' );
+	}
+
+
+	/**
+	 * Define here default collection/blog settings that are to be made available in the backoffice.
+	 *
+	 * @param array Associative array of parameters.
+	 * @return array See {@link Plugin::get_coll_setting_definitions()}.
+	 */
+	function get_coll_setting_definitions( & $params )
+	{
+		$default_params = array_merge( $params, array(
+				'default_post_rendering' => 'opt-in',
+				'default_comment_rendering' => 'stealth',
+			) );
+		return parent::get_coll_setting_definitions( $default_params );
 	}
 
 
@@ -123,9 +138,4 @@ class texturize_plugin extends Plugin
 	}
 }
 
-
-
-/*
- * $Log: _texturize.plugin.php,v $
- */
 ?>

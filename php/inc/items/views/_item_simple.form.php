@@ -5,7 +5,7 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2011 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
  *
@@ -15,7 +15,7 @@
  * @author fplanque: Francois PLANQUE
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: _item_simple.form.php 9 2011-10-24 22:32:00Z fplanque $
+ * @version $Id: _item_simple.form.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -73,7 +73,14 @@ $Form->begin_form( '', '', $params );
 	if( isset( $mode ) )   $Form->hidden( 'mode', $mode ); // used by bookmarklet
 	if( isset( $edited_Item ) )
 	{
-		$Form->hidden( 'post_ID', $edited_Item->ID );
+		if( $action == 'copy' )
+		{	// Copy post
+			$Form->hidden( 'post_ID', 0 );
+		}
+		else
+		{	// Edit post
+			$Form->hidden( 'post_ID', $edited_Item->ID );
+		}
 
 		// Here we add js code for attaching file popup window: (Yury)
 		if( !empty( $edited_Item->ID ) && ( $Session->get('create_edit_attachment') === true ) )
@@ -98,8 +105,8 @@ $Form->begin_form( '', '', $params );
 	$Form->hidden( 'post_excerpt', $edited_Item->get( 'excerpt' ) );
 	$Form->hidden( 'post_urltitle', $edited_Item->get( 'urltitle' ) );
 	$Form->hidden( 'titletag', $edited_Item->get( 'titletag' ) );
-	$Form->hidden( 'metadesc', $edited_Item->get( 'metadesc' ) );
-	$Form->hidden( 'metakeywords', $edited_Item->get( 'metakeywords' ) );
+	$Form->hidden( 'metadesc', $edited_Item->get_setting( 'post_metadesc' ) );
+	$Form->hidden( 'custom_headers', $edited_Item->get_setting( 'post_custom_headers' ) );
 
 
 	if( $Blog->get_setting( 'use_workflow' ) )
@@ -113,22 +120,30 @@ $Form->begin_form( '', '', $params );
 	$Form->hidden( 'renderers_displayed', 1 );
 	$Form->hidden( 'renderers', $edited_Item->get_renderers_validated() );
 	$Form->hidden( 'item_featured', $edited_Item->featured );
+	$Form->hidden( 'item_hideteaser', $edited_Item->get_setting( 'hide_teaser' ) );
+	$Form->hidden( 'expiry_delay', $edited_Item->get_setting( 'post_expiry_delay' ) );
 	$Form->hidden( 'item_order', $edited_Item->order );
 
 	$creator_User = $edited_Item->get_creator_User();
 	$Form->hidden( 'item_owner_login', $creator_User->login );
 	$Form->hidden( 'item_owner_login_displayed', 1 );
 
-	// CUSTOM FIELDS double
-	for( $i = 1 ; $i <= 5; $i++ )
-	{	// For each custom double field:
-		$Form->hidden( 'item_double'.$i, $edited_Item->{'double'.$i} );
+	if( $Blog->get_setting( 'show_location_coordinates' ) )
+	{
+		$Form->hidden( 'item_latitude', $edited_Item->get_setting( 'latitude' ) );
+		$Form->hidden( 'item_longitude', $edited_Item->get_setting( 'longitude' ) );
+		$Form->hidden( 'google_map_zoom', $edited_Item->get_setting( 'map_zoom' ) );
+		$Form->hidden( 'google_map_type', $edited_Item->get_setting( 'map_type' ) );
 	}
-	// CUSTOM FIELDS varchar
-	for( $i = 1 ; $i <= 3; $i++ )
-	{	// For each custom varchar field:
-		$Form->hidden( 'item_varchar'.$i, $edited_Item->{'varchar'.$i} );
-	}
+
+	// CUSTOM FIELDS
+	display_hidden_custom_fields( $Form, $edited_Item );
+
+	// Location
+	$Form->hidden( 'item_ctry_ID', $edited_Item->ctry_ID );
+	$Form->hidden( 'item_rgn_ID', $edited_Item->rgn_ID );
+	$Form->hidden( 'item_subrg_ID', $edited_Item->subrg_ID );
+	$Form->hidden( 'item_city_ID', $edited_Item->city_ID );
 
 	// TODO: Form::hidden() do not add, if NULL?!
 
@@ -159,7 +174,11 @@ $Form->begin_form( '', '', $params );
 	// --------------------------- TOOLBARS ------------------------------------
 	echo '<div class="edit_toolbars">';
 	// CALL PLUGINS NOW:
-	$Plugins->trigger_event( 'AdminDisplayToolbar', array( 'target_type' => 'Item', 'edit_layout' => 'simple' ) );
+	$Plugins->trigger_event( 'AdminDisplayToolbar', array(
+			'target_type' => 'Item',
+			'edit_layout' => 'simple',
+			'Item' => $edited_Item,
+		) );
 	echo '</div>';
 
 	// ---------------------------- TEXTAREA -------------------------------------
@@ -192,27 +211,31 @@ $Form->begin_form( '', '', $params );
 	// ####################### ATTACHMENTS/LINKS #########################
 	if( isset($GLOBALS['files_Module']) )
 	{
-		attachment_iframe( $Form, $creating, $edited_Item, $Blog, $iframe_name );
+		load_class( 'links/model/_linkitem.class.php', 'LinkItem' );
+		$LinkOwner = new LinkItem( $edited_Item );
+		attachment_iframe( $Form, $LinkOwner, $iframe_name, $creating );
 	}
 	// ############################ ADVANCED #############################
 
 	$Form->begin_fieldset( T_('Meta info').get_manual_link('post_simple_meta_fieldset'), array( 'id' => 'itemform_adv_props' ) );
 
+	$Form->switch_layout( 'linespan' );
+
 	if( $current_User->check_perm( 'blog_edit_ts', 'edit', false, $Blog->ID ) )
 	{ // ------------------------------------ TIME STAMP -------------------------------------
 		echo '<div id="itemform_edit_timestamp" class="edit_fieldgroup">';
-		$Form->switch_layout( 'linespan' );
 		issue_date_control( $Form, false );
-		$Form->switch_layout( NULL );
 		echo '</div>';
 	}
 
 	echo '<table cellspacing="0" class="compose_layout">';
-	echo '<tr><td class="label"><label for="item_tags">'.T_('Tags').':</strong> <span class="notes">'.T_('sep by ,').'</span></label></label></td>';
+	echo '<tr><td class="label"><label for="item_tags">'.T_('Tags').':</strong></label></td>';
 	echo '<td class="input">';
 	$Form->text_input( 'item_tags', $item_tags, 40, '', '', array('maxlength'=>255, 'style'=>'width: 100%;') );
 	echo '</td><td width="1"><!-- for IE7 --></td></tr>';
 	echo '</table>';
+
+	$Form->switch_layout( NULL );
 
 	$Form->end_fieldset();
 
@@ -227,6 +250,10 @@ $Form->begin_form( '', '', $params );
 <div class="right_col">
 
 	<?php
+	// ################### MODULES SPECIFIC ITEM SETTINGS ###################
+
+	modules_call_method( 'display_item_settings', array( 'Form' => & $Form, 'Blog' => & $Blog, 'edited_Item' => & $edited_Item ) );
+
 	// ################### CATEGORIES ###################
 
 	cat_select( $Form );
@@ -280,11 +307,8 @@ echo_set_is_attachments();
 echo_link_files_js();
 // New category input box:
 echo_onchange_newcat();
-echo_autocomplete_tags();
+echo_autocomplete_tags( $edited_Item->get_tags() );
 
 // require dirname(__FILE__).'/inc/_item_form_behaviors.inc.php';
 
-/*
- * $Log: _item_simple.form.php,v $
- */
 ?>
