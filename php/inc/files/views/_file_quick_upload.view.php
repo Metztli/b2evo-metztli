@@ -27,7 +27,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author efy-asimo: Evo Factory / Attila Simo
  *
- * @version $Id: _file_quick_upload.view.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _file_quick_upload.view.php 4306 2013-07-18 14:19:54Z yura $
  */
 
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -81,21 +81,21 @@ echo '<tbody>';
 	$root_and_path = $fm_FileRoot->ID.'::';
 	$quick_upload_url = $htsrv_url.'quick_upload.php?upload=true';
 
-	if ($Hit->is_firefox() || $Hit->is_chrome())
-	{
-		$button_text = T_('Drag & Drop files to upload here <br /><span>or click to manually select files...</span>');
-	}
-	else
-	{
-		$button_text = T_('Click to manually select files...');
-	}
 	?>
 	<script type="text/javascript">
-
+		if( 'draggable' in document.createElement('span') )
+		{
+			var button_text = '<?php echo TS_('Drag & Drop files to upload here <br /><span>or click to manually select files...</span>') ?>';
+			var note_text = '<?php echo TS_('Your browser supports full upload functionality.') ?>';
+		}
+		else
+		{
+			var button_text = '<?php echo TS_('Click to manually select files...') ?>';
+			var note_text = '<?php echo TS_('Your browser does not support full upload functionality: You can only upload files one by one and you cannot use Drag & Drop.') ?>';
+		}
 
 		var url = <?php echo '"'.$quick_upload_url.'&'.url_crumb( 'file' ).'"'; ?>;
 		var root_and_path = '<?php echo $root_and_path ?>';
-		var button_text = <?php echo '"'.$button_text.'"';?>;
 
 		jQuery( '#fm_dirtree input[type=radio]' ).click( function()
 		{
@@ -104,14 +104,16 @@ echo '<tbody>';
 			uploader.setParams({root_and_path: root_and_path});
 		} );
 
-        jQuery(document).ready( function(){
-
-				uploader = new qq.FileUploader({
-                element: document.getElementById('file-uploader'),
-                action: url,
-                debug: true,
+		jQuery(document).ready( function()
+		{
+			uploader = new qq.FileUploader(
+			{
+				element: document.getElementById('file-uploader'),
+				action: url,
+				debug: true,
 				//sizeLimit: maxsize,
-				onComplete: function(id, fileName, responseJSON){
+				onComplete: function(id, fileName, responseJSON)
+				{
 					var container = jQuery(uploader._getItemByFileId(id));
 
 					var text =  base64_decode(responseJSON.success.text);
@@ -125,46 +127,31 @@ echo '<tbody>';
 						jQuery('#saveBtn').show();
 					}
 					container.append(text);
-					
 				},
-				onCancel: function(id, fileName){
+				onCancel: function(id, fileName){},
+				messages: {
+					typeError: "{file} has invalid extension. Only {extensions} are allowed.",
+					sizeError: "{file} is too large, maximum file size is {sizeLimit}.",
+					minSizeError: "{file} is too small, minimum file size is {minSizeLimit}.",
+					emptyError: "{file} is empty, please select files again without it.",
+					onLeave: "The files are being uploaded, if you leave now the upload will be cancelled."
 				},
-            	messages: {
-				typeError: "{file} has invalid extension. Only {extensions} are allowed.",
-				sizeError: "{file} is too large, maximum file size is {sizeLimit}.",
-				minSizeError: "{file} is too small, minimum file size is {minSizeLimit}.",
-				emptyError: "{file} is empty, please select files again without it.",
-				onLeave: "The files are being uploaded, if you leave now the upload will be cancelled."
-				},
-				showMessage: function(message){
-
+				showMessage: function(message)
+				{
 					jQuery('.qq-upload-list').append('<li class=" qq-upload-success"><span class="qq-upload-file"></span><span class="qq-upload-size" style="display: inline;"></span><span class="qq-upload-failed-text">Failed</span><span class="result_error">'+message+'</span></li>')
-
 				},
 				template: '<div class="qq-uploader">' +
-                '<div class="qq-upload-drop-area"><span>Drop files here to upload</span></div>' +
-                '<div class="qq-upload-button">'+ button_text +'</div>' +
-                '<ul class="qq-upload-list"></ul>' +
+					'<div class="qq-upload-drop-area"><span>Drop files here to upload</span></div>' +
+					'<div class="qq-upload-button">'+ button_text +'</div>' +
+					'<ul class="qq-upload-list"></ul>' +
 				'</div>',
+				params: { root_and_path: jQuery( '#fm_dirtree input[type=radio]:checked' ).val() }
+			});
+		});
 
-
-				params: {
-				root_and_path: jQuery( '#fm_dirtree input[type=radio]:checked' ).val()
-				}
-            });
-        });
+		document.write( '<p class="note">' + note_text + '</p>' );
 	</script>
 	<?php
-
-	if (!($Hit->is_firefox() || $Hit->is_chrome()))
-	{
-		echo ('<p class = "note"> '. T_('Your browser does not support full upload functionality: You can only upload files one by one and you cannot use Drag & Drop.' ).'</p>');
-	}
-	else
-	{
-		echo ('<p class = "note"> '. T_('Your browser supports full upload functionality.').'</p>');
-	}
-
 	echo '</td>';
 	echo '</tr>';
 echo '</tbody>';

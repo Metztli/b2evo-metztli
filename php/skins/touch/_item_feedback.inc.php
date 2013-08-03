@@ -45,6 +45,7 @@ $params = array_merge( array(
 		'comment_error_start'  => '<div class="bComment" id="comment_error">',
 		'comment_error_end'    => '</div>',
 		'comment_template'     => '_item_comment.inc.php',	// The template used for displaying individual comments (including preview)
+		'author_link_text'     => 'login', // avatar | only_avatar | login | nickname | firstname | lastname | fullname | preferredname
 		'link_to'              => 'userurl>userpage',		    // 'userpage' or 'userurl' or 'userurl>userpage' or 'userpage>userurl'
 		'form_title_start'     => '<h3 id="respond">',
 		'form_title_end'       => '</h3>',
@@ -243,6 +244,7 @@ if( $Item->can_see_comments( true ) )
 					'Comment'         => & $Comment,
 					'comment_start'   => $params['comment_start'],
 					'comment_end'     => $params['comment_end'],
+					'author_link_text' => $params['author_link_text'],
 					'link_to'         => $params['link_to'],		// 'userpage' or 'userurl' or 'userurl>userpage' or 'userpage>userurl'
 				) );
 			// Note: You can customize the default item feedback by copying the generic

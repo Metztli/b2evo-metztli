@@ -35,7 +35,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author mbruneau: Marc BRUNEAU / PROGIDISTRI
  *
- * @version $Id: file_settings.ctrl.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: file_settings.ctrl.php 4273 2013-07-17 10:28:01Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -79,7 +79,8 @@ switch( $action )
 					'exif_orientation',
 					'fm_resize_enable',
 					'fm_resize_width',
-					'fm_resize_height' ) );
+					'fm_resize_height',
+					'fm_resize_quality' ) );
 			if( $Settings->dbupdate() )
 			{
 				$Messages->add( T_('Restored default values.'), 'success' );
@@ -174,6 +175,8 @@ switch( $action )
 			$Settings->set( 'fm_resize_width', $fm_resize_width );
 			param( 'fm_resize_height', 'integer', 0 );
 			$Settings->set( 'fm_resize_height', $fm_resize_height );
+			param_integer_range( 'fm_resize_quality', 0, 100, T_('The compression value must be between %d and %d.') );
+			$Settings->set( 'fm_resize_quality', $fm_resize_quality );
 
 			if( ! $Messages->has_errors() )
 			{

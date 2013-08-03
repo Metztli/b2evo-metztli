@@ -15,7 +15,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _item_list_sidebar.view.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _item_list_sidebar.view.php 4159 2013-07-08 06:11:55Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -62,11 +62,12 @@ echo $Widget->replace_vars( $template['block_start'] );
 
 	// CALENDAR:
 	// Call the Calendar plugin:
-	$Plugins->call_by_code( 'evo_Calr', array(	// Params follow:
-			'block_start'=>'',
-			'block_end'=>'',
-			'title'=>'',								// No title.
-			'link_type'=>'context', 		// Preserve page context
+	$Plugins->call_by_code( 'evo_Calr', array( // Params follow:
+			'block_start'     => '',
+			'block_end'       => '',
+			'title'           => '',        // No title.
+			'link_type'       => 'context', // Preserve page context
+			'itemlist_prefix' => $pp        // Prefix of the ItemList object
 		) );
 
 echo $template['block_end'];
@@ -156,7 +157,7 @@ echo $Widget->replace_vars( $template['block_start'] );
 
 		/*
 		 * Assignees:
- 		 * TODO: allow multiple selection
+		 * TODO: allow multiple selection
 		 */
 		echo '<fieldset>';
 		echo '<legend>'.T_('Assignees').'</legend>';
@@ -169,13 +170,13 @@ echo $Widget->replace_vars( $template['block_start'] );
 
 			echo '<li><input type="radio" name="'.$pp.'assgn" value="-" class="radio"';
 			if( '-' == $assgn ) echo ' checked="checked"';
-			echo ' /> <a href="'.regenerate_url( 'assgn', 'assgn=-' ).'">'.T_('Not assigned').'</a></li>';
+			echo ' /> <a href="'.regenerate_url( $pp.'assgn', $pp.'assgn=-' ).'">'.T_('Not assigned').'</a></li>';
 
 			foreach( $UserCache->cache as $loop_Obj )
 			{
 				echo '<li><input type="radio" name="'.$pp.'assgn" value="'.$loop_Obj->ID.'" class="radio"';
 				if( $loop_Obj->ID == $assgn ) echo ' checked="checked"';
-				echo ' /> <a href="'.regenerate_url( 'assgn', 'assgn='.$loop_Obj->ID ).'" class="'.$loop_Obj->get_gender_class().'" rel="bubbletip_user_'.$loop_Obj->ID.'">';
+				echo ' /> <a href="'.regenerate_url( $pp.'assgn', $pp.'assgn='.$loop_Obj->ID ).'" class="'.$loop_Obj->get_gender_class().'" rel="bubbletip_user_'.$loop_Obj->ID.'">';
 				$loop_Obj->preferred_name();
 				echo '</a></li>';
 			}
@@ -199,7 +200,7 @@ echo $Widget->replace_vars( $template['block_start'] );
 			{
 				echo '<li><input type="radio" name="'.$pp.'author" value="'.$loop_Obj->ID.'" class="radio"';
 				if( $loop_Obj->ID == $author ) echo ' checked="checked"';
-				echo ' /> <a href="'.regenerate_url( 'author', 'author='.$loop_Obj->ID ).'" class="'.$loop_Obj->get_gender_class().'" rel="bubbletip_user_'.$loop_Obj->ID.'">';
+				echo ' /> <a href="'.regenerate_url( $pp.'author', $pp.'author='.$loop_Obj->ID ).'" class="'.$loop_Obj->get_gender_class().'" rel="bubbletip_user_'.$loop_Obj->ID.'">';
 				$loop_Obj->preferred_name();
 				echo '</a></li>';
 			}
@@ -255,14 +256,15 @@ echo $Widget->replace_vars( $template['block_start'] );
 		// ARCHIVES:
 		// Call the Archives plugin:
 		$Plugins->call_by_code( 'evo_Arch', array( // Parameters follow:
-				'block_start'=>'<fieldset>',
-				'block_end'=>"</fieldset>\n",
-				'title'=>'<legend>'.T_('Archives')."</legend>\n",
-				'link_type'=>'context', 							// Preserve page context
-				'form'=>true,                         // add form fields (radio buttons)
-				'limit'=>'',                          // No limit
-				'more_link'=>'',                      // No more link
-			)	);
+				'block_start'     => '<fieldset>',
+				'block_end'       => "</fieldset>\n",
+				'title'           => '<legend>'.T_('Archives')."</legend>\n",
+				'link_type'       => 'context', // Preserve page context
+				'form'            => true,      // add form fields (radio buttons)
+				'limit'           => '',        // No limit
+				'more_link'       => '',        // No more link
+				'itemlist_prefix' => $pp,       // Prefix of the ItemList object
+			) );
 
 
 		$Form->submit( array( 'submit', T_('Search'), 'search' ) );

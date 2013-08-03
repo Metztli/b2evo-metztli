@@ -189,12 +189,12 @@ class maintenance_Module extends Module
 			// Display Updates tab in System -> Maintenance menu
 			$AdminUI->add_menu_entries( array( 'options', 'misc' ), array(
 									'upgrade' => array(
-									'text' => T_('Auto Update'),
+									'text' => T_('Auto Upgrade'),
 									'href' => '?ctrl=upgrade' ),
 							) );
 			$AdminUI->add_menu_entries( array( 'options', 'misc' ), array(
 									'upgradesvn' => array(
-									'text' => T_('Update from SVN'),
+									'text' => T_('Upgrade from SVN'),
 									'href' => '?ctrl=upgrade&amp;tab=svn' ),
 							) );
 		}

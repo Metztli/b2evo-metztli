@@ -19,7 +19,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois Planque.
  *
- * @version $Id: _upgrade_continue.form.php 3360 2013-03-29 12:42:27Z yura $
+ * @version $Id: _upgrade_continue.form.php 4410 2013-08-01 18:24:32Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -30,6 +30,11 @@ if( isset( $block_item_Widget ) )
 	$block_item_Widget->disp_template_replaced( 'block_end' );
 }
 
+if( ( $action !== 'backup_and_overwrite' ) && ( $action !== 'backup_and_overwrite_svn' ) )
+{
+	debug_die('Unhandled upgrade action!');
+}
+
 $Form = new Form( NULL, 'upgrade_form', 'post', 'compact' );
 
 $Form->hiddens_by_key( get_memorized( 'action' ) );
@@ -38,6 +43,6 @@ $Form->begin_form( 'fform', T_('Upgrade') );
 
 echo '<p><b>'.T_('We are ready to perform the upgrade.').'</b></p>';
 
-$Form->end_form( array( array( 'submit', 'actionArray['.$action.']', T_( 'Upgrade NOW!' ), 'SaveButton' ) ) );
+$Form->end_form( array( array( 'submit', 'actionArray['.$action.']', T_('Backup & Overwrite source files!'), 'SaveButton' ) ) );
 
 ?>

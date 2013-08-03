@@ -38,7 +38,7 @@ switch( $action )
 
 		$Form->hiddens_by_key( get_memorized( 'action' ) );
 
-		$Form->begin_form( 'fform', T_('Upgrade from SVN') );
+		$Form->begin_form( 'fform', T_('Upgrade from SVN').get_manual_link( 'upgrade-from-svn' ) );
 
 		$Form->text_input( 'svn_url', $UserSettings->get( 'svn_upgrade_url' ), 80, T_('URL of repository'), T_('e.g. https://server.com/svn/repository/'), array( 'maxlength' => 300, 'required' => true ) );
 		$Form->text_input( 'svn_folder', $UserSettings->get( 'svn_upgrade_folder' ), 80, T_('SVN folder'), T_('e.g. trunk/blogs/'), array( 'maxlength' => 300 ) );

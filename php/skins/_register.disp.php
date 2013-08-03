@@ -11,7 +11,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author asimo: Evo Factory / Attila Simo
  *
- * @version $Id: _register.disp.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _register.disp.php 4264 2013-07-17 04:50:09Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -45,7 +45,7 @@ $email = param( $dummy_fields[ 'email' ], 'string', '' );
 $firstname = param( 'firstname', 'string', '' );
 $gender = param( 'gender', 'string', false );
 $source = param( 'source', 'string', 'register form' );
-$redirect_to = param( 'redirect_to', 'string', '' );
+$redirect_to = param( 'redirect_to', 'url', '' );
 
 if( $register_user = $Session->get('core.register_user') )
 {	// Get an user data from predefined session (after adding of a comment)
@@ -106,12 +106,12 @@ if( $registration_require_firstname )
 }
 
 $registration_require_gender = $Settings->get( 'registration_require_gender' );
-if( $registration_require_gender == 'required' )
-{ // gender required
+if( $registration_require_gender != 'hidden' )
+{ // Display a gender field if it is not hidden
 	$Form->radio_input( 'gender', $gender, array(
 				array( 'value' => 'M', 'label' => T_('A man') ),
 				array( 'value' => 'F', 'label' => T_('A woman') ),
-			), T_('I am'), array( 'required' => true ) );
+			), T_('I am'), array( 'required' => $registration_require_gender == 'required' ) );
 }
 
 if( $Settings->get( 'registration_ask_locale' ) )

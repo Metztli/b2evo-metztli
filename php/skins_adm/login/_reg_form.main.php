@@ -79,12 +79,12 @@ $Form->begin_fieldset();
 	}
 
 	$registration_require_gender = $Settings->get( 'registration_require_gender' );
-	if( $registration_require_gender == 'required' )
-	{
+	if( $registration_require_gender != 'hidden' )
+	{ // Display a gender field if it is not hidden
 		$Form->radio_input( 'gender', $gender, array(
 					array( 'value' => 'M', 'label' => T_('A man') ),
 					array( 'value' => 'F', 'label' => T_('A woman') ),
-				), T_('I am'), array( 'required' => true ) );
+				), T_('I am'), array( 'required' => $registration_require_gender == 'required' ) );
 	}
 
 	if( $Settings->get( 'registration_ask_locale' ) )

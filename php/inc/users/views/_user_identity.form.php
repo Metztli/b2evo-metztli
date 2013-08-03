@@ -29,7 +29,7 @@
  *
  * @package admin
  *
- * @version $Id: _user_identity.form.php 3861 2013-05-30 09:29:39Z attila $
+ * @version $Id: _user_identity.form.php 4241 2013-07-16 12:42:26Z yura $
  */
 
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -238,13 +238,10 @@ if( $action != 'view' )
 		$Form->text_input( 'edited_user_nickname', $edited_User->nickname, 20, T_('Nickname'), '', array( 'maxlength' => 50, 'required' => ( $nickname_editing == 'edited-user-required' ) ) );
 	}
 
-	if( $Settings->get( 'registration_require_gender' ) != 'hidden' )
-	{
-		$Form->radio( 'edited_user_gender', $edited_User->get('gender'), array(
-					array( 'M', T_('A man') ),
-					array( 'F', T_('A woman') ),
-				), T_('I am'), false, '', $Settings->get( 'registration_require_gender' ) == 'required' );
-	}
+	$Form->radio( 'edited_user_gender', $edited_User->get('gender'), array(
+			array( 'M', T_('A man') ),
+			array( 'F', T_('A woman') ),
+		), T_('I am'), false, '', $Settings->get( 'registration_require_gender' ) == 'required' );
 
 	$button_refresh_regional = '<button id="%s" type="submit" name="actionArray[refresh_regional]" class="action_icon refresh_button">'.get_icon( 'refresh' ).'</button>';
 	$button_refresh_regional .= '<img src="'.$rsc_url.'img/ajax-loader.gif" alt="'.T_('Loading...').'" title="'.T_('Loading...').'" style="display:none;margin:2px 0 0 5px" align="top" />';
@@ -331,13 +328,10 @@ else
 	$Form->info( T_('Nickname'), $edited_User->get('nickname') );
 	$Form->info( T_('Identity shown'), $edited_User->get('preferredname') );
 
-	if( $Settings->get( 'registration_require_gender' ) != 'hidden' )
+	$user_gender = $edited_User->get( 'gender' );
+	if( ! empty( $user_gender ) )
 	{
-		$user_gender = $edited_User->get( 'gender' );
-		if( ! empty( $user_gender ) )
-		{
-			$Form->info( T_('Gender'), $edited_User->get_gender() );
-		}
+		$Form->info( T_('Gender'), $edited_User->get_gender() );
 	}
 
 	if( ! empty( $edited_User->ctry_ID ) )

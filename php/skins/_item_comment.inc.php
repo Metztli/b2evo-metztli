@@ -18,7 +18,7 @@ $params = array_merge( array(
 		'comment_start'        => '<div class="bComment">',
 		'comment_end'          => '</div>',
 		'link_to'              => 'userurl>userpage', // 'userpage' or 'userurl' or 'userurl>userpage' or 'userpage>userurl'
-		'author_link_text'     => 'preferredname',
+		'author_link_text'     => 'login', // avatar | only_avatar | login | nickname | firstname | lastname | fullname | preferredname
 		'before_image'         => '<div class="image_block">',
 		'before_image_legend'  => '<div class="image_legend">',
 		'after_image_legend'   => '</div>',
@@ -56,8 +56,8 @@ $Comment = & $params['Comment'];
 					$Comment->permanent_link( array(
 							'before'    => '',
 							'after'     => ' '.T_('from:').' ',
-							'text' 			=> T_('Comment'),
-							'nofollow'	=> true,
+							'text'      => T_('Comment'),
+							'nofollow'  => true,
 						) );
 				}
 				$Comment->author2( array(
@@ -66,7 +66,7 @@ $Comment = & $params['Comment'];
 						'before_user'  => '',
 						'after_user'   => '#',
 						'format'       => 'htmlbody',
-						'link_to'		   => $params['link_to'],		// 'userpage' or 'userurl' or 'userurl>userpage' or 'userpage>userurl'
+						'link_to'      => $params['link_to'],		// 'userpage' or 'userurl' or 'userurl>userpage' or 'userpage>userurl'
 						'link_text'    => $params['author_link_text'],
 					) );
 
@@ -81,7 +81,7 @@ $Comment = & $params['Comment'];
 						'text' 			=> T_('Trackback'),
 						'nofollow'	=> true,
 					) );
-				$Comment->author( '', '#', '', '#', 'htmlbody', true );
+				$Comment->author( '', '#', '', '#', 'htmlbody', true, $params['author_link_text'] );
 				break;
 
 			case 'pingback': // Display a pingback:
@@ -91,7 +91,7 @@ $Comment = & $params['Comment'];
 						'text' 			=> T_('Pingback'),
 						'nofollow'	=> true,
 					) );
-				$Comment->author( '', '#', '', '#', 'htmlbody', true );
+				$Comment->author( '', '#', '', '#', 'htmlbody', true, $params['author_link_text'] );
 				break;
 		}
 	?>

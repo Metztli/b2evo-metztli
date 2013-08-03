@@ -29,7 +29,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _file.funcs.php 3891 2013-06-02 14:07:42Z yura $
+ * @version $Id: _file.funcs.php 4373 2013-07-27 08:39:12Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -514,7 +514,7 @@ function process_filename( & $filename, $force_validation = false )
 	if( $force_validation )
 	{ // replace every not valid characters
 		$filename = preg_replace( '/[^a-z0-9\-_.]+/i', '_', $filename );
-		// Make sure the filename length doesn't exceed the maximum allowed. Remove characters from the end of the filename ( before the extension ) if required.  
+		// Make sure the filename length doesn't exceed the maximum allowed. Remove characters from the end of the filename ( before the extension ) if required.
 		$extension_pos = strrpos( $filename, '.' );
 		$filename = fix_filename_length( $filename, strrpos( $filename, '.', ( $extension_pos ? $extension_pos : strlen( $filename ) ) ) );
 	}
@@ -931,18 +931,42 @@ function get_directory_tree( $Root = NULL, $ads_full_path = NULL, $ads_selected_
  */
 function mkdir_r( $dirName, $chmod = NULL )
 {
-	if( is_dir($dirName) )
+	return evo_mkdir( $dirName, $chmod, true );
+}
+
+
+/**
+ * Create a directory
+ *
+ * @param string Directory path
+ * @param integer Permissions
+ * @param boolean Create a dir recursively
+ * @return boolean TRUE on success
+ */
+function evo_mkdir( $dir_path, $chmod = NULL, $recursive = false )
+{
+	if( is_dir( $dir_path ) )
 	{ // already exists:
 		return true;
 	}
 
-	if( $chmod === NULL )
-	{
-		global $Settings;
-		$chmod = $Settings->get('fm_default_chmod_dir');
+	if( mkdir( $dir_path, 0777, $recursive ) )
+	{ // Directory is created succesfully
+		if( $chmod === NULL )
+		{ // Get default permissions
+			global $Settings;
+			$chmod = $Settings->get( 'fm_default_chmod_dir' );
+		}
+
+		if( ! empty( $chmod ) )
+		{ // Set the dir rights by chmod() function because mkdir() doesn't provide this operation correctly
+			chmod( $dir_path, is_string( $chmod ) ? octdec( $chmod ) : $chmod );
+		}
+
+		return true;
 	}
 
-	return mkdir( $dirName, octdec($chmod), true );
+	return false;
 }
 
 
@@ -1529,6 +1553,7 @@ function prepare_uploaded_image( $File, $mimetype )
 
 	$thumb_width = $Settings->get( 'fm_resize_width' );
 	$thumb_height = $Settings->get( 'fm_resize_height' );
+	$thumb_quality = $Settings->get( 'fm_resize_quality' );
 
 	$do_resize = false;
 	if( $Settings->get( 'fm_resize_enable' ) &&
@@ -1571,7 +1596,7 @@ function prepare_uploaded_image( $File, $mimetype )
 
 	if( $do_resize && empty( $err ) )
 	{	// Save resized image ( and also rotated image if this operation was done )
-		save_image( $resized_imh, $File->get_full_path(), $mimetype );
+		save_image( $resized_imh, $File->get_full_path(), $mimetype, $thumb_quality );
 	}
 }
 
@@ -2032,7 +2057,6 @@ function create_profile_picture_links()
 					$fileName = $lFile->get_name();
 					if( process_filename( $fileName ) )
 					{ // The file has invalid file name, don't create in the database
-						syslog_insert( sprintf( 'Invalid file name has been found in a user folder' ), 'user', $iterator_User->ID );
 						// TODO: asimo> we should collect each invalid file name here, and send an email to the admin
 						continue;
 					}

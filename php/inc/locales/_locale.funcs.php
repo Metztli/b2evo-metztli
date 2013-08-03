@@ -32,7 +32,7 @@
  * @todo Make it a class / global object!
  *        - Provide (static) functions to extract .po files / generate _global.php files (single quoted strings!)
  *
- * @version $Id: _locale.funcs.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _locale.funcs.php 4116 2013-07-02 11:02:08Z yura $
  */
 if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page directly.' );
 
@@ -42,7 +42,7 @@ $GLOBALS['debug_locale'] = false;
 
 
 // LOCALIZATION:
-if( $use_l10n )
+if( isset( $use_l10n ) && $use_l10n )
 { // We are going to use localization:
 
 	/**

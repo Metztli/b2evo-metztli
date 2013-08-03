@@ -50,10 +50,11 @@ $params = array_merge( array(
 	<p class="postinfo">
 	<?php
 		if( ! $Item->is_intro() )
-		{	// Display only if we're not displaying an intro post:
-      $Item->author( array(
-				'before'       => T_('By').' ',
-				'after'        => ' ',
+		{ // Display only if we're not displaying an intro post:
+			$Item->author( array(
+				'before'    => T_('By').' ',
+				'after'     => ' ',
+				'link_text' => 'preferredname',
 			) );
 			$Item->issue_time( array(
 					'before'      => /* TRANS: date */ T_('on '),

@@ -10,7 +10,7 @@
  * @package evoskins
  * @subpackage natural_pink
  *
- * @version $Id: index.main.php 3157 2013-03-06 04:34:44Z fplanque $
+ * @version $Id: index.main.php 4275 2013-07-17 10:52:24Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -186,6 +186,7 @@ if( $Item = & get_featured_Item() )
 				'disp_posts'  => '',		// We already handled this case above
 				'disp_single' => '',		// We already handled this case above
 				'disp_page'   => '',		// We already handled this case above
+				'author_link_text' => 'preferredname',
 			) );
 		// Note: you can customize any of the sub templates included here by
 		// copying the matching php file into your skin directory.

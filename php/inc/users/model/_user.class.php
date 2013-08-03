@@ -29,7 +29,7 @@
  * @author fplanque: Francois PLANQUE
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: _user.class.php 4048 2013-06-25 11:18:25Z yura $
+ * @version $Id: _user.class.php 4326 2013-07-19 12:29:40Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -1109,7 +1109,7 @@ class User extends DataObject
 		$params = array_merge( array(
 				'format'       => 'htmlbody',
 				'link_to'      => 'userpage', // userurl userpage 'userurl>userpage'
-				'link_text'    => 'preferredname',
+				'link_text'    => 'preferredname', // avatar | preferredname
 				'link_rel'     => '',
 				'link_class'   => '',
 				'thumb_size'   => 'crop-top-32x32',
@@ -1181,15 +1181,15 @@ class User extends DataObject
 
 		if( !empty( $this->nickname ) )
 		{	// Nickname
-			return parent::get( 'nickname' );
+			return $this->get( 'nickname' );
 		}
-		elseif( !empty( $this->firstname ) )
+		elseif( !empty( $this->firstname ) || !empty( $this->lastname ) )
 		{	// First name
-			return parent::get( 'firstname' );
+			return $this->get('fullname');
 		}
 		else
 		{	// Login
-			return parent::get( 'login' );
+			return $this->get( 'login' );
 		}
 	}
 
@@ -1242,7 +1242,7 @@ class User extends DataObject
 				'after'          => ' ',
 				'format'         => 'htmlbody',
 				'link_to'        => 'userpage',
-				'link_text'      => 'avatar', // avatar | only_avatar | login | nickname
+				'link_text'      => 'avatar', // avatar | only_avatar | login | nickname | firstname | lastname | fullname | preferredname
 				'link_rel'       => '',
 				'link_class'     => '',
 				'thumb_size'     => 'crop-top-15x15',
@@ -1266,7 +1266,7 @@ class User extends DataObject
 		{
 			$avatar_tag = $this->get_avatar_imgtag( $params['thumb_size'], $params['thumb_class'], '', $params['thumb_zoomable'] );
 			if( $params['thumb_zoomable'] )
-			{	// User avatar is zoomable
+			{ // User avatar is zoomable
 				// Add tag param to init bubbletip
 				$avatar_tag = str_replace( '<img ', '<img rel="bubbletip_user_'.$this->ID.'"', $avatar_tag );
 				return $avatar_tag; // We should exit here, to avoid the double adding of tag <a>
@@ -1275,13 +1275,32 @@ class User extends DataObject
 
 		$link_login = '';
 		if( $params['link_text'] != 'only_avatar' )
-		{ // Display login
-			if( $params['link_text'] == 'nickname' && ! empty( $this->nickname ) )
-			{ // Use nickname if it is defined
-				$link_login = $this->nickname;
+		{ // Display a login, nickname, firstname, lastname, fullname or preferredname
+			switch( $params['link_text'] )
+			{
+				case 'login':
+				case 'avatar':
+					$link_login = $this->login;
+					break;
+				case 'nickname':
+					$link_login = $this->nickname;
+					break;
+				case 'firstname':
+					$link_login = $this->firstname;
+					break;
+				case 'lastname':
+					$link_login = $this->lastname;
+					break;
+				case 'fullname':
+					$link_login = $this->firstname.' '.$this->lastname;
+					break;
+				case 'preferredname':
+					$link_login = $this->get_preferred_name();
+					break;
 			}
-			else
-			{ // Use login
+			$link_login = trim( $link_login );
+			if( empty( $link_login ) )
+			{ // Use a login by default if a selected field is empty
 				$link_login = $this->login;
 			}
 			if( $params['login_mask'] != '' )
@@ -1603,7 +1622,7 @@ class User extends DataObject
 				}
 				return false;
 			}
-			elseif( !@mkdir( $userdir ) )
+			elseif( ! evo_mkdir( $userdir ) )
 			{ // add error
 				if( is_admin_page() )
 				{
@@ -1613,12 +1632,7 @@ class User extends DataObject
 				return false;
 			}
 			else
-			{ // chmod and add note:
-				$chmod = $Settings->get('fm_default_chmod_dir');
-				if( !empty($chmod) )
-				{
-					@chmod( $userdir, octdec($chmod) );
-				}
+			{ // add note:
 				if( is_admin_page() )
 				{
 					$Messages->add( sprintf( T_("The user's directory &laquo;%s&raquo; has been created with permissions %s."), rel_path_to_base($userdir), substr( sprintf('%o', fileperms($userdir)), -3 ) ), 'success' );
@@ -3038,7 +3052,7 @@ class User extends DataObject
 
 		if( empty( $redirect_to_after ) )
 		{ // redirect to was not set
-			$redirect_to_after = param( 'redirect_to', 'string', '' );
+			$redirect_to_after = param( 'redirect_to', 'url', '' );
 			if( empty( $redirect_to_after ) )
 			{
 				if( is_admin_page() )

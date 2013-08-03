@@ -94,6 +94,8 @@ param( 'action', 'string', 'default' );
 switch( $action )
 {
 	case 'evoupgrade':
+	case 'auto_upgrade':
+	case 'svn_upgrade':
 	case 'newdb':
 	case 'cafelogupgrade':
 	case 'deletedb':
@@ -185,6 +187,8 @@ init_charsets( $current_charset );
 switch( $action )
 {
 	case 'evoupgrade':
+	case 'auto_upgrade':
+	case 'svn_upgrade':
 		$title = T_('Upgrade from a previous version');
 		break;
 
@@ -542,6 +546,18 @@ switch( $action )
 			<p style="margin-left: 2em;">
 				<input type="checkbox" name="create_sample_contents" id="create_sample_contents" value="1" checked="checked" />
 				<label for="create_sample_contents"><?php echo T_('Also install sample blogs &amp; sample contents. The sample posts explain several features of b2evolution. This is highly recommended for new users.')?></label>
+				<br />
+				<?php
+					// Pre-check if current installation is local
+					$is_local = php_sapi_name() != 'cli' && // NOT php CLI mode
+						( $_SERVER['SERVER_ADDR'] == '127.0.0.1' ||
+							$_SERVER['SERVER_ADDR'] == '::1' || // IPv6 address of 127.0.0.1
+							$basehost == 'localhost' ||
+							$_SERVER['REMOTE_ADDR'] == '127.0.0.1' ||
+							$_SERVER['REMOTE_ADDR'] == '::1' );
+				?>
+				<input type="checkbox" name="local_installation" id="local_installation" value="1"<?php echo $is_local ? ' checked="checked"' : ''; ?> />
+				<label for="local_installation"><?php echo T_('This is a local / test / intranet.')?></label>
 				<?php
 					if( $test_install_all_features )
 					{	// Checkbox to install all features
@@ -679,6 +695,8 @@ switch( $action )
 
 
 	case 'evoupgrade':
+	case 'auto_upgrade':
+	case 'svn_upgrade':
 		/*
 		 * -----------------------------------------------------------------------------------
 		 * EVO UPGRADE: Upgrade data from existing b2evolution database
@@ -697,20 +715,42 @@ switch( $action )
 			break;
 		}
 
-		echo '<h2>'.T_('Upgrading data in existing b2evolution database...').'</h2>';
-		evo_flush();
-		
 		// Try to obtain some serious time to do some serious processing (5 minutes)
 		// NOte: this must NOT be in upgrade_b2evo_tables(), otherwise it will mess with the longer setting used by the auto upgrade feature.
-		set_max_execution_time(300);
+		if( set_max_execution_time(300) === false )
+		{ // max_execution_time ini setting could not be changed for this script, display a warning
+			$manual_url = '"http://b2evolution.net/man/blank-or-partial-page" target = "_blank"';
+			echo '<div class="orange">'.sprintf( T_('WARNING: the max_execution_time is set to %s seconds in php.ini and cannot be increased automatically. This may lead to a PHP <a href=%s>timeout causing the upgrade to fail</a>. If so please post a screenshot to the <a href=%s>forums</a>.'), ini_get( 'max_execution_time' ), $manual_url, '"http://forums.b2evolution.net/"' ).'</div>';
+		}
 
-		if( upgrade_b2evo_tables() )
+		echo '<h2>'.T_('Upgrading data in existing b2evolution database...').'</h2>';
+		evo_flush();
+
+		$not_evoupgrade = ( $action !== 'evoupgrade' );
+		if( upgrade_b2evo_tables( $action ) )
 		{
+			if( $not_evoupgrade )
+			{ // After successful auto_upgrade or svn_upgrade we must remove files/folder based on the upgrade_policy.conf
+				remove_after_upgrade();
+				// disable maintenance mode at the end of the upgrade script
+				switch_maintenance_mode( false, 'upgrade' );
+			}
 			?>
 			<p><?php echo T_('Upgrade completed successfully!')?></p>
 			<p><?php printf( T_('Now you can <a %s>log in</a> with your usual %s username and password.'), 'href="'.$admin_url.'"', 'b2evolution')?></p>
 			<?php
 		}
+		else
+		{
+			if( $not_evoupgrade )
+			{ // disable maintenance mode at the end of the upgrade script
+				switch_maintenance_mode( false, 'upgrade' );
+			}
+			?>
+			<p class="red"><?php echo T_('Upgrade failed!')?></p>
+			<?php
+		}
+
 		break;
 
 

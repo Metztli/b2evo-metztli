@@ -24,7 +24,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE
  *
- * @version $Id: _group.class.php 4031 2013-06-19 07:51:28Z attila $
+ * @version $Id: _group.class.php 4106 2013-07-01 15:47:20Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -424,7 +424,7 @@ class Group extends DataObject
 							$blog_perms[$key] = $value;
 						}
 					}
-					else
+					elseif( isset( $blog_perms[$key] ) )
 					{ // Check user and group perm as well
 						$blog_perms[$key] = (int) $value | (int) $blog_perms[$key];
 					}

@@ -24,7 +24,7 @@
  *
  * @package evocore
  *
- * @version $Id: async.php 3755 2013-05-21 08:52:51Z yura $
+ * @version $Id: async.php 4110 2013-07-02 07:53:56Z yura $
  */
 
 
@@ -226,7 +226,7 @@ switch( $action )
 			// Check permission:
 			$current_User->check_perm( 'comment!'.$status, 'moderate', true, $edited_Comment );
 
-			$redirect_to = param( 'redirect_to', 'string', NULL );
+			$redirect_to = param( 'redirect_to', 'url', NULL );
 
 			$edited_Comment->set( 'status', $status );
 			// Comment moderation is done, handle moderation "secret"

@@ -11,7 +11,7 @@
  * @package evoskins
  * @subpackage glossyblue
  *
- * @version $Id: single.main.php 3843 2013-05-28 10:56:18Z yura $
+ * @version $Id: single.main.php 4275 2013-07-17 10:52:24Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -166,6 +166,7 @@ while( $Item = & mainlist_get_item() )
 		skin_include( '_item_feedback.inc.php', array(
 				'before_section_title' => '<h3>',
 				'after_section_title'  => '</h3>',
+				'author_link_text'     => 'preferredname',
 			) );
 		// Note: You can customize the default item feedback by copying the generic
 		// /skins/_item_feedback.inc.php file into the current skin folder.

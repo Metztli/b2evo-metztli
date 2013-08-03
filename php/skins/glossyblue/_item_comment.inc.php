@@ -50,7 +50,7 @@ $Comment = & $params['Comment'];
 					'text' => '&#167; ',
 					'nofollow' => true,
 				) );
-				$Comment->author('','','','&#174;','htmlbody',true);
+				$Comment->author( '', '', '', '&#174;', 'htmlbody', true, 'preferredname' );
 				$Comment->msgform_link( $Blog->get('msgformurl') );
 
 				$commented_Item = & $Comment->get_Item();
@@ -64,13 +64,13 @@ $Comment = & $params['Comment'];
 			case 'trackback': // Display a trackback:
 				$Comment->permanent_link( T_('Trackback') );
 				echo ' '.T_('from:').' ';
-				$Comment->author( '', '#', '', '#', 'htmlbody', true );
+				$Comment->author( '', '#', '', '#', 'htmlbody', true, 'preferredname' );
 				break;
 
 			case 'pingback': // Display a pingback:
 				$Comment->permanent_link( T_('Pingback') );
 				echo ' '.T_('from:').' ';
-				$Comment->author( '', '#', '', '#', 'htmlbody', true );
+				$Comment->author( '', '#', '', '#', 'htmlbody', true, 'preferredname' );
 				break;
 		}
 	?>

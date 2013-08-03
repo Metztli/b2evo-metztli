@@ -22,7 +22,7 @@
  * @author fplanque: Francois PLANQUE.
  * @author Yabba	- {@link http://www.astonishme.co.uk/}
  *
- * @version $Id: _coll_comment_list.widget.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _coll_comment_list.widget.php 4275 2013-07-17 10:52:24Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -165,7 +165,12 @@ class coll_comment_list_Widget extends ComponentWidget
 
 		echo $this->disp_params[ 'list_start' ];
 
-    /**
+		if( empty( $this->disp_params[ 'author_link_text' ] ) )
+		{
+			$this->disp_params[ 'author_link_text' ] = 'login';
+		}
+
+		/**
 		 * @var Comment
 		 */
 		while( $Comment = & $CommentList->get_next() )
@@ -173,7 +178,7 @@ class coll_comment_list_Widget extends ComponentWidget
 			// Load comment's Item object:
 			$Comment->get_Item();
 			echo $this->disp_params[ 'item_start' ];
-			$Comment->author( '', ' ', '', ' ', 'htmlbody', $this->disp_params[ 'author_links' ] );
+			$Comment->author( '', ' ', '', ' ', 'htmlbody', $this->disp_params[ 'author_links' ], $this->disp_params[ 'author_link_text' ] );
 			echo T_( 'on ' );
 			$Comment->permanent_link( array(
 				'text'        => $Comment->Item->title,

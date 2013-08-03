@@ -29,7 +29,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _template.funcs.php 3579 2013-04-28 20:18:22Z fplanque $
+ * @version $Id: _template.funcs.php 4233 2013-07-16 10:12:35Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -127,7 +127,7 @@ function header_redirect( $redirect_to = NULL, $status = false )
 	 *
 	 * @var Hit
 	 */
- 	global $Hit;
+	global $Hit;
 	global $baseurl, $Blog, $htsrv_url_sensitive;
 	global $Session, $Debuglog, $Messages;
 	global $http_response_code;
@@ -135,7 +135,7 @@ function header_redirect( $redirect_to = NULL, $status = false )
 	// TODO: fp> get this out to the caller, make a helper func like get_returnto_url()
 	if( empty($redirect_to) )
 	{ // see if there's a redirect_to request param given:
-		$redirect_to = param( 'redirect_to', 'string', '' );
+		$redirect_to = param( 'redirect_to', 'url', '' );
 
 		if( empty($redirect_to) )
 		{
@@ -1673,7 +1673,7 @@ function addup_percentage( $hit_count, $hit_total, $decimals = 1, $dec_point = '
  * @param array contains object which were already seen
  * @return boolean true if contains recursion false otherwise
  */
-function is_recursive( array & $array, array & $alreadySeen = array() )
+function is_recursive( /*array*/ & $array, /*array*/ & $alreadySeen = array() )
 {
     static $uniqueObject;
     if( !$uniqueObject )

@@ -30,8 +30,12 @@ if( version_compare( $app_version, '3.0' ) < 0 )
 $cookie_skin_width_name = 'skin_width';
 
 if( isset( $_COOKIE[ $cookie_skin_width_name ] ) )
-{
-	$cookie_skin_width_value = $_COOKIE[ $cookie_skin_width_name ];
+{ // Get skin width from $_COOKIE through param function
+	$cookie_skin_width_value = param_cookie( $cookie_skin_width_name, '/^\d+(px|%)$/i', NULL );
+	if( empty( $cookie_skin_width_value ) )
+	{ // Force illegal value of width to default
+		$cookie_skin_width_value = '960px';
+	}
 }
 
 if( $disp == 'posts' && ! isset( $tag ) && isset( $cat ) )

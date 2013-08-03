@@ -27,7 +27,7 @@
  * @author evofactory-test
  * @author fplanque: Francois Planque.
  *
- * @version  $Id: _userfields.view.php 3328 2013-03-26 11:44:11Z yura $
+ * @version  $Id: _userfields.view.php 4290 2013-07-18 06:10:00Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -46,14 +46,14 @@ global $userfields_group_sides;
 $userfields_group_sides = array();
 $userfields_group_sides['first'] = $DB->get_col( 'SELECT ufdf_ID
 			FROM T_users__fielddefs f1
-			WHERE ufdf_order = 
+			WHERE ufdf_order =
 					( SELECT MIN(f2.ufdf_order)
 						FROM T_users__fielddefs f2
 						WHERE f2.ufdf_ufgp_ID = f1.ufdf_ufgp_ID )
 			GROUP BY ufdf_ufgp_ID' );
 $userfields_group_sides['last'] = $DB->get_col( 'SELECT ufdf_ID
 			FROM T_users__fielddefs f1
-			WHERE ufdf_order = 
+			WHERE ufdf_order =
 					( SELECT MAX(f2.ufdf_order)
 						FROM T_users__fielddefs f2
 						WHERE f2.ufdf_ufgp_ID = f1.ufdf_ufgp_ID )
@@ -98,7 +98,7 @@ if( $where_clause != '' )
 // Create result set:
 $Results = new Results( $SQL->get(), 'ufdf_', 'A', NULL, $count_sql );
 
-$Results->title = T_('User fields');
+$Results->title = T_('User fields').get_manual_link('user-fields-list');
 
 /**
  * Callback to enumerate possible user field types
@@ -164,7 +164,7 @@ if( $current_User->check_perm( 'users', 'edit', false ) )
 		{
 			$r = action_icon( T_('Edit this group...'), 'edit', regenerate_url( 'ctrl,action', 'ctrl=userfieldsgroups&amp;action=edit&amp;ufgp_ID='.$row->ufgp_ID ) )
 					.action_icon( T_('Duplicate this group...'), 'copy', regenerate_url( 'ctrl,action', 'ctrl=userfieldsgroups&amp;action=new&amp;ufgp_ID='.$row->ufgp_ID ) );
-		
+
 			if( !in_array( $row->ufgp_ID, $usedgroups ) )
 			{ // delete
 				$r .= action_icon( T_('Delete this group!'), 'delete', regenerate_url( 'ctrl,action', 'ctrl=userfieldsgroups&amp;action=delete&amp;ufgp_ID='.$row->ufgp_ID.'&amp;'.url_crumb('userfieldgroup') ) );

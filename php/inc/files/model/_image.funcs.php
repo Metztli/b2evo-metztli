@@ -24,7 +24,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _image.funcs.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _image.funcs.php 4354 2013-07-23 09:19:09Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -195,6 +195,14 @@ function load_image( $path, $mimetype )
 	if( $function )
 	{	// Call GD built-in function to load image
 		// fp> Note: sometimes this GD call will die and there is no real way to recover :/
+		load_funcs( 'tools/model/_system.funcs.php' );
+		$memory_limit = system_check_memory_limit();
+		$curr_mem_usage = memory_get_usage( true );
+		// Calculate the aproximative memory size which would be required to create the image resource
+		if( ( $memory_limit - $curr_mem_usage ) < ( 4 * $image_info[0] * $image_info[1] ) )
+		{ // Don't try to load the image into the memory because it would cause 'Allowed memory size exhausted' error
+			return array( "!Cannot resize too large image", false );
+		}
 		$imh = $function( $path );
 	}
 

@@ -24,7 +24,7 @@
  * @package evocore
 
  *
- * @version $Id: _display.form.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _display.form.php 4290 2013-07-18 06:10:00Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -59,7 +59,7 @@ $Form->begin_form( 'fform', '',
 
 // --------------------------------------------
 
-$Form->begin_fieldset( T_('Profile pictures') );
+$Form->begin_fieldset( T_('Profile pictures').get_manual_link('profile-picture-settings') );
 
 	$Form->checkbox_input( 'use_gravatar', $Settings->get('use_gravatar'), T_('Use gravatar'), array( 'note' => T_('Fall back to Gravatar if a user has not uploaded a profile picture.') ) );
 
@@ -77,7 +77,15 @@ $Form->end_fieldset();
 
 // --------------------------------------------
 
-$Form->begin_fieldset( T_('Bubble tips in back-office') );
+$Form->begin_fieldset( T_('Back-office display options').get_manual_link('user-backoffice-display-settings') );
+
+		$Form->checkbox_input( 'gender_colored', $Settings->get('gender_colored'), T_('Display gender'), array( 'note'=>T_('Use colored usernames to differentiate men & women.') ) );
+
+$Form->end_fieldset();
+
+// --------------------------------------------
+
+$Form->begin_fieldset( T_('Bubble tips in back-office').get_manual_link('user-bubble-tips-settings')  );
 
 	$Form->checkbox_input( 'bubbletip', $Settings->get('bubbletip'), T_('Username bubble tips'), array( 'note'=>T_('Check to enable bubble tips on usernames') ) );
 
@@ -90,7 +98,7 @@ $Form->end_fieldset();
 
 // --------------------------------------------
 
-$Form->begin_fieldset( T_('Bubble tips in front-office for logged in users') );
+$Form->begin_fieldset( T_('Bubble tips in front-office for logged in users').get_manual_link('user-bubble-tips-settings') );
 
 	$Form->info( T_('Note'), T_('Enable bubble tips in each skin\'s settings.') );
 
@@ -103,7 +111,7 @@ $Form->end_fieldset();
 
 // --------------------------------------------
 
-$Form->begin_fieldset( T_('Bubble tips in front-office for anonymous users') );
+$Form->begin_fieldset( T_('Bubble tips for anonymous users').get_manual_link('user-bubble-tips-settings') );
 
 	$Form->info( T_('Note'), T_('Enable bubble tips in each skin\'s settings.') );
 
@@ -118,17 +126,10 @@ $Form->begin_fieldset( T_('Bubble tips in front-office for anonymous users') );
 
 $Form->end_fieldset();
 
-// --------------------------------------------
-
-$Form->begin_fieldset( T_('Back office display options') );
-
-		$Form->checkbox_input( 'gender_colored', $Settings->get('gender_colored'), T_('Display gender'), array( 'note'=>T_('Use colored usernames to differentiate men & women.') ) );
-
-$Form->end_fieldset();
 
 // --------------------------------------------
 
-$Form->begin_fieldset( T_('Permissions for anonymous users') );
+$Form->begin_fieldset( T_('Other permissions for anonymous users').get_manual_link('anonymous-users-permissions') );
 
 	$Form->checkbox_input( 'allow_anonymous_user_list', $Settings->get('allow_anonymous_user_list'), T_('Allow to see user list') );
 	// Allow anonymous users to see the user display ( disp=user )

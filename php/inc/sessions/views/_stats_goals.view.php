@@ -9,7 +9,7 @@
  *
  * @package admin
  *
- * @version $Id: _stats_goals.view.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _stats_goals.view.php 4361 2013-07-24 06:22:58Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -45,7 +45,7 @@ $Results = new Results( $SQL->get(), 'goals_', '-A' );
 
 $Results->Cache = & get_GoalCache();
 
-$Results->title = T_('Goals');
+$Results->title = T_('Goals').get_manual_link( 'goal-settings' );
 
 /**
  * Callback to add filters on top of the result set

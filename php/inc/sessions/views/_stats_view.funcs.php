@@ -21,7 +21,7 @@
  *
  * @package admin
  *
- * @version $Id: _stats_view.funcs.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _stats_view.funcs.php 4361 2013-07-24 06:22:58Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -40,7 +40,7 @@ function hits_results( & $Results, $params = array() )
 
 	$hide_columns = explode( ',', $hide_columns );
 
-	$Results->title = isset( $preset_results_title ) ? $preset_results_title : T_('Recent hits');
+	$Results->title = isset( $preset_results_title ) ? $preset_results_title : T_('Recent hits').get_manual_link( 'recent-hits-list' );
 
 	$filter_presets = array();
 	$filter_presets['all'] = array( T_('All'), isset( $preset_filter_all_url ) ? $preset_filter_all_url : '?ctrl=stats&amp;tab=hits&amp;blog='.$blog );

@@ -25,9 +25,9 @@ $comment_reply_ID = param( 'reply_ID', 'integer', 0 );
 <?php
 	if( ( $Comment = get_comment_from_session() ) == NULL )
 	{
-		$comment_author = isset($_COOKIE[$cookie_name]) ? trim($_COOKIE[$cookie_name]) : '';
-		$comment_author_email = isset($_COOKIE[$cookie_email]) ? trim($_COOKIE[$cookie_email]) : '';
-		$comment_author_url = isset($_COOKIE[$cookie_url]) ? trim($_COOKIE[$cookie_url]) : '';
+		$comment_author = param_cookie( $cookie_name, 'string', '' );
+		$comment_author_email = evo_strtolower( param_cookie( $cookie_email, 'string', '' ) );
+		$comment_author_url = param_cookie( $cookie_url, 'string', '' );
 		$comment_text = '';
 	}
 	else
@@ -61,7 +61,7 @@ $comment_reply_ID = param( 'reply_ID', 'integer', 0 );
 		<tr valign="top" bgcolor="#eeeeee">
 			<td align="right"><strong><?php echo T_('User') ?>:</strong></td>
 			<td align="left">
-				<strong><?php echo $current_User->get_identity_link( array( 'link_text' => 'text' ) )?></strong>
+				<strong><?php echo $current_User->get_identity_link( array( 'link_text' => 'preferredname' ) )?></strong>
 				<?php user_profile_link( ' [', ']', T_('Edit profile') ) ?>
 				</td>
 		</tr>
@@ -72,24 +72,30 @@ $comment_reply_ID = param( 'reply_ID', 'integer', 0 );
 		?>
 		<tr valign="top" bgcolor="#eeeeee">
 			<td align="right"><label for="author"><strong><?php echo T_('Name') ?>:</strong></label></td>
-			<td align="left"><input type="text" name="<?php echo $dummy_fields[ 'name' ] ?>" id="author" value="<?php echo $comment_author ?>" size="40" tabindex="1" /></td>
+			<td align="left"><input type="text" name="<?php echo $dummy_fields[ 'name' ] ?>" id="author" value="<?php echo htmlspecialchars( $comment_author ) ?>" size="40" tabindex="1" /></td>
 		</tr>
 
 		<tr valign="top" bgcolor="#eeeeee">
 			<td align="right"><label for="email"><strong><?php echo T_('Email') ?>:</strong></label></td>
-			<td align="left"><input type="text" name="<?php echo $dummy_fields[ 'email' ] ?>" id="email" value="<?php echo $comment_author_email ?>" size="40" tabindex="2" /><br />
+			<td align="left"><input type="text" name="<?php echo $dummy_fields[ 'email' ] ?>" id="email" value="<?php echo htmlspecialchars( $comment_author_email ) ?>" size="40" tabindex="2" /><br />
 				<small><?php echo T_('Your email address will <strong>not</strong> be displayed on this site.') ?></small>
 			</td>
 		</tr>
 
-		<tr valign="top" bgcolor="#eeeeee">
-			<td align="right"><label for="url"><strong><?php echo T_('Site/Url') ?>:</strong></label></td>
-			<td align="left"><input type="text" name="<?php echo $dummy_fields[ 'url' ] ?>" id="url" value="<?php echo $comment_author_url ?>" size="40" tabindex="3" /><br />
-				<small><?php echo T_('Your URL will be displayed.') ?></small>
-			</td>
-		</tr>
+		<?php
+		$Item->load_Blog();
+		if( $Item->Blog->get_setting( 'allow_anon_url' ) )
+		{
+		?>
+			<tr valign="top" bgcolor="#eeeeee">
+				<td align="right"><label for="url"><strong><?php echo T_('Site/Url') ?>:</strong></label></td>
+				<td align="left"><input type="text" name="<?php echo $dummy_fields[ 'url' ] ?>" id="url" value="<?php echo htmlspecialchars( $comment_author_url ) ?>" size="40" tabindex="3" /><br />
+					<small><?php echo T_('Your URL will be displayed.') ?></small>
+				</td>
+			</tr>
 		<?php
 		}
+	}
 	?>
 
 	<tr valign="top" bgcolor="#eeeeee">

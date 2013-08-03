@@ -156,6 +156,14 @@ function install_newdb()
 		$create_sample_contents = 1;
 	}
 
+	/**
+	 * 1 - If current installation is local, test or intranet
+	 *     Used to turn off gravatar and all ping plugins
+	 *
+	 * @var integer
+	 */
+	$local_installation = param( 'local_installation', 'integer', 0 );
+
 	echo '<h2>'.T_('Creating b2evolution tables...').'</h2>';
 	evo_flush();
 	create_tables();
@@ -438,7 +446,7 @@ function create_default_settings( $override = array() )
 {
 	global $DB, $new_db_version, $default_locale;
 	global $Group_Admins, $Group_Privileged, $Group_Bloggers, $Group_Users, $Group_Suspect, $Group_Spam;
-	global $test_install_all_features;
+	global $test_install_all_features, $local_installation;
 
 	$defaults = array(
 		'db_version' => $new_db_version,
@@ -482,6 +490,12 @@ function create_default_settings( $override = array() )
 	if( count( $antispam_trust_groups ) > 0 )
 	{ // Set default antispam trust group
 		$defaults['antispam_trust_groups'] = implode( ',', $antispam_trust_groups );
+	}
+	if( $local_installation )
+	{ // Current installation is local
+		// Turn off gravatar and use 'Default gravatars' = 'Gravatar'
+		$defaults['use_gravatar'] = 0;
+		$defaults['default_gravatar'] = '';
 	}
 
 	$settings = array_merge( array_keys($defaults), array_keys($override) );

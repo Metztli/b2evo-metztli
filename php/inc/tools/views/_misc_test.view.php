@@ -22,17 +22,22 @@
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
 
-global $template_action, $Messages;
+global $template_action, $template_title, $Messages;
 
 $block_item_Widget = new Widget( 'block_item' );
 
 if( !empty( $template_action ) )
 { // Execute actions in template to display a process
-	$block_item_Widget->title = T_('Log');
+	$block_item_Widget->title = empty( $template_title ) ? T_('Log') : $template_title;
 	$block_item_Widget->disp_template_replaced( 'block_start' );
 
 	switch( $template_action )
 	{
+		case 'test_flush':
+			// Test a flush function
+			tool_test_flush();
+			break;
+
 		case 'create_sample_comments':
 			// Create the comments and display a process of creating
 			global $blog_ID, $num_comments, $num_posts;
@@ -73,9 +78,10 @@ if( !empty( $template_action ) )
 // TODO: dh> this should really be a separate permission.. ("tools", "exec") or similar!
 if( $current_User->check_perm('options', 'edit') )
 { // default admin actions:
-	$block_item_Widget->title = T_('Testing Tools');
+	$block_item_Widget->title = T_('Testing Tools').get_manual_link( 'testing-tools' );
 	$block_item_Widget->disp_template_replaced( 'block_start' );
 	echo '<ul>';
+	echo '<li><a href="'.regenerate_url('action', 'action=test_flush&amp;'.url_crumb('tools')).'">'.T_('Test flush').'</a></li>';
 	echo '<li><a href="'.regenerate_url('action', 'action=show_create_comments&amp;'.url_crumb('tools')).'">'.T_('Create sample comments').'</a></li>';
 	echo '<li><a href="'.regenerate_url('action', 'action=show_create_posts&amp;'.url_crumb('tools')).'">'.T_('Create sample posts').'</a></li>';
 	echo '<li><a href="'.regenerate_url('action', 'action=show_create_users&amp;'.url_crumb('tools')).'">'.T_('Create sample users').'</a></li>';

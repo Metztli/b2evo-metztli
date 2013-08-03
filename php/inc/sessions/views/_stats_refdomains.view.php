@@ -21,7 +21,7 @@
  *
  * @package admin
  *
- * @version $Id: _stats_refdomains.view.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _stats_refdomains.view.php 4361 2013-07-24 06:22:58Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -119,7 +119,7 @@ $Results->filter_area = array(
 	);
 
 
-$Results->title = T_('Referring domains');
+$Results->title = T_('Referring domains').get_manual_link('referring-domains-tab');
 
 $Results->cols[] = array(
 						'th' => T_('Domain name'),

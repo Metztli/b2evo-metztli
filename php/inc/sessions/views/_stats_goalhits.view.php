@@ -9,7 +9,7 @@
  *
  * @package admin
  *
- * @version $Id: _stats_goalhits.view.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _stats_goalhits.view.php 4361 2013-07-24 06:22:58Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -97,7 +97,7 @@ else
 
 $Results = new Results( $SQL->get(), 'ghits_', '--D', $UserSettings->get( 'results_per_page' ), $SQL_count->get() );
 
-$Results->title = T_('Recent goal hits');
+$Results->title = T_('Recent goal hits').get_manual_link( 'goal-hits' );
 
 /**
  * Callback to add filters on top of the result set

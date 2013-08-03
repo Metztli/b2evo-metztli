@@ -21,7 +21,7 @@
  *
  * @package admin
  *
- * @version $Id: _stats_robots.view.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _stats_robots.view.php 4361 2013-07-24 06:22:58Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -33,7 +33,7 @@ require_once dirname(__FILE__).'/_stats_view.funcs.php';
 
 global $blog, $admin_url, $rsc_url, $AdminUI, $agent_type_color;
 
-echo '<h2>'.T_('Hits from indexing robots / spiders / crawlers - Summary').'</h2>';
+echo '<h2>'.T_('Hits from indexing robots / spiders / crawlers - Summary').get_manual_link( 'robots-hits-summary' ).'</h2>';
 
 echo '<p class="notes">'.T_('In order to be detected, robots must be listed in /conf/_stats.php.').'</p>';
 

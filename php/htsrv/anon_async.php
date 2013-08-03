@@ -21,7 +21,7 @@
  *
  * @package evocore
  *
- * @version $Id: anon_async.php 3935 2013-06-05 14:40:42Z yura $
+ * @version $Id: anon_async.php 4110 2013-07-02 07:53:56Z yura $
  */
 
 
@@ -104,7 +104,7 @@ switch( $action )
 		$subject = param( 'subject', 'string', '' );
 		$email_author = param( 'email_author', 'string', '' );
 		$email_author_address = param( 'email_author_address', 'string', '' );
-		$redirect_to = param( 'redirect_to', 'string', '' );
+		$redirect_to = param( 'redirect_to', 'url', '' );
 		$post_id = NULL;
 		$comment_id = param( 'comment_id', 'integer', 0 );
 		$BlogCache = & get_BlogCache();
@@ -365,7 +365,7 @@ switch( $action )
 		param( 'vote_type', 'string', '' );
 		param( 'vote_ID', 'string', 0 );
 		param( 'checked', 'integer', 0 );
-		param( 'redirect_to', 'string', '' );
+		param( 'redirect_to', 'url', '' );
 
 		$Ajaxlog->add( sprintf( 'vote action: %s', $vote_action ), 'note' );
 		$Ajaxlog->add( sprintf( 'vote type: %s', $vote_type ), 'note' );
@@ -860,7 +860,7 @@ switch( $action )
 			// Check permission:
 			$current_User->check_perm( 'comment!'.$status, 'moderate', true, $edited_Comment );
 
-			$redirect_to = param( 'redirect_to', 'string', NULL );
+			$redirect_to = param( 'redirect_to', 'url', NULL );
 
 			$edited_Comment->set( 'status', $status );
 			// Comment moderation is done, handle moderation "secret"

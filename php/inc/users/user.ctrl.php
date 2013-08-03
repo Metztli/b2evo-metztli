@@ -18,7 +18,7 @@ $AdminUI->set_path( 'users', 'users' );
 param_action();
 
 param( 'user_ID', 'integer', NULL );	// Note: should NOT be memorized (would kill navigation/sorting) use memorize_param() if needed
-param( 'redirect_to', 'string', NULL );
+param( 'redirect_to', 'url', NULL );
 
 param( 'display_mode', 'string', 'normal' );
 

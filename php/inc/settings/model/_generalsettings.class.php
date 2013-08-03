@@ -29,7 +29,7 @@
  * @author fplanque: Francois PLANQUE
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: _generalsettings.class.php 3462 2013-04-12 04:37:35Z yura $
+ * @version $Id: _generalsettings.class.php 4314 2013-07-19 06:50:41Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -91,9 +91,10 @@ class GeneralSettings extends AbstractSettings
 
 		// Image options
 		'exif_orientation' => '1',
-		'fm_resize_enable' => '1',
-		'fm_resize_width' => '1980',
-		'fm_resize_height' => '1080',
+		'fm_resize_enable' => '0',
+		'fm_resize_width' => '2880',
+		'fm_resize_height' => '1800',
+		'fm_resize_quality' => '95',
 
 		'newusers_canregister' => '0',
 		'newusers_mustvalidate' => '1',
@@ -104,7 +105,7 @@ class GeneralSettings extends AbstractSettings
 		'after_email_validation' => 'return_to_original', // where to redirect after account activation. Values: return_to_original, or the previously set specific url
 		'after_registration' => 'return_to_original', // where to redirect after new user registration. Values: return_to_original redirect_to url, or return to the previously set specific url
 		'newusers_level' => '1',
-		'registration_require_gender' => 'optional',
+		'registration_require_gender' => 'hidden',
 		'registration_ask_locale' => '0',
 
 		// Default user settings

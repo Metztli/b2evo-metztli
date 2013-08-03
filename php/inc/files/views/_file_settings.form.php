@@ -30,7 +30,7 @@
  * @author mbruneau: Marc BRUNEAU / PROGIDISTRI
  * @author fsaya: Fabrice SAYA-GASNIER / PROGIDISTRI
  *
- * @version $Id: _file_settings.form.php 3520 2013-04-22 06:12:04Z attila $
+ * @version $Id: _file_settings.form.php 4301 2013-07-18 10:46:49Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -227,7 +227,7 @@ $Form->begin_fieldset( T_('Advanced options'), array( 'id' => 'ffset_fileadvance
 
 $Form->end_fieldset();
 
-$Form->begin_fieldset( T_('Image options') );
+$Form->begin_fieldset( T_('Image options').get_manual_link( 'image-options' ) );
 
 	$Form->checkbox( 'exif_orientation', $Settings->get( 'exif_orientation' ), T_('Use EXIF info in photos'), T_('Use orientation tag to automatically rotate thumbnails to upright position.') );
 
@@ -236,6 +236,8 @@ $Form->begin_fieldset( T_('Image options') );
 	$resize_input_suffix .= ' x ';
 	$resize_input_suffix .= '<input type="text" id="fm_resize_height" name="fm_resize_height" class="form_text_input" size="4" maxlength="4" value="'.$Settings->get( 'fm_resize_height' ).'" />';
 	$resize_input_suffix .= ' '.T_('pixels').' ';
+	$resize_input_suffix .= '<input type="text" id="fm_resize_quality" name="fm_resize_quality" class="form_text_input" size="3" maxlength="3" style="margin-left:10px" value="'.$Settings->get( 'fm_resize_quality' ).'" />';
+	$resize_input_suffix .= ' % '.T_('quality').' ';
 	$Form->checkbox_input( 'fm_resize_enable', $Settings->get( 'fm_resize_enable' ), T_('Resize large images after upload'), array( 'input_suffix' => $resize_input_suffix ) );
 
 $Form->end_fieldset();

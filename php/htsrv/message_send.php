@@ -56,7 +56,7 @@ if( $Settings->get('system_lock') )
 // TODO: Flood protection (Use Hit class to prevent mass mailings to members..)
 
 // Get rediredt_to param
-$redirect_to = param( 'redirect_to', 'string', '' );
+$redirect_to = param( 'redirect_to', 'url', '' );
 
 // Getting GET or POST parameters:
 param( 'blog', 'integer', '' );

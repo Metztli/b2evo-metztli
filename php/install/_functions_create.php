@@ -37,7 +37,7 @@
  * @author edgester: Jason EDGECOMBE.
  * @author mfollett: Matt Follett.
  *
- * @version $Id: _functions_create.php 3846 2013-05-29 07:33:29Z attila $
+ * @version $Id: _functions_create.php 4303 2013-07-18 11:04:34Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -1083,7 +1083,7 @@ function create_blog(
 	$allow_html = true,
 	$owner_user_ID = 1 )
 {
-	global $default_locale, $test_install_all_features;
+	global $default_locale, $test_install_all_features, $local_installation;
 
 	$Blog = new Blog( NULL );
 
@@ -1094,6 +1094,10 @@ function create_blog(
 	$Blog->set( 'locale', $default_locale );
 	$Blog->set( 'owner_user_ID', $owner_user_ID );
 	$Blog->set_setting( 'normal_skin_ID', $blog_skin_ID );
+	if( $local_installation )
+	{ // Turn off all ping plugins if the installation is local/test/intranet
+		$Blog->set_setting( 'ping_plugins', '' );
+	}
 
 	$Blog->dbinsert();
 
@@ -2208,7 +2212,7 @@ function create_demo_contents()
 	// Set default locations for each post in test mode installation
 	create_default_posts_location();
 
-	install_basic_widgets();
+	install_basic_widgets( $new_db_version );
 
 	load_funcs( 'tools/model/_system.funcs.php' );
 	if( !system_init_caches() )

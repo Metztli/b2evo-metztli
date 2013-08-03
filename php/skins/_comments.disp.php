@@ -16,6 +16,13 @@
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
 
+// Default params:
+$params = array_merge( array(
+		'author_link_text' => 'login', // avatar | only_avatar | login | nickname | firstname | lastname | fullname | preferredname
+		'display_comment_avatar' => true,
+	), $params );
+
+
 $CommentList = new CommentList2( $Blog );
 
 // Filter list:
@@ -48,7 +55,10 @@ while( $Comment = & $CommentList->get_next() )
 		{
 			$Comment->status( 'styled' );
 		}
-		$Comment->avatar();
+		if( $params['display_comment_avatar'] )
+		{
+			$Comment->avatar();
+		}
 		?>
 		<h3 class="bTitle">
 			<?php echo T_('In response to:') ?>
@@ -59,11 +69,12 @@ while( $Comment = & $CommentList->get_next() )
 		<div class="bCommentTitle">
 			<?php $Comment->author(
 				/* before: */ '',
-				/* after:  */ '#',
+				/* after: */ '#',
 				/* before_user: */ '',
-				/* after_user:  */ '#',
+				/* after_user: */ '#',
 				/* format: */ 'htmlbody',
-				/* makelink: */ true ) ?>
+				/* makelink: */ true,
+				/* linkt_text*/ $params['author_link_text'] ) ?>
 			<?php /* $Comment->author_url( '', ' &middot; ', '' ) */ ?>
 		</div>
 		<div class="bCommentText">

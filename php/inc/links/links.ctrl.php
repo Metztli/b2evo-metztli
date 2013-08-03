@@ -23,7 +23,7 @@ global $Blog, $Session;
  * Initialize everything
  */
 $action = param_action( 'list' );
-$redirect_to = param( 'redirect_to', 'string', /*regenerate_url( '', '', '', '&' )*/NULL );
+$redirect_to = param( 'redirect_to', 'url', /*regenerate_url( '', '', '', '&' )*/NULL );
 //$mode = 'iframe';
 
 switch( $action )

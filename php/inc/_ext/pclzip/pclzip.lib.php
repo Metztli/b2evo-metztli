@@ -22,7 +22,7 @@
 //   The use of this software is at the risk of the user.
 //
 // --------------------------------------------------------------------------------
-// $Id: pclzip.lib.php 1180 2012-04-05 00:48:28Z sam2kb $
+// $Id: pclzip.lib.php 4326 2013-07-19 12:29:40Z yura $
 // --------------------------------------------------------------------------------
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -5024,7 +5024,7 @@ if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.'
     }
 
     // ----- Create the directory
-    if (!@mkdir($p_dir, 0777))
+    if( ! evo_mkdir( $p_dir ) )
     {
       // ----- Error log
       PclZip::privErrorLog(PCLZIP_ERR_DIR_CREATE_FAIL, "Unable to create directory '$p_dir'");

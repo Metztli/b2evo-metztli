@@ -11,7 +11,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author asimo: Evo Factory / Attila Simo
  *
- * @version $Id: _login.disp.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _login.disp.php 4155 2013-07-06 08:08:10Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -25,7 +25,7 @@ if( is_logged_in() )
 
 $login = param( $dummy_fields[ 'login' ], 'string', '' );
 $action = param( 'action', 'string', '' );
-$redirect_to = param( 'redirect_to', 'string', '' );
+$redirect_to = param( 'redirect_to', 'url', '' );
 $source = param( 'source', 'string', 'inskin login form' );
 $login_required = ( $action == 'req_login' );
 
@@ -47,7 +47,7 @@ $params = array(
 
 display_login_form( $params );
 
-echo '<div class="notes" style="margin: 1em"><a href="'.$secure_htsrv_url.'login.php?source='.rawurlencode($source).'&redirect_to='.$redirect_to.'">'.T_( 'Use standard login form instead').' &raquo;</a></div>';
+echo '<div class="notes" style="margin: 1em"><a href="'.$secure_htsrv_url.'login.php?source='.rawurlencode($source).'&redirect_to='.rawurlencode( $redirect_to ).'">'.T_( 'Use standard login form instead').' &raquo;</a></div>';
 
 echo '<div class="form_footer_notes">'.sprintf( T_('Your IP address: %s'), $Hit->IP ).'</div>';
 

@@ -27,7 +27,7 @@
  * @author efy-bogdan: Evo Factory / Bogdan.
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _registration.form.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _registration.form.php 4290 2013-07-18 06:10:00Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -58,7 +58,7 @@ $Form->begin_form( 'fform', '',
 
 // --------------------------------------------
 
-$Form->begin_fieldset( T_('Default user permissions') );
+$Form->begin_fieldset( T_('Default user permissions').get_manual_link('default-user-permissions') );
 
 	$Form->checkbox( 'newusers_canregister', $Settings->get('newusers_canregister'), T_('New users can register'), T_('Check to allow new users to register themselves.' ) );
 
@@ -71,7 +71,7 @@ $Form->end_fieldset();
 
 // --------------------------------------------
 
-$Form->begin_fieldset( T_('Default user settings') );
+$Form->begin_fieldset( T_('Default user settings').get_manual_link('default-user-settings') );
 
 	$messaging_options = array( array( 'enable_PM', 1, T_( 'private messages on this site.' ), $Settings->get( 'def_enable_PM' ) ) );
 	if( $Settings->get( 'emails_msgform' ) != 'never' )
@@ -102,7 +102,7 @@ $Form->end_fieldset();
 
 // --------------------------------------------
 
-$Form->begin_fieldset( T_('Account activation'), array( 'id' => 'account_activation' ) );
+$Form->begin_fieldset( T_('Account activation').get_manual_link('account-activation-settings'), array( 'id' => 'account_activation' ) );
 
 	$Form->checkbox( 'newusers_mustvalidate', $Settings->get('newusers_mustvalidate'), T_('New users must activate by email'), T_('Check to require users to activate their account by clicking a link sent to them via email.' ) );
 
@@ -110,7 +110,7 @@ $Form->begin_fieldset( T_('Account activation'), array( 'id' => 'account_activat
 
 	$Form->radio( 'validation_process', $Settings->get( 'validation_process' ), array(
 					array( 'secure', T_( 'Secure account activation process' ), T_( 'Users must validate their account in the same session. Prevents activation of an account by someone else if an incorrect email address is entered. No reminder emails can be sent.' ) ),
-					array( 'easy', T_( 'Easy account activation process' ), T_( 'Allows to send reminder emails to unregistered accounts.' ) ) 
+					array( 'easy', T_( 'Easy account activation process' ), T_( 'Allows to send reminder emails to unregistered accounts.' ) )
 				), T_( 'Activation process' ), true );
 
 	$Form->duration_input( 'activate_requests_limit', $Settings->get( 'activate_requests_limit' ), T_('Limit activation email requests to'), 'minutes', 'minutes', array( 'minutes_step' => 5, 'required' => true, 'note' => T_('Only one activation email can be sent to the same email address in every given minutes.') ) );
@@ -139,7 +139,34 @@ $Form->end_fieldset();
 
 // --------------------------------------------
 
-$Form->begin_fieldset( T_( 'Other settings' ) );
+
+$Form->begin_fieldset( T_('Security options').get_manual_link('registration-security-settings') );
+
+	$Form->text_input( 'user_minpwdlen', (int)$Settings->get('user_minpwdlen'), 2, T_('Minimum password length'), T_('characters.'), array( 'maxlength'=>2, 'required'=>true ) );
+
+	$Form->checkbox_input( 'js_passwd_hashing', (bool)$Settings->get('js_passwd_hashing'), T_('Login password hashing'), array( 'note'=>T_('Check to enable the login form to hash the password with Javascript before transmitting it. This provides extra security on non-SSL connections.')) );
+
+	$Form->checkbox_input( 'passwd_special', (bool)$Settings->get('passwd_special'), T_('Require specials characters'), array( 'note'=>T_('Check to require at least 1 special character (not a letter nor a digit).')) );
+
+	$Form->checkbox_input( 'strict_logins', (bool)$Settings->get('strict_logins'), T_('Require strict logins'), array( 'note'=>sprintf( T_('Check to require only plain ACSII characters in user logins. Uncheck to allow any characters and symbols. The following characters are never allowed for security reasons: %s'), '\', ", >, <, @') ) );
+
+$Form->end_fieldset();
+
+// --------------------------------------------
+
+$Form->begin_fieldset( T_('Other options').get_manual_link('other-registration-settings') );
+
+	$Form->checkbox_input( 'registration_require_country', $Settings->get('registration_require_country'), T_('Require country'), array( 'note'=>T_('New users will have to specify their country in order to register.') ) );
+
+	$Form->checkbox_input( 'registration_require_firstname', $Settings->get('registration_require_firstname'), T_('Require first name'), array( 'note'=>T_('New users will have to specify their first name in order to register.') ) );
+
+	$Form->checkbox_input( 'registration_ask_locale', $Settings->get('registration_ask_locale'), T_('Ask for language'), array( 'note'=>T_('New users will be prompted for their preferred language/locale.') ) );
+
+	$Form->radio( 'registration_require_gender',$Settings->get('registration_require_gender'), array(
+					array( 'hidden', T_('Hidden') ),
+					array( 'optional', T_('Optional') ),
+					array( 'required', T_('Required') ),
+				), T_('Gender'), true );
 
 	if( $Settings->get( 'after_registration' ) == 'return_to_original' )
 	{ // return to original url
@@ -160,39 +187,6 @@ $Form->begin_fieldset( T_( 'Other settings' ) );
 				), T_( 'After registration' ), true );
 
 $Form->end_fieldset();
-
-// --------------------------------------------
-
-$Form->begin_fieldset( T_('Security options') );
-
-	$Form->text_input( 'user_minpwdlen', (int)$Settings->get('user_minpwdlen'), 2, T_('Minimum password length'), T_('characters.'), array( 'maxlength'=>2, 'required'=>true ) );
-
-	$Form->checkbox_input( 'js_passwd_hashing', (bool)$Settings->get('js_passwd_hashing'), T_('Login password hashing'), array( 'note'=>T_('Check to enable the login form to hash the password with Javascript before transmitting it. This provides extra security on non-SSL connections.')) );
-
-	$Form->checkbox_input( 'passwd_special', (bool)$Settings->get('passwd_special'), T_('Require specials characters'), array( 'note'=>T_('Check to require at least 1 special character (not a letter nor a digit).')) );
-
-	$Form->checkbox_input( 'strict_logins', (bool)$Settings->get('strict_logins'), T_('Require strict logins'), array( 'note'=>sprintf( T_('Check to require only plain ACSII characters in user logins. Uncheck to allow any characters and symbols. The following characters are never allowed for security reasons: %s'), '\', ", >, <, @') ) );
-
-$Form->end_fieldset();
-
-// --------------------------------------------
-
-$Form->begin_fieldset( T_('Other options') );
-
-	$Form->checkbox_input( 'registration_require_country', $Settings->get('registration_require_country'), T_('Require country'), array( 'note'=>T_('New users will have to specify their country in order to register.') ) );
-
-	$Form->checkbox_input( 'registration_require_firstname', $Settings->get('registration_require_firstname'), T_('Require first name'), array( 'note'=>T_('New users will have to specify their first name in order to register.') ) );
-
-	$Form->checkbox_input( 'registration_ask_locale', $Settings->get('registration_ask_locale'), T_('Ask for language'), array( 'note'=>T_('New users will be prompted for their preferred language/locale.') ) );
-
-	$Form->radio( 'registration_require_gender',$Settings->get('registration_require_gender'), array(
-					array( 'hidden', T_('Hidden') ),
-					array( 'optional', T_('Optional') ),
-					array( 'required', T_('Required') ),
-				), T_('Gender'), true );
-
-$Form->end_fieldset();
-
 // --------------------------------------------
 
 if( $current_User->check_perm( 'users', 'edit' ) )

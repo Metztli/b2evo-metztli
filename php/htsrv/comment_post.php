@@ -35,7 +35,7 @@ antispam_block_ip();
 
 // Getting GET or POST parameters:
 param( 'comment_post_ID', 'integer', true ); // required
-param( 'redirect_to', 'string', '' );
+param( 'redirect_to', 'url', '' );
 param( 'reply_ID', 'integer', 0 );
 
 $action = param_arrayindex( 'submit_comment_post_'.$comment_post_ID, 'save' );
@@ -441,9 +441,13 @@ if( $action == 'preview' )
 	$Messages->add( T_('This is a preview only! Do not forget to send your comment!'), 'error' );
 
 	if( $comments_email_is_detected )
-	{	// Comment contains an email address, We should show an error about this
+	{ // Comment contains an email address, We should show an error about this
 		if( $Settings->get( 'newusers_canregister' ) )
-		{	// Users can register and we give them a links to log in and registration
+		{ // Users can register and we give them a links to log in and registration
+			if( is_null( $commented_Item ) )
+			{ // Initialize the commented Item object
+				$commented_Item = & $ItemCache->get_by_ID( $comment_item_ID );
+			}
 			$link_log_in = 'href="'.get_login_url( 'blocked comment email', $commented_Item->get_url( 'public_view' ) ).'"';
 			$link_register = 'href="'.get_user_register_url( $commented_Item->get_url( 'public_view' ), 'blocked comment email' ).'"';
 			$Messages->add( sprintf( T_('Your comment contains an email address. Please <a %s>log in</a> or <a %s>create an account now</a> instead. This will allow people to send you private messages without revealing your email address to SPAM robots.'), $link_log_in, $link_register ), 'error' );

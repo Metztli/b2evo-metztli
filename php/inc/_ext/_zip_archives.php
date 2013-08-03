@@ -460,8 +460,7 @@ class tar_file extends archive
 				}
 				else if ($file['type'] == 5)
 				{
-					if (!is_dir($file['name']))
-						mkdir($file['name'], $file['stat'][2]);
+					evo_mkdir($file['name'], $file['stat'][2]);
 				}
 				else if ($this->options['overwrite'] == 0 && file_exists($file['name']))
 				{

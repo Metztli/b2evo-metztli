@@ -36,7 +36,6 @@ $params = array_merge( array(
 		'comment_end'          => '</div>',
 		'comment_block_end'    => '',
 		'link_to'              => 'userurl>userpage', // 'userpage' or 'userurl' or 'userurl>userpage' or 'userpage>userurl'
-		'author_link_text'     => 'avatar',
 		'before_image'         => '<div class="image_block">',
 		'before_image_legend'  => '<div class="image_legend">',
 		'after_image_legend'   => '</div>',
@@ -85,7 +84,7 @@ $comment_class = ' class="'.$comment_class.'"';
 				'after_user'   => '',
 				'format'       => 'htmlbody',
 				'link_to'      => $params['link_to'],		// 'userpage' or 'userurl' or 'userurl>userpage' or 'userpage>userurl'
-				'link_text'    => $params['author_link_text'],
+				'link_text'    => 'avatar',
 				'thumb_size'   => 'crop-top-80x80',
 				'thumb_class'  => 'avatar_above_login',
 				'nowrap'       => false,

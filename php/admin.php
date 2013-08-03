@@ -34,7 +34,7 @@
  *
  * @package main
  *
- * @version $Id: admin.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: admin.php 4354 2013-07-23 09:19:09Z attila $
  */
 
 
@@ -49,7 +49,7 @@ require_once dirname(__FILE__).'/conf/_config.php';
  */
 $is_admin_page = true;
 
-// user must be logged in and his/her account must be validated before access to admin 
+// user must be logged in and his/her account must be validated before access to admin
 $login_required = true;
 $validate_required = true;
 require_once $inc_path.'_main.inc.php';
@@ -61,7 +61,7 @@ if( ! $current_User->check_perm( 'admin', 'restricted' ) )
 	// asimo> This should always denied access, but we insert a hack to create a temporary solution
 	// We do allow comments and items actions, if the redirect is set to the front office! This way users without admin access may use the comments, and items controls.
 	$test_ctrl = param( 'ctrl', '/^[a-z0-9_]+$/', '', false );
-	$test_redirect_to = param( 'redirect_to', 'string', '', false );
+	$test_redirect_to = param( 'redirect_to', 'url', '', false );
 	$test_action = param_action();
 	// asimo> If we also would like to allow publish, deprecate and delete item/comment actions for users without admin access, we must uncomment the commented part below.
 	if( ( ( $test_ctrl !== 'comments' ) && ( $test_ctrl !== 'items' ) )
@@ -84,6 +84,31 @@ if( !$current_User->check_status( 'can_access_admin' ) )
 	{ // show access denied
 		require $adminskins_path.'_access_denied.main.php';
 	}
+}
+
+// Check that the request doesn't exceed the post max size
+// This is required because another way not even the $ctrl param can be initialized and the request may freeze
+if( ( $_SERVER['REQUEST_METHOD'] == 'POST' ) && empty( $_POST ) && empty( $_FILES ) && ( $_SERVER['CONTENT_LENGTH'] > 0 ) )
+{
+	// Check post max size ini setting
+	$post_max_size = ini_get( 'post_max_size' );
+
+	// Convert post_max_size value to bytes
+	switch ( substr( $post_max_size, -1 ) )
+	{
+		case 'G':
+			$post_max_size = $post_max_size * 1024;
+		case 'M':
+			$post_max_size = $post_max_size * 1024;
+		case 'K':
+			$post_max_size = $post_max_size * 1024;
+	}
+
+	// Add error message and redirect back to the referer url
+	$Debuglog->add( sprintf( T_('Posted data is too large. %s bytes exceeds the maximum size of %s bytes.'), $_SERVER['CONTENT_LENGTH'], $post_max_size ) );
+	$Messages->add( T_('You have sent too much data (too many large files?) for the server to process. Please try again by sending less data/files at a time.').' '.get_manual_link( 'http-post-data-too-large' ) );
+	header_redirect( $_SERVER['HTTP_REFERER'] );
+	exit(0);
 }
 
 

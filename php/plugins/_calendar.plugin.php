@@ -30,7 +30,7 @@
  * @author hansreinders: Hans REINDERS
  * @author cafelog (team)
  *
- * @version $Id: _calendar.plugin.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _calendar.plugin.php 4159 2013-07-08 06:11:55Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -161,11 +161,14 @@ class calendar_plugin extends Plugin
 	 */
 	function SkinTag( $params )
 	{
+		// Prefix of the ItemList object
+		$itemlist_prefix = isset( $params['itemlist_prefix'] ) ? $params['itemlist_prefix'] : '';
+
 		global $month;
 		global $Blog, $cat_array, $cat_modifier;
 		global $show_statuses;
 		global $author, $assgn, $status, $types;
-		global $m, $w, $dstart;
+		global ${$itemlist_prefix.'m'}, $w, $dstart;
 		global $s, $sentence, $exact;
 		global $posttypes_specialtypes;
 
@@ -182,7 +185,7 @@ class calendar_plugin extends Plugin
 		if(!isset($params['title'])) $params['title'] = '';
 
 
-		$Calendar = new Calendar( $m, $params );
+		$Calendar = new Calendar( ${$itemlist_prefix.'m'}, $params );
 
 		// TODO: automate with a table inside of Calendatr object. Table should also contain descriptions and default values to display in help screen.
 		// Note: minbrowse and maxbrowe already work this way.
@@ -374,6 +377,12 @@ class Calendar
 	var $context_isolation;
 
 	var $params = array( );
+	
+	/**
+	 * Prefix of the ItemList object
+	 * @var string
+	 */
+	var $itemlist_prefix = '';
 
 	/**
 	 * Calendar::Calendar(-)
@@ -392,6 +401,11 @@ class Calendar
 		$this->dbtable = 'T_items__item';
 		$this->dbprefix = 'post_';
 		$this->dbIDname = 'post_ID';
+
+		if( isset( $params['itemlist_prefix'] ) )
+		{ // Set a prefix of the ItemList object
+			$this->itemlist_prefix = $params['itemlist_prefix'];
+		}
 
 		// OBJECT THAT WILL BE USED TO CONSTRUCT THE WHERE CLAUSE:
 		$this->ItemQuery = new ItemQuery( $this->dbtable, $this->dbprefix, $this->dbIDname );	// COPY!!
@@ -863,14 +877,14 @@ class Calendar
 	 */
 	function archive_link( $text, $title, $year, $month = NULL, $day = NULL )
 	{
-    /**
+		/**
 		 * @var Blog
 		 */
 		global $Blog;
 
 		if( $this->link_type == 'context' )
 		{	// We want to preserve context:
-			$url_params = 'm='.$year;
+			$url_params = $this->itemlist_prefix.'m='.$year;
 			if( !empty( $month ) )
 			{
 				$url_params .= zeroise($month,2);

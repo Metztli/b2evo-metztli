@@ -29,7 +29,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _file_upload.view.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _file_upload.view.php 4329 2013-07-19 16:29:49Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -104,35 +104,18 @@ global $fm_FileRoot;
 		var uploadfiles = document.getElementById("uploadfileinputs");
 		var newLI = document.createElement("li");
 		var closeLink = document.createElement("a");
-		var closeImage = document.createElement("img");
+		closeLink.innerHTML = '<?php echo get_icon( 'close' ); ?>';
+		var closeImage = jQuery( closeLink ).children( 'span' );
 
 		uploadfiles.appendChild( newLI );
 		newLI.appendChild( closeLink );
-		closeLink.appendChild( closeImage );
-
-
 		newLI.className = "clear";
 
-		closeImage.src = "<?php echo get_icon( 'close', 'url' ) ?>";
-		closeImage.alt = "<?php echo get_icon( 'close', 'alt' ) ?>";
-
 		<?php
-		$icon_class = get_icon( 'close', 'class' );
-		if( $icon_class )
-		{
-			?>
-			closeImage.className = '<?php echo $icon_class ?>';
-			<?php
-		}
-
 		if( get_icon( 'close', 'rollover' ) )
 		{ // handle rollover images ('close' by default is one).
 			?>
-			closeLink.className = 'rollover'; // dh> use "+=" to append class?
-			if( typeof setupRollovers == 'function' )
-			{
-				setupRollovers();
-			}
+			closeLink.className = 'rollover_sprite'; // dh> use "+=" to append class?
 			<?php
 		}
 		// add handler to image to close the parent LI and add css to float right.

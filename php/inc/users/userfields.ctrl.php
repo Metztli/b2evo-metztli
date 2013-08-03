@@ -27,7 +27,7 @@
  * @author evofactory-test
  * @author fplanque: Francois Planque.
  *
- * @version $Id: userfields.ctrl.php 3638 2013-05-02 05:35:05Z attila $
+ * @version $Id: userfields.ctrl.php 4395 2013-07-30 20:35:39Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -266,7 +266,7 @@ switch( $action )
 		if( $result !== false )
 		{ // Update was successful
 			$DB->commit();
-			$Messages->add( T_('Order is changed.'), 'success' );
+			$Messages->add( T_('Order has been changed.'), 'success' );
 		}
 		else
 		{ // Couldn't update successfully, probably because of concurrent modification

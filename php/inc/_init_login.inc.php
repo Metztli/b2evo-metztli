@@ -33,7 +33,7 @@
  *
  * @package evocore
  *
- * @version $Id: _init_login.inc.php 3668 2013-05-06 06:26:12Z attila $
+ * @version $Id: _init_login.inc.php 4110 2013-07-02 07:53:56Z yura $
  */
 if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page directly.' );
 
@@ -339,7 +339,7 @@ if( !empty($login_action) && empty( $login_error ) && ( $action != 'logout' ) )
 			}
 			else
 			{
-				$redirect_to = param( 'redirect_to', 'string', $baseurl );
+				$redirect_to = param( 'redirect_to', 'url', $baseurl );
 				if( preg_match( '#/login.php([&?].*)?$#', $redirect_to ) ||
 					preg_match( '#/register.php([&?].*)?$#', $redirect_to ) ||
 					preg_match( '#disp=(login|register|lostpassword)#', $redirect_to ) )
@@ -400,7 +400,7 @@ if( ! empty( $login_error ) )
 			// we will finally reach our intended destination. This is paramount with emails telling people to come back to the site
 			// to read a message or sth like that. They must log in first and they may enter teh wrong password multiple times.
 			// fp>attila: make sure you understand this.
-			param( 'redirect_to', 'string', $Blog->gen_blogurl() );
+			param( 'redirect_to', 'url', $Blog->gen_blogurl() );
 			$ads_current_skin_path = $skins_path.$skin.'/';
 			// Init charset handling:
 			init_charsets( $current_charset );

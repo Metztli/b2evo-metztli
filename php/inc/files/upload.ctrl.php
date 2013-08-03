@@ -27,7 +27,7 @@
  * @author fplanque: Francois PLANQUE.
  * (dh please re-add)
  *
- * @version $Id: upload.ctrl.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: upload.ctrl.php 4301 2013-07-18 10:46:49Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -51,6 +51,9 @@ global $item_ID, $iframe_name;
 $current_User->check_perm( 'files', 'add', true, $blog ? $blog : NULL );
 
 $AdminUI->set_path( 'files' );
+
+// Save the number of already existing error messages
+$initial_error_count = $Messages->count( 'error' );
 
 // Params that may need to be passed through:
 param( 'fm_mode', 'string', NULL, true );
@@ -176,7 +179,8 @@ file_controller_build_tabs();
 // If there were errors, display them and exit (especially in case there's no valid FileRoot ($fm_FileRoot)):
 // TODO: dh> this prevents users from uploading if _any_ blog media directory is not writable.
 //           See http://forums.b2evolution.net/viewtopic.php?p=49001#49001
-if( $Messages->has_errors() )
+// Exit only if new error messages were added in this file
+if( $Messages->count( 'error' ) > $initial_error_count )
 {
 	$AdminUI->set_path( 'files', 'upload', $tab3 );
 
@@ -214,7 +218,8 @@ if( ! $Settings->get('upload_enabled') )
 
 
 // If there were errors, display them and exit (especially in case there's no valid FileRoot ($fm_FileRoot)):
-if( $Messages->has_errors() )
+// Exit only if new error messages were added in this file
+if( $Messages->count( 'error' ) > $initial_error_count )
 {
 	$AdminUI->set_path( 'files', 'upload', $tab3 );
 

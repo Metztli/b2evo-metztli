@@ -22,7 +22,7 @@
  * @author efy-maxim: Evo Factory / Maxim.
  * @author fplanque: Francois Planque.
  *
- * @version $Id: upgrade.ctrl.php 3508 2013-04-19 06:58:02Z yura $
+ * @version $Id: upgrade.ctrl.php 4419 2013-08-02 10:59:11Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -56,7 +56,14 @@ check_upgrade_config( true );
 $AdminUI->breadcrumbpath_init( false );  // fp> I'm playing with the idea of keeping the current blog in the path here...
 $AdminUI->breadcrumbpath_add( T_('System'), '?ctrl=system' );
 $AdminUI->breadcrumbpath_add( T_('Maintenance'), '?ctrl=tools' );
-$AdminUI->breadcrumbpath_add( T_('Upgrade'), '?ctrl=upgrade' );
+if( $tab == 'svn' )
+{
+	$AdminUI->breadcrumbpath_add( T_('Upgrade from SVN'), '?ctrl=upgrade&amp;tab='.$tab );
+}
+else
+{
+	$AdminUI->breadcrumbpath_add( T_('Auto Upgrade'), '?ctrl=upgrade' );
+}
 
 
 // Display <html><head>...</head> section! (Note: should be done early if actions do not redirect)
@@ -70,6 +77,7 @@ $AdminUI->disp_payload_begin();
 echo '<h2 class="red">WARNING: EXPERIMENTAL FEATURE!</h2>';
 
 echo '<h3>Use for testing only at this point!</h3>';
+evo_flush();
 
 /**
  * Display payload:
@@ -82,7 +90,7 @@ switch( $action )
 		if( $tab == '' )
 		{
 			$block_item_Widget = new Widget( 'block_item' );
-			$block_item_Widget->title = T_('Updates from b2evolution.net');
+			$block_item_Widget->title = T_('Updates from b2evolution.net').get_manual_link( 'auto-upgrade' );
 			$block_item_Widget->disp_template_replaced( 'block_start' );
 
 			// Note: hopefully, the update will have been downloaded in the shutdown function of a previous page (including the login screen)
@@ -147,7 +155,7 @@ switch( $action )
 			// Set maximum execution time
 			set_max_execution_time( 1800 ); // 30 minutes
 
-			echo '<p>'.sprintf( T_( 'Downloading package to &laquo;<strong>%s</strong>&raquo;...' ), $upgrade_file ).'</p>';
+			echo '<p>'.sprintf( T_( 'Downloading package to &laquo;<strong>%s</strong>&raquo;...' ), $upgrade_file );
 			evo_flush();
 
 			// Downloading
@@ -155,16 +163,27 @@ switch( $action )
 
 			if( empty($file_contents) )
 			{
-				echo '<p style="color:red">'.sprintf( T_( 'Unable to download package from &laquo;%s&raquo;' ), $download_url ).'</p>';
-				evo_flush();
+				$success = false;
+				echo '</p><p style="color:red">'.sprintf( T_( 'Unable to download package from &laquo;%s&raquo;' ), $download_url ).'</p>';
 			}
 			elseif( ! save_to_file( $file_contents, $upgrade_file, 'w' ) )
-			{
-				echo '<p style="color:red">'.sprintf( T_( 'Unable to create &laquo;%s&raquo file;' ), $upgrade_file ).'</p>';
-				evo_flush();
+			{	// Impossible to save file...
+				$success = false;
+				echo '</p><p style="color:red">'.sprintf( T_( 'Unable to create file: &laquo;%s&raquo;' ), $upgrade_file ).'</p>';
 
-				@unlink( $upgrade_file );
+				if( file_exists( $upgrade_file ) )
+				{ // Remove file from disk
+					if( ! @unlink( $upgrade_file ) )
+					{
+						echo '<p style="color:red">'.sprintf( T_( 'Unable to remove file: &laquo;%s&raquo;' ), $upgrade_file ).'</p>';
+					}
+				}
 			}
+			else
+			{ // The package is downloaded successfully
+				echo ' OK.</p>';
+			}
+			evo_flush();
 		}
 
 	case 'unzip':
@@ -193,7 +212,7 @@ switch( $action )
 			// Set maximum execution time
 			set_max_execution_time( 1800 ); // 30 minutes
 
-			echo '<p>'.sprintf( T_( 'Unpacking package to &laquo;<strong>%s</strong>&raquo;...' ), $upgrade_path.$upgrade_name ).'</p>';
+			echo '<p>'.sprintf( T_( 'Unpacking package to &laquo;<strong>%s</strong>&raquo;...' ), $upgrade_path.$upgrade_name );
 			evo_flush();
 
 			// Unpack package
@@ -201,28 +220,37 @@ switch( $action )
 			{
 				global $debug;
 
+				echo ' OK.</p>';
+				evo_flush();
+
 				$new_version_status = check_version( $upgrade_name );
 				if( $debug == 0 && !empty( $new_version_status ) )
 				{
 					echo '<h4 style="color:red">'.$new_version_status.'</h4>';
+					evo_flush();
 					break;
 				}
 			}
 			else
 			{
+				echo '</p>';
 				// Additional check
 				@rmdir_r( $upgrade_path.$upgrade_name );
 			}
 		}
 
-		// Pause a process before upgrading
-		$action = 'install';
-		$AdminUI->disp_view( 'maintenance/views/_upgrade_continue.form.php' );
-		unset( $block_item_Widget );
+		if( $success )
+		{ // Pause a process before upgrading
+			$action = 'backup_and_overwrite';
+			$AdminUI->disp_view( 'maintenance/views/_upgrade_continue.form.php' );
+			unset( $block_item_Widget );
+		}
 		break;
 
-	case 'install':
-		// STEP 4: INSTALL.
+	case 'backup_and_overwrite':
+		// STEP 4: BACKUP AND OVERWRITE.
+	case 'backup_and_overwrite_svn':
+		// SVN STEP 2: BACKUP AND OVERWRITE.
 
 		if( $demo_mode )
 		{
@@ -233,17 +261,20 @@ switch( $action )
 		if( !isset( $block_item_Widget ) )
 		{
 			$block_item_Widget = new Widget( 'block_item' );
-			$block_item_Widget->title = T_('Installing package...');
+			$block_item_Widget->title = $action == 'backup_and_overwrite_svn'
+				? T_('Installing package from SVN...')
+				: T_('Installing package...');
 			$block_item_Widget->disp_template_replaced( 'block_start' );
 
 			$upgrade_name = param( 'upd_name', 'string', '', true );
-			$upgrade_file = $upgrade_path.$upgrade_name.'.zip';
 
 			$success = true;
 		}
 
 		// Enable maintenance mode
-		if( $success && switch_maintenance_mode( true, 'upgrade', T_( 'System upgrade is in progress. Please reload this page in a few minutes.' ) ) )
+		$success = ( $success && switch_maintenance_mode( true, 'upgrade', T_( 'System upgrade is in progress. Please reload this page in a few minutes.' ) ) );
+
+		if( $success )
 		{
 			// Set maximum execution time
 			set_max_execution_time( 1800 ); // 30 minutes
@@ -253,10 +284,15 @@ switch( $action )
 			evo_flush();
 
 			$read_only_list = array();
-			verify_overwrite( $upgrade_path.$upgrade_name.'/b2evolution/blogs', no_trailing_slash( $basepath ), 'Verifying', false, $read_only_list );
 
-			if( empty( $read_only_list ) )
-			{	// We can do backup files and database
+			$upgrade_folder_path = $action == 'backup_and_overwrite_svn'
+				? $upgrade_path.$upgrade_name
+				: $upgrade_path.$upgrade_name.'/b2evolution/blogs';
+
+			$success = verify_overwrite( $upgrade_folder_path, no_trailing_slash( $basepath ), 'Verifying', false, $read_only_list );
+
+			if( $success && empty( $read_only_list ) )
+			{ // We can backup files and database
 
 				// Load Backup class (PHP4) and backup all of the folders and files
 				load_class( 'maintenance/model/_backup.class.php', 'Backup' );
@@ -276,35 +312,31 @@ switch( $action )
 					echo '<h4>'.T_( 'Copying new folders and files...' ).'</h4>';
 					evo_flush();
 
-					verify_overwrite( $upgrade_path.$upgrade_name.'/b2evolution/blogs', no_trailing_slash( $basepath ), 'Copying', true, $read_only_list );
-
-					// Upgrade database using regular upgrader script
-					require_once( $install_path.'/_functions_install.php' );
-					require_once( $install_path.'/_functions_evoupgrade.php' );
-
-					echo '<h4>'.T_( 'Upgrading data in existing b2evolution database...' ).'</h4>';
-					evo_flush();
-
-					global $DB, $locale, $current_locale, $form_action;
-
-					$action = 'evoupgrade';
-					$form_action = 'install/index.php';
-					$locale = $current_locale;
-
-					$DB->begin();
-					if( $success = upgrade_b2evo_tables() )
-					{
-						$DB->commit();
-					}
-					else
-					{
-						$DB->rollback();
+					$success = verify_overwrite( $upgrade_folder_path, no_trailing_slash( $basepath ), 'Copying', true, $read_only_list );
+					if( ( ! $success ) || ( ! empty( $read_only_list ) ) )
+					{ // In case if something was changed before the previous verify_overwrite check
+						echo '<p style="color:red"><strong>'.T_( 'The files and database backup was created successfully but all folders and files could not be overwritten' );
+						if( empty( $read_only_list ) )
+						{ // There was some error in the verify_overwrite() function, but the corresponding error message was already displayed.
+							echo '.</strong></p>';
+						}
+						else
+						{ // Some file/folder could not be overwritten, display it
+							echo ':</strong></p>';
+							foreach( $read_only_list as $read_only_file )
+							{
+								echo $read_only_file.'<br/>';
+							}
+						}
+						echo '<p style="color:red"><strong>'.sprintf( T_('Please restore the backup files from the &laquo;%s&raquo; package. The database was not changed.'), $backup_path ).'</strong></p>';
+						evo_flush();
 					}
 				}
 			}
 			else
 			{
 				echo '<p style="color:red">'.T_( '<strong>The following folders and files can\'t be overwritten:</strong>' ).'</p>';
+				evo_flush();
 				foreach( $read_only_list as $read_only_file )
 				{
 					echo $read_only_file.'<br/>';
@@ -314,22 +346,17 @@ switch( $action )
 		}
 
 		if( $success )
-		{ // Remove folders and files after upgrade
-			remove_after_upgrade();
-		}
-
-		// Disable maintenance mode
-		switch_maintenance_mode( false, 'upgrade' );
-
-		if( $success )
-		{
-			echo '<h4 style="color:green">'.T_( 'Upgrade completed successfully!' ).'</h4>';
+		{ // Pause a process before upgrading, and display a link to the normal upgrade action
+			$upgrade_url = 'href="'.$baseurl.'install/index.php?action='.(( $action == 'backup_and_overwrite_svn' ) ? 'svn_upgrade' : 'auto_upgrade' ).'&locale='.$current_locale.'"';
+			echo '<p><b>'.T_('All new b2evolution files are in place. You will now be redirected to the installer to perform a DB upgrade.').'</b> '.T_('Note: the User Interface will look different.').'</p>';
+			echo '<p><b><span style="font-size:110%">'.sprintf( T_('<a %s>Click here to continue &raquo;</a>'), $upgrade_url ).'</span></b></p>';
+			unset( $block_item_Widget );
 		}
 		else
-		{
+		{ // Disable maintenance mode
+			switch_maintenance_mode( false, 'upgrade' );
 			echo '<h4 style="color:red">'.T_( 'Upgrade failed!' ).'</h4>';
 		}
-
 		break;
 
 	/****** UPGRADE FROM SVN *****/
@@ -358,28 +385,35 @@ switch( $action )
 		$UserSettings->set( 'svn_upgrade_revision', $svn_revision );
 		$UserSettings->dbupdate();
 
-		if( empty( $svn_url ) )
+		$success = param_check_not_empty( 'svn_url', T_('Please enter the URL of repository') );
+		$success = $success && param_check_regexp( 'svn_folder', '#/blogs/$#', T_('A correct SVN folder path must ends with "/blogs/') );
+
+		if( ! $success )
 		{
-			param_check_not_empty( 'svn_url', T_('Please enter the URL of repository') );
 			$action = 'start';
 			break;
 		}
 
-		if( $success = prepare_maintenance_dir( $upgrade_path, true ) )
+		$success = prepare_maintenance_dir( $upgrade_path, true );
+
+		if( $success )
 		{
 			// Set maximum execution time
-			set_max_execution_time( 1800 ); // 30 minutes
+			set_max_execution_time( 2400 ); // 60 minutes
 
 			load_class('_ext/phpsvnclient/phpsvnclient.php', 'phpsvnclient' );
 
 			$phpsvnclient = new phpsvnclient( $svn_url, $svn_user, $svn_password );
 
-			if( $phpsvnclient->getVersion() < 1 )
-			{ // Incorrect version
+			// Get an error if it was during connecting to svn server
+			$svn_error = $phpsvnclient->getError();
+
+			if( ! empty( $svn_error ) || $phpsvnclient->getVersion() < 1 )
+			{ // Some errors or Incorrect version
 				echo '<p class="red">'.T_( 'Unable to get a repository version, probably URL of repository is incorrect.' ).'</p>';
 				evo_flush();
 				$action = 'start';
-				break;
+				break; // Stop an upgrade from SVN
 			}
 
 			if( $svn_revision > 0 )
@@ -389,7 +423,7 @@ switch( $action )
 					echo '<p class="red">'.sprintf( T_( 'Please select a correct revision number. The latest revision is %s.' ), $phpsvnclient->getVersion() ).'</p>';
 					evo_flush();
 					$action = 'start';
-					break;
+					break; // Stop an upgrade from SVN
 				}
 				else
 				{ // Use only correct revision
@@ -427,187 +461,12 @@ switch( $action )
 			}
 		}
 
-		// Pause a process before upgrading
-		$action = 'install_svn';
-		$AdminUI->disp_view( 'maintenance/views/_upgrade_continue.form.php' );
-		unset( $block_item_Widget );
-		break;
-
-	case 'install_svn':
-		// SVN STEP 2: INSTALL.
-
-		if( $demo_mode )
-		{
-			echo('This feature is disabled on the demo server.');
-			break;
-		}
-
-		if( !isset( $block_item_Widget ) )
-		{
-			$block_item_Widget = new Widget( 'block_item' );
-			$block_item_Widget->title = T_('Installing package from SVN...');
-			$block_item_Widget->disp_template_replaced( 'block_start' );
-
-			$upgrade_name = param( 'upd_name', 'string', '', true );
-
-			$success = true;
-		}
-
-		// Enable maintenance mode
-		if( $success && switch_maintenance_mode( true, 'upgrade', T_( 'System upgrade is in progress. Please reload this page in a few minutes.' ) ) )
-		{
-			// Set maximum execution time
-			set_max_execution_time( 1800 ); // 30 minutes
-
-			// Verify that all destination files can be overwritten
-			echo '<h4>'.T_( 'Verifying that all destination files can be overwritten...' ).'</h4>';
-			evo_flush();
-
-			$read_only_list = array();
-			verify_overwrite( $upgrade_path.$upgrade_name, no_trailing_slash( $basepath ), 'Verifying', false, $read_only_list );
-
-			if( empty( $read_only_list ) )
-			{	// We can do backup files and database
-
-				// Load Backup class (PHP4) and backup all of the folders and files
-				load_class( 'maintenance/model/_backup.class.php', 'Backup' );
-				$Backup = new Backup();
-				$Backup->include_all();
-
-				if( !function_exists('gzopen') )
-				{
-					$Backup->pack_backup_files = false;
-				}
-
-				// Start backup
-				if( $success = $Backup->start_backup() )
-				{	// We can upgrade files and database
-
-					// Copying new folders and files
-					echo '<h4>'.T_( 'Copying new folders and files...' ).'</h4>';
-					evo_flush();
-
-					verify_overwrite( $upgrade_path.$upgrade_name, no_trailing_slash( $basepath ), 'Copying', true, $read_only_list );
-
-					// Upgrade database using regular upgrader script
-					require_once( $install_path.'/_functions_install.php' );
-					require_once( $install_path.'/_functions_evoupgrade.php' );
-
-					echo '<h4>'.T_( 'Upgrading data in existing b2evolution database...' ).'</h4>';
-					evo_flush();
-
-					global $DB, $locale, $current_locale, $form_action;
-
-					$action = 'evoupgrade';
-					$form_action = 'install/index.php';
-					$locale = $current_locale;
-
-					$DB->begin();
-					if( $success = upgrade_b2evo_tables() )
-					{
-						$DB->commit();
-					}
-					else
-					{
-						$DB->rollback();
-					}
-				}
-			}
-			else
-			{
-				echo '<p style="color:red">'.T_( '<strong>The following folders and files can\'t be overwritten:</strong>' ).'</p>';
-				foreach( $read_only_list as $read_only_file )
-				{
-					echo $read_only_file.'<br/>';
-				}
-				$success = false;
-			}
-		}
-
 		if( $success )
-		{ // Remove folders and files after upgrade
-			remove_after_upgrade();
+		{ // Pause a process before upgrading
+			$action = 'backup_and_overwrite_svn';
+			$AdminUI->disp_view( 'maintenance/views/_upgrade_continue.form.php' );
+			unset( $block_item_Widget );
 		}
-
-		// Disable maintenance mode
-		switch_maintenance_mode( false, 'upgrade' );
-
-		if( $success )
-		{
-			echo '<h4 style="color:green">'.T_( 'Upgrade completed successfully!' ).'</h4>';
-		}
-		else
-		{
-			echo '<h4 style="color:red">'.T_( 'Upgrade failed!' ).'</h4>';
-		}
-
-		break;
-
-	case 'continue_upgrade':
-		// CONTINUE the upgrade process
-
-		if( $demo_mode )
-		{
-			echo('This feature is disabled on the demo server.');
-			break;
-		}
-
-		if( !isset( $block_item_Widget ) )
-		{
-			$block_item_Widget = new Widget( 'block_item' );
-			$block_item_Widget->title = T_('Updating package...');
-			$block_item_Widget->disp_template_replaced( 'block_start' );
-
-			$success = true;
-		}
-
-		// Enable maintenance mode
-		if( $success )
-		{
-			// Set maximum execution time
-			set_max_execution_time( 1800 ); // 30 minutes
-
-			// Upgrade database using regular upgrader script
-			require_once( $install_path.'/_functions_install.php' );
-			require_once( $install_path.'/_functions_evoupgrade.php' );
-
-			echo '<h4>'.T_( 'Upgrading data in existing b2evolution database...' ).'</h4>';
-			evo_flush();
-
-			global $DB, $locale, $current_locale, $form_action;
-
-			$action = 'evoupgrade';
-			$form_action = 'install/index.php';
-			$locale = $current_locale;
-
-			$DB->begin();
-			if( $success = upgrade_b2evo_tables() )
-			{
-				$DB->commit();
-			}
-			else
-			{
-				$DB->rollback();
-			}
-		}
-
-		if( $success )
-		{ // Remove folders and files after upgrade
-			remove_after_upgrade();
-		}
-
-		// Disable maintenance mode
-		switch_maintenance_mode( false, 'upgrade' );
-
-		if( $success )
-		{
-			echo '<h4 style="color:green">'.T_( 'Upgrade completed successfully!' ).'</h4>';
-		}
-		else
-		{
-			echo '<h4 style="color:red">'.T_( 'Upgrade failed!' ).'</h4>';
-		}
-
 		break;
 }
 

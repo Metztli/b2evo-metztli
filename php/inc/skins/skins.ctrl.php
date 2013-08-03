@@ -17,7 +17,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: skins.ctrl.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: skins.ctrl.php 4110 2013-07-02 07:53:56Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -33,7 +33,7 @@ $current_User->check_perm( 'options', 'view', true );
 
 param( 'action', 'string', 'list' );
 
-param( 'redirect_to', 'string', '?ctrl=skins' );
+param( 'redirect_to', 'url', '?ctrl=skins' );
 
 if( param( 'skin_ID', 'integer', '', true) )
 {// Load file type:

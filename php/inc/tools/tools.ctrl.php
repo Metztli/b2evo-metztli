@@ -9,7 +9,7 @@
  * @package admin
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: tools.ctrl.php 3817 2013-05-27 08:47:00Z yura $
+ * @version $Id: tools.ctrl.php 4224 2013-07-15 13:21:18Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -262,6 +262,11 @@ if( empty($tab) )
 			$template_action = 'create_sample_messages';
 			break;
 
+		case 'test_flush':
+			// Execute a testing of flush inside template in order to see a process
+			$template_action = 'test_flush';
+			$template_title = T_('Log of test flush').get_manual_link( 'test-flush-tool' );
+			break;
 	}
 }
 $AdminUI->breadcrumbpath_init( false );  // fp> I'm playing with the idea of keeping the current blog in the path here...

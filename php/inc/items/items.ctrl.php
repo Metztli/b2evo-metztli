@@ -24,7 +24,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: items.ctrl.php 3552 2013-04-26 04:55:11Z yura $
+ * @version $Id: items.ctrl.php 4288 2013-07-18 05:47:13Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -92,7 +92,7 @@ switch( $action )
 		set_working_blog( $Blog->ID );
 
 		// Where are we going to redirect to?
-		param( 'redirect_to', 'string', url_add_param( $admin_url, 'ctrl=items&filter=restore&blog='.$Blog->ID.'&highlight='.$edited_Item->ID, '&' ) );
+		param( 'redirect_to', 'url', url_add_param( $admin_url, 'ctrl=items&filter=restore&blog='.$Blog->ID.'&highlight='.$edited_Item->ID, '&' ) );
 		break;
 
 	case 'mass_edit' :
@@ -118,7 +118,7 @@ switch( $action )
 		set_working_blog( $Blog->ID );
 
 		// Where are we going to redirect to?
-		param( 'redirect_to', 'string', url_add_param( $admin_url, 'ctrl=items&filter=restore&blog='.$Blog->ID.'&highlight='.$edited_Item->ID, '&' ) );
+		param( 'redirect_to', 'url', url_add_param( $admin_url, 'ctrl=items&filter=restore&blog='.$Blog->ID.'&highlight='.$edited_Item->ID, '&' ) );
 
 		// What form button has been pressed?
 		param( 'save', 'string', '' );
@@ -126,7 +126,7 @@ switch( $action )
 		break;
 
 	case 'mass_save' :
-		param( 'redirect_to', 'string', url_add_param( $admin_url, 'ctrl=items&filter=restore&blog=' . $Blog->ID, '&' ) );
+		param( 'redirect_to', 'url', url_add_param( $admin_url, 'ctrl=items&filter=restore&blog=' . $Blog->ID, '&' ) );
 		break;
 
 	case 'new' :
@@ -160,7 +160,7 @@ switch( $action )
 			}
 
 			// Where are we going to redirect to?
-			param( 'redirect_to', 'string', url_add_param( $admin_url, 'ctrl=items&filter=restore&blog='.$Blog->ID, '&' ) );
+			param( 'redirect_to', 'url', url_add_param( $admin_url, 'ctrl=items&filter=restore&blog='.$Blog->ID, '&' ) );
 
 			// What form buttton has been pressed?
 			param( 'save', 'string', '' );
@@ -241,16 +241,17 @@ switch( $action )
 			{
 				// checking if selected "same as above" category option
 				if ( $cat_Array[$fileNum]!='same' )
-				{
+				{ // Use a selected category ID
 					$edited_Item->set( 'main_cat_ID', $cat_Array[$fileNum] );
 				}
 				else
-				{
+				{ // Get a category ID from previous item
+					$cat_Array[$fileNum] = $cat_Array[$fileNum-1];
 					$edited_Item->set( 'main_cat_ID', $cat_Array[$fileNum-1] );
 				}
 			}
 			else
-			{
+			{ // Use default category ID if it was not selected on the form
 				$edited_Item->set( 'main_cat_ID', $Blog->get_default_cat_ID() );
 			}
 
@@ -335,6 +336,12 @@ switch( $action )
 		// pre_dump( $item_issue_date, $item_issue_time );
 	case 'new_switchtab': // this gets set as action by JS, when we switch tabs
 		// New post form  (can be a bookmarklet form if mode == bookmarklet )
+
+		// We don't check the following earlier, because we want the blog switching buttons to be available:
+		if( ! blog_has_cats( $blog ) )
+		{
+			break;
+		}
 
 		load_class( 'items/model/_item.class.php', 'Item' );
 		$edited_Item = new Item();
@@ -1234,7 +1241,13 @@ switch( $action )
 		// We don't check the following earlier, because we want the blog switching buttons to be available:
 		if( ! blog_has_cats( $blog ) )
 		{
-			$Messages->add( sprintf( T_('Since this blog has no categories, you cannot post into it. You must <a %s>create categories</a> first.'), 'href="'.$dispatcher.'?ctrl=chapters&amp;blog='.$blog.'"') , 'error' );
+			$error_message = T_('Since this blog has no categories, you cannot post into it.');
+			if( $current_User->check_perm( 'blog_cats', 'edit', false, $blog ) )
+			{ // If current user has a permission to create a category
+				global $admin_url;
+				$error_message .= ' '.sprintf( T_('You must <a %s>create categories</a> first.'), 'href="'.$admin_url.'?ctrl=chapters&amp;blog='.$blog.'"');
+			}
+			$Messages->add( $error_message, 'error' );
 			$action = 'nil';
 			break;
 		}
@@ -1292,7 +1305,13 @@ switch( $action )
 		// We don't check the following earlier, because we want the blog switching buttons to be available:
 		if( ! blog_has_cats( $blog ) )
 		{
-			$Messages->add( sprintf( T_('Since this blog has no categories, you cannot post into it. You must <a %s>create categories</a> first.'), 'href="'.$dispatcher.'?ctrl=chapters&amp;blog='.$blog.'"') , 'error' );
+			$error_message = T_('Since this blog has no categories, you cannot post into it.');
+			if( $current_User->check_perm( 'blog_cats', 'edit', false, $blog ) )
+			{ // If current user has a permission to create a category
+				global $admin_url;
+				$error_message .= ' '.sprintf( T_('You must <a %s>create categories</a> first.'), 'href="'.$admin_url.'?ctrl=chapters&amp;blog='.$blog.'"');
+			}
+			$Messages->add( $error_message, 'error' );
 			$action = 'nil';
 			break;
 		}

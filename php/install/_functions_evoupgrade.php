@@ -14,7 +14,7 @@
  *
  * @package install
  *
- * @version $Id: _functions_evoupgrade.php 3960 2013-06-07 08:54:26Z attila $
+ * @version $Id: _functions_evoupgrade.php 4419 2013-08-02 10:59:11Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -31,7 +31,7 @@ load_funcs('_core/_param.funcs.php');
  */
 function set_upgrade_checkpoint( $version )
 {
-	global $DB, $script_start_time, $locale;
+	global $DB, $script_start_time, $locale, $action;
 
 	echo "Creating DB schema version checkpoint at $version... ";
 
@@ -56,7 +56,8 @@ function set_upgrade_checkpoint( $version )
 	$max_exe_time = ini_get( 'max_execution_time' );
 	if( $max_exe_time && ( $elapsed_time > ( $max_exe_time - 20 ) ) )
 	{ // Max exe time not disabled and we're recahing the end
-		echo 'We are reaching the time limit for this script. Please click <a href="index.php?locale='.$locale.'&amp;action=evoupgrade">continue</a>...';
+		$upgrade_action = ( ( $action == 'svn_upgrade' ) || ( $action == 'auto_upgrade' ) ) ? $action : 'evoupgrade';
+		echo 'We are reaching the time limit for this script. Please click <a href="index.php?locale='.$locale.'&amp;action='.$upgrade_action.'">continue</a>...';
 		// Dirty temporary solution:
 		exit(0);
 	}
@@ -284,8 +285,10 @@ function convert_lang_to_locale( $table, $columnlang, $columnID )
 
 /**
  * upgrade_b2evo_tables(-)
+ *
+ * @param string the action param value corresponding the current upgrade process ( evoupgrade, svn_upgrade, auto_upgrade )
  */
-function upgrade_b2evo_tables()
+function upgrade_b2evo_tables( $upgrade_action = 'evoupgrade' )
 {
 	global $db_config, $tableprefix;
 	global $baseurl, $old_db_version, $new_db_version;
@@ -3729,8 +3732,8 @@ function upgrade_b2evo_tables()
 		set_upgrade_checkpoint( '10900' );
 	}
 
-	if( $old_db_version < 11000 )
-	{	// part 8 trunk aka first part of "i4"
+	if( $old_db_version < 10970 )
+	{	// part 8/a trunk aka first part of "i4"
 
 		global $db_storage_charset;
 
@@ -3794,6 +3797,12 @@ function upgrade_b2evo_tables()
 		$DB->query( "ALTER TABLE T_antispam__iprange CHANGE COLUMN aipr_user_count aipr_user_count int(10) unsigned DEFAULT 0" );
 		task_end();
 
+		set_upgrade_checkpoint( '10970' );
+	}
+
+	if( $old_db_version < 10975 )
+	{	// part 8/b trunk aka first part of "i4"
+
 		task_begin( 'Creating default antispam IP ranges... ' );
 		$DB->query( '
 			INSERT INTO T_antispam__iprange ( aipr_IPv4start, aipr_IPv4end, aipr_status )
@@ -3804,6 +3813,11 @@ function upgrade_b2evo_tables()
 			' );
 		task_end();
 
+		set_upgrade_checkpoint( '10975' );
+	}
+
+	if( $old_db_version < 11000 )
+	{	// part 8/c trunk aka first part of "i4"
 
 		task_begin( 'Adding new countries...' );
 		// IGNORE is needed for upgrades from DB version 9970 or later
@@ -4401,7 +4415,7 @@ function upgrade_b2evo_tables()
 		 * This part will be included in trunk and i5 branches
 		 */
 
-		//set_upgrade_checkpoint( '11100' );
+		set_upgrade_checkpoint( '11100' );
 	}
 
 	if( $old_db_version < 11110 )
@@ -4455,103 +4469,102 @@ function upgrade_b2evo_tables()
 		//set_upgrade_checkpoint( '11110' );
 	}
 
-	// Update modules own b2evo tables
-	echo "Calling modules for individual upgrades...<br>\n";
-	evo_flush();
-	modules_call_method( 'upgrade_b2evo_tables' );
+	// Execute general upgrade tasks.
+	// These tasks needs to be called after every upgrade process, except if they were already executed but the upgrade was not finished because of the max execution time check.
+	if( param( 'exec_general_tasks', 'boolean', 1 ) )
+	{	// We haven't executed these general tasks yet:
 
-	// Just in case, make sure the db schema version is up to date at the end.
-	if( $old_db_version != $new_db_version )
-	{ // Update DB schema version to $new_db_version
-		set_upgrade_checkpoint( $new_db_version );
-	}
+		// Update modules own b2evo tables
+		echo "Calling modules for individual upgrades...<br>\n";
+		evo_flush();
+		modules_call_method( 'upgrade_b2evo_tables' );
 
-	// We're going to need some environment in order to init caches and create profile picture links...
-	if( ! is_object( $Settings ) )
-	{ // create Settings object
-		load_class( 'settings/model/_generalsettings.class.php', 'GeneralSettings' );
-		$Settings = new GeneralSettings();
-	}
-	if( ! is_object( $Plugins ) )
-	{ // create Plugins object
-		load_class( 'plugins/model/_plugins.class.php', 'Plugins' );
-		$Plugins = new Plugins();
-	}
+		// Just in case, make sure the db schema version is up to date at the end.
+		if( $old_db_version != $new_db_version )
+		{ // Update DB schema version to $new_db_version
+			set_upgrade_checkpoint( $new_db_version );
+		}
 
-	// Init Caches: (it should be possible to do this with each upgrade)
-	task_begin( '(Re-)Initializing caches...' );
-	load_funcs('tools/model/_system.funcs.php');
-	if( system_init_caches() )
-	{ // cache was initialized successfully
-		// Check all cache folders if exist and work properly. Try to repair cache folders if they aren't ready for operation.
-		system_check_caches();
-	}
-	else
-	{
-		echo "<strong>".T_('The /cache folder could not be created/written to. b2evolution will still work but without caching, which will make it operate slower than optimal.')."</strong><br />\n";
-	}
-	task_end();
+		// We're going to need some environment in order to init caches and create profile picture links...
+		if( ! is_object( $Settings ) )
+		{ // create Settings object
+			load_class( 'settings/model/_generalsettings.class.php', 'GeneralSettings' );
+			$Settings = new GeneralSettings();
+		}
+		if( ! is_object( $Plugins ) )
+		{ // create Plugins object
+			load_class( 'plugins/model/_plugins.class.php', 'Plugins' );
+			$Plugins = new Plugins();
+		}
 
-	// Check if profile picture links should be recreated. It won't be executed in each upgrade, but only in those cases when it is required.
-	// This requires an up to date database, and also $Plugins and $GeneralSettings objects must be initialized before this.
-	// Note: Check $create_profile_picture_links intialization and usage above to get more information.
-	if( $create_profile_picture_links )
-	{ // Create links for all files from the users profile_pictures folder
-		task_begin( 'Creating profile picture links...' );
-		create_profile_picture_links();
-		task_end();
-	}
-
-	// Invalidate all page caches after every upgrade.
-	// A new version of b2evolution may not use the same links to access special pages.
-	// We want to play it safe here so that people don't think that upgrading broke their blog!
-	task_begin( 'Invalidating all page caches to make sure they don\'t contain old action links...' );
-	invalidate_pagecaches();
-	task_end();
-
-
-	// Reload plugins after every upgrade, to detect even those changes on plugins which didn't require db modifications
-	task_begin( 'Reloading installed plugins to make sure their config is up to date...' );
-	$Plugins_admin = & get_Plugins_admin();
-	$Plugins_admin->reload_plugins();
-	task_end();
-
-
-	// This has to be at the end because plugin install may fail if the DB schema is not current (matching Plugins class).
-	// Only new default plugins will be installed, based on $old_db_version.
-	// dh> NOTE: if this fails (e.g. fatal error in one of the plugins), it will not get repeated
-	task_begin( 'Installing new default plugins (if any)...' );
-	install_basic_plugins( $old_db_version );
-	task_end();
-
-
-	// Create default cron jobs (this can be done at each upgrade):
-	echo "Checking if some default cron jobs need to be installed...<br/>\n";
-	evo_flush();
-	require_once dirname(__FILE__).'/_functions_create.php';
-	create_default_jobs( true );
-
-
-	// "Time running low" test: Check if the upgrade script elapsed time is close to the max execution time.
-	// Note: This should not really happen except the case when many plugins must be installed.
-	task_begin( 'Checking timing of upgrade...' );
-	$elapsed_time = time() - $script_start_time;
-	$max_exe_time = ini_get( 'max_execution_time' );
-	if( $max_exe_time && ( $elapsed_time > ( $max_exe_time - 20 ) ) )
-	{ // Max exe time not disabled and we're recahing the end
-		if( is_admin_page() )
-		{ // URL to continue the upgrade process from backoffice
-			$upgrade_continue_url = $admin_url.'?ctrl=upgrade&amp;action=continue_upgrade';
+		// Init Caches: (it should be possible to do this with each upgrade)
+		task_begin( '(Re-)Initializing caches...' );
+		load_funcs('tools/model/_system.funcs.php');
+		if( system_init_caches() )
+		{ // cache was initialized successfully
+			// Check all cache folders if exist and work properly. Try to repair cache folders if they aren't ready for operation.
+			system_check_caches();
 		}
 		else
-		{ // URL to continue the upgrade process from install folder
-			$upgrade_continue_url = $baseurl.'install/index.php?locale='.$locale.'&amp;action=evoupgrade';
+		{
+			echo "<strong>".T_('The /cache folder could not be created/written to. b2evolution will still work but without caching, which will make it operate slower than optimal.')."</strong><br />\n";
 		}
-		echo 'We are reaching the time limit for this script. Please click <a href="'.$upgrade_continue_url.'">continue</a>...';
-		// Dirty temporary solution:
-		exit(0);
+		task_end();
+
+		// Check if profile picture links should be recreated. It won't be executed in each upgrade, but only in those cases when it is required.
+		// This requires an up to date database, and also $Plugins and $GeneralSettings objects must be initialized before this.
+		// Note: Check $create_profile_picture_links intialization and usage above to get more information.
+		if( $create_profile_picture_links )
+		{ // Create links for all files from the users profile_pictures folder
+			task_begin( 'Creating profile picture links...' );
+			create_profile_picture_links();
+			task_end();
+		}
+
+		// Invalidate all page caches after every upgrade.
+		// A new version of b2evolution may not use the same links to access special pages.
+		// We want to play it safe here so that people don't think that upgrading broke their blog!
+		task_begin( 'Invalidating all page caches to make sure they don\'t contain old action links...' );
+		invalidate_pagecaches();
+		task_end();
+
+
+		// Reload plugins after every upgrade, to detect even those changes on plugins which didn't require db modifications
+		task_begin( 'Reloading installed plugins to make sure their config is up to date...' );
+		$Plugins_admin = & get_Plugins_admin();
+		$Plugins_admin->reload_plugins();
+		task_end();
+
+
+		// This has to be at the end because plugin install may fail if the DB schema is not current (matching Plugins class).
+		// Only new default plugins will be installed, based on $old_db_version.
+		// dh> NOTE: if this fails (e.g. fatal error in one of the plugins), it will not get repeated
+		task_begin( 'Installing new default plugins (if any)...' );
+		install_basic_plugins( $old_db_version );
+		task_end();
+
+
+		// Create default cron jobs (this can be done at each upgrade):
+		echo "Checking if some default cron jobs need to be installed...<br/>\n";
+		evo_flush();
+		require_once dirname(__FILE__).'/_functions_create.php';
+		create_default_jobs( true );
+
+		// "Time running low" test: Check if the upgrade script elapsed time is close to the max execution time.
+		// Note: This should not really happen except the case when many plugins must be installed.
+		task_begin( 'Checking timing of upgrade...' );
+		$elapsed_time = time() - $script_start_time;
+		$max_exe_time = ini_get( 'max_execution_time' );
+		if( $max_exe_time && ( $elapsed_time > ( $max_exe_time - 20 ) ) )
+		{ // Max exe time not disabled and we're recahing the end
+			// URL to continue the upgrade process from install folder
+			$upgrade_continue_url = $baseurl.'install/index.php?locale='.$locale.'&amp;action='.$upgrade_action.'&amp;exec_general_tasks=0';
+			echo 'We are reaching the time limit for this script. Please click <a href="'.$upgrade_continue_url.'">continue</a>...';
+			// Dirty temporary solution:
+			exit(0);
+		}
+		task_end();
 	}
-	task_end();
 
 
 	/*

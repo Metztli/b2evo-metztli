@@ -3,7 +3,7 @@
 
 // by Edd Dumbill (C) 1999-2002
 // <edd@usefulinc.com>
-// $Id: _xmlrpcs.inc.php 3328 2013-03-26 11:44:11Z yura $
+// $Id: _xmlrpcs.inc.php 4148 2013-07-05 22:24:06Z fplanque $
 
 // Copyright (c) 1999,2000,2002 Edd Dumbill.
 // All rights reserved.
@@ -523,8 +523,12 @@ if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.'
 			// and compress responses sent to clients that support them
 			if(function_exists('gzinflate'))
 			{
-				$this->accepted_compression = array('gzip', 'deflate');
-				$this->compress_response = true;
+				if( version_compare( phpversion(), '5.4', '<' ) ||version_compare( phpversion(), '5.5', '>=' ) )
+ 				{ //fplanque: disabling this in PHP 5.4 because it bugs...
+ 					// Note: the task of compressing will fall back to Apache
+					$this->accepted_compression = array('gzip', 'deflate');
+					$this->compress_response = true;
+				}
 			}
 
 			// by default the xml parser can support these 3 charset encodings

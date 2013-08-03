@@ -21,7 +21,7 @@
  *
  * @package admin
  *
- * @version $Id: _stats_search_keywords.view.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _stats_search_keywords.view.php 4361 2013-07-24 06:22:58Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -171,7 +171,7 @@ else
 // Create result set:
 $Results = new Results( $sql, 'keywords_', $split_engines ? '--D' : '-D' , NULL, $sql_count );
 
-$Results->title = T_('Keyphrases');
+$Results->title = T_('Keyphrases').get_manual_link( 'search-keywords-list' );
 
 /**
  * Callback to add filters on top of the result set

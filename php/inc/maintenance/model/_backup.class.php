@@ -20,7 +20,7 @@
  * @author efy-maxim: Evo Factory / Maxim.
  * @author fplanque: Francois Planque.
  *
- * @version $Id: _backup.class.php 3508 2013-04-19 06:58:02Z yura $
+ * @version $Id: _backup.class.php 4326 2013-07-19 12:29:40Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -317,7 +317,7 @@ class Backup
 
 			foreach( $included_files as $included_file )
 			{
-				echo sprintf( T_( 'Backing up &laquo;<strong>%s</strong>&raquo; ...' ), $basepath.$included_file ).'<br/>';
+				echo sprintf( T_( 'Backing up &laquo;<strong>%s</strong>&raquo; ...' ), $basepath.$included_file );
 				evo_flush();
 
 				$file_list = $PclZip->add( no_trailing_slash( $basepath.$included_file ), PCLZIP_OPT_REMOVE_PATH, no_trailing_slash( $basepath ) );
@@ -327,6 +327,11 @@ class Backup
 					evo_flush();
 
 					return false;
+				}
+				else
+				{
+					echo ' OK.<br />';
+					evo_flush();
 				}
 			}
 		}
@@ -433,7 +438,7 @@ class Backup
 		foreach( $ready_to_backup as $table )
 		{
 			// progressive display of what backup is doing
-			echo sprintf( T_( 'Backing up table &laquo;<strong>%s</strong>&raquo; ...' ), $table ).'<br/>';
+			echo sprintf( T_( 'Backing up table &laquo;<strong>%s</strong>&raquo; ...' ), $table );
 			evo_flush();
 
 			$row_table_data = $DB->get_row( 'SHOW CREATE TABLE '.$table, ARRAY_N );
@@ -448,8 +453,8 @@ class Backup
 				{
 					$row[$index] = str_replace("\n","\\n", addslashes( $row[$index] ) );
 
-	            	if ( isset($row[$index]) )
-	            	{
+					if ( isset($row[$index]) )
+					{
 						$values .= '\''.$row[$index].'\'' ;
 					}
 					else
@@ -461,8 +466,8 @@ class Backup
 					{
 						$values .= ',';
 					}
-	            }
-	            $values_list[] = $values.')';
+				}
+				$values_list[] = $values.')';
 			}
 
 			if( !empty( $values_list ) )
@@ -473,7 +478,12 @@ class Backup
 			unset( $values_list );
 
 			// Flush the output to a file
-			fflush( $f );
+			if( fflush( $f ) )
+			{
+				echo ' OK.';
+			}
+			echo '<br />';
+			evo_flush();
 		}
 
 		// Close backup file input stream
@@ -516,8 +526,14 @@ class Backup
 	{
 		if( is_dir( $src ) )
 		{
-			$dir = opendir( $src );
-			@mkdir( $dest );
+			if( ! ( $dir = opendir( $src ) ) )
+			{
+				return false;
+			}
+			if( ! evo_mkdir( $dest ) )
+			{
+				return false;
+			}
 			while( false !== ( $file = readdir( $dir ) ) )
 			{
 				if ( ( $file != '.' ) && ( $file != '..' ) )

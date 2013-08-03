@@ -30,7 +30,7 @@
  *
  * @package evocore
  *
- * @version $Id: _blog.class.php 4058 2013-06-26 06:23:03Z attila $
+ * @version $Id: _blog.class.php 4326 2013-07-19 12:29:40Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -1561,7 +1561,7 @@ class Blog extends DataObject
 				}
 				return false;
 			}
-			elseif( !@mkdir( $mediadir ) )
+			elseif( ! evo_mkdir( $mediadir ) )
 			{ // add error
 				if( is_admin_page() )
 				{
@@ -1571,12 +1571,7 @@ class Blog extends DataObject
 				return false;
 			}
 			else
-			{ // chmod and add note:
-				$chmod = $Settings->get('fm_default_chmod_dir');
-				if( !empty($chmod) )
-				{
-					@chmod( $mediadir, octdec($chmod) );
-				}
+			{ // add note:
 				if( is_admin_page() )
 				{
 					$Messages->add( sprintf( T_("The blog's media directory &laquo;%s&raquo; has been created with permissions %s."), $msg_mediadir_path, substr( sprintf('%o', fileperms($mediadir)), -3 ) ), 'success' );

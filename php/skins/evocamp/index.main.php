@@ -11,7 +11,7 @@
  * @package evoskins
  * @subpackage evocamp
  *
- * @version $Id: index.main.php 3157 2013-03-06 04:34:44Z fplanque $
+ * @version $Id: index.main.php 4275 2013-07-17 10:52:24Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -82,6 +82,7 @@ skin_include( '_body_header.inc.php' );
 	<?php
 		// -------------- MAIN CONTENT TEMPLATE INCLUDED HERE (Based on $disp) --------------
 		skin_include( '$disp$', array(
+				'author_link_text' => 'preferredname',
 			) );
 		// Note: you can customize any of the sub templates included here by
 		// copying the matching php file into your skin directory.

@@ -14,7 +14,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author efy-asimo: Attila Simo.
  *
- * @version $Id: quick_upload.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: quick_upload.php 4219 2013-07-15 10:10:19Z attila $
  */
 
 
@@ -241,6 +241,9 @@ if( $upload )
 
 		// save file into the db
 		$newFile->dbsave();
+
+		// Prepare the uploaded file to the final format ( E.g. Resize and Rotate images )
+		prepare_uploaded_files( array( $newFile ) );
 
 		$message = '';
 		if( ! empty($oldFile_thumb) )

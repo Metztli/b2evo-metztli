@@ -18,7 +18,7 @@
  *
  * @todo Allow applying / re-checking of the known data, not just after an update!
  *
- * @version $Id: _antispam_ban.form.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _antispam_ban.form.php 4110 2013-07-02 07:53:56Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -29,7 +29,7 @@ global $row_stats;	// for hit functions
 
 $Form = new Form( NULL, 'antispam_ban', 'post', 'compact' );
 
-$redirect_to = param( 'redirect_to', 'string', NULL );
+$redirect_to = param( 'redirect_to', 'url', NULL );
 if( $redirect_to == NULL )
 {
 	$redirect_to = regenerate_url( 'action' );

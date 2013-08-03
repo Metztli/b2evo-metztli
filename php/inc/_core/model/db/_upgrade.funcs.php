@@ -26,7 +26,7 @@
  * @author blueyed: Daniel HAHLER
  * @author Wordpress team
  *
- * @version $Id: _upgrade.funcs.php 3508 2013-04-19 06:58:02Z yura $
+ * @version $Id: _upgrade.funcs.php 4268 2013-07-17 06:21:41Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -182,7 +182,7 @@ function db_delta( $queries, $exclude_types = array(), $execute = false )
 		 * @global array Column field names of PRIMARY KEY, lowercased (if any)
 		 */
 		$primary_key_fields = array();
-		
+
 		/**
 		 * @global array Column field names of FOREIGN KEY, lowercased (if any)
 		 */
@@ -1224,7 +1224,7 @@ function db_delta_remove_quotes($fieldname, $quotes = '`"')
 
 /**
  * Get the delta queries between existing foreign key values and new foreign key values in the given table
- * 
+ *
  * @param array foreign key lines from the install script Create Table commands
  * @param string the processed table name
  * @param boolean set to false to not process the required queries without asking the user consent
@@ -1366,7 +1366,7 @@ function db_delta_foreign_keys( $foreign_key_fields, $table, $silent = true, $ac
 
 /**
  * Get/Process the delta queries between existing and required table engines. This function is used for Foreign Key update.
- * 
+ *
  * @param array tableName => expectedEngine values
  * @param booelan set to true to process the required DB queries, false to return the requested queries
  * @result array|NULL the delta queries if there are any or empty array if the required db queries have been processed or if there are no difference between tables engine
@@ -1504,10 +1504,13 @@ function is_in_quote( $subject, $needle )
 		return false;
 	}
 
-	$quote_count = substr_count( $subject, "'", 0, $length );
+	// We need a to create a substring because substr_count() $offset and $length params were added in PHP 5.1.0
+	$subject_before_needle = substr( $subject, 0, $length );
+	// Search quotes in the first part of the original subject, before the $needle position
+	$quote_count = substr_count( $subject_before_needle, "'" );
 	if( $quote_count > 0 )
 	{
-		$quote_count = $quote_count - substr_count( $subject, "\'", 0, $length );
+		$quote_count = $quote_count - substr_count( $subject_before_needle, "\'" );
 	}
 	return ( $quote_count % 2 );
 }
@@ -1532,7 +1535,7 @@ function has_open_quote( $subject )
 
 /**
  * Remove any comments from the SQL query
- * 
+ *
  * @param string query
  * @return string the same query without comments
  */
@@ -1583,7 +1586,7 @@ function remove_comments_from_query( $query )
 
 /**
  * Get all lines from a create table query
- * 
+ *
  * @param string the query
  * @return array field lines
  */
@@ -1643,7 +1646,7 @@ function get_fieldlines_from_query( $query )
 
 /**
  * Get engine type from a Create Table query
- * 
+ *
  * @param string the query
  * @return mixed false if ENGINE is not given in the query, the ENGINE type otherwise
  */
@@ -1653,7 +1656,7 @@ function get_engine_from_query( $query )
 	{
 		return $match[1];
 	}
-	return false;	
+	return false;
 }
 
 ?>

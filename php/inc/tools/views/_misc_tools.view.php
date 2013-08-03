@@ -16,7 +16,7 @@
  * @author blueyed: Daniel HAHLER
  * @author efy-asimo: Attila Simo.
  *
- * @version $Id: _misc_tools.view.php 3622 2013-04-30 15:53:51Z yura $
+ * @version $Id: _misc_tools.view.php 4336 2013-07-22 06:09:24Z yura $
  */
 
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -71,7 +71,7 @@ if( $current_User->check_perm( 'users', 'edit' ) )
 	$Form->hidden( 'ctrl', 'gensettings' );
 	$Form->hidden( 'action', 'update_tools' );
 
-	$Form->begin_fieldset( T_('Locking down b2evolution for maintenance, upgrade or server switching...') );
+	$Form->begin_fieldset( T_('Locking down b2evolution for maintenance, upgrade or server switching...').get_manual_link('system-lock') );
 
 		$Form->checkbox_input( 'system_lock', $Settings->get('system_lock'), T_('Lock system'), array(
 				'note' => T_('check this to prevent login (except for admins) and sending comments/messages. This prevents the DB from receiving updates (other than logging)').'<br />'.

@@ -870,7 +870,7 @@ class collections_Module extends Module
 				// Unlink a file from a LinkOwner ( Item, Comment ) object, and delete that file if it's not linked to any other object
 
 				$link_ID = param( 'link_ID', 'integer', true );
-				$redirect_to = param( 'redirect_to', 'string', '' );
+				$redirect_to = param( 'redirect_to', 'url', '' );
 				$LinkCache = & get_LinkCache();
 				$edited_Link = & $LinkCache->get_by_ID( $link_ID, false );
 

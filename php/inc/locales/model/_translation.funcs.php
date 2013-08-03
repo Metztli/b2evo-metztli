@@ -216,11 +216,11 @@ function translation_generate_po_file( $locale )
 	{
 		if( !file_exists( $locales_path.$locales[$locale]['messages'] ) )
 		{
-			@mkdir( $locales_path.$locales[$locale]['messages'] );
+			evo_mkdir( $locales_path.$locales[$locale]['messages'] );
 		}
 		if( !file_exists( $locales_path.$locales[$locale]['messages'].'/LC_MESSAGES' ) )
 		{
-			@mkdir( $locales_path.$locales[$locale]['messages'].'/LC_MESSAGES' );
+			evo_mkdir( $locales_path.$locales[$locale]['messages'].'/LC_MESSAGES' );
 		}
 	}
 

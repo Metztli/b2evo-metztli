@@ -113,7 +113,7 @@ switch( $action )
 			forget_param( 'msg_ID' );
 			$Messages->add( $msg, 'success' );
 			// Redirect so that a reload doesn't write to the DB twice:
-			$redirect_to = param( 'redirect_to', 'string', '?ctrl=threads' );
+			$redirect_to = param( 'redirect_to', 'url', '?ctrl=threads' );
 			header_redirect( $redirect_to, 303 ); // Will EXIT
 			// We have EXITed already at this point!!
 		}

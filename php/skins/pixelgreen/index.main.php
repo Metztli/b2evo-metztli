@@ -11,7 +11,7 @@
  * @package evoskins
  * @subpackage pixelgreen
  *
- * @version $Id: index.main.php 3780 2013-05-22 15:16:40Z yura $
+ * @version $Id: index.main.php 4275 2013-07-17 10:52:24Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -174,10 +174,11 @@ skin_include( '_html_header.inc.php' );
 				// -------------- MAIN CONTENT TEMPLATE INCLUDED HERE (Based on $disp) --------------
 				//skin_include( '$disp$', array() );
 				skin_include( '$disp$', array(
-					'disp_posts'  => '',            // We already handled this case above
-					'disp_single' => '',            // We already handled this case above
-					'disp_page'   => '',            // We already handled this case above
-                       ) );
+					'disp_posts'  => '', // We already handled this case above
+					'disp_single' => '', // We already handled this case above
+					'disp_page'   => '', // We already handled this case above
+					'author_link_text' => 'preferredname',
+				) );
 				// Note: you can customize any of the sub templates included here by
 				// copying the matching php file into your skin directory.
 				// ------------------------- END OF MAIN CONTENT TEMPLATE ---------------------------

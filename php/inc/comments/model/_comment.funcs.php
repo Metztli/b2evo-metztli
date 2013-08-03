@@ -25,7 +25,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _comment.funcs.php 3947 2013-06-06 10:20:38Z yura $
+ * @version $Id: _comment.funcs.php 4275 2013-07-17 10:52:24Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -637,6 +637,7 @@ function display_comment_replies( $comment_ID, $params = array(), $level = 1 )
 			'comment_error_start' => '<div class="bComment" id="comment_error">',
 			'comment_error_end'   => '</div>',
 			'link_to'             => 'userurl>userpage', // 'userpage' or 'userurl' or 'userurl>userpage' or 'userpage>userurl'
+			'author_link_text'    => 'login', // avatar | only_avatar | login | nickname | firstname | lastname | fullname | preferredname
 		), $params );
 
 	if( isset( $CommentReplies[ $comment_ID ] ) )
@@ -646,10 +647,11 @@ function display_comment_replies( $comment_ID, $params = array(), $level = 1 )
 			if( !empty( $Comment->ID ) )
 			{	// Comment from DB
 				skin_include( $params['comment_template'], array(
-						'Comment'         => & $Comment,
-					  'comment_start'   => str_replace( '>', ' style="margin-left:'.( 20 * $level ).'px">', $params['comment_start'] ),
-					  'comment_end'     => $params['comment_end'],
-						'link_to'         => $params['link_to'],		// 'userpage' or 'userurl' or 'userurl>userpage' or 'userpage>userurl'
+						'Comment'          => & $Comment,
+						'comment_start'    => str_replace( '>', ' style="margin-left:'.( 20 * $level ).'px">', $params['comment_start'] ),
+						'comment_end'      => $params['comment_end'],
+						'link_to'          => $params['link_to'],		// 'userpage' or 'userurl' or 'userurl>userpage' or 'userpage>userurl'
+						'author_link_text' => $params['author_link_text'],
 					) );
 			}
 			else
@@ -660,6 +662,7 @@ function display_comment_replies( $comment_ID, $params = array(), $level = 1 )
 						'comment_start'        => str_replace( '>', ' style="margin-left:'.( 20 * $level ).'px">', $Comment->email_is_detected ? $params['comment_error_start'] : $params['preview_start'] ),
 						'comment_end'          => $Comment->email_is_detected ? $params['comment_error_end'] : $params['preview_end'],
 						'comment_block_end'    => $Comment->email_is_detected ? '' : $params['preview_block_end'],
+						'author_link_text'     => $params['author_link_text'],
 					) );
 
 			}

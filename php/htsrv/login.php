@@ -29,7 +29,7 @@
  *
  * @package htsrv
  *
- * @version $Id: login.php 4009 2013-06-13 07:23:14Z yura $
+ * @version $Id: login.php 4110 2013-07-02 07:53:56Z yura $
  */
 
 /**
@@ -48,7 +48,7 @@ if( $inskin )
 }
 
 // gets used by header_redirect();
-param( 'redirect_to', 'string', $ReqURI );
+param( 'redirect_to', 'url', $ReqURI );
 
 switch( $action )
 {

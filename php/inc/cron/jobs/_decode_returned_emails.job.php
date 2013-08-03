@@ -55,6 +55,11 @@ load_funcs( '_core/_param.funcs.php' );
 load_class( '_ext/mime_parser/rfc822_addresses.php', 'rfc822_addresses_class' );
 load_class( '_ext/mime_parser/mime_parser.php', 'mime_parser_class' );
 
+if( isset($GLOBALS['files_Module']) )
+{
+	load_funcs( 'files/model/_file.funcs.php');
+}
+
 if( ! $mbox = dre_connect() )
 {	// We couldn't connect to the mail server
 	return 2; // error

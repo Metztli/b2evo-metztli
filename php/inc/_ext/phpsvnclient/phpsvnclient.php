@@ -160,7 +160,7 @@ class phpsvnclient {
         foreach ($dirs as $dir) {
             if ($dir != "") {
                 $createDir = substr($path, 0, strpos($path, $dir) + strlen($dir));
-                @mkdir($createDir);
+                evo_mkdir($createDir);
             }
         }
     }
@@ -226,7 +226,7 @@ class phpsvnclient {
             return false;
         }
         if (!file_exists($outPath)) {
-            mkdir($outPath, 0777, TRUE);
+            evo_mkdir( $outPath, NULL, TRUE );
         }
         if( $display_progress )
         {
@@ -242,7 +242,7 @@ class phpsvnclient {
                 echo "Current status: <font color='blue'>Directory: " . $createPath . "</font><br /> \r\n";
                 $this->logging("Current status: <font color='blue'>Directory: " . $createPath . "</font><br /> \r\n");
                 evo_flush();
-                mkdir($createPath);
+                evo_mkdir( $createPath );
             } elseif ($file['type'] == 'file') {
 
                 $outText = '';
@@ -554,7 +554,10 @@ class phpsvnclient {
                 continue;
 
             if ($array['type'] == 'directory') {
-                $walk = $this->getDirectoryFiles($array['path'], $version);
+                if( ! ( $walk = $this->getDirectoryFiles($array['path'], $version) ) )
+                {
+                    return false;
+                }
                 array_shift($walk);
 
                 foreach ($walk as $step) {
@@ -1124,6 +1127,20 @@ class phpsvnclient {
         }
     }
 
+	/**
+	 * Get an error of HTTP request
+	 *
+	 * @return string Error text
+	 */
+	public function getError()
+	{
+		if( ! empty( $this->_http ) && ! empty( $this->_http->error ) )
+		{
+			return $this->_http->error;
+		}
+
+		return '';
+	}
 }
 
 ?>

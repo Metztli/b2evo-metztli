@@ -30,7 +30,7 @@
  *
  * @package evocore
  *
- * @version $Id: _misc.funcs.php 4096 2013-06-28 10:39:15Z attila $
+ * @version $Id: _misc.funcs.php 4317 2013-07-19 08:04:11Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -48,10 +48,16 @@ load_funcs('files/model/_file.funcs.php');
 
 /**
  * Call a method for all modules in a row
+ *
+ * @param string the name of the method which should be called
+ * @param array params
+ * @return array[module_name][return value], or NULL if the method doesn't have any return value
  */
 function modules_call_method( $method_name, $params = NULL )
 {
 	global $modules;
+
+	$result = NULL;
 
 	foreach( $modules as $module )
 	{
@@ -64,9 +70,13 @@ function modules_call_method( $method_name, $params = NULL )
 		{
 			$ret = $Module->{$method_name}( $params );
 		}
+		if( isset( $ret ) )
+		{
+			$result[$module] = $ret;
+		}
 	}
 
-	return $ret;
+	return $result;
 }
 
 
@@ -1972,7 +1982,19 @@ function xmlrpc_displayresult( $result, $display = true, $log = '' )
 		$out = '';
 		foreach($value as $l_value)
 		{
-			$out .= ' ['.$l_value.'] ';
+			if( is_array( $l_value ) )
+			{
+				$out .= ' [';
+				foreach( $l_value as $lv_key => $lv_val )
+				{
+					$out .= $lv_key.' => '.( is_array( $lv_val ) ? '{'.implode( '; ', $lv_val ).'}' : $lv_val ).'; ';
+				}
+				$out .= '] ';
+			}
+			else
+			{
+				$out .= ' ['.$l_value.'] ';
+			}
 		}
 	}
 	else
@@ -3243,7 +3265,7 @@ function send_mail( $to, $to_name, $subject, $message, $from = NULL, $from_name 
 		{
 			mail_log( $user_ID, $to_email_address, $clear_subject, $message, $headerstring, 'error' );
 
-			debug_die( 'Sending mail from &laquo;'.htmlspecialchars($from).'&raquo; to &laquo;'.htmlspecialchars($to).'&raquo;, Subject &laquo;'.htmlspecialchars($subject).'&raquo; FAILED.', 'error' );
+			debug_die( 'Sending mail from &laquo;'.htmlspecialchars($from).'&raquo; to &laquo;'.htmlspecialchars($to).'&raquo;, Subject &laquo;'.htmlspecialchars($subject).'&raquo; FAILED.' );
 		}
 	}
 	else
@@ -5270,7 +5292,9 @@ function get_secure_htsrv_url()
 
 /**
  * Set max execution time
+ *
  * @param integer seconds
+ * @return string the old value on success, false on failure.
  */
 function set_max_execution_time( $seconds )
 {
@@ -5278,7 +5302,7 @@ function set_max_execution_time( $seconds )
 	{
 		set_time_limit( $seconds );
 	}
-	@ini_set( 'max_execution_time', $seconds );
+	return @ini_set( 'max_execution_time', $seconds );
 }
 
 
@@ -5603,6 +5627,53 @@ function int2ip( $int )
 
 
 /**
+ * Check if the given string is a valid IPv4 or IPv6 address value
+ *
+ * @param string IP
+ * @return boolean true if valid, false otherwise
+ */
+function is_valid_ip_format( $ip )
+{
+	if( function_exists( 'filter_var' ) )
+	{ // filter_var() function exists we have PHP version >= 5.2.0
+		return filter_var( $ip, FILTER_VALIDATE_IP ) !== false;
+	}
+
+	// PHP version is < 5.2.0
+	if( $ip == '::1' )
+	{	// Reserved IP for localhost
+		$ip = '127.0.0.1';
+	}
+
+	if( strpos( $ip, '.' ) !== false )
+	{ // we have IPv4
+		if( strpos( $ip, ':' !== false ) )
+		{ // It is combined with IPv6, remove the IPv6 prefix
+			$ip = substr( $ip, strrpos( $ip, ':' ) );
+		}
+		if( substr_count( $ip, '.' ) != 3 )
+		{ // Don't vaildate formats like 'zz.yyyyy' which would be allowed by ip2long() function
+			return false;
+		}
+		$result = ip2long( $ip );
+		return ( ( $result !== false ) && ( $result !== -1 ) );
+	}
+
+	// Check if it is a valid IPv6 string
+	if( preg_match( "/^[0-9a-f]{1,4}:([0-9a-f]{0,4}:){1,6}[0-9a-f]{1,4}$/", $ip ) )
+	{ // $ip has the correct format
+		if( ( substr_count( $ip, '::' ) > 1 ) || ( strpos( $ip, ':::' ) !== false ) )
+		{ // Not valid IPv6 format because contains a ':::' char sequence or more than one '::'
+			return false;
+		}
+		return true;
+	}
+
+	return false;
+}
+
+
+/**
  * Convert IP address to integer (get only 32bits of IPv6 address)
  *
  * @param string IP address
@@ -5610,8 +5681,8 @@ function int2ip( $int )
  */
 function ip2int( $ip )
 {
-	if( filter_var( $ip, FILTER_VALIDATE_IP ) === false )
-	{	// IP format is incorrect
+	if( ! is_valid_ip_format( $ip ) )
+	{ // IP format is incorrect
 		return 0;
 	}
 
@@ -5621,22 +5692,16 @@ function ip2int( $ip )
 	}
 
 	$parts = unpack( 'N*', inet_pton( $ip ) );
+	// In case of IPv6 return only a parts of it
+	$result = ( strpos( $ip, '.' ) !== false ) ? $parts[1] /* IPv4*/ : $parts[4] /* IPv6*/;
 
-	if( strpos( $ip, '.' ) !== false )
-	{	// fix IPv4
-		$parts = array( 1 => 0, 2 => 0, 3 => 0, 4 => $parts[1] );
-	}
-	foreach( $parts as &$part )
-	{	// convert any unsigned ints to signed from unpack.
+	if( $result < 0 )
+	{ // convert unsigned int to signed from unpack.
 		// this should be OK as it will be a PHP float not an int
-		if( $part < 0 )
-		{
-			$part += 4294967296;
-		}
+		$result += 4294967296;
 	}
 
-	// Return only small range of IPv6
-	return $parts[4];
+	return $result;
 }
 
 

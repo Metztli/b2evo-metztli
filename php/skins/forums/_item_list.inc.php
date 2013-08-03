@@ -94,16 +94,17 @@ elseif( $comments_number > 25 )
 					echo $comments_number;
 				}
 			?></td>
-			<td class="row3 font11"><?php $Item->author(); ?></td>
+			<td class="row3 font11"><?php $Item->author( array( 'link_text' => 'login' ) ); ?></td>
 			<td class="row2 font10"><?php
 				if( $latest_Comment = & $Item->get_latest_Comment() )
 				{	// Display info about last comment
 					$latest_Comment->date('D M j, Y H:i');
 					$latest_Comment->author2( array(
-							'before' => '<br />',
+							'before'      => '<br />',
 							'before_user' => '<br />',
-							'after' => ' ',
-							'after_user' => ' ',
+							'after'       => ' ',
+							'after_user'  => ' ',
+							'link_text'   => 'login'
 						) );
 
 					echo ' <a href="'.$latest_Comment->get_permanent_url().'"><span class="ficon latestReply" title="'.T_('View latest post').'"></span></a>';
@@ -112,7 +113,8 @@ elseif( $comments_number > 25 )
 				{	// No comments, Display info of post
 					echo $Item->get_mod_date( 'D M j, Y H:i' );
 					echo $Item->author( array(
-							'before' => '<br />',
+							'before'    => '<br />',
+							'link_text' => 'login',
 						) );
 					echo '<a href="'.$Item->get_permanent_url().'"><span class="ficon latestReply" title="'.T_('View latest post').'"></span></a>';
 				}

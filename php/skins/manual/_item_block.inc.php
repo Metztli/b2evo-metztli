@@ -97,12 +97,14 @@ if( ( $disp == 'single' ) && empty( $cat ) )
 
 		echo '<p class="notes">';
 		$Item->author( array(
-				'before' => T_('Created by '),
-				'after'  => ' &bull; ',
+				'before'    => T_('Created by '),
+				'after'     => ' &bull; ',
+				'link_text' => 'login',
 			) );
 		$Item->lastedit_user( array(
-				'before' => T_('Last edit by '),
-				'after'  => T_(' on ').$Item->get_mod_date( 'F jS, Y' ),
+				'before'    => T_('Last edit by '),
+				'after'     => T_(' on ').$Item->get_mod_date( 'F jS, Y' ),
+				'link_text' => 'login',
 			) );
 		'</p>';
 		if( is_logged_in() && $current_User->check_perm( 'item_post!CURSTATUS', 'edit', false, $Item ) )

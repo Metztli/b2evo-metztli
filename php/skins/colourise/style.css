@@ -902,3 +902,10 @@ div.tabs div.selected a {
 	border-bottom-color: #070707;
 	color: #FFF;
 }
+
+table.bubbletip td, table.bubbletip th, table.bubbletip table {
+	padding: 0;
+	margin: 0;
+	border: none;
+	vertical-align: top;
+}

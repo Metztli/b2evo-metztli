@@ -35,14 +35,15 @@ $params = array_merge( array(
 	<div class="date">
 	<?php
 		$Item->author( array(
-		'before'    => '<em class="user">',
-		'after'     => '</em><br />',
-				) );
+				'before'    => '<em class="user">',
+				'after'     => '</em><br />',
+				'link_text' => 'preferredname',
+			) );
 
 		$Item->issue_date( array(
 				'before'    => '<em class="bPostdate">',
 				'after'     => '</em>',
-			));
+			) );
 	?>
 	</div>
 	<h2 class="bTitle"><?php
@@ -130,6 +131,7 @@ $params = array_merge( array(
 		skin_include( '_item_feedback.inc.php', array(
 				'before_section_title' => '<h3>',
 				'after_section_title'  => '</h3>',
+				'author_link_text'     => 'preferredname',
 			) );
 		// Note: You can customize the default item feedback by copying the generic
 		// /skins/_item_feedback.inc.php file into the current skin folder.

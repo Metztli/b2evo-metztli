@@ -368,7 +368,7 @@ function dre_tempdir( $dir, $prefix = 'tmp', $mode = 0700 )
 	// Add trailing slash
 	$dir = trailing_slash($dir);
 
-	do { $path = $dir.$prefix.mt_rand(); } while( !mkdir( $path, $mode ) );
+	do { $path = $dir.$prefix.mt_rand(); } while( ! evo_mkdir( $path, $mode ) );
 
 	return $path;
 }

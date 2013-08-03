@@ -32,7 +32,7 @@
  * @author jeffbearer: Jeff BEARER - {@link http://www.jeffbearer.com/}.
  * @author jupiterx: Jordan RUNNING.
  *
- * @version $Id: _user.funcs.php 4060 2013-06-26 06:46:04Z attila $
+ * @version $Id: _user.funcs.php 4402 2013-07-31 09:51:28Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -1446,55 +1446,70 @@ function get_user_avatar_styled( $user_ID, $params )
  */
 function get_avatar_imgtag_default( $size = 'crop-top-15x15', $class = '', $align = '', $params = array() )
 {
-	global $Settings;
+	global $Settings, $thumbnail_sizes;
 
-	if( ! $Settings->get('allow_avatars') || ! $Settings->get('use_gravatar') )
-	{ // Avatars & Gravatars are not allowed, Exit here
+	if( ! $Settings->get('allow_avatars') )
+	{ // Avatars are not allowed, Exit here
 		return '';
 	}
 
-	global $thumbnail_sizes;
+	// Default params:
+	$params = array_merge( array(
+			'email'    => '',
+			'username' => '',
+			'default'  => '',
+		), $params );
 
-	$default_gravatar = $Settings->get('default_gravatar');
-	if( $default_gravatar == 'b2evo' )
-	{ // Use gravatar from b2evo default avatar image
+	if( ! $Settings->get('use_gravatar') )
+	{ // Gravatars are not allowed, Use default avatars instead
 		global $default_avatar;
 		$img_url = $default_avatar;
 		$gravatar_width = isset( $thumbnail_sizes[$size] ) ? $thumbnail_sizes[$size][1] : '15';
 		$gravatar_height = isset( $thumbnail_sizes[$size] ) ? $thumbnail_sizes[$size][2] : '15';
 	}
+	else
+	{ // Gravatars are enabled
+		$default_gravatar = $Settings->get('default_gravatar');
 
-	if( empty( $img_url ) )
-	{ // Use gravatar
-		$params = array_merge( array(
-				'email'    => '',
-				'username' => '',
-				'default'  => $default_gravatar,
-			), $params );
-
-		$img_url = 'http://www.gravatar.com/avatar/'.md5( $params['email'] );
-		$gravatar_width = isset( $thumbnail_sizes[$size] ) ? $thumbnail_sizes[$size][1] : '15';
-		$gravatar_height = $gravatar_width;
-
-		$img_url_params = array();
-		if( !empty( $params['rating'] ) )
-		{ // Rating
-			$img_url_params[] = 'rating='.$params['rating'];
+		if( empty( $params['default'] ) )
+		{ // Set default gravatar
+			if( $default_gravatar == 'b2evo' )
+			{ // Use gravatar from b2evo default avatar image
+				global $default_avatar;
+				$params['default'] = $default_avatar;
+			}
+			else
+			{ // Use a selected gravatar type
+				$params['default'] = $default_gravatar;
+			}
 		}
 
-		if( !empty( $gravatar_width ) )
-		{ // Size
-			$img_url_params[] = 'size='.$gravatar_width;
-		}
+		if( empty( $img_url ) )
+		{
+			$img_url = 'http://www.gravatar.com/avatar/'.md5( $params['email'] );
+			$gravatar_width = isset( $thumbnail_sizes[$size] ) ? $thumbnail_sizes[$size][1] : '15';
+			$gravatar_height = $gravatar_width;
 
-		if( !empty( $params['default'] ) )
-		{ // Type
-			$img_url_params[] = 'default='.urlencode( $params['default'] );
-		}
+			$img_url_params = array();
+			if( !empty( $params['rating'] ) )
+			{ // Rating
+				$img_url_params[] = 'rating='.$params['rating'];
+			}
 
-		if( count( $img_url_params ) > 0 )
-		{ // Append url params to request gravatar
-			$img_url .= '?'.implode( '&', $img_url_params );
+			if( !empty( $gravatar_width ) )
+			{ // Size
+				$img_url_params[] = 'size='.$gravatar_width;
+			}
+
+			if( !empty( $params['default'] ) )
+			{ // Type
+				$img_url_params[] = 'default='.urlencode( $params['default'] );
+			}
+
+			if( count( $img_url_params ) > 0 )
+			{ // Append url params to request gravatar
+				$img_url .= '?'.implode( '&', $img_url_params );
+			}
 		}
 	}
 
@@ -2566,16 +2581,13 @@ function callback_filter_userlist( & $Form )
 
 	$Form->text( 'keywords', get_param('keywords'), 20, T_('Name'), '', 50 );
 
-	if( $Settings->get( 'registration_require_gender' ) != 'hidden' )
+	echo '<span class="nowrap">';
+	$Form->checkbox( 'gender_men', get_param('gender_men'), T_('Men') );
+	$Form->checkbox( 'gender_women', get_param('gender_women'), T_('Women') );
+	echo '</span>';
+	if( !is_admin_page() )
 	{
-		echo '<span class="nowrap">';
-		$Form->checkbox( 'gender_men', get_param('gender_men'), T_('Men') );
-		$Form->checkbox( 'gender_women', get_param('gender_women'), T_('Women') );
-		echo '</span>';
-		if( !is_admin_page() )
-		{
-			echo '<br />';
-		}
+		echo '<br />';
 	}
 
 	if( is_admin_page() )

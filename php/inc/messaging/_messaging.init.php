@@ -20,7 +20,7 @@
  * @author efy-maxim: Evo Factory / Maxim.
  * @author fplanque: Francois Planque.
  *
- * @version $Id: _messaging.init.php 3882 2013-05-31 11:40:12Z yura $
+ * @version $Id: _messaging.init.php 4110 2013-07-02 07:53:56Z yura $
  */
 if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page directly.' );
 
@@ -397,7 +397,7 @@ class messaging_Module extends Module
 		$current_User->check_perm( 'perm_messaging', 'reply', true );
 
 		// set where to redirect
-		$redirect_to = param( 'redirect_to', 'string', NULL );
+		$redirect_to = param( 'redirect_to', 'url', NULL );
 		if( empty( $redirect_to ) )
 		{
 			if( isset( $Blog ) )

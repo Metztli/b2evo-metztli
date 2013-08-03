@@ -15,7 +15,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _item_list_full.view.php 3834 2013-05-27 13:23:34Z yura $
+ * @version $Id: _item_list_full.view.php 4110 2013-07-02 07:53:56Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -405,7 +405,7 @@ while( $Item = & $ItemList->get_item() )
 
 			// We do not want to comment actions use new redirect
 			param( 'save_context', 'boolean', false );
-			param( 'redirect_to', 'string', url_add_param( $admin_url, 'ctrl=items&blog='.$blog.'&p='.$Item->ID, '&' ), false, true );
+			param( 'redirect_to', 'url', url_add_param( $admin_url, 'ctrl=items&blog='.$blog.'&p='.$Item->ID, '&' ), false, true );
 			param( 'item_id', 'integer', $Item->ID );
 			param( 'currentpage', 'integer', 1 );
 			param( 'show_comments', 'string', $show_comments, false, true );

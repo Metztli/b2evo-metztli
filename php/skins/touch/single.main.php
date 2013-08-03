@@ -86,7 +86,8 @@ while( $Item = & mainlist_get_item() )
 						'before'      => /* TRANS: time */ T_('at '),
 					) );
 				$Item->author( array(
-						'before'      => ' > ',
+						'before'    => ' > ',
+						'link_text' => 'preferredname',
 					) );
 			?>
 		<br>
@@ -209,7 +210,9 @@ while( $Item = & mainlist_get_item() )
 
 	<?php
 		// ------------------ FEEDBACK (COMMENTS/TRACKBACKS) INCLUDED HERE ------------------
-		skin_include( '_item_feedback.inc.php' );
+		skin_include( '_item_feedback.inc.php', array(
+				'author_link_text' => 'preferredname',
+			) );
 		// Note: You can customize the default item feedback by copying the generic
 		// /skins/_item_feedback.inc.php file into the current skin folder.
 		// ---------------------- END OF FEEDBACK (COMMENTS/TRACKBACKS) ---------------------

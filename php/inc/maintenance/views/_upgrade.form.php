@@ -20,7 +20,7 @@
  * @author efy-maxim: Evo Factory / Maxim.
  * @author fplanque: Francois Planque.
  *
- * @version $Id: _upgrade.form.php 3360 2013-03-29 12:42:27Z yura $
+ * @version $Id: _upgrade.form.php 4385 2013-07-29 10:37:16Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -67,6 +67,10 @@ switch( $action )
 
 				case 'unzip':
 					$button = T_( 'Unzip & install now!' );
+					break;
+
+				case 'backup_and_overwrite':
+					$button = T_('Backup & Overwrite source files!');
 					break;
 
 				case 'install':

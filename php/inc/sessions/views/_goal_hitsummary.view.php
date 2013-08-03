@@ -9,7 +9,7 @@
  *
  * @package admin
  *
- * @version $Id: _goal_hitsummary.view.php 3742 2013-05-20 06:56:25Z yura $
+ * @version $Id: _goal_hitsummary.view.php 4361 2013-07-24 06:22:58Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -48,7 +48,7 @@ $goal_rows = $DB->get_results( $SQL->get(), OBJECT, 'Get list of all goals' );
 
 $Table = new Table( NULL, 'ghs_' );
 
-$Table->title = T_('Goal hit summary');
+$Table->title = T_('Goal hit summary').get_manual_link( 'goal-stats' );
 
 $Table->cols = array(
 	array( 'th' => T_('Date') )

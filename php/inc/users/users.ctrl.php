@@ -31,7 +31,7 @@
  *
  * @todo separate object inits and permission checks
  *
- * @version $Id: users.ctrl.php 4048 2013-06-25 11:18:25Z yura $
+ * @version $Id: users.ctrl.php 4110 2013-07-02 07:53:56Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -126,7 +126,7 @@ if( !$Messages->has_errors() )
 		case 'change_admin_skin':
 			// Skin switch from menu
 			param( 'new_admin_skin', 'string', true );
-			param( 'redirect_to', 'string', '' );
+			param( 'redirect_to', 'url', '' );
 
 			$UserSettings->set( 'admin_skin', $new_admin_skin );
 			$UserSettings->dbupdate();
@@ -342,7 +342,7 @@ if( !$Messages->has_errors() )
 			}
 
 			$Messages->add( T_('Customizations have been removed!' ), 'success' );
-			$redirect_to = param( 'redirect_to', 'string', regenerate_url( 'action' ) );
+			$redirect_to = param( 'redirect_to', 'url', regenerate_url( 'action' ) );
 			// Redirect so that a reload doesn't write to the DB twice:
 			header_redirect( $redirect_to );
 			/* EXITED */

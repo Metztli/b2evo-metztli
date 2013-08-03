@@ -31,7 +31,7 @@
  * @todo (sessions) When creating a blog, provide "edit options" (3 tabs) instead of a single long "New" form (storing the new Blog object with the session data).
  * @todo Currently if you change the name of a blog it gets not reflected in the blog list buttons!
  *
- * @version $Id: collections.ctrl.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: collections.ctrl.php 4110 2013-07-02 07:53:56Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -172,7 +172,7 @@ switch( $action )
 
 			$action = 'list';
 			// Redirect so that a reload doesn't write to the DB twice:
-			$redirect_to = param( 'redirect_to', 'string', '?ctrl=collections' );
+			$redirect_to = param( 'redirect_to', 'url', '?ctrl=collections' );
 			header_redirect( $redirect_to, 303 ); // Will EXIT
 			// We have EXITed already at this point!!
 		}
@@ -349,7 +349,7 @@ switch($action)
 			<p>
 
 			<?php
-				$redirect_to = param( 'redirect_to', 'string', '' );
+				$redirect_to = param( 'redirect_to', 'url', '' );
 
 				$Form = new Form( NULL, '', 'get', 'none' );
 

@@ -15,7 +15,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _comment_list.inc.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _comment_list.inc.php 4110 2013-07-02 07:53:56Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -37,7 +37,7 @@ global $current_User;
 global $dispatcher;
 
 // If rediret_to was not set, create new redirect
-$redirect_to = param( 'redirect_to', 'string', regenerate_url( '', 'filter=restore', '', '&' ) );
+$redirect_to = param( 'redirect_to', 'url', regenerate_url( '', 'filter=restore', '', '&' ) );
 $redirect_to = rawurlencode( $redirect_to );
 $save_context = param( 'save_context', 'boolean', 'true' );
 $show_comments = param( 'show_comments', 'string', 'all' );

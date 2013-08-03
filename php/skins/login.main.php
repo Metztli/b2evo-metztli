@@ -8,7 +8,7 @@
  *
  * @package evoskins
  *
- * @version $Id: login.main.php 3032 2013-02-20 09:33:39Z attila $
+ * @version $Id: login.main.php 4110 2013-07-02 07:53:56Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -25,7 +25,7 @@ if( is_logged_in() )
 
 	// User is already logged in, redirect to "redirect_to" page
 	$Messages->add( T_( 'You are already logged in.' ), 'note' );
-	$redirect_to = param( 'redirect_to', 'string', NULL );
+	$redirect_to = param( 'redirect_to', 'url', NULL );
 	if( empty( $redirect_to ) )
 	{
 		$redirect_to = regenerate_url( 'disp', '', '', '&' );

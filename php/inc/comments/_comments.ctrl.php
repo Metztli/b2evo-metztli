@@ -14,7 +14,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _comments.ctrl.php 3924 2013-06-05 07:28:33Z attila $
+ * @version $Id: _comments.ctrl.php 4110 2013-07-02 07:53:56Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -82,7 +82,7 @@ switch( $action )
 		$Plugins_admin->unfilter_contents( $comment_title /* by ref */, $comment_content /* by ref */, $edited_Comment_Item->get_renderers_validated(), $params );
 
 		// Where are we going to redirect to?
-		param( 'redirect_to', 'string', url_add_param( $admin_url, 'ctrl=items&blog='.$blog.'&p='.$edited_Comment_Item->ID, '&' ) );
+		param( 'redirect_to', 'url', url_add_param( $admin_url, 'ctrl=items&blog='.$blog.'&p='.$edited_Comment_Item->ID, '&' ) );
 		break;
 
 	case 'elevate':
@@ -158,7 +158,7 @@ switch( $action )
 		}
 
 		// Where are we going to redirect to?
-		param( 'redirect_to', 'string', url_add_param( $admin_url, 'ctrl=comments&blog='.$blog.'&filter=restore', '&' ) );
+		param( 'redirect_to', 'url', url_add_param( $admin_url, 'ctrl=comments&blog='.$blog.'&filter=restore', '&' ) );
 
 		// Redirect so that a reload doesn't write to the DB twice:
 		header_redirect( $redirect_to, 303 ); // Will EXIT

@@ -72,7 +72,7 @@ switch( $action )
 		set_working_blog( $Blog->ID );
 
 		// Where are we going to redirect to?
-		param( 'redirect_to', 'string', url_add_param( $admin_url, 'ctrl=items&filter=restore&blog='.$Blog->ID.'&highlight='.$edited_Item->ID, '&' ) );
+		param( 'redirect_to', 'url', url_add_param( $admin_url, 'ctrl=items&filter=restore&blog='.$Blog->ID.'&highlight='.$edited_Item->ID, '&' ) );
 
 		// What form button has been pressed?
 		param( 'save', 'string', '' );
@@ -118,7 +118,7 @@ switch( $action )
 		$tab_switch_params = 'blog='.$blog;
 
 		// Where are we going to redirect to?
-		param( 'redirect_to', 'string', url_add_param( $admin_url, 'ctrl=items&filter=restore&blog='.$Blog->ID, '&' ) );
+		param( 'redirect_to', 'url', url_add_param( $admin_url, 'ctrl=items&filter=restore&blog='.$Blog->ID, '&' ) );
 		break;
 
 	case 'edit_switchtab': // this gets set as action by JS, when we switch tabs

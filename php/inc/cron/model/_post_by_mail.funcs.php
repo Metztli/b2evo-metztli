@@ -14,7 +14,7 @@
  *
  * @package admin
  *
- * @version $Id: _post_by_mail.funcs.php 3430 2013-04-09 10:56:48Z attila $
+ * @version $Id: _post_by_mail.funcs.php 4326 2013-07-19 12:29:40Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -881,7 +881,7 @@ function pbm_tempdir( $dir, $prefix = 'tmp', $mode = 0700 )
 	// Add trailing slash
 	$dir = trailing_slash($dir);
 
-	do { $path = $dir.$prefix.mt_rand(); } while( !mkdir( $path, $mode ) );
+	do { $path = $dir.$prefix.mt_rand(); } while( ! evo_mkdir( $path, $mode ) );
 
 	return $path;
 }

@@ -411,4 +411,17 @@ function tool_create_sample_messages( $num_loops, $num_messages, $num_words, $ma
 	$Messages->add( sprintf( T_('%d threads and %d messages have been created.'), $count_threads, $count_messages ), 'success' );
 }
 
+
+/**
+ * Test a flush function
+ */
+function tool_test_flush()
+{
+	for( $i = 1; $i <= 30; $i++ )
+	{
+		echo T_('Sleeping for 1 second...').'<br />';
+		evo_flush();
+		sleep( 1 );
+	}
+}
 ?>

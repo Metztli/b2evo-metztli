@@ -71,7 +71,7 @@ function switch_maintenance_mode( $enable, $mode = 'all', $msg = '', $silent = f
 
 	if( $enable )
 	{	// Create maintenance file
-		echo '<p>'.T_('Switching to maintenance mode...').'</p>';
+		echo '<p>'.T_('Switching to maintenance mode...');
 		evo_flush();
 
 		$content = '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -91,9 +91,13 @@ If you need to manually put b2evolution out of maintenance mode, delete or renam
 </body>
 </html>';
 
-		if( ! save_to_file( $content, $conf_path.$maintenance_mode_file, 'w+' ) )
-		{	// Maintenance file has not been created
-			echo '<p style="color:red">'.sprintf( T_( 'Unable to switch maintenance mode. Maintenance file can\'t be created: &laquo;%s&raquo;' ), $maintenance_mode_file ).'</p>';
+		if( save_to_file( $content, $conf_path.$maintenance_mode_file, 'w+' ) )
+		{ // Maintenance file has been created
+			echo ' OK.</p>';
+		}
+		else
+		{ // Maintenance file has not been created
+			echo '</p><p style="color:red">'.sprintf( T_( 'Unable to switch maintenance mode. Maintenance file can\'t be created: &laquo;%s&raquo;' ), $maintenance_mode_file ).'</p>';
 			evo_flush();
 
 			return false;
@@ -103,9 +107,23 @@ If you need to manually put b2evolution out of maintenance mode, delete or renam
 	{	// Delete maintenance file
 		if( ! $silent )
 		{
-			echo '<p>'.T_('Switching out of maintenance mode...').'</p>';
+			echo '<p>'.T_('Switching out of maintenance mode...');
 		}
-		@unlink( $conf_path.$maintenance_mode_file );
+		if( is_writable( $conf_path.$maintenance_mode_file ) )
+		{ // Delete a maintenance file if it exists and writable
+			if( @unlink( $conf_path.$maintenance_mode_file ) )
+			{ // Unlink was successful
+				if( ! $silent )
+				{ // Dispaly OK message
+					echo ' OK.</p>';
+				}
+			}
+			else
+			{ // Unlink failed
+				echo '</p><p style="color:red">'.sprintf( T_( 'Unable to delete a maintenance file: &laquo;%s&raquo;' ), $maintenance_mode_file ).'</p>';
+			}
+		}
+		evo_flush();
 	}
 
 	return true;
@@ -137,6 +155,7 @@ function prepare_maintenance_dir( $dir_name, $deny_access = true )
 	if( $deny_access )
 	{	// Create .htaccess file
 		echo '<p>'.T_('Checking .htaccess denial for directory: ').$dir_name;
+		evo_flush();
 
 		$htaccess_name = $dir_name.'.htaccess';
 
@@ -157,6 +176,7 @@ function prepare_maintenance_dir( $dir_name, $deny_access = true )
 		}
 
 		echo ' : OK.</p>';
+		evo_flush();
 
 		// fp> TODO: make sure "deny all" actually works by trying to request the directory through HTTP
 	}
@@ -225,7 +245,19 @@ function verify_overwrite( $src, $dest, $action = '', $overwrite = true, & $read
 {
 	global $basepath;
 
+	/**
+	 * Result of this function is FALSE when some error was detected
+	 * @var boolean
+	 */
+	$result = true;
+
 	$dir = opendir( $src );
+
+	if( $dir === false )
+	{ // $dir is not a valid directory or it can not be opened due to permission restrictions
+		echo '<div class="red">The &laquo;'.htmlspecialchars( $src ).'&raquo; is not a valid direcotry or the directory can not be opened due to permission restrictions or filesystem errors.</div>';
+		return false;
+	}
 
 	$dir_list = array();
 	$file_list = array();
@@ -259,7 +291,7 @@ function verify_overwrite( $src, $dest, $action = '', $overwrite = true, & $read
 	if( ! empty( $action ) && $action == 'Copying' )
 	{ // Display errors about config file or the unknown and incorrect commands from config file
 		if( is_string( $config_ignore_files ) )
-		{ // Config file has some errors
+		{ // Config file has some errors, but the upgrade should not fail because of that
 			echo '<div class="red">'.$config_ignore_files.'</div>';
 		}
 		else
@@ -291,6 +323,7 @@ function verify_overwrite( $src, $dest, $action = '', $overwrite = true, & $read
 		// Detect if we should ignore this folder
 		$ignore_dir = $overwrite && is_array( $config_ignore_files ) && in_array( $dest_dir_name, $config_ignore_files );
 
+		$dir_success = false;
 		if( !empty( $action ) )
 		{
 			if( $ignore_dir )
@@ -299,13 +332,15 @@ function verify_overwrite( $src, $dest, $action = '', $overwrite = true, & $read
 			}
 			else
 			{ // progressive display of what backup is doing
-				echo $action.' &laquo;<strong>'.$dest_dir.'</strong>&raquo;...'.'<br />';
+				echo $action.' &laquo;<strong>'.$dest_dir.'</strong>&raquo;...';
+				$dir_success = true;
 			}
 			evo_flush();
 		}
 		elseif( $ignore_dir )
 		{ // This subfolder must be ingored, Display message about this
 			echo '<div class="orange">'.sprintf( T_('Ignoring %s because of upgrade_policy.conf'), '&laquo;<b>'.$dest_dir_name.'</b>&raquo;' ).'</div>';
+			$dir_success = false;
 			evo_flush();
 		}
 
@@ -317,15 +352,23 @@ function verify_overwrite( $src, $dest, $action = '', $overwrite = true, & $read
 		if( $overwrite && !file_exists( $dest_dir ) )
 		{
 			// Create destination directory
-			if( ! @mkdir( $dest_dir ) )
+			if( ! evo_mkdir( $dest_dir ) )
 			{ // No permission to create a folder
-				echo '<div class="red">'.sprintf( T_('Unavailable creating of folder %s, probably no permissions.'), '&laquo;<b>'.$dest_file.'</b>&raquo;' ).'</div>';
+				echo '<div class="red">'.sprintf( T_('Unavailable creating of folder %s, probably no permissions.'), '&laquo;<b>'.$dest_dir_name.'</b>&raquo;' ).'</div>';
+				$result = false;
+				$dir_success = false;
 				evo_flush();
 				continue;
 			}
 		}
 
-		verify_overwrite( $src_dir, $dest_dir, '', $overwrite, $read_only_list );
+		if( $dir_success )
+		{
+			echo ' OK.<br />';
+			evo_flush();
+		}
+
+		$result = $result && verify_overwrite( $src_dir, $dest_dir, '', $overwrite, $read_only_list );
 	}
 
 	foreach( $file_list as $src_file => $dest_file )
@@ -380,11 +423,14 @@ function verify_overwrite( $src, $dest, $action = '', $overwrite = true, & $read
 		if( ! @copy( $src_file, $dest_file ) )
 		{ // Display error if a copy command is unavailable
 			echo '<div class="red">'.sprintf( T_('Unavailable copying to %s, probably no permissions.'), '&laquo;<b>'.$dest_file_name.'</b>&raquo;' ).'</div>';
+			$result = false;
 			evo_flush();
 		}
 	}
 
 	closedir( $dir );
+
+	return $result;
 }
 
 
@@ -395,7 +441,7 @@ function verify_overwrite( $src, $dest, $action = '', $overwrite = true, & $read
  */
 function get_upgrade_action( $download_url )
 {
-	global $upgrade_path, $servertimenow, $debug;
+	global $upgrade_path, $backup_path, $servertimenow, $debug;
 
 	// Construct version name from download URL
 	$slash_pos = strrpos( $download_url, '/' );
@@ -433,7 +479,14 @@ function get_upgrade_action( $download_url )
 
 				if( $debug > 0 || empty( $new_version_status ) )
 				{
-					$action_props['action'] = 'install';
+					if( file_exists( $backup_path ) )
+					{ // The backup was already created. In this case the upgrade should have run successfully maybe the backup folder was not deleted.
+						$action_props['action'] = 'none';
+					}
+					else
+					{ // The backup was not created yet
+						$action_props['action'] = 'backup_and_overwrite';
+					}
 					$action_props['name'] = $dir_name;
 				}
 
@@ -492,7 +545,7 @@ function aliases_to_tables( $aliases )
 
 /**
  * Check if the upgrade config file exists and display error message if config doesn't exist
- * 
+ *
  * @return boolean TRUE if config exists
  */
 function check_upgrade_config( $display_message = false )
@@ -633,6 +686,7 @@ function remove_after_upgrade()
 	$upgrade_removed_files = get_upgrade_config( 'remove' );
 
 	echo '<h4>'.T_('Cleaning up...').'</h4>';
+	evo_flush();
 
 	if( is_string( $upgrade_removed_files ) )
 	{ // Errors on opening of upgrade_policy.conf
@@ -696,6 +750,7 @@ function remove_after_upgrade()
 		}
 
 		echo $success ? $log_message.'<br />' : '<div class="orange">'.$log_message.'</div>';
+		evo_flush();
 	}
 }
 

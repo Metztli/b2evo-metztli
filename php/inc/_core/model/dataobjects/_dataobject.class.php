@@ -35,7 +35,7 @@
  * @author blueyed: Daniel HAHLER
  * @author mbruneau: Marc BRUNEAU / PROGIDISTRI
  *
- * @version $Id: _dataobject.class.php 3846 2013-05-29 07:33:29Z attila $
+ * @version $Id: _dataobject.class.php 4110 2013-07-02 07:53:56Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -535,7 +535,7 @@ class DataObject
 		echo '<p class="warning">'.$confirm_title.'</p>';
 		echo '<p class="warning">'.T_('THIS CANNOT BE UNDONE!').'</p>';
 
-		$redirect_to = param( 'redirect_to', 'string', '' );
+		$redirect_to = param( 'redirect_to', 'url', '' );
 
 		$Form = new Form( '', 'form_confirm', 'get', '' );
 

@@ -54,6 +54,7 @@ echo '<div id="styled_content_block">'; // Beginning of post display
 		$Item->author( array(
 			'before'    => ' '.T_('by').' ',
 			'after'     => '',
+			'link_text' => 'preferredname',
 		) );
 
 		$Item->msgform_link();
@@ -150,6 +151,7 @@ echo '<div id="styled_content_block">'; // Beginning of post display
 		skin_include( '_item_feedback.inc.php', array(
 				'before_section_title' => '<h4>',
 				'after_section_title'  => '</h4>',
+				'author_link_text'     => 'preferredname',
 			) );
 		// Note: You can customize the default item feedback by copying the generic
 		// /skins/_item_feedback.inc.php file into the current skin folder.

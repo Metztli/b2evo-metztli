@@ -24,8 +24,8 @@
 }
 
 /* links */
-a { background: inherit; color: #72A545; text-decoration: none; }
-a:hover { background: inherit; color: #006699; text-decoration: underline; }
+a { color: #72A545; text-decoration: none; }
+a:hover { color: #006699; text-decoration: underline; }
 
 /* headers */
 h1, h2, h3 { font: bold 1em 'Trebuchet MS', Tahoma, Sans-serif; }

@@ -22,7 +22,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE
  *
- * @version $Id: _comment.class.php 3935 2013-06-05 14:40:42Z yura $
+ * @version $Id: _comment.class.php 4275 2013-07-17 10:52:24Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -768,17 +768,19 @@ class Comment extends DataObject
 	 * @param string String to display after author name if he's a user
 	 * @param string Output format, see {@link format_to_output()}
 	 * @param boolean true for link, false if you want NO html link
+	 * @param string What show as user name: avatar | only_avatar | login | nickname | firstname | lastname | fullname | preferredname
 	 */
 	function author( $before = '', $after = '#', $before_user = '', $after_user = '#',
-										$format = 'htmlbody', $makelink = false )
+										$format = 'htmlbody', $makelink = false, $lint_text = 'login' )
 	{
 		echo $this->get_author( array(
-					'before'       => $before,
-					'after'        => $after,
-					'before_user'  => $before_user,
-					'after_user'   => $after_user,
-					'format'       => $format,
-					'link_to'		   => ( $makelink ? 'userurl>userpage' : '' )
+					'before'      => $before,
+					'after'       => $after,
+					'before_user' => $before_user,
+					'after_user'  => $after_user,
+					'format'      => $format,
+					'link_to'     => ( $makelink ? 'userurl>userpage' : '' ),
+					'link_text'   => $lint_text,
 				)
 			);
 	}
@@ -811,8 +813,8 @@ class Comment extends DataObject
 				'before_user'  => '',
 				'after_user'   => '#',
 				'format'       => 'htmlbody',
-				'link_to'      => 'userurl>userpage',		// 'userpage' or 'userurl' or 'userurl>userpage' 'userpage>userurl'
-				'link_text'    => 'preferredname',
+				'link_to'      => 'userurl>userpage', // 'userpage' or 'userurl' or 'userurl>userpage' 'userpage>userurl'
+				'link_text'    => 'preferredname', // avatar | only_avatar | login | nickname | firstname | lastname | fullname | preferredname
 				'link_rel'     => '',
 				'link_class'   => '',
 				'thumb_size'   => 'crop-top-32x32',
@@ -2589,7 +2591,7 @@ class Comment extends DataObject
 		// Make sure we are not missing any param:
 		$params = array_merge( array(
 				'author_format' => '%s',
-				'link_text'     => 'login', // avatar | only_avatar | login
+				'link_text'     => 'login', // avatar | only_avatar | login | nickname | firstname | lastname | fullname | preferredname
 				'thumb_size'    => 'crop-top-32x32' // author's avatar size
 			), $params );
 

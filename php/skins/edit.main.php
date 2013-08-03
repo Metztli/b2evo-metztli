@@ -8,7 +8,7 @@
  *
  * @package evoskins
  *
- * @version $Id: edit.main.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: edit.main.php 4288 2013-07-18 05:47:13Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -36,12 +36,24 @@ if( !$current_User->check_status( 'can_edit_post' ) )
 	}
 
 	// Redirect to the blog url for users without messaging permission
-	$Messages->add( 'You are not allowed to create & edit posts!' );
+	$Messages->add( T_('You are not allowed to create & edit posts!') );
 	header_redirect( $Blog->gen_blogurl(), 302 );
 }
 
 // user logged in and the account was activated
 check_item_perm_edit( $post_ID );
+
+if( ! blog_has_cats( $Blog->ID ) )
+{ // No categories are in this blog
+	$error_message = T_('Since this blog has no categories, you cannot post into it.');
+	if( $current_User->check_perm( 'blog_cats', 'edit', false, $Blog->ID ) )
+	{ // If current user has a permission to create a category
+		global $admin_url;
+		$error_message .= ' '.sprintf( T_('You must <a %s>create categories</a> first.'), 'href="'.$admin_url.'?ctrl=chapters&amp;blog='.$Blog->ID.'"');
+	}
+	$Messages->add( $error_message, 'error' );
+	header_redirect( $Blog->gen_blogurl(), 302 );
+}
 
 // Require datapicker.css
 require_css( 'ui.datepicker.css' );

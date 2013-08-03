@@ -32,7 +32,7 @@
  * @author tswicegood: Travis SWICEGOOD.
  * @author vegarg: Vegar BERG GULDAL.
  *
- * @version $Id: _item.funcs.php 4037 2013-06-24 07:19:23Z attila $
+ * @version $Id: _item.funcs.php 4319 2013-07-19 08:29:57Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -691,7 +691,7 @@ function get_allowed_statuses_condition( $statuses, $dbprefix, $req_blog, $perm_
  *
  * TODO: asimo> would be good to move this function to an items and comments common file
  *
- * @param Array statuses of posts we want to get
+ * @param Array statuses of posts/comments we want to get
  * @param string post/comment table db prefix
  * @param integer blog ID
  * @param string permission prefix: 'blog_post!' or 'blog_comment!'
@@ -716,12 +716,16 @@ function statuses_where_clause( $show_statuses = NULL, $dbprefix = 'post_', $req
 	// init where clauses array
 	$where = array();
 
-	if( $req_blog )
-	{ // If requested blog is set, then set additional "where" clause from modules method, before we would manipulate the $show_statuses array
-		$ret = modules_call_method( 'get_item_statuses_where_clause', array( 'blog_ID' => $req_blog, 'statuses' => $show_statuses ) );
-		if( !empty( $ret ) )
+	// Check modules item statuses where condition but only in case of the items, and don't need to check in case of comments
+	if( $req_blog && ( $perm_prefix == 'blog_post!' ) )
+	{ // If requested blog is set, then set additional "where" clauses from modules method, before we would manipulate the $show_statuses array
+		$modules_condition = modules_call_method( 'get_item_statuses_where_clause', array( 'blog_ID' => $req_blog, 'statuses' => $show_statuses ) );
+		if( !empty( $modules_condition ) )
 		{
-			$where[] = $ret;
+			foreach( $modules_condition as $condition )
+			{
+				$where[] = $condition;
+			}
 		}
 	}
 
@@ -2146,7 +2150,7 @@ function echo_item_comments( $blog_ID, $item_ID, $statuses = NULL, $currentpage 
 	// set redirect_to
 	if( $item_ID != null )
 	{ // redirect to the items full view
-		param( 'redirect_to', 'string', url_add_param( $admin_url, 'ctrl=items&blog='.$blog_ID.'&p='.$item_ID, '&' ) );
+		param( 'redirect_to', 'url', url_add_param( $admin_url, 'ctrl=items&blog='.$blog_ID.'&p='.$item_ID, '&' ) );
 		param( 'item_id', 'integer', $item_ID );
 		param( 'currentpage', 'integer', $currentpage );
 		if( count( $statuses ) == 1 )
@@ -2172,7 +2176,7 @@ function echo_item_comments( $blog_ID, $item_ID, $statuses = NULL, $currentpage 
 	}
 	else
 	{ // redirect to the comments full view
-		param( 'redirect_to', 'string', url_add_param( $admin_url, 'ctrl=comments&blog='.$blog_ID.'&filter=restore', '&' ) );
+		param( 'redirect_to', 'url', url_add_param( $admin_url, 'ctrl=comments&blog='.$blog_ID.'&filter=restore', '&' ) );
 		// this is an ajax call we always have to restore the filterst (we can set filters only without ajax call)
 		$CommentList->set_filters( array(
 			'types' => array( 'comment', 'trackback', 'pingback' ),

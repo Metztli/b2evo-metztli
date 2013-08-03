@@ -108,7 +108,7 @@ while( $Item = & mainlist_get_item() )
 	?>
 
 	<div id="<?php $Item->anchor_id() ?>" class="post post<?php $Item->status_raw() ?>" lang="<?php $Item->lang() ?>">
-		<?php 
+		<?php
 		if( $Item->status != 'published' )
 		{
 			$Item->status( array( 'format' => 'styled' ) );
@@ -179,13 +179,15 @@ while( $Item = & mainlist_get_item() )
 								'before'      => /* TRANS: time */ T_('at '),
 							) );
 						$Item->author( array(
-								'before'      => T_('by '),
+								'before'    => T_('by '),
+								'link_text' => 'preferredname',
 							) );
 					}
 					else
 					{
 						$Item->author( array(
-								'before'      => T_('This entry was posted by '),
+								'before'    => T_('This entry was posted by '),
+								'link_text' => 'preferredname',
 							) );
 					}
 				?>
@@ -227,6 +229,7 @@ while( $Item = & mainlist_get_item() )
 		skin_include( '_item_feedback.inc.php', array(
 				'before_section_title' => '<h3>',
 				'after_section_title'  => '</h3>',
+				'author_link_text' => 'preferredname',
 			) );
 		// Note: You can customize the default item feedback by copying the generic
 		// /skins/_item_feedback.inc.php file into the current skin folder.

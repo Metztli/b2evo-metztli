@@ -29,7 +29,7 @@
  * @author blueyed: Daniel HAHLER
  * @author fplanque: Francois PLANQUE
  *
- * @version $Id: register.php 3864 2013-05-30 10:32:28Z yura $
+ * @version $Id: register.php 4110 2013-07-02 07:53:56Z yura $
  */
 
 /**
@@ -74,7 +74,7 @@ param( 'firstname', 'string', '' );
 param( 'gender', 'string', NULL );
 param( 'locale', 'string', '' );
 param( 'source', 'string', '' );
-param( 'redirect_to', 'string', '' ); // do not default to $admin_url; "empty" gets handled better in the end (uses $blogurl, if no admin perms).
+param( 'redirect_to', 'url', '' ); // do not default to $admin_url; "empty" gets handled better in the end (uses $blogurl, if no admin perms).
 param( 'inskin', 'boolean', false, true );
 
 global $Blog;

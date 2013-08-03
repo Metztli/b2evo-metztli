@@ -21,13 +21,13 @@
  *
  * @package admin
  *
- * @version $Id: _stats_syndication.view.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _stats_syndication.view.php 4361 2013-07-24 06:22:58Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
 global $blog, $admin_url, $rsc_url, $AdminUI, $agent_type_color;
 
-echo '<h2>'.T_('Hits from RSS/Atom feed readers - Summary').'</h2>';
+echo '<h2>'.T_('Hits from RSS/Atom feed readers - Summary').get_manual_link( 'feed-hits-summary' ).'</h2>';
 
 echo '<p class="notes">'.T_('Any user agent accessing the XML feeds will be flagged as an XML reader.').'</p>';
 

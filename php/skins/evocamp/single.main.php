@@ -11,7 +11,7 @@
  * @package evoskins
  * @subpackage evocamp
  *
- * @version $Id: single.main.php 3157 2013-03-06 04:34:44Z fplanque $
+ * @version $Id: single.main.php 4275 2013-07-17 10:52:24Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -92,9 +92,10 @@ skin_include( '_body_header.inc.php' );
 			<p class="postinfo">
 			<?php
 			$Item->author( array(
-					'profile_tab'  => 'user',
-					'before'       => T_('By').' ',
-					'after'        => ' ',
+					'profile_tab' => 'user',
+					'before'      => T_('By').' ',
+					'after'       => ' ',
+					'link_text'   => 'preferredname',
 				) );
 			?>
 			<?php
@@ -160,8 +161,9 @@ skin_include( '_body_header.inc.php' );
 			skin_include( '_item_feedback.inc.php', array(
 					'before_section_title' => '<h3 class="feedback_section">',
 					'after_section_title'  => '</h3>',
-					'form_title_start' => '<h3 class="comment_form_title">',
-					'form_title_end'  => '</h3>',
+					'form_title_start'     => '<h3 class="comment_form_title">',
+					'form_title_end'       => '</h3>',
+					'author_link_text'     => 'preferredname',
 				) );
 			// Note: You can customize the default item feedback by copying the generic
 			// /skins/_item_feedback.inc.php file into the current skin folder.
