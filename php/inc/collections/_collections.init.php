@@ -896,7 +896,7 @@ class collections_Module extends Module
 				{ // Unlink File from Item:
 					$edited_Link->dbdelete( true );
 					unset($edited_Link);
-					$Messages->add( $LinkOwner->T_( 'Link has been deleted from $ownerTitle$.' ), 'success' );
+					$Messages->add( $LinkOwner->translate( 'Link has been deleted from $ownerTitle$.' ), 'success' );
 					if( $current_User->check_perm( 'files', 'edit' ) )
 					{ // current User has permission to edit/delete files
 						$file_name = $linked_File->get_name();

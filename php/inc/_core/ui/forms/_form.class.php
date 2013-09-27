@@ -43,7 +43,7 @@
  * This will most probably cause problems, when nesting inputs. This should be refactored
  * to use a field_name-based member array. (blueyed)
  *
- * @version $Id: _form.class.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _form.class.php 4734 2013-09-13 06:25:05Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -2244,7 +2244,7 @@ class Form extends Widget
 			 .$field_options
 			 ."</select>\n";
 
-		if( $field_options == $option_new  || $input_class == 'field_error' || $field_value != '' )
+		if( $field_options == $option_new  || strpos( $input_class, 'field_error' ) !== false || $field_value != '' )
 		{	// The list is empty or there is an error on the combo or no field value, so we have to display the input text:
 			$visible = 'inline';
 		}
@@ -3169,6 +3169,11 @@ class Form extends Widget
 		else
 		{
 			$format_to_output = true;
+		}
+
+		if( isset( $field_params['inline'] ) )
+		{ // Delete 'inline' param from attributes list
+			unset( $field_params['inline'] );
 		}
 
 		$r = $input_prefix

@@ -26,7 +26,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _itemlist.class.php 3943 2013-06-06 09:46:34Z yura $
+ * @version $Id: _itemlist.class.php 4449 2013-08-07 15:00:18Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -670,7 +670,9 @@ class ItemList2 extends ItemListLight
 		$next_Query->where_chapter2( $this->Blog, $this->filters['cat_array'], $this->filters['cat_modifier'],
 																 $this->filters['cat_focus'] );
 		$next_Query->where_author( $this->filters['authors'] );
+		$next_Query->where_author_logins( $this->filters['authors_login'] );
 		$next_Query->where_assignees( $this->filters['assignees'] );
+		$next_Query->where_assignees_logins( $this->filters['assignees_login'] );
 		$next_Query->where_author_assignee( $this->filters['author_assignee'] );
 		$next_Query->where_locale( $this->filters['lc'] );
 		$next_Query->where_statuses( $this->filters['statuses'] );

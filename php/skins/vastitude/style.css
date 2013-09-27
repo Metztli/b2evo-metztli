@@ -352,3 +352,7 @@ div.tabs div.selected a, div.tabs div:hover a {
 div.tabs div.selected a {
 	border-bottom-color: #895c46;
 }
+
+.form_add_contacts {
+	text-align: left;
+}

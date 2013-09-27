@@ -30,7 +30,7 @@
  * @author hansreinders: Hans REINDERS
  * @author cafelog (team)
  *
- * @version $Id: _calendar.plugin.php 4159 2013-07-08 06:11:55Z yura $
+ * @version $Id: _calendar.plugin.php 4555 2013-08-26 09:40:35Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -730,7 +730,7 @@ class Calendar
 
 		// REAL TABLE DATA :
 
-		echo $this->rowstart;
+		echo '<tbody>'.$this->rowstart;
 
 		if( $this->mode == 'year' )
 		{	// DISPLAY MONTHS:
@@ -857,7 +857,7 @@ class Calendar
 			} // loop day by day
 		} // mode == 'month'
 
-		echo $this->rowend;
+		echo $this->rowend."</tbody>\n";
 
 		echo $this->tableend;
 

@@ -21,7 +21,7 @@
  * @author blueyed: Daniel HAHLER
  * @author Danny Ferguson
  *
- * @version $Id: _url.funcs.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _url.funcs.php 4466 2013-08-08 14:13:52Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -597,7 +597,7 @@ function url_crumb( $crumb_name )
 function get_crumb($crumb_name)
 {
 	global $Session;
-	return $Session->create_crumb($crumb_name);
+	return isset( $Session ) ? $Session->create_crumb( $crumb_name ) : '';
 }
 
 

@@ -4,6 +4,41 @@ if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.'
 
 
 /**
+ * Get the upgrade folder path
+ *
+ * @param string Name of folder with current downloaded version
+ * @return string The upgrade folder path (No slash at the end)
+ */
+function get_upgrade_folder_path( $version_folder_name )
+{
+	global $upgrade_path;
+
+	if( empty( $version_folder_name ) || ! file_exists( $upgrade_path.$version_folder_name ) )
+	{ // Don't allow an invalid upgrade folder
+		debug_die( 'Invalid name of upgrade folder' );
+	}
+
+	// Use a root path by default
+	$upgrade_folder_path = $upgrade_path.$version_folder_name;
+
+	if( file_exists( $upgrade_folder_path.'/b2evolution/blogs' ) )
+	{ // Use 'b2evolution/blogs' folder
+		$upgrade_folder_path .= '/b2evolution/blogs';
+	}
+	else if( file_exists( $upgrade_folder_path.'/b2evolution/site' ) )
+	{ // Use 'b2evolution/site' folder
+		$upgrade_folder_path .= '/b2evolution/site';
+	}
+	else if( file_exists( $upgrade_folder_path.'/b2evolution' ) )
+	{ // Use 'b2evolution' folder
+		$upgrade_folder_path .= '/b2evolution';
+	}
+
+	return $upgrade_folder_path;
+}
+
+
+/**
  * Check version of downloaded upgrade vs. current version
  *
  * @param new version dir name
@@ -13,7 +48,12 @@ function check_version( $new_version_dir )
 {
 	global $rsc_url, $upgrade_path, $conf_path;
 
-	$new_version_file = $upgrade_path.$new_version_dir.'/b2evolution/blogs/conf/_application.php';
+	$new_version_file = get_upgrade_folder_path( $new_version_dir ).'/conf/_application.php';
+
+	if( ! file_exists( $new_version_file ) )
+	{ // Invalid structure of the downloaded upgrade package
+		debug_die( 'No config file found with b2evolution version! Probably you have downloaded the invalid package.' );
+	}
 
 	require( $new_version_file );
 

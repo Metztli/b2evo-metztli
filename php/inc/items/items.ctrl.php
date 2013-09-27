@@ -24,7 +24,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: items.ctrl.php 4288 2013-07-18 05:47:13Z yura $
+ * @version $Id: items.ctrl.php 4573 2013-08-29 23:55:32Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -295,7 +295,7 @@ switch( $action )
 			else
 			{
 				$DB->rollback();
-				$Messages->add( sprintf( T_('&laquo;%s&raquo; couldn\t be posted.'), $l_File->dget('name') ), 'error' );
+				$Messages->add( sprintf( T_('&laquo;%s&raquo; couldn\'t be posted.'), $l_File->dget('name') ), 'error' );
 			}
 		}
 
@@ -761,7 +761,7 @@ switch( $action )
 		}
 
 		// Check if new category was started to create.  If yes check if it is valid.
-		$isset_category = check_categories ( $post_category, $post_extracats );
+		$isset_category = check_categories( $post_category, $post_extracats );
 
 		// Check permission on statuses:
 		$current_User->check_perm( 'cats_post!'.$post_status, 'edit', true, $post_extracats );
@@ -773,12 +773,12 @@ switch( $action )
 
 		// UPDATE POST:
 		// Set the params we already got:
-		$edited_Item->set ( 'status', $post_status );
+		$edited_Item->set( 'status', $post_status );
 
 		if( $isset_category )
 		{ // we change the categories only if the check was succesfull
-			$edited_Item->set ( 'main_cat_ID', $post_category );
-			$edited_Item->set ( 'extra_cat_IDs', $post_extracats );
+			$edited_Item->set( 'main_cat_ID', $post_category );
+			$edited_Item->set( 'extra_cat_IDs', $post_extracats );
 		}
 
 		// Set object params:
@@ -881,7 +881,8 @@ switch( $action )
 		{	// check user permission
 			$current_User->check_perm( 'item_post!CURSTATUS', 'edit', true, $Item );
 
-			$title = param ( 'mass_title_' . $Item->ID, 'string', NULL );
+			// Not allow html content on post titles
+			$title = param ( 'mass_title_' . $Item->ID, 'htmlspecialchars', NULL );
 			$urltitle = param ( 'mass_urltitle_' . $Item->ID, 'string', NULL );
 			$titletag = param ( 'mass_titletag_' . $Item->ID, 'string', NULL );
 
@@ -1351,6 +1352,11 @@ switch( $action )
 if( !empty($tab) )
 {
 	$AdminUI->append_path_level( $tab );
+
+	if( in_array( $tab, array( 'expert', 'full', 'list', 'pages', 'intros', 'podcasts', 'links', 'ads' ) ) )
+	{ // Init JS to autcomplete the user logins
+		init_autocomplete_login_js( 'rsc_url' );
+	}
 }
 
 // Load the date picker style for _item_simple.form.php and _item_expert.form.php
@@ -1414,8 +1420,17 @@ switch( $action )
 		// Begin payload block:
 		$AdminUI->disp_payload_begin();
 
+		// We never allow HTML in titles, so we always encode and decode special chars.
 		$item_title = htmlspecialchars_decode( $edited_Item->title );
-		$item_content = htmlspecialchars_decode( $edited_Item->content );
+
+		if( $Blog->get_setting( 'allow_html_post' ) )
+		{	// HTML is allowed for this post, we have HTML in the DB and we can edit it:
+			$item_content = $edited_Item->content;
+		}
+		else
+		{	// HTML is disallowed for this post, content is encoded in DB and we need to decode it for editing:
+			$item_content = htmlspecialchars_decode( $edited_Item->content );
+		}
 
 		// Format content for editing, if we were not already in editing...
 		$Plugins_admin = & get_Plugins_admin();
@@ -1445,8 +1460,17 @@ switch( $action )
 		// Begin payload block:
 		$AdminUI->disp_payload_begin();
 
-		$item_title = $edited_Item->title;
-		$item_content = $edited_Item->content;
+		// We never allow HTML in titles, so we always encode and decode special chars.
+		$item_title = htmlspecialchars_decode( $edited_Item->title );
+
+		if( $Blog->get_setting( 'allow_html_post' ) )
+		{ // HTML is allowed for this post, we have HTML in the DB and we can edit it:
+			$item_content = $edited_Item->content;
+		}
+		else
+		{ // HTML is disallowed for this post, content is encoded in DB and we need to decode it for editing:
+			$item_content = htmlspecialchars_decode( $edited_Item->content );
+		}
 
 		// Format content for editing, if we were not already in editing...
 		$Plugins_admin = & get_Plugins_admin();

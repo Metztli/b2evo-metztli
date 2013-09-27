@@ -29,7 +29,7 @@
  *
  * @package htsrv
  *
- * @version $Id: login.php 4110 2013-07-02 07:53:56Z yura $
+ * @version $Id: login.php 4480 2013-08-09 07:13:49Z yura $
  */
 
 /**
@@ -530,7 +530,7 @@ if( $inskin && use_in_skin_login() )
 	{
 		if( !empty( $login_error ) )
 		{
-			$Messages->add( T_( $login_error ) );
+			$Messages->add( $login_error );
 		}
 		if( empty( $redirect_to ) )
 		{

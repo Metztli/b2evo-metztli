@@ -41,7 +41,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: files.ctrl.php 3520 2013-04-22 06:12:04Z attila $
+ * @version $Id: files.ctrl.php 4851 2013-09-24 09:56:14Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -1194,7 +1194,7 @@ switch( $action )
 		// Forget selected files
 		if( $files_count > 1 ) $fm_selected = NULL;
 
-		$Messages->add( $LinkOwner->T_( 'Selected files have been linked to owner.' ), 'success' );
+		$Messages->add( $LinkOwner->translate( 'Selected files have been linked to owner.' ), 'success' );
 
 		// In case the mode had been closed, reopen it:
 		$fm_mode = 'link_object';

@@ -29,7 +29,7 @@
  * @author fplanque: Francois PLANQUE
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: _plugin.funcs.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _plugin.funcs.php 4728 2013-09-12 13:49:43Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -234,6 +234,14 @@ function autoform_display_field( $parname, $parmeta, & $Form, $set_type, $Obj, $
 	{ // a "multiple" select:
 		$input_name .= '[]';
 	}
+
+	// Get a value from _POST request to display it e.g. when some error was created during update
+	$value_from_request = get_param( $input_name );
+	if( $value_from_request !== NULL )
+	{
+		$set_value = $value_from_request;
+	}
+
 	switch( $parmeta['type'] )
 	{
 		case 'checkbox':

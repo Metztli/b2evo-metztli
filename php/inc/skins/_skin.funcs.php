@@ -22,7 +22,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _skin.funcs.php 3671 2013-05-06 07:16:06Z yura $
+ * @version $Id: _skin.funcs.php 4673 2013-09-09 14:49:25Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -423,8 +423,17 @@ function skin_init( $disp )
 			break;
 
 		case 'login':
+			global $Plugins, $transmit_hashed_password;
+
 			$seo_page_type = 'Login form';
 			$robots_index = false;
+			require_js( 'functions.js', 'blog' );
+
+			$transmit_hashed_password = (bool)$Settings->get('js_passwd_hashing') && !(bool)$Plugins->trigger_event_first_true('LoginAttemptNeedsRawPassword');
+			if( $transmit_hashed_password )
+			{ // Include JS for client-side password hashing:
+				require_js( 'sha1_md5.js', 'blog' );
+			}
 			break;
 
 		case 'register':

@@ -15,7 +15,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author evfy-asimo: Attila Simo.
  *
- * @version $Id: _slug.form.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _slug.form.php 4828 2013-09-20 17:48:05Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -32,7 +32,7 @@ $Form = new Form( NULL, 'slug_checkchanges', 'post', 'compact' );
 
 $Form->global_icon( T_('Cancel editing!'), 'close', regenerate_url( 'action' ) );
 
-$Form->begin_form( 'fform', $creating ?  T_('New Slug') : T_('Slug') );
+$Form->begin_form( 'fform', $creating ?  T_('New Slug') . get_manual_link('slug-form') : T_('Slug') . get_manual_link('slug-form') );
 
 	$Form->add_crumb( 'slug' );
 	$Form->hidden( 'action',  $creating ? 'create' : 'update' );

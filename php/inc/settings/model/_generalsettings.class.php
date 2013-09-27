@@ -29,7 +29,7 @@
  * @author fplanque: Francois PLANQUE
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: _generalsettings.class.php 4314 2013-07-19 06:50:41Z yura $
+ * @version $Id: _generalsettings.class.php 4579 2013-08-30 06:16:24Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -194,7 +194,8 @@ Delivery Status Notification (Failure)
 delayed 24 hours
 delayed 48 hours
 delayed 72 hours
-failure notice',
+failure notice
+Undeliverable:',
 		'repath_body_terminator' => '---------- Forwarded message ----------
 ------ This is a copy of the message, including all the headers. ------
 ----- Transcript of session follows -----

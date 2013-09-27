@@ -29,7 +29,7 @@
  * @author fplanque: Francois PLANQUE.
  * @author blueyed: Daniel HAHLER.
  *
- * @version $Id: _locale_settings.form.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _locale_settings.form.php 4763 2013-09-16 13:17:08Z gopal $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -83,7 +83,7 @@ if( $action == 'edit' )
 	}
 	$Form->hidden( 'newloc_transliteration_map', (isset($ltemplate['transliteration_map']) ? base64_encode(serialize($ltemplate['transliteration_map'])) : '') );
 
-	$Form->begin_fieldset( T_('Locale settings') );
+	$Form->begin_fieldset( T_('Locale settings').get_manual_link('locale-form') );
 	$Form->text( 'newloc_locale', $newlocale, 20, T_('Locale'), sprintf(T_('The first two letters should be a <a %s>ISO 639 language code</a>. The last two letters should be a <a %s>ISO 3166 country code</a>.'), 'href="http://www.gnu.org/software/gettext/manual/html_chapter/gettext_15.html#SEC221"', 'href="http://www.gnu.org/software/gettext/manual/html_chapter/gettext_16.html#SEC222"'), 20 );
 	$Form->checkbox( 'newloc_enabled', (isset($ltemplate['enabled']) && $ltemplate['enabled']), T_('Enabled'),	T_('Should this locale be available to users?') );
 	$Form->text( 'newloc_name', (isset($ltemplate['name']) ? $ltemplate['name'] : ''), 40, T_('Name'),
@@ -173,7 +173,7 @@ else
 	$Form->hidden( 'action', 'update' );
 	$Form->hidden( 'loc_transinfo', $loc_transinfo );
 
-	$Form->begin_fieldset( T_('Regional settings').get_manual_link('regional_settings') );
+	$Form->begin_fieldset( T_('Regional settings').get_manual_link('locales-tab') );
 
 	if( ! isset($locales[$Settings->get('default_locale')])
 		|| ! $locales[$Settings->get('default_locale')]['enabled'] )
@@ -187,7 +187,7 @@ else
 	$Form->end_fieldset();
 
 
-	$Form->begin_fieldset( T_('Available locales') );
+	$Form->begin_fieldset( T_('Available locales').get_manual_link('locales-tab') );
 
 	echo '<p class="center">';
 	if( $loc_transinfo )

@@ -38,7 +38,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _param.funcs.php 4120 2013-07-02 11:23:55Z yura $
+ * @version $Id: _param.funcs.php 4698 2013-09-11 10:32:51Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -218,7 +218,9 @@ function param( $var, $type = 'raw', $default = '', $memorize = false,
 				// Make sure the string is a single line
 				$GLOBALS[$var] = preg_replace( '~\r|\n~', '', $GLOBALS[$var] );
 				// strip out any html:
-				$GLOBALS[$var] = trim( strip_tags($GLOBALS[$var]) );
+				$GLOBALS[$var] = trim( strip_tags( $GLOBALS[$var] ) );
+				// Decode url:
+				$GLOBALS[$var] = urldecode( $GLOBALS[$var] );
 
 				if( ( !empty( $GLOBALS[$var] ) ) && ( ( strpos( $GLOBALS[$var], '"' ) !== false ) || ( ! preg_match( '#^(/|\?|https?://)#i', $GLOBALS[$var] ) ) ) )
 				{ // We cannot accept this MISMATCH:
@@ -398,6 +400,10 @@ function param( $var, $type = 'raw', $default = '', $memorize = false,
 								}
 								// Restore current array with prepared data
 								$GLOBALS[$var] = $globals_var;
+							}
+							elseif( ( $type == 'boolean' ) && ( strtolower( $GLOBALS[$var] ) == 'false' ) )
+							{ // 'false' string must be interpreted as boolean false value
+								$GLOBALS[$var] = false;
 							}
 							elseif( !is_scalar( $GLOBALS[$var] ) || !preg_match( $regexp, $GLOBALS[$var] ) )
 							{ // Value of scalar var does not match!

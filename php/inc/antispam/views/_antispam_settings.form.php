@@ -28,7 +28,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: _antispam_settings.form.php 3768 2013-05-22 06:14:32Z yura $
+ * @version $Id: _antispam_settings.form.php 4434 2013-08-07 01:40:27Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -49,7 +49,7 @@ $Form->add_crumb( 'antispam' );
 $Form->hiddens_by_key( get_memorized() );
 $Form->hidden( 'action', 'update' );
 
-$Form->begin_fieldset( T_('Comments/Feedback').get_manual_link('antispam_comments/feedback') );
+$Form->begin_fieldset( T_('Comments/Feedback').get_manual_link('antispam-settings-comments') );
 	$Form->text( 'antispam_threshold_publish', $Settings->get('antispam_threshold_publish'), 3, T_('Publishing threshold'), T_("(-100 to 100). Automatically publish feedbacks with a spam karma below this value.") );
 	$Form->text( 'antispam_threshold_delete', $Settings->get('antispam_threshold_delete'), 3, T_('Deletion threshold'), T_("(-100 to 100). Automatically delete feedbacks with a spam karma over this value.") );
 
@@ -57,7 +57,7 @@ $Form->begin_fieldset( T_('Comments/Feedback').get_manual_link('antispam_comment
 $Form->end_fieldset();
 
 
-$Form->begin_fieldset( T_('Misc') );
+$Form->begin_fieldset( T_('Misc').get_manual_link('antispam-settings-misc') );
 	$Form->checkbox( 'antispam_block_spam_referers', $Settings->get('antispam_block_spam_referers'),
 		T_('Block spam referers'), T_('If a referrer has been detected as spam, should we block the request with a "403 Forbidden" page?') );
 	$Form->checkbox( 'antispam_report_to_central', $Settings->get('antispam_report_to_central'),
@@ -66,7 +66,7 @@ $Form->begin_fieldset( T_('Misc') );
 $Form->end_fieldset();
 
 
-$Form->begin_fieldset( T_('Spam detection relevance weight') );
+$Form->begin_fieldset( T_('Spam detection relevance weight').get_manual_link('antispam-settings-detection-relevance-weight') );
 
 echo '<p>'.T_('This defines the weight of the plugin, in relation to the others.').'</p>';
 
@@ -83,10 +83,10 @@ else foreach( $karma_plugins as $loop_Plugin )
 
 $Form->end_fieldset();
 
-$Form->begin_fieldset( T_('Suspicious users') );
+$Form->begin_fieldset( T_('Suspect users').get_manual_link('antispam-settings-suspect-users') );
 
-	$GroupCache = & get_GroupCache( true, T_('Don\'t move suspicious users') );
-	$Form->select_object( 'antispam_suspicious_group', $Settings->get('antispam_suspicious_group'), $GroupCache, T_('Move suspicious users to'), '', true );
+	$GroupCache = & get_GroupCache( true, T_('Don\'t move suspect users') );
+	$Form->select_object( 'antispam_suspicious_group', $Settings->get('antispam_suspicious_group'), $GroupCache, T_('Move suspect users to'), '', true );
 
 	$trust_groups = $Settings->get('antispam_trust_groups') != '' ? explode( ',', $Settings->get('antispam_trust_groups') ) : array();
 	$groups_options = array();

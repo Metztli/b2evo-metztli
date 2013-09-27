@@ -112,7 +112,7 @@ switch( $action )
 		// Update last touched date of Item
 		$LinkOwner->item_update_last_touched_date();
 
-		$Messages->add( $LinkOwner->T_( 'Link has been deleted from $ownerTitle$' ), 'success' );
+		$Messages->add( $LinkOwner->translate( 'Link has been deleted from $ownerTitle$' ), 'success' );
 
 		header_redirect( $redirect_to );
 		break;

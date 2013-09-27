@@ -22,7 +22,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _chapter.class.php 3638 2013-05-02 05:35:05Z attila $
+ * @version $Id: _chapter.class.php 4485 2013-08-11 16:17:01Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -125,7 +125,7 @@ class Chapter extends GenericCategory
 		if( $this->has_posts() && $cat_meta )
 		{	// Display error message if we want make the meta category from category with posts
 			global $Messages;
-			$Messages->add( T_('This category cannot be set as meta category. You must remove the posts it contains first.') );
+			$Messages->add( sprintf( T_('The category &laquo;%s&raquo; cannot be set as meta category. You must remove the posts it contains first.'), $this->dget('name') ) );
 		}
 		else
 		{	// Save the category as 'Meta' only if it has no posts

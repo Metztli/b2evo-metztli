@@ -34,7 +34,7 @@
  *
  * @package main
  *
- * @version $Id: admin.php 4354 2013-07-23 09:19:09Z attila $
+ * @version $Id: admin.php 4514 2013-08-16 10:46:42Z attila $
  */
 
 
@@ -105,8 +105,7 @@ if( ( $_SERVER['REQUEST_METHOD'] == 'POST' ) && empty( $_POST ) && empty( $_FILE
 	}
 
 	// Add error message and redirect back to the referer url
-	$Debuglog->add( sprintf( T_('Posted data is too large. %s bytes exceeds the maximum size of %s bytes.'), $_SERVER['CONTENT_LENGTH'], $post_max_size ) );
-	$Messages->add( T_('You have sent too much data (too many large files?) for the server to process. Please try again by sending less data/files at a time.').' '.get_manual_link( 'http-post-data-too-large' ) );
+	$Messages->add( sprintf( T_('You have sent too much data (too many large files?) for the server to process (%s sent / %s maximum). Please try again by sending less data/files at a time.'), bytesreadable( $_SERVER['CONTENT_LENGTH'] ), bytesreadable( $post_max_size ) ) );
 	header_redirect( $_SERVER['HTTP_REFERER'] );
 	exit(0);
 }

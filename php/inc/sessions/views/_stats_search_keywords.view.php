@@ -21,7 +21,7 @@
  *
  * @package admin
  *
- * @version $Id: _stats_search_keywords.view.php 4361 2013-07-24 06:22:58Z yura $
+ * @version $Id: _stats_search_keywords.view.php 4858 2013-09-24 23:58:17Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -74,8 +74,7 @@ if( param_errors_detected() )
 }
 else
 {
-// fp> WTF? Are you kidding me? This MUST be factorized with the cron task!
-
+	// Extract keyphrases from the hitlog:
 	keyphrase_job();
 
 	$SQL = new SQL();
@@ -195,7 +194,7 @@ function filter_keyphrases( & $Form )
 
 	$Form->text_input( 'goal_name', get_param('goal_name'), 20, T_('Goal names starting with'), '', array( 'maxlength'=>50 ) );
 
- 	$Form->checkbox_basic_input( 'split_engines', get_param('split_engines'), T_('Split engines') );
+ 	$Form->checkbox_basic_input( 'split_engines', get_param('split_engines'), /* TRANS: split search engines in results table */ T_('Split search engines') );
 }
 $today = date( 'Y-m-d', $localtimenow );
 $Results->filter_area = array(

@@ -8,11 +8,11 @@
  *
  * @package evoskins
  *
- * @version $Id: login.main.php 4110 2013-07-02 07:53:56Z yura $
+ * @version $Id: login.main.php 4657 2013-09-09 05:55:16Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
-global $Settings, $Plugins, $current_User;
+global $current_User;
 
 if( is_logged_in() )
 { // User is already logged in
@@ -32,14 +32,6 @@ if( is_logged_in() )
 	}
 	header_redirect( $redirect_to, 302 );
 	// will have exited
-}
-
-require_js( 'functions.js', 'blog' );
-
-$transmit_hashed_password = (bool)$Settings->get('js_passwd_hashing') && !(bool)$Plugins->trigger_event_first_true('LoginAttemptNeedsRawPassword');
-if( $transmit_hashed_password )
-{ // Include JS for client-side password hashing:
-	require_js( 'sha1_md5.js', 'blog' );
 }
 
 require $ads_current_skin_path.'index.main.php';

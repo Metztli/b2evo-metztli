@@ -24,7 +24,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _fileroot.class.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _fileroot.class.php 4494 2013-08-14 06:18:43Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -107,7 +107,7 @@ class FileRoot
 				{	// User not found
 					return false;
 				}
-				$this->name = $User->get( 'preferredname' ); //.' ('. /* TRANS: short for "user" */ T_('u').')';
+				$this->name = $User->get( 'login' ); //.' ('. /* TRANS: short for "user" */ T_('u').')';
 				$this->ads_path = $User->get_media_dir( $create );
 				$this->ads_url = $User->get_media_url();
 				return;

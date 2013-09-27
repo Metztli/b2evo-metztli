@@ -25,7 +25,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _comment.funcs.php 4275 2013-07-17 10:52:24Z yura $
+ * @version $Id: _comment.funcs.php 4786 2013-09-17 14:04:53Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -215,16 +215,13 @@ function comments_number( $zero='#', $one='#', $more='#', $post_ID = NULL )
 	if( $one == '#' ) $one = T_('1 comment');
 	if( $more == '#' ) $more = T_('%d comments');
 
-	// original hack by dodo@regretless.com
 	if( empty( $post_ID ) )
 	{
 		global $id;
 		$post_ID = $id;
 	}
-	// fp>attila: I'm not sure about this below. It's only in the backoffice where
-	// we want to display the total. in the front, we still don't want to count in drafts
-	// can you check & confirm?
-	// attila>fp: This function is called only from the backoffice ( _item_list_full.view.php ).
+
+	// attila> This function is called only from the backoffice ( _item_list_full.view.php ).
 	// There we always have to show all comments.
 	$number = generic_ctp_number( $post_ID, 'comments', 'total' );
 	if ($number == 0)
@@ -475,7 +472,7 @@ function get_opentrash_link( $check_perm = true, $force_show = false )
 			$comment_list_param_prefix = $CommentList->param_prefix;
 		}
 		$result .= '<span class="floatright">'.action_icon( T_('Open recycle bin'), 'recycle_full',
-						$admin_url.'?ctrl=comments&amp;'.$comment_list_param_prefix.'show_statuses[]=trash', T_('Open recycle bin'), 5, 3 ).'</span> ';
+						$admin_url.'?ctrl=comments&amp;blog='.$CommentList->Blog->ID.'&amp;'.$comment_list_param_prefix.'show_statuses[]=trash', T_('Open recycle bin'), 5, 3 ).'</span> ';
 	}
 	return $result.'</div>';
 }

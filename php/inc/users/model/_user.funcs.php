@@ -32,7 +32,7 @@
  * @author jeffbearer: Jeff BEARER - {@link http://www.jeffbearer.com/}.
  * @author jupiterx: Jordan RUNNING.
  *
- * @version $Id: _user.funcs.php 4402 2013-07-31 09:51:28Z yura $
+ * @version $Id: _user.funcs.php 4555 2013-08-26 09:40:35Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -479,13 +479,14 @@ function get_user_register_link( $before = '', $after = '', $link_text = '', $li
 
 
 /**
- * put your comment there...
+ * Get a user registration url
  *
- * @param mixed $redirect
- * @param mixed $default_source_string
- * @param mixed $disp_when_logged_in
+ * @param string redirect to url
+ * @param string where this registration url will be displayed
+ * @param boolean force to display even when a user is logged in
+ * @param string delimiter to use for more url params
  */
-function get_user_register_url( $redirect = NULL, $default_source_string = '', $disp_when_logged_in = false )
+function get_user_register_url( $redirect = NULL, $default_source_string = '', $disp_when_logged_in = false, $glue = '&amp;' )
 {
 	global $Settings, $edited_Blog, $secure_htsrv_url;
 
@@ -506,7 +507,7 @@ function get_user_register_url( $redirect = NULL, $default_source_string = '', $
 		$BlogCache = & get_BlogCache();
 		$Blog = $BlogCache->get_by_ID( $blog );
 
-		$register_url = url_add_param( $Blog->get( 'url' ), 'disp=register' );
+		$register_url = url_add_param( $Blog->get( 'url' ), 'disp=register', $glue );
 	}
 	else
 	{
@@ -521,18 +522,18 @@ function get_user_register_url( $redirect = NULL, $default_source_string = '', $
 	}
 	if( ! empty($source) )
 	{
-		$register_url = url_add_param( $register_url, 'source='.rawurlencode($source), '&' );
+		$register_url = url_add_param( $register_url, 'source='.rawurlencode($source), $glue );
 	}
 
 	// Redirect_to=
 	if( ! isset($redirect) )
 	{
-		$redirect = regenerate_url( '', '', '', '&' );
+		$redirect = regenerate_url( '', '', '', $glue );
 	}
 
 	if( ! empty($redirect) )
 	{
-		$register_url = url_add_param( $register_url, 'redirect_to='.rawurlencode( url_rel_to_same_host( $redirect, $secure_htsrv_url ) ), '&' );
+		$register_url = url_add_param( $register_url, 'redirect_to='.rawurlencode( url_rel_to_same_host( $redirect, $secure_htsrv_url ) ), $glue );
 	}
 
 	return $register_url;
@@ -3477,6 +3478,36 @@ function user_report_form( $params = array() )
 		$report_content = sprintf( $report_content, mysql2localedatetime( $current_report[ 'date' ] ), $report_options[ $current_report[ 'status' ] ], $current_report[ 'info' ], 'href="'.$params['cancel_url'].'"' );
 		$Form->info( T_('Already reported'), $report_content );
 	}
+}
+
+
+/**
+ * Get IDs of users by logins separated by comma
+ * Used to filter the posts by authors and assigned users
+ *
+ * @param string Logins (e.g. 'admin,ablogger,auser')
+ * @return string Users IDs (e.g. '1,3,5')
+ */
+function get_users_IDs_by_logins( $logins )
+{
+	if( empty( $logins ) )
+	{
+		return '';
+	}
+
+	$UserCache = & get_UserCache();
+
+	$logins = explode( ',', $logins );
+	$ids = array();
+	foreach( $logins as $login )
+	{
+		if( $User = $UserCache->get_by_login( $login, true ) )
+		{ // User exists with this login
+			$ids[] = $User->ID;
+		}
+	}
+
+	return implode( ',', $ids );
 }
 
 

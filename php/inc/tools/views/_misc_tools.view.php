@@ -16,7 +16,7 @@
  * @author blueyed: Daniel HAHLER
  * @author efy-asimo: Attila Simo.
  *
- * @version $Id: _misc_tools.view.php 4336 2013-07-22 06:09:24Z yura $
+ * @version $Id: _misc_tools.view.php 4573 2013-08-29 23:55:32Z fplanque $
  */
 
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -120,9 +120,7 @@ if( $current_User->check_perm('options', 'edit') )
 	echo '<li><a href="'.regenerate_url('action', 'action=del_obsolete_tags&amp;'.url_crumb('tools')).'">'.T_('Remove obsolete (unused) tag entries').'</a></li>';
 	echo '<li><a href="'.regenerate_url('action', 'action=find_broken_posts&amp;'.url_crumb('tools')).'">'.T_('Find all broken posts that have no matching category').'</a></li>';
 	echo '<li><a href="'.regenerate_url('action', 'action=find_broken_slugs&amp;'.url_crumb('tools')).'">'.T_('Find all broken slugs that have no matching target post').'</a></li>';
-// fp>attila : is this a DB maintenance tool or a FILE maintenance tool?
-// attila>fp : It is both. It will delete the orphan files from the disk, and also from the DB.
-	echo '<li><a href="'.regenerate_url('action', 'action=delete_orphan_comment_uploads&amp;'.url_crumb('tools')).'">'.T_('Find and delete orphan comment uploads').'</a></li>';
+	echo '<li><a href="'.regenerate_url('action', 'action=delete_orphan_comment_uploads&amp;'.url_crumb('tools')).'">'.T_('Find and delete orphan comment uploads (disk &amp; DB)').'</a></li>';
 	echo '<li><a href="'.regenerate_url('action', 'action=delete_orphan_files&amp;'.url_crumb('tools')).'">'.T_('Find and delete orphan File objects (with no matching file on disk)').'</a></li>';
 	echo '<li><a href="'.regenerate_url('action', 'action=prune_hits_sessions&amp;'.url_crumb('tools')).'">'.T_('Prune old hits & sessions (includes OPTIMIZE)').'</a></li>';
 	echo '</ul>';

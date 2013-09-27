@@ -449,3 +449,9 @@ form#login_form {
 #styled_content_block .bTitle .status_private {
 	top: 24px;
 }
+
+#add_group_contacts {
+	border: none;
+	background: none;
+	margin: 0;
+}

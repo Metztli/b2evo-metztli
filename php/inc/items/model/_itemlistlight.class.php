@@ -27,7 +27,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _itemlistlight.class.php 3577 2013-04-28 06:53:19Z attila $
+ * @version $Id: _itemlistlight.class.php 4449 2013-08-07 15:00:18Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -141,7 +141,9 @@ class ItemListLight extends DataObjectList2
 				'cat_focus' => 'wide',					// Search in extra categories, not just main cat
 				'tags' => NULL,
 				'authors' => NULL,
+				'authors_login' => NULL,
 				'assignees' => NULL,
+				'assignees_login' => NULL,
 				'author_assignee' => NULL,
 				'lc' => 'all',									// Filter on requested locale
 				'keywords' => NULL,
@@ -237,12 +239,18 @@ class ItemListLight extends DataObjectList2
 			/*
 			 * Restrict to selected authors:
 			 */
-			memorize_param( $this->param_prefix.'author', 'string', $this->default_filters['authors'], $this->filters['authors'] );  // List of authors to restrict to
+			// List of authors users IDs to restrict to
+			memorize_param( $this->param_prefix.'author', 'string', $this->default_filters['authors'], $this->filters['authors'] );
+			// List of authors users logins to restrict to
+			memorize_param( $this->param_prefix.'author_login', 'string', $this->default_filters['authors_login'], $this->filters['authors_login'] );
 
 			/*
 			 * Restrict to selected assignees:
 			 */
-			memorize_param( $this->param_prefix.'assgn', 'string', $this->default_filters['assignees'], $this->filters['assignees'] );  // List of assignees to restrict to
+			// List of assignees users IDs to restrict to
+			memorize_param( $this->param_prefix.'assgn', 'string', $this->default_filters['assignees'], $this->filters['assignees'] );
+			// List of assignees users logins to restrict to
+			memorize_param( $this->param_prefix.'assgn_login', 'string', $this->default_filters['assignees_login'], $this->filters['assignees_login'] );
 
 			/*
 			 * Restrict to selected author OR assignee:
@@ -385,13 +393,19 @@ class ItemListLight extends DataObjectList2
 		/*
 		 * Restrict to selected authors:
 		 */
-		$this->filters['authors'] = param( $this->param_prefix.'author', '/^-?[0-9]+(,[0-9]+)*$/', $this->default_filters['authors'], true );      // List of authors to restrict to
+		// List of authors users IDs to restrict to
+		$this->filters['authors'] = param( $this->param_prefix.'author', '/^-?[0-9]+(,[0-9]+)*$/', $this->default_filters['authors'], true );
+		// List of authors users logins to restrict to
+		$this->filters['authors_login'] = param( $this->param_prefix.'author_login', '/^-?[A-Za-z0-9_\.]+(,[A-Za-z0-9_\.]+)*$/', $this->default_filters['authors_login'], true );
 
 
 		/*
 		 * Restrict to selected assignees:
 		 */
-		$this->filters['assignees'] = param( $this->param_prefix.'assgn', '/^(-|-[0-9]+|[0-9]+)(,[0-9]+)*$/', $this->default_filters['assignees'], true );      // List of assignees to restrict to
+		// List of assignees users IDs to restrict to
+		$this->filters['assignees'] = param( $this->param_prefix.'assgn', '/^(-|-[0-9]+|[0-9]+)(,[0-9]+)*$/', $this->default_filters['assignees'], true );
+		// List of assignees users logins to restrict to
+		$this->filters['assignees_login'] = param( $this->param_prefix.'assgn_login', '/^(-|-[A-Za-z0-9_\.]+|[A-Za-z0-9_\.]+)(,[A-Za-z0-9_\.]+)*$/', $this->default_filters['assignees_login'], true );
 
 
 		/*
@@ -558,7 +572,9 @@ class ItemListLight extends DataObjectList2
 		}
 		$this->ItemQuery->where_tags( $this->filters['tags'] );
 		$this->ItemQuery->where_author( $this->filters['authors'] );
+		$this->ItemQuery->where_author_logins( $this->filters['authors_login'] );
 		$this->ItemQuery->where_assignees( $this->filters['assignees'] );
+		$this->ItemQuery->where_assignees_logins( $this->filters['assignees_login'] );
 		$this->ItemQuery->where_author_assignee( $this->filters['author_assignee'] );
 		$this->ItemQuery->where_locale( $this->filters['lc'] );
 		$this->ItemQuery->where_statuses( $this->filters['statuses'] );
@@ -770,7 +786,9 @@ class ItemListLight extends DataObjectList2
 		$lastpost_ItemQuery->where_chapter2( $this->Blog, $this->filters['cat_array'], $this->filters['cat_modifier'],
 																				 $this->filters['cat_focus']  );
 		$lastpost_ItemQuery->where_author( $this->filters['authors'] );
+		$lastpost_ItemQuery->where_author_logins( $this->filters['authors_login'] );
 		$lastpost_ItemQuery->where_assignees( $this->filters['assignees'] );
+		$lastpost_ItemQuery->where_assignees_logins( $this->filters['assignees_login'] );
 		$lastpost_ItemQuery->where_locale( $this->filters['lc'] );
 		$lastpost_ItemQuery->where_statuses( $this->filters['statuses'] );
 		$lastpost_ItemQuery->where_types( $this->filters['types'] );
@@ -946,28 +964,28 @@ class ItemListLight extends DataObjectList2
 
 
 		// AUTHORS:
-		if( !empty($this->filters['authors']) )
+		if( ! empty( $this->filters['authors'] ) || ! empty( $this->filters['authors_login'] ) )
 		{
-			$authors = preg_split('~\s*,\s*~', $this->filters['authors'], -1, PREG_SPLIT_NO_EMPTY);
+			$authors = trim( $this->filters['authors'].','.get_users_IDs_by_logins( $this->filters['authors_login'] ), ',' );
+			$authors = preg_split( '~\s*,\s*~', $authors, -1, PREG_SPLIT_NO_EMPTY );
+			$author_names = array();
 			if( $authors )
 			{
-				$UserCache = get_UserCache();
-				$author_names = array();
+				$UserCache = & get_UserCache();
 				foreach( $authors as $author_ID )
 				{
-					if( $tmp_Author = $UserCache->get_by_ID($author_ID, false) )
+					if( $tmp_User = $UserCache->get_by_ID( $author_ID, false, false ) )
 					{
-						$author_names[] = htmlspecialchars($tmp_Author->get_preferred_name());
+						$author_names[] = $tmp_User->get_identity_link( array( 'link_text' => 'login' ) );
 					}
 				}
-				$authors = implode(', ', $author_names);
 			}
-			$title_array[] = T_('Author(s)').': '.$authors;
+			$title_array[] = T_('Author(s)').': '.implode( ', ', $author_names );
 		}
 
 
 		// ASSIGNEES:
-		if( !empty($this->filters['assignees']) )
+		if( ! empty( $this->filters['assignees'] ) || ! empty( $this->filters['assignees_login'] ) )
 		{
 			if( $this->filters['assignees'] == '-' )
 			{
@@ -975,7 +993,21 @@ class ItemListLight extends DataObjectList2
 			}
 			else
 			{
-				$title_array[] = T_('Assigned to').': '.$this->filters['assignees'];
+				$assignees = trim( $this->filters['assignees'].','.get_users_IDs_by_logins( $this->filters['assignees_login'] ), ',' );
+				$assignees = preg_split( '~\s*,\s*~', $assignees, -1, PREG_SPLIT_NO_EMPTY );
+				$assignees_names = array();
+				if( $assignees )
+				{
+					$UserCache = & get_UserCache();
+					foreach( $assignees as $user_ID )
+					{
+						if( $tmp_User = & $UserCache->get_by_ID( $user_ID, false, false ) )
+						{
+							$assignees_names[] = $tmp_User->get_identity_link( array( 'link_text' => 'login' ) );
+						}
+					}
+				}
+				$title_array[] = T_('Assigned to').': '.implode( ', ', $assignees_names );
 			}
 		}
 

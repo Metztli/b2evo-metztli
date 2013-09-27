@@ -27,7 +27,7 @@
  * @author fplanque: Francois PLANQUE.
  * (dh please re-add)
  *
- * @version $Id: upload.ctrl.php 4301 2013-07-18 10:46:49Z attila $
+ * @version $Id: upload.ctrl.php 4851 2013-09-24 09:56:14Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -408,13 +408,13 @@ if(  ( $action != 'switchtab' ) && isset($_FILES) && count( $_FILES ) )
 				$img_tag = format_to_output( $uploadedFile->get_tag(), 'formvalue' );
 				if( $uploadedFile->is_image() )
 				{
-					$link_msg = $LinkOwner->T_( 'Link this image to your owner' );
+					$link_msg = $LinkOwner->translate( 'Link this image to your owner' );
 					$link_note = T_('recommended - allows automatic resizing');
 				}
 				else
 				{
-					$link_msg = $LinkOwner->T_( 'Link this file to your owner' );
-					$link_note = $LinkOwner->T_( 'The file will be appended for download at the end of the owner' );
+					$link_msg = $LinkOwner->translate( 'Link this file to your owner' );
+					$link_note = $LinkOwner->translate( 'The file will be linked for download at the end of the owner' );
 				}
 				$success_msg .= '<ul>'
 						.'<li>'.action_icon( T_('Link this file!'), 'link',
@@ -425,7 +425,7 @@ if(  ( $action != 'switchtab' ) && isset($_FILES) && count( $_FILES ) )
 						.'<li>'.T_('or').' <a href="#" onclick="if( window.focus && window.opener ){'
 						.'window.opener.focus(); textarea_wrap_selection( window.opener.document.getElementById(\''.$LinkOwner->type.'form_post_content\'), \''
 						.format_to_output( $uploadedFile->get_tag(), 'formvalue' ).'\', \'\', 1, window.opener.document ); } return false;">'
-						.$LinkOwner->T_( 'Insert the following code snippet into your owner' ).'</a> : <input type="text" value="'.$img_tag.'" size="60" /></li>'
+						.$LinkOwner->translate( 'Insert the following code snippet into your owner' ).'</a> : <input type="text" value="'.$img_tag.'" size="60" /></li>'
 						// fp> TODO: it would be supacool to have an ajaxy "tumbnail size selector" here that generates a thumnail of requested size on server and then changes the code in the input above
 					.'</ul>';
 			}

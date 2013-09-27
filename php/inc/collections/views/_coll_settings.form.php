@@ -66,7 +66,7 @@ if( isset($collections_Module) )
 				'loop_object_method' => 'get_maxlen_name',
 				'onchange' => '' )  );
 
-		$Form->select_input_options( 'blogs_order_by', array_to_option_list( get_coll_sort_options(), $Settings->get('blogs_order_by') ), T_('Order blogs by'), T_('Select default blog list order.') );
+		$Form->select_input_options( 'blogs_order_by', array_to_option_list( get_coll_sort_options(), $Settings->get('blogs_order_by') ), T_('Order blogs by'), T_('Select blog list order.') );
 
 		$Form->select_input_options( 'blogs_order_dir', array_to_option_list(
 				array( 'ASC' => T_('Ascending'), 'DESC' => T_('Descending') ), $Settings->get('blogs_order_dir') ), T_('Order direction'), T_('Select default blog list order direction.') );

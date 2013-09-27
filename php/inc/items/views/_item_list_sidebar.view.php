@@ -15,7 +15,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _item_list_sidebar.view.php 4159 2013-07-08 06:11:55Z yura $
+ * @version $Id: _item_list_sidebar.view.php 4449 2013-08-07 15:00:18Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -39,7 +39,7 @@ global $ItemList;
 $pp = $ItemList->param_prefix;
 
 global $tab;
-global ${$pp.'show_past'}, ${$pp.'show_future'}, ${$pp.'show_statuses'}, ${$pp.'s'}, ${$pp.'sentence'}, ${$pp.'exact'}, ${$pp.'author'}, ${$pp.'assgn'}, ${$pp.'status'};
+global ${$pp.'show_past'}, ${$pp.'show_future'}, ${$pp.'show_statuses'}, ${$pp.'s'}, ${$pp.'sentence'}, ${$pp.'exact'}, ${$pp.'author'}, ${$pp.'author_login'}, ${$pp.'assgn'}, ${$pp.'assgn_login'}, ${$pp.'status'};
 
 $show_past = ${$pp.'show_past'};
 $show_future = ${$pp.'show_future'};
@@ -48,7 +48,9 @@ $s = ${$pp.'s'};
 $sentence = ${$pp.'sentence'};
 $exact = ${$pp.'exact'};
 $author = ${$pp.'author'};
+$author_login = ${$pp.'author_login'};
 $assgn = ${$pp.'assgn'};
+$assgn_login = ${$pp.'assgn_login'};
 $status = ${$pp.'status'};
 
 
@@ -155,34 +157,66 @@ echo $Widget->replace_vars( $template['block_start'] );
 		echo '</fieldset>';
 
 
-		/*
-		 * Assignees:
-		 * TODO: allow multiple selection
-		 */
-		echo '<fieldset>';
-		echo '<legend>'.T_('Assignees').'</legend>';
 		// Load current blog members into cache:
 		$UserCache = & get_UserCache();
-		$UserCache->load_blogmembers( $Blog->ID );
-		if( count($UserCache->cache) )
-		{
-			echo '<ul>';
+		// Load only first 21 users to know when we should display an input box instead of full users list
+		$UserCache->load_blogmembers( $Blog->ID, 21 );
+		$user_count = count( $UserCache->cache );
 
-			echo '<li><input type="radio" name="'.$pp.'assgn" value="-" class="radio"';
-			if( '-' == $assgn ) echo ' checked="checked"';
-			echo ' /> <a href="'.regenerate_url( $pp.'assgn', $pp.'assgn=-' ).'">'.T_('Not assigned').'</a></li>';
+		if( $Blog->get_setting( 'use_workflow' ) )
+		{ // Display only if workflow is enabled
 
-			foreach( $UserCache->cache as $loop_Obj )
+			/*
+			 * Assignees:
+			 * TODO: allow multiple selection
+			 */
+			echo '<fieldset>';
+			echo '<legend>'.T_('Assignees').'</legend>';
+			if( $user_count )
 			{
-				echo '<li><input type="radio" name="'.$pp.'assgn" value="'.$loop_Obj->ID.'" class="radio"';
-				if( $loop_Obj->ID == $assgn ) echo ' checked="checked"';
-				echo ' /> <a href="'.regenerate_url( $pp.'assgn', $pp.'assgn='.$loop_Obj->ID ).'" class="'.$loop_Obj->get_gender_class().'" rel="bubbletip_user_'.$loop_Obj->ID.'">';
-				$loop_Obj->preferred_name();
-				echo '</a></li>';
+				echo '<ul>';
+
+				echo '<li><input type="radio" name="'.$pp.'assgn" value="0" class="radio"';
+				if( empty( $assgn ) ) echo ' checked="checked"';
+				echo ' /> <a href="'.regenerate_url( $pp.'assgn', $pp.'assgn=0' ).'">'.T_('Any').'</a></li>';
+
+				echo '<li><input type="radio" name="'.$pp.'assgn" value="-" class="radio"';
+				if( '-' == $assgn ) echo ' checked="checked"';
+				echo ' /> <a href="'.regenerate_url( $pp.'assgn', $pp.'assgn=-' ).'">'.T_('Not assigned').'</a></li>';
+
+				if( $user_count > 20 )
+				{ // Display an input box to enter user login
+					echo '<li>';
+					echo T_('User').': <input type="text" class="form_text_input autocomplete_login" value="'.$assgn_login.'" name="'.$pp.'assgn_login" id="'.$pp.'assgn_login" />';
+					echo '</li>';
+				}
+				else
+				{ // Display a list of users
+					foreach( $UserCache->cache as $loop_User )
+					{
+						echo '<li><input type="radio" name="'.$pp.'assgn" value="'.$loop_User->ID.'" class="radio"';
+						if( $loop_User->ID == $assgn ) echo ' checked="checked"';
+						echo ' /> <a href="'.regenerate_url( $pp.'assgn', $pp.'assgn='.$loop_User->ID ).'" class="'.$loop_User->get_gender_class().'" rel="bubbletip_user_'.$loop_User->ID.'">';
+						$loop_User->login();
+						echo '</a></li>';
+					}
+				}
+				echo '</ul>';
 			}
-			echo '</ul>';
+			echo '</fieldset>';
+			?>
+			<script type="text/javascript">
+			jQuery( '#<?php echo $pp; ?>assgn_login' ).focus( function()
+			{
+				jQuery( 'input[name=<?php echo $pp; ?>assgn]' ).removeAttr( 'checked' );
+			} );
+			jQuery( 'input[name=<?php echo $pp; ?>assgn]' ).click( function()
+			{
+				jQuery( '#<?php echo $pp; ?>assgn_login' ).val( '' );
+			} );
+			</script>
+			<?php
 		}
-		echo '</fieldset>';
 
 
 		/*
@@ -191,18 +225,30 @@ echo $Widget->replace_vars( $template['block_start'] );
 		 */
 		echo '<fieldset>';
 		echo '<legend>'.T_('Authors').'</legend>';
-		// Load current blog members into cache:
-		$UserCache->load_blogmembers( $Blog->ID );
-		if( count($UserCache->cache) )
+		if( $user_count )
 		{
 			echo '<ul>';
-			foreach( $UserCache->cache as $loop_Obj )
-			{
-				echo '<li><input type="radio" name="'.$pp.'author" value="'.$loop_Obj->ID.'" class="radio"';
-				if( $loop_Obj->ID == $author ) echo ' checked="checked"';
-				echo ' /> <a href="'.regenerate_url( $pp.'author', $pp.'author='.$loop_Obj->ID ).'" class="'.$loop_Obj->get_gender_class().'" rel="bubbletip_user_'.$loop_Obj->ID.'">';
-				$loop_Obj->preferred_name();
-				echo '</a></li>';
+
+			if( $user_count > 20 )
+			{ // Display an input box to enter user login	
+				echo '<li>';
+				echo T_('User').': <input type="text" class="form_text_input autocomplete_login" value="'.$author_login.'" name="'.$pp.'author_login" id="'.$pp.'author_login" />';
+				echo '</li>';
+			}
+			else
+			{ // Display a list of users
+				echo '<li><input type="radio" name="'.$pp.'author" value="0" class="radio"';
+				if( empty( $author ) ) echo ' checked="checked"';
+				echo ' /> <a href="'.regenerate_url( $pp.'author', $pp.'author=0' ).'">'.T_('Any').'</a></li>';
+
+				foreach( $UserCache->cache as $loop_User )
+				{
+					echo '<li><input type="radio" name="'.$pp.'author" value="'.$loop_User->ID.'" class="radio"';
+					if( $loop_User->ID == $author ) echo ' checked="checked"';
+					echo ' /> <a href="'.regenerate_url( $pp.'author', $pp.'author='.$loop_User->ID ).'" class="'.$loop_User->get_gender_class().'" rel="bubbletip_user_'.$loop_User->ID.'">';
+					$loop_User->login();
+					echo '</a></li>';
+				}
 			}
 			echo '</ul>';
 		}
@@ -211,7 +257,7 @@ echo $Widget->replace_vars( $template['block_start'] );
 
 		/*
 		 * Statuses
- 		 * TODO: allow multiple selection
+		 * TODO: allow multiple selection
 		 */
 		$ItemStatusCache = & get_ItemStatusCache();
 		$ItemStatusCache->load_all(); // TODO: load for current blog only

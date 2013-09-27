@@ -617,6 +617,7 @@
 				}
 			}
 
+			$title.attr( 'title', settings.title );
 			$title.html(settings.title).add($loaded).show();
 
 			if (total > 1) { // handle grouping
@@ -714,10 +715,9 @@
 
 		trigger(event_load, settings.onLoad);
 
-		if( previous_title != settings.title )
+		if( ( previous_title == '' && settings.title != '' ) ||
+		    ( previous_title != '' && settings.title == '' ) )
 		{	// Fix positions of the title
-			previous_title = settings.title;
-
 			var title_height = 0;
 			if( settings.title !== "" )
 			{	// Title is enabled
@@ -736,6 +736,7 @@
 			$loaded.css( 'margin-bottom', parseInt( $loaded.css( 'margin-bottom' ) ) + title_height );
 			loadedHeight += title_height;
 		}
+		previous_title = settings.title;
 
 		if( settings.displayVoting && settings.votingUrl != '' && element.id != '' )
 		{	// Initialize the actions for the voting controls

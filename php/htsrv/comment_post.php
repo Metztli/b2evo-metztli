@@ -619,7 +619,7 @@ if( $Comment->ID )
 			);
 			$Session->set( 'core.register_user', $register_user );
 
-			header_redirect( get_user_register_url( $Comment->Item->get_url( 'public_view' ), 'reg after comment' ) );
+			header_redirect( get_user_register_url( $Comment->Item->get_url( 'public_view' ), 'reg after comment', false, '&' ) );
 		}
 
 		// Not logged in user. We want him to see his comment has not vanished if he checks back on the Item page

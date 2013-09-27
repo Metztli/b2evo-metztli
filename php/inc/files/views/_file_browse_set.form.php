@@ -24,7 +24,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _file_browse_set.form.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _file_browse_set.form.php 4680 2013-09-11 03:00:20Z marc $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -37,7 +37,7 @@ $Form = new Form( NULL, 'file_displaysettings_checkchanges' );
 
 $Form->global_icon( T_('Close settings!'), 'close', regenerate_url() );
 
-$Form->begin_form( 'fform', T_('Display settings') );
+$Form->begin_form( 'fform', T_('Display settings').get_manual_link('file-manager-display-settings') );
 
 	$Form->add_crumb( 'file' );
 	$Form->hidden_ctrl();

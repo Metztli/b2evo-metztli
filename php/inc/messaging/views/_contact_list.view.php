@@ -20,7 +20,7 @@
  * @author efy-maxim: Evo Factory / Maxim.
  * @author fplanque: Francois Planque.
  *
- * @version $Id: _contact_list.view.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _contact_list.view.php 4734 2013-09-13 06:25:05Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -440,10 +440,10 @@ if( count( $Results->rows ) > 0 )
 
 	$Form->switch_layout( 'none' );
 	$Form->switch_template_parts( array(
-			'formstart' => '<span class="nowrap">',
-			'formend' => '</span>',
-			'labelstart' => '<strong>',
-			'labelend' => '</strong>',
+			'formstart'  => '<div class="form_add_contacts">',
+			'labelstart' => '<span class="label">',
+			'labelend'   => '</span> <span class="controls">',
+			'formend'    => '</span></div>',
 	) );
 
 	$Form->begin_form();

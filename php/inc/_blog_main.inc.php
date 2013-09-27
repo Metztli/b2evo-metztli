@@ -22,7 +22,7 @@
  * @author blueyed: Daniel HAHLER
  * @author fplanque: Francois PLANQUE
  *
- * @version $Id: _blog_main.inc.php 4096 2013-06-28 10:39:15Z attila $
+ * @version $Id: _blog_main.inc.php 4439 2013-08-07 06:07:08Z yura $
  */
 if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page directly.' );
 
@@ -498,7 +498,8 @@ if( isset( $skin ) )
 	if( $Skin->type == 'feed' )
 	{	// Check if we actually allow the display of the feed; last chance to revert to 404 displayed in default skin.
 		// Note: Skins with the type "feed" can always be accessed, even when they're not installed.
-		if( $Blog->get_setting('feed_content') == 'none' )
+		if( ( $disp == 'posts' && $Blog->get_setting('feed_content') == 'none' ) ||
+		    ( $disp == 'comments' && $Blog->get_setting('comment_feed_content') == 'none' ) )
 		{ // We don't want to provide feeds; revert to 404!
 			unset( $skin );
 			unset( $Skin );

@@ -24,7 +24,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _itemquery.class.php 3459 2013-04-11 12:35:09Z yura $
+ * @version $Id: _itemquery.class.php 4449 2013-08-07 15:00:18Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -45,7 +45,9 @@ class ItemQuery extends SQL
 	var $show_statuses;
 	var $tags;
 	var $author;
+	var $author_login;
 	var $assignees;
+	var $assignees_login;
 	var $statuses;
 	var $types;
 	var $dstart;
@@ -351,60 +353,120 @@ class ItemQuery extends SQL
 
 
 	/**
-	 * Restrict to specific authors
+	 * Restrict to specific authors by users IDs
 	 *
-	 * @param string List of authors to restrict to (must have been previously validated)
+	 * @param string List of authors IDs to restrict to (must have been previously validated)
 	 */
-	function where_author( $author )
+	function where_author( $author_IDs )
 	{
-		$this->author = $author;
+		$this->author = $author_IDs;
 
-		if( empty( $author ) )
+		if( empty( $this->author ) )
 		{
 			return;
 		}
 
-		if( substr( $author, 0, 1 ) == '-' )
-		{	// List starts with MINUS sign:
+		if( substr( $this->author, 0, 1 ) == '-' )
+		{ // Exclude the users IF a list starts with MINUS sign:
 			$eq = 'NOT IN';
-			$author_list = substr( $author, 1 );
+			$users_IDs = substr( $this->author, 1 );
 		}
 		else
-		{
+		{ // Include the users:
 			$eq = 'IN';
-			$author_list = $author;
+			$users_IDs = $this->author;
 		}
 
-		$this->WHERE_and( $this->dbprefix.'creator_user_ID '.$eq.' ('.$author_list.')' );
+		$this->WHERE_and( $this->dbprefix.'creator_user_ID '.$eq.' ( '.$users_IDs.' )' );
 	}
 
 
 	/**
-	 * Restrict to specific assignees
+	 * Restrict to specific authors by users logins
 	 *
-	 * @param string List of assignees to restrict to (must have been previously validated)
+	 * @param string List of authors logins to restrict to (must have been previously validated)
 	 */
-	function where_assignees( $assignees )
+	function where_author_logins( $author_logins )
 	{
-		$this->assignees = $assignees;
+		$this->author_login = $author_logins;
 
-		if( empty( $assignees ) )
+		if( empty( $this->author_login ) )
 		{
 			return;
 		}
 
-		if( $assignees == '-' )
+		if( substr( $this->author_login, 0, 1 ) == '-' )
+		{ // Exclude the users IF a list starts with MINUS sign:
+			$eq = 'NOT IN';
+			$users_IDs = get_users_IDs_by_logins( substr( $this->author_login, 1 ) );
+		}
+		else
+		{ // Include the users:
+			$eq = 'IN';
+			$users_IDs = get_users_IDs_by_logins( $this->author_login );
+		}
+
+		$this->WHERE_and( $this->dbprefix.'creator_user_ID '.$eq.' ( '.$users_IDs.' )' );
+	}
+
+
+	/**
+	 * Restrict to specific assignees by users IDs
+	 *
+	 * @param string List of assignees IDs to restrict to (must have been previously validated)
+	 * @param string List of assignees logins to restrict to (must have been previously validated)
+	 */
+	function where_assignees( $assignees, $assignees_logins = '' )
+	{
+		$this->assignees = $assignees;
+
+		if( empty( $this->assignees ) )
+		{
+			return;
+		}
+
+		if( $this->assignees == '-' )
 		{	// List is ONLY a MINUS sign (we want only those not assigned)
 			$this->WHERE_and( $this->dbprefix.'assigned_user_ID IS NULL' );
 		}
-		elseif( substr( $assignees, 0, 1 ) == '-' )
+		elseif( substr( $this->assignees, 0, 1 ) == '-' )
 		{	// List starts with MINUS sign:
 			$this->WHERE_and( '( '.$this->dbprefix.'assigned_user_ID IS NULL
-			                  OR '.$this->dbprefix.'assigned_user_ID NOT IN ('.substr( $assignees, 1 ).') )' );
+			                  OR '.$this->dbprefix.'assigned_user_ID NOT IN ('.substr( $this->assignees, 1 ).') )' );
 		}
 		else
 		{
-			$this->WHERE_and( $this->dbprefix.'assigned_user_ID IN ('.$assignees.')' );
+			$this->WHERE_and( $this->dbprefix.'assigned_user_ID IN ('.$this->assignees.')' );
+		}
+	}
+
+
+	/**
+	 * Restrict to specific assignees by users logins
+	 *
+	 * @param string List of assignees logins to restrict to (must have been previously validated)
+	 */
+	function where_assignees_logins( $assignees_logins )
+	{
+		$this->assignees_logins = $assignees_logins;
+
+		if( empty( $this->assignees_logins ) )
+		{
+			return;
+		}
+
+		if( $this->assignees_logins == '-' )
+		{	// List is ONLY a MINUS sign (we want only those not assigned)
+			$this->WHERE_and( $this->dbprefix.'assigned_user_ID IS NULL' );
+		}
+		elseif( substr( $this->assignees_logins, 0, 1 ) == '-' )
+		{	// List starts with MINUS sign:
+			$this->WHERE_and( '( '.$this->dbprefix.'assigned_user_ID IS NULL
+			                  OR '.$this->dbprefix.'assigned_user_ID NOT IN ('.get_users_IDs_by_logins( substr( $this->assignees_logins, 1 ) ).') )' );
+		}
+		else
+		{
+			$this->WHERE_and( $this->dbprefix.'assigned_user_ID IN ('.get_users_IDs_by_logins( $this->assignees_logins ).')' );
 		}
 	}
 

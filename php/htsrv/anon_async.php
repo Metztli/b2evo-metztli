@@ -21,7 +21,7 @@
  *
  * @package evocore
  *
- * @version $Id: anon_async.php 4110 2013-07-02 07:53:56Z yura $
+ * @version $Id: anon_async.php 4814 2013-09-20 05:46:02Z yura $
  */
 
 
@@ -755,8 +755,14 @@ switch( $action )
 		if( param( 'is_backoffice', 'integer', 0 ) )
 		{
 			global $current_User, $UserSettings, $is_admin_page;
-			$params = array( 'skin_type' => 'admin', 'skin_name' => $UserSettings->get( 'admin_skin', $current_User->ID ) );
+			$admin_skin = $UserSettings->get( 'admin_skin', $current_User->ID );
+			$params = array( 'skin_type' => 'admin', 'skin_name' => $admin_skin );
 			$is_admin_page = true;
+			/**
+			 * Load the AdminUI class for the skin.
+			 */
+			require_once $adminskins_path.$admin_skin.'/_adminUI.class.php';
+			$AdminUI = new AdminUI();
 
 			// Get the requested params and memorize it to make correct links for paging, ordering and etc.
 			param( 'ctrl', '/^[a-z0-9_]+$/', $default_ctrl, true );

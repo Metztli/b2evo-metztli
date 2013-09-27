@@ -21,7 +21,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _chapter_list.view.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _chapter_list.view.php 4485 2013-08-11 16:17:01Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 //____________________ Callbacks functions to display categories list _____________________
@@ -64,7 +64,7 @@ function cat_line( $Chapter, $level )
 	global $line_class, $permission_to_edit, $current_User, $Settings;
 	global $GenericCategoryCache, $current_default_cat_ID;
 	global $number_of_posts_in_cat;
-	
+
 	global $Session;
 	$result_fadeout = $Session->get( 'fadeout_array' );
 
@@ -82,7 +82,7 @@ function cat_line( $Chapter, $level )
 	// Default
 	if( $current_default_cat_ID == $Chapter->ID )
 	{
-		$makedef_icon = get_icon( 'enabled', 'imgtag', array( 'title' => format_to_output( T_( 'This is default category' ), 'htmlattr' ) ) );
+		$makedef_icon = get_icon( 'enabled', 'imgtag', array( 'title' => format_to_output( T_( 'This is the default category' ), 'htmlattr' ) ) );
 	}
 	else
 	{

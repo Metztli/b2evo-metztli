@@ -28,7 +28,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _itemlight.class.php 4037 2013-06-24 07:19:23Z attila $
+ * @version $Id: _itemlight.class.php 4760 2013-09-16 10:41:27Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -572,15 +572,19 @@ class ItemLight extends DataObject
 			global $extracats, $post_category;
 
 			param( 'extracats', 'array', array() );
-			if( !in_array( $post_category, $extracats ) )
+			if( ( ! empty( $post_category ) ) && ( ! in_array( $post_category, $extracats ) ) )
 			{
 				$extracats[] = $post_category;
 			}
 			$categoryIDs = $extracats;
 		}
+		elseif( empty( $this->ID ) )
+		{ // This item doesn't exist yet
+			$categoryIDs = NULL;
+		}
 		else
 		{
-			$search_post_ids = explode( ',', $postIDlist );
+			$search_post_ids = empty( $postIDlist ) ? NULL : explode( ',', $postIDlist );
 			if( empty( $search_post_ids ) || !in_array( $this->ID, $search_post_ids ) )
 			{	// Load cats for current item
 				$categoryIDs = postcats_get_byID( $this->ID );
@@ -608,14 +612,19 @@ class ItemLight extends DataObject
 			}
 		}
 
-		$ChapterCache = & get_ChapterCache();
-
 		$chapters = array();
-		foreach( $categoryIDs as $cat_ID )
+		if( ! empty( $categoryIDs ) )
 		{
-			if( $Chapter = & $ChapterCache->get_by_ID( $cat_ID, false ) )
+			$ChapterCache = & get_ChapterCache();
+			// Load all required Chapters
+			$ChapterCache->load_list( $categoryIDs );
+
+			foreach( $categoryIDs as $cat_ID )
 			{
-				$chapters[] = $Chapter;
+				if( $Chapter = & $ChapterCache->get_by_ID( $cat_ID, false ) )
+				{
+					$chapters[] = $Chapter;
+				}
 			}
 		}
 

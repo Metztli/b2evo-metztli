@@ -44,9 +44,7 @@ if( $disp == 'posts' && ! isset( $tag ) && isset( $cat ) )
 	$disp = 'catdir';
 }
 
-// fp>yura: what is that??
-/* yura>fp:
-It is used for home page and for category page where we have the intro Items.
+/* yura> The following JS is used for home page and for category page where we have the intro Items.
 For normal we need to check if current Item can be rated,
 but in the disp == 'posts' or 'catdir' we don't have the object Item in the begining of this file,
 we will have that only after calling of function get_featured_Item();

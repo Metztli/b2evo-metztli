@@ -21,7 +21,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _user_tools.widget.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _user_tools.widget.php 4555 2013-08-26 09:40:35Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -257,7 +257,7 @@ class user_tools_Widget extends ComponentWidget
 		$this->init_display( $params ); // just in case it hasn't been done before
 
 		$this->disp_params['item_start'] .= '<strong>';
-		$this->disp_params['item_end'] .= '</strong>';
+		$this->disp_params['item_end'] = '</strong>'.$this->disp_params['item_end'];
 
 		$tools_links = '';
 		if( $this->get_param('user_postnew_link_show') )

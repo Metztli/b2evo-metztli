@@ -14,7 +14,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _comments.ctrl.php 4110 2013-07-02 07:53:56Z yura $
+ * @version $Id: _comments.ctrl.php 4698 2013-09-11 10:32:51Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -233,7 +233,7 @@ switch( $action )
 			param( 'newcomment_author_url', 'string' );
 			param( 'comment_allow_msgform', 'integer', 0 /* checkbox */ );
 
-			param_check_not_empty( 'newcomment_author', T_('Please enter and author name.'), '' );
+			param_check_not_empty( 'newcomment_author', T_('Please enter an author name.'), '' );
 			$edited_Comment->set( 'author', $newcomment_author );
 			param_check_email( 'newcomment_author_email', false );
 			$edited_Comment->set( 'author_email', $newcomment_author_email );
@@ -311,6 +311,7 @@ switch( $action )
 			) );
 
 		param_check_html( 'content', T_('Invalid comment text.') );	// Check this is backoffice content (NOT with comment rules)
+		param_check_not_empty( 'content', T_('Empty comment content is not allowed.') );
 		$edited_Comment->set( 'content', get_param( 'content' ) );
 
 		if( $current_User->check_perm( 'blog_edit_ts', 'edit', false, $Blog->ID ) )
@@ -356,8 +357,8 @@ switch( $action )
 			{ // comment status was set to published or it was already published, needs to handle notifications
 				$edited_Comment->handle_notifications( false, $current_User->ID );
 			}
-	
-			$Messages->add( T_('Comment has been updated.'), 'success' );	
+
+			$Messages->add( T_('Comment has been updated.'), 'success' );
 
 			header_redirect( $redirect_to );
 			/* exited */

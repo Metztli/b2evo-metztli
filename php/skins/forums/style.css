@@ -644,6 +644,7 @@ table.bForums div.avatartag {
 .user_contacts_groups th, .user_contacts_groups td {
 	background: none;
 	color: #000;
+	border: none;
 }
 
 .navigation {
@@ -692,6 +693,7 @@ table.catselect th {
 	background: #D1D7DC;
 	color: #000;
 	height: auto;
+	border: none;
 }
 table.catselect a {
 	text-decoration: none;
@@ -758,6 +760,7 @@ table.legend td {
 	background: #D1D7DC;
 	color: #000;
 	height: auto;
+	border: none;
 }
 
 .bForums .bComment.form_textarea_input {
@@ -977,4 +980,8 @@ td.custom_content p {
 	width: 7px;
 	height: 9px;
 	margin: 0 3px 0 2px;
+}
+
+.form_add_contacts .controls {
+	padding-left: 0;
 }

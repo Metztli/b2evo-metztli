@@ -22,7 +22,7 @@
  * @author efy-maxim: Evo Factory / Maxim.
  * @author fplanque: Francois Planque.
  *
- * @version $Id: upgrade.ctrl.php 4419 2013-08-02 10:59:11Z attila $
+ * @version $Id: upgrade.ctrl.php 4753 2013-09-16 05:54:36Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -285,9 +285,8 @@ switch( $action )
 
 			$read_only_list = array();
 
-			$upgrade_folder_path = $action == 'backup_and_overwrite_svn'
-				? $upgrade_path.$upgrade_name
-				: $upgrade_path.$upgrade_name.'/b2evolution/blogs';
+			// Get a folder path where we should get the files
+			$upgrade_folder_path = get_upgrade_folder_path( $upgrade_name );
 
 			$success = verify_overwrite( $upgrade_folder_path, no_trailing_slash( $basepath ), 'Verifying', false, $read_only_list );
 

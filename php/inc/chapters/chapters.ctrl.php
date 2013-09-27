@@ -18,7 +18,7 @@
  *
  * @package admin
  *
- * @version $Id: chapters.ctrl.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: chapters.ctrl.php 4485 2013-08-11 16:17:01Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -434,7 +434,7 @@ switch( $action )
 		}
 		else
 		{
-			$Messages->add( sprintf( T_('The category &laquo;%s&raquo; couldn\t be locked.'), $edited_GenericCategory->dget('name') ), 'error' );
+			$Messages->add( sprintf( T_('The category &laquo;%s&raquo; couldn\'t be locked.'), $edited_GenericCategory->dget('name') ), 'error' );
 		}
 
 		// Redirect so that a reload doesn't write to the DB twice:
@@ -452,7 +452,7 @@ switch( $action )
 		}
 		else
 		{
-			$Messages->add( sprintf( T_('The category &laquo;%s&raquo; couldn\t be unlocked.'), $edited_GenericCategory->dget('name') ), 'error' );
+			$Messages->add( sprintf( T_('The category &laquo;%s&raquo; couldn\'t be unlocked.'), $edited_GenericCategory->dget('name') ), 'error' );
 		}
 
 		// Redirect so that a reload doesn't write to the DB twice:

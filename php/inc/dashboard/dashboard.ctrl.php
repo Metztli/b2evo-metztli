@@ -17,7 +17,7 @@
  *
  * @todo add 5 plugin hooks. Will be widgetized later (same as SkinTag became Widgets)
  *
- * @version $Id: dashboard.ctrl.php 3914 2013-06-04 11:34:47Z yura $
+ * @version $Id: dashboard.ctrl.php 4786 2013-09-17 14:04:53Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -422,7 +422,7 @@ if( $blog )
 
 		$show_statuses_param = $param_prefix.'show_statuses[]='.implode( '&amp;'.$param_prefix.'show_statuses[]=', $user_modeartion_statuses );
 		$block_item_Widget->title = $refresh_link.$opentrash_link.T_('Comments awaiting moderation').
-			' <a href="'.$admin_url.'?ctrl=comments&amp;'.$show_statuses_param.'" style="text-decoration:none">'.
+			' <a href="'.$admin_url.'?ctrl=comments&amp;blog='.$Blog->ID.'&amp;'.$show_statuses_param.'" style="text-decoration:none">'.
 			'<span id="badge" class="badge badge-important">'.$CommentList->total_rows.'</span></a>';
 
 		echo '<div id="styled_content_block">';

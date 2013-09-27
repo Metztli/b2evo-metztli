@@ -140,7 +140,7 @@ $Results->cols[] = array(
 	);
 
 $Results->cols[] = array(
-		'th' => T_('Like'),
+		'th' => /* TRANS: Header for # of times photo has been liked */ T_('Likes'),
 		'td' => '$total_like$',
 		'th_class' => 'shrinkwrap',
 		'td_class' => 'center',
@@ -149,7 +149,7 @@ $Results->cols[] = array(
 	);
 
 $Results->cols[] = array(
-		'th' => T_('Inappropriate'),
+		'th' => /* TRANS: Header for # of times photo has been votes inappropriate */ T_('Inappropriate'),
 		'td' => '$total_inappropriate$',
 		'th_class' => 'shrinkwrap',
 		'td_class' => 'center',

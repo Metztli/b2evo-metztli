@@ -24,7 +24,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author efy-asimo: Attila Simo
  *
- * @version $Id: _user_admin.form.php 4005 2013-06-12 11:17:32Z attila $
+ * @version $Id: _user_admin.form.php 4446 2013-08-07 13:19:23Z yura $
  */
 
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -137,7 +137,7 @@ $Form->begin_fieldset( T_('Email').get_manual_link('user-admin-email') );
 	}
 	elseif( $default_notification_sender_email != $notifcation_sender_email )
 	{
-		$notifcation_sender_email_note = '(!) '.T_('This is different from the new sender address which is currently:').' '.$default_notification_sender_email;
+		$notifcation_sender_email_note = get_icon( 'warning_yellow' ).' '.T_('This is different from the new sender address which is currently:').' '.$default_notification_sender_email;
 	}
 	$Form->text_input( 'notification_sender_email', $notifcation_sender_email, 50, T_( 'Sender email address' ), $notifcation_sender_email_note );
 
@@ -151,7 +151,7 @@ $Form->begin_fieldset( T_('Email').get_manual_link('user-admin-email') );
 	}
 	elseif( $default_notification_sender_name != $notification_sender_name )
 	{
-		$notifcation_sender_name_note = '(!) '.T_('This is different from the new sender name which is currently:').' '.$default_notification_sender_name;
+		$notifcation_sender_name_note = get_icon( 'warning_yellow' ).' '.T_('This is different from the new sender name which is currently:').' '.$default_notification_sender_name;
 	}
 	$Form->text_input( 'notification_sender_name', $notification_sender_name, 50, T_( 'Sender name' ), $notifcation_sender_name_note );
 

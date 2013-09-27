@@ -24,7 +24,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _cron.funcs.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _cron.funcs.php 4858 2013-09-24 23:58:17Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -55,23 +55,29 @@ function cron_log( $message, $level = 0 )
 	}
 }
 
+/**
+ * Extract keyphrases from the hitlog
+ *
+ * fp>yura fp>attila : this is not the right place to put this function. Who put it here?
+ */
 function keyphrase_job()
 {
 	global $DB;
 
+	// Look for unextracted keyphrases:
 	$sql = 'SELECT MIN(h.hit_ID) as min, MAX(h.hit_ID) as max
 				FROM T_hitlog as h
 				WHERE h.hit_keyphrase IS NOT NULL
 					AND h.hit_keyphrase_keyp_ID IS NULL';
-	$ids = $DB->get_row( $sql, "ARRAY_A", NULL, ' Get max/min hits ids of unprocessed keyphrases' );
+	$ids = $DB->get_row( $sql, "ARRAY_A", NULL, ' Get max/min hits ids of unextracted keyphrases' );
 
 	if ( ! empty ( $ids['min'] ) && ! empty ( $ids['max'] ) )
-	{
+	{ // Extract keyphrases if needed:
 
 		$sql = 'INSERT INTO T_track__keyphrase(keyp_phrase, keyp_count_refered_searches)
 					SELECT h.hit_keyphrase, 1
 					FROM T_hitlog as h
-					WHERE 
+					WHERE
 						(h.hit_ID >= '.$ids['min'].' AND h.hit_ID <= '.$ids['max'].')
 						AND h.hit_keyphrase IS NOT NULL
 						AND h.hit_keyphrase_keyp_ID IS NULL
@@ -101,14 +107,11 @@ function keyphrase_job()
 
 		$sql = 'UPDATE T_hitlog as h, T_track__keyphrase as k
 				SET h.hit_keyphrase_keyp_ID = k.keyp_ID
-				WHERE 
+				WHERE
 					h.hit_keyphrase = k.keyp_phrase
 					AND (h.hit_ID >= '.$ids['min'].' AND h.hit_ID <= '.$ids['max'].')';
 		$DB->query( $sql, 'Update hitlogs keyphrase id' );
-
-
 	}
-
 }
 
 
@@ -235,21 +238,23 @@ function cron_status_color( $status )
 function cron_job_manual_link( $job_ctrl )
 {
 	$manual_topics = array(
-		'cron/jobs/_test.job.php' => 'task-test',
-		'cron/jobs/_error_test.job.php' => 'task-error-test',
+		'cron/jobs/_activate_account_reminder.job.php' => 'task-send-non-activated-account-reminders',
 		'cron/jobs/_antispam_poll.job.php' => 'task-poll-antispam-blacklist',
+		'cron/jobs/_cleanup_jobs.job.php' => 'task-cleanup-scheduled-jobs',
+		'cron/jobs/_comment_moderation_reminder.job.php' => 'task-send-unmoderated-comments-reminders',
+		'cron/jobs/_comment_notifications.job.php' => 'task-send-comment-notifications',
+		'cron/jobs/_decode_returned_emails.job.php' => 'task-process-return-path-inbox',
+		'cron/jobs/_error_test.job.php' => 'task-error-test',
+		'cron/jobs/_heavy_db_maintenance.job.php' => 'task-heavy-db-maintenance',
+		'cron/jobs/_light_db_maintenance.job.php' => 'task-light-db-maintenance',
+		'cron/jobs/_post_by_email.job.php' => 'task-create-post-by-email',
+		'cron/jobs/_post_notifications.job.php' => 'task-send-post-notifications',
+		'cron/jobs/_process_hitlog.job.php' => 'task-process-hit-log',
 		'cron/jobs/_prune_hits_sessions.job.php' => 'task-prune-old-hits-and-sessions',
 		'cron/jobs/_prune_page_cache.job.php' => 'task-prune-old-files-from-page-cache',
-		'cron/jobs/_post_by_email.job.php' => 'task-create-post-by-email',
-		'cron/jobs/_process_hitlog.job.php' => 'task-process-hit-log',
-		'cron/jobs/_unread_message_reminder.job.php' => 'task-send-unread-messages-reminders',
-		'cron/jobs/_activate_account_reminder.job.php' => 'task-send-not-activated-account-reminders',
-		'cron/jobs/_comment_moderation_reminder.job.php' => 'task-send-unmoderated-comments-reminders',
-		'cron/jobs/_decode_returned_emails.job.php' => 'task-process-return-path-inbox',
-		'cron/jobs/_cleanup_jobs.job.php' => 'task-cleanup-scheduled-jobs',
-		'cron/jobs/_light_db_maintenance.job.php' => 'task-light-db-maintenance',
-		'cron/jobs/_heavy_db_maintenance.job.php' => 'task-heavy-db-maintenance',
 		'cron/jobs/_prune_recycled_comments.job.php' => 'task-prune-recycled-comments',
+		'cron/jobs/_test.job.php' => 'task-test',
+		'cron/jobs/_unread_message_reminder.job.php' => 'task-send-unread-messages-reminders',
 	);
 
 	if( isset( $manual_topics[$job_ctrl] ) )

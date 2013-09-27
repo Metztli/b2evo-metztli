@@ -826,3 +826,8 @@ td.diff-title-deletedline, td.diff-title-addedline {
 	background-color: red;
 	padding-top: 3px;
 }
+
+.browse_side_item .hintbox_list_container ul {
+	margin: 0;
+	padding: 0;
+}

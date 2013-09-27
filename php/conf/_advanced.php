@@ -7,7 +7,7 @@
  *
  * @package conf
  *
- * @version $Id: _advanced.php 3968 2013-06-11 00:26:57Z fplanque $
+ * @version $Id: _advanced.php 4698 2013-09-11 10:32:51Z attila $
  */
 if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page directly.' );
 
@@ -48,9 +48,13 @@ else
 	error_reporting( E_ALL );
 }
 
-// To help debugging severe errors, you'll probably want PHP to display the errors on screen.
-// In this case, uncomment the following line:
-// ini_set( 'display_errors', 'on' );
+/**
+ * Do we want to display errors, even when not in debug mode?
+ *
+ * You are welcome to change/override this if you know what you're doing.
+ * This is turned on by default so that newbies can quote meaningful error messages in the forums.
+ */
+$display_errors_on_production = true;
 
 // If you get blank pages or missing thumbnail images, PHP may be crashing because it doesn't have enough memory.
 // The default is 8 MB (in PHP < 5.2) and 128 MB (in PHP > 5.2)
@@ -371,7 +375,7 @@ $pagecache_max_age = 900;
 
 /**
  * Dummy field names to obfuscate spamboots
- * 
+ *
  * We use funky field names to defeat the most basic spambots in the front office public forms
  */
 $dummy_fields = array(
@@ -683,7 +687,7 @@ $pwdchange_request_delay = 300; // 5 minutes
  * The first element of the array ( in position 0 ) shows the time in seconds when the firs reminder email must be sent after the new user was registered, or the user status was changed to new, deactivated or emailchanged status
  * Each element between the postion [1 -> (n - 1)) shows the time in seconds when the next reminder email must be sent after the previous one
  * The last element of the array shows when an account status will be set to 'failedactivation' if it was not activated after the last reminder email. This value must be the highest value of the array!
- * 
+ *
  * E.g. $activate_account_reminder_config = array( 86400, 129600, 388800, 604800 ); = array( 1 day, 1.5 days, 4.5 days, 7 days )
  * At most 3 reminder will be sent, the first 1 day after the registration or deactivation, the seond in 1.5 days after the first one, and the third one after 2.5 days after the second one.
  * 7 days after the last reminder email the account status will be set to 'failedactivation' and no more reminder will be sent.
@@ -768,6 +772,16 @@ $tags_dash_fix = 0;
  */
 $use_hacks = false;
 
+
+
+/**
+ * Additional params you may want to pass to sendmail when sending emails
+ * For setting the return-path, some Linux servers will require -r, others will require -f.
+ * Allowed placeholders: $from-address$ , $return-address$
+ *
+ * @global string $sendmail_additional_params
+ */
+$sendmail_additional_params = '-r $return-address$';
 
 
 // ----- CHANGE THE FOLLOWING SETTINGS ONLY IF YOU KNOW WHAT YOU'RE DOING! -----

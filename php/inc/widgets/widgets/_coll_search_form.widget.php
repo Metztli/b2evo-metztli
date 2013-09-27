@@ -21,7 +21,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _coll_search_form.widget.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _coll_search_form.widget.php 4559 2013-08-27 04:20:01Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -149,7 +149,7 @@ class coll_search_form_Widget extends ComponentWidget
 		}
 
 		$s = get_param( 's' );
-		echo '<input type="text" name="s" size="25" value="'.htmlspecialchars($s).'" class="search_field SearchField" />';
+		echo '<input type="text" name="s" size="25" value="'.htmlspecialchars($s).'" class="search_field SearchField" title="'.format_to_output( T_('Enter text to search for'), 'htmlattr' ).'" />';
 
 		if( $this->disp_params[ 'use_search_disp' ] )
 		{

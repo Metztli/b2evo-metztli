@@ -20,7 +20,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author asimo: Evo Factory / Attila Simo
  *
- * @version $Id: _item_mass_edit.view.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _item_mass_edit.view.php 4542 2013-08-21 16:50:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -77,9 +77,9 @@ while( $Item = & $ItemList->get_item() )
 		$edit_slug_link = '&nbsp;'.action_icon( T_('Edit slugs...'), 'edit', $admin_url.'?ctrl=slugs&amp;slug_item_ID='.$Item->ID );
 	}
 
-	$Form->text( 'mass_title_'.$Item->ID , $Item->get( 'title' ), 70, T_('Title'), '', 255 );
+	$Form->text( 'mass_title_'.$Item->ID , htmlspecialchars_decode( $Item->get( 'title' ) ), 70, T_('Title'), '', 255 );
 	$Form->text( 'mass_urltitle_'.$Item->ID, $Item->get_slugs(), 70, T_('URL slugs').$edit_slug_link, '', 255 );
-	$Form->text( 'mass_titletag_'.$Item->ID, $Item->get( 'titletag' ), 70, T_( htmlspecialchars('<title> tag') ), '', 255 );
+	$Form->text( 'mass_titletag_'.$Item->ID, $Item->get( 'titletag' ), 70, htmlspecialchars( T_('<title> tag') ), '', 255 );
 
 	$Form->end_fieldset();
 }

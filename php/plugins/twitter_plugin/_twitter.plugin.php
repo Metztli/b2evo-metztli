@@ -19,7 +19,7 @@
  *
  * @todo dh> use OAuth instead of username/password: http://apiwiki.twitter.com/Authentication
  *
- * @version $Id: _twitter.plugin.php 4051 2013-06-25 12:30:23Z yura $
+ * @version $Id: _twitter.plugin.php 4460 2013-08-08 09:38:16Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -303,6 +303,10 @@ class twitter_plugin extends Plugin
 		$account = $connection->get('account/verify_credentials');
 		if( empty( $account->errors ) )
 		{
+			if( is_array( $account ) )
+			{ // Get only first account
+				$account = $account[0];
+			}
 			return $account->screen_name;
 		}
 		return '';

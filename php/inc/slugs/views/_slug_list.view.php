@@ -15,7 +15,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author evfy-asimo: Attila Simo.
  *
- * @version $Id: _slug_list.view.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _slug_list.view.php 4829 2013-09-20 17:53:03Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -52,7 +52,7 @@ if( $filter_item_ID = get_param( 'slug_item_ID' ) )
 // Create result set:
 $Results = new Results( $SQL->get(), 'slug_', 'A' );
 
-$Results->title = T_('Slugs').' ('.$Results->total_rows.')';
+$Results->title = T_('Slugs').' ('.$Results->total_rows.')' . get_manual_link('slugs-list');
 $Results->Cache = get_SlugCache();
 
 /**

@@ -29,7 +29,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _template.funcs.php 4233 2013-07-16 10:12:35Z attila $
+ * @version $Id: _template.funcs.php 4638 2013-09-05 06:46:32Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -1320,6 +1320,37 @@ function init_colorpicker_js( $relative_to = 'rsc_url' )
 	} );' );
 }
 
+
+/**
+ * Registers headlines required to autocomplete the user logins
+ *
+ * @param string alias, url or filename (relative to rsc/css, rsc/js) for JS/CSS files
+ */
+function init_autocomplete_login_js( $relative_to = 'rsc_url' )
+{
+	require_js( '#jquery#', $relative_to ); // dependency
+
+	// Use hintbox plugin of jQuery
+
+	// Add jQuery hintbox (autocompletion).
+	// Form 'username' field requires the following JS and CSS.
+	// fp> TODO: think about a way to bundle this with other JS on the page -- maybe always load hintbox in the backoffice
+	//     dh> Handle it via http://www.appelsiini.net/projects/lazyload ?
+	// dh> TODO: should probably also get ported to use jquery.ui.autocomplete (or its successor)
+	require_css( 'jquery/jquery.hintbox.css', $relative_to );
+	require_js( 'jquery/jquery.hintbox.min.js', $relative_to );
+	add_js_headline( 'jQuery( document ).ready( function()
+	{
+		jQuery( "input.autocomplete_login" ).hintbox(
+		{
+			url: "'.get_secure_htsrv_url().'async.php?action=get_login_list",
+			matchHint: true,
+			autoDimentions: true
+		} );
+	} );' );
+}
+
+
 /**
  * Outputs the collected HTML HEAD lines.
  * @see add_headline()
@@ -2293,9 +2324,9 @@ function display_login_validator( $params = array() )
 		), $params );
 
 	echo '<script type="text/javascript">
-	var login_icon_load = \'<img src="'.$rsc_url.'img/ajax-loader.gif" alt="'.T_('Loading...').'" title="'.T_('Loading...').'" style="margin:2px 0 0 5px" align="top" />\';
-	var login_icon_available = \''.get_icon( 'allowback' ).'\';
-	var login_icon_exists = \''.get_icon( 'xross' ).'\';
+	var login_icon_load = \'<img src="'.$rsc_url.'img/ajax-loader.gif" alt="'.TS_('Loading...').'" title="'.TS_('Loading...').'" style="margin:2px 0 0 5px" align="top" />\';
+	var login_icon_available = \''.get_icon( 'allowback', 'imgtag', array( 'title' => TS_('This username is available.') ) ).'\';
+	var login_icon_exists = \''.get_icon( 'xross', 'imgtag', array( 'title' => TS_('This username is already in use. Please choose another one.') ) ).'\';
 
 	var login_text_empty = \''.TS_('Choose an username.').'\';
 	var login_text_available = \''.TS_('This username is available.').'\';

@@ -33,7 +33,7 @@
  *
  * @package evocore
  *
- * @version $Id: _init_login.inc.php 4110 2013-07-02 07:53:56Z yura $
+ * @version $Id: _init_login.inc.php 4698 2013-09-11 10:32:51Z attila $
  */
 if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page directly.' );
 
@@ -86,6 +86,23 @@ $Debuglog->add( 'Login: pass: '.( empty($pass) ? '' : 'not' ).' empty', '_init_l
 
 // either 'login' (normal) or 'redirect_to_backoffice' may be set here. This also helps to display the login form again, if either login or pass were empty.
 $login_action = param_arrayindex( 'login_action' );
+
+if( ( $login != NULL ) && ( ! is_string( $login ) ) )
+{ // Login must be string
+	$login = NULL;
+	if( ! empty( $login_action ) )
+	{ // This was a login request with an invalid login parameter type, so it must be a doctored request
+		debug_die('The type of the received login parameter is invalid!');
+	}
+}
+if( ( $pass != NULL ) && ( ! is_string( $pass ) ) )
+{ // Password must be string
+	$pass = NULL;
+	if( ! empty( $login_action ) )
+	{ // This was a login request with an invalid pwd parameter type, so it must be a doctored request
+		debug_die('The type of the received password parameter is invalid!');
+	}
+}
 
 $UserCache = & get_UserCache();
 
@@ -390,20 +407,19 @@ if( ! empty( $login_error ) )
 
 		if( !empty( $blog_skin_ID ) )
 		{ // Blog exists and skin ID is set
+			// Init charset handling:
+			init_charsets( $current_charset );
 			locale_activate( $Blog->get('locale') );
-			$Messages->add( T_( $login_error ) );
+			$Messages->add( $login_error );
 			$SkinCache = & get_SkinCache();
 			$Skin = & $SkinCache->get_by_ID( $blog_skin_ID );
 			$skin = $Skin->folder;
 			$disp = 'login';
 			// fp> We ABSOLUTELY want to recover the previous redirect_to so that after a new login attempt that may be successful,
 			// we will finally reach our intended destination. This is paramount with emails telling people to come back to the site
-			// to read a message or sth like that. They must log in first and they may enter teh wrong password multiple times.
-			// fp>attila: make sure you understand this.
+			// to read a message or sth like that. They must log in first and they may enter the wrong password multiple times.
 			param( 'redirect_to', 'url', $Blog->gen_blogurl() );
 			$ads_current_skin_path = $skins_path.$skin.'/';
-			// Init charset handling:
-			init_charsets( $current_charset );
 			require $ads_current_skin_path.'index.main.php';
 			exit(0);
 			// --- EXITED !! ---

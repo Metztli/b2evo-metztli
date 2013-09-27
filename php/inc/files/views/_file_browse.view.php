@@ -29,7 +29,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _file_browse.view.php 3419 2013-04-05 10:25:05Z yura $
+ * @version $Id: _file_browse.view.php 4491 2013-08-12 10:28:48Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -136,8 +136,8 @@ if( isset( $edited_User ) )
 					if( $fm_Filelist->is_filtering() )
 					{ // "reset filter" form
 						?>
-						<input type="image" name="actionArray[filter_unset]" value="<?php echo T_('Unset filter'); ?>"
-							title="<?php echo T_('Unset filter'); ?>" src="<?php echo get_icon( 'delete', 'url' ) ?>" class="ActionButton" />
+						<button type="submit" name="actionArray[filter_unset]" value="<?php echo T_('Unset filter'); ?>"
+							title="<?php echo T_('Unset filter'); ?>" class="ActionButton" style="background:none;border:none;padding:0;cursor:pointer;"><?php echo get_icon( 'delete' ) ?></button>
 						<?php
 					}
 				$Form->end_form();

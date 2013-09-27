@@ -29,7 +29,7 @@
  * @author fplanque: Francois PLANQUE
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: _user.class.php 4326 2013-07-19 12:29:40Z yura $
+ * @version $Id: _user.class.php 4839 2013-09-23 07:11:00Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -331,15 +331,23 @@ class User extends DataObject
 			{	// Admin form
 				$notification_sender_email = param( 'notification_sender_email', 'string', true );
 				param_check_email( 'notification_sender_email' );
-				if( !empty( $notification_sender_email ) || $UserSettings->get( 'notification_sender_email' , $this->ID ) != '' )
-				{
+				if( ! empty( $notification_sender_email ) )
+				{ // Change a value of setting
 					$UserSettings->set( 'notification_sender_email', $notification_sender_email, $this->ID );
+				}
+				elseif( $UserSettings->get( 'notification_sender_email' , $this->ID ) != '' )
+				{ // Delete a setting record from DB
+					$UserSettings->delete( 'notification_sender_email', $this->ID );
 				}
 
 				$notification_sender_name = param( 'notification_sender_name', 'string', true );
-				if( !empty( $notification_sender_name ) || $UserSettings->get( 'notification_sender_name' , $this->ID ) != '' )
-				{
+				if( ! empty( $notification_sender_name ) )
+				{ // Change a value of setting
 					$UserSettings->set( 'notification_sender_name', $notification_sender_name, $this->ID );
+				}
+				elseif( $UserSettings->get( 'notification_sender_name' , $this->ID ) != '' )
+				{ // Delete a setting record from DB
+					$UserSettings->delete( 'notification_sender_name', $this->ID );
 				}
 
 				if( !isset( $this->dbchanges['user_email'] ) )
@@ -4655,8 +4663,11 @@ class User extends DataObject
 		global $DB, $Plugins, $current_User;
 
 		// Check permissions
-		// Note: if users have delete messaging perms then they can delete any user messages ( Of course only if the delete action is available/displayed for them )
-		$current_User->check_perm( 'perm_messaging', 'delete', true );
+		// Note: If current user can edit the users then it is allowed to delete all user data even if it wouldn't be allowed otherwise
+		if( ! $current_User->check_perm( 'users', 'edit' ) )
+		{ // Note: if users have delete messaging perms then they can delete any user messages ( Of course only if the delete action is available/displayed for them )
+			$current_User->check_perm( 'perm_messaging', 'delete', true );
+		}
 
 		$DB->begin();
 

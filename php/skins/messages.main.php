@@ -8,14 +8,13 @@
  *
  * @package evoskins
  *
- * @version $Id: messages.main.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: messages.main.php 4573 2013-08-29 23:55:32Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
 global $htsrv_url, $Messages, $current_User;
 
 // fp> The correct place to get thrd_ID is here, because we want it in redirect_to in case we need to ask for login.
-// fp>attila fp>yura : make sure you understand this.
 param( 'thrd_ID', 'integer', '', true );
 
 if( !is_logged_in() )
@@ -50,7 +49,7 @@ if( !$current_User->check_perm( 'perm_messaging', 'reply' ) )
 
 if( !empty( $thrd_ID ) )
 { // if this thread exists and current user is part of this thread update status because won't be any unread messages on this conversation
-	// we need to mark this early to make sure the unread message count will be correct in the evobar 
+	// we need to mark this early to make sure the unread message count will be correct in the evobar
 	mark_as_read_by_user( $thrd_ID, $current_User->ID );
 }
 

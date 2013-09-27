@@ -30,7 +30,7 @@
  *
  * @package evocore
  *
- * @version $Id: _misc.funcs.php 4317 2013-07-19 08:04:11Z attila $
+ * @version $Id: _misc.funcs.php 4827 2013-09-20 17:23:48Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -399,17 +399,23 @@ function zeroise( $number, $threshold )
  * @param int Maximum length
  * @return string
  */
-function excerpt( $str, $crop_at = 200 )
+function excerpt( $str, $maxlen = 200 )
 {
+	// Add spaces
+	$str = str_replace( array( '<p>', '<br' ), array( ' <p>', ' <br' ), $str );
+
+	// Remove <code>
+	$str = preg_replace( '#<code>(.+)</code>#i', '', $str );
+
 	// fp> Note: I'm not sure about using 'text' here, but there should definitely be no rendering here.
-	$output = format_to_output( $str, 'text' );
+	$str = format_to_output( $str, 'text' );
 
-	// Ger rid of all new lines:
-	$output = trim( str_replace( array( "\r", "\n", "\t" ), array( ' ', ' ', ' ' ), $output ) );
+	// Ger rid of all new lines and Display the html tags as source text:
+	$str = trim( str_replace( array( "\r", "\n", "\t" ), ' ', $str ) );
 
-	$output = strmaxlen($output, $crop_at);
+	$str = strmaxlen( $str, $maxlen );
 
-	return $output;
+	return $str;
 }
 
 
@@ -2386,7 +2392,7 @@ function debug_get_backtrace( $limit_to_last = NULL, $ignore_from = array( 'func
 function debug_die( $additional_info = '', $params = array() )
 {
 	global $debug, $baseurl;
-	global $log_app_errors, $app_name, $is_cli, $debug;
+	global $log_app_errors, $app_name, $is_cli, $display_errors_on_production;
 
 	$params = array_merge( array(
 		'status' => '500 Internal Server Error',
@@ -2396,8 +2402,8 @@ function debug_die( $additional_info = '', $params = array() )
 	{ // Command line interface, e.g. in cron_exec.php:
 		echo '== '.T_('An unexpected error has occurred!')." ==\n";
 		echo T_('If this error persists, please report it to the administrator.')."\n";
-		if( $debug )
-		{	// Display additional info only in debug mode because it can reveal system info to hackers and greatly facilitate exploits
+		if( $debug || $display_errors_on_production )
+		{ // Display additional info only in debug mode or when it was explicitly set by display_errors_on_production setting because it can reveal system info to hackers and greatly facilitate exploits
 			echo T_('Additional information about this error:')."\n";
 			echo strip_tags( $additional_info )."\n\n";
 		}
@@ -2423,16 +2429,28 @@ function debug_die( $additional_info = '', $params = array() )
 		if( ! empty( $additional_info ) )
 		{
 			echo '<div style="background-color: #ddd; padding: 1ex; margin-bottom: 1ex;">';
-			if( $debug )
-			{	// Display additional info only in debug mode because it can reveal system info to hackers and greatly facilitate exploits
+			if( $debug || $display_errors_on_production )
+			{ // Display additional info only in debug mode or when it was explicitly set by display_errors_on_production setting because it can reveal system info to hackers and greatly facilitate exploits
 				echo '<h3>'.T_('Additional information about this error:').'</h3>';
 				echo $additional_info;
 			}
 			else
 			{
-				echo '<p><i>Enable debugging to get additional information about this error.</i></p>';
+				echo '<p><i>Enable debugging to get additional information about this error.</i></p>' . get_manual_link('debugging','How to enable debug mode?');
 			}
 			echo '</div>';
+
+			// Append the error text to AJAX log if it is AJAX request
+			global $Ajaxlog;
+			if( ! empty( $Ajaxlog ) )
+			{
+				$Ajaxlog->add( $additional_info, 'error' );
+				$Ajaxlog->display( NULL, NULL, true, 'all',
+								array(
+										'error' => array( 'class' => 'jslog_error', 'divClass' => false ),
+										'note'  => array( 'class' => 'jslog_note',  'divClass' => false ),
+									), 'ul', 'jslog' );
+			}
 		}
 	}
 
@@ -2544,9 +2562,21 @@ function bad_request_die( $additional_info = '' )
 		}
 		else
 		{
-			echo '<p><i>Enable debugging to get additional information about this error.</i></p>';
+			echo '<p><i>Enable debugging to get additional information about this error.</i></p>' . get_manual_link('debugging','How to enable debug mode?');
 		}
 		echo '</div>';
+
+		// Append the error text to AJAX log if it is AJAX request
+		global $Ajaxlog;
+		if( ! empty( $Ajaxlog ) )
+		{
+			$Ajaxlog->add( $additional_info, 'error' );
+			$Ajaxlog->display( NULL, NULL, true, 'all',
+							array(
+									'error' => array( 'class' => 'jslog_error', 'divClass' => false ),
+									'note'  => array( 'class' => 'jslog_note',  'divClass' => false ),
+								), 'ul', 'jslog' );
+		}
 	}
 
 	if( $debug )
@@ -3152,7 +3182,7 @@ function send_mail( $to, $to_name, $subject, $message, $from = NULL, $from_name 
 	// Stop a request from the blocked IP addresses
 	antispam_block_ip();
 
-	global $debug, $app_name, $app_version, $current_locale, $current_charset, $evo_charset, $locales, $Debuglog, $Settings, $demo_mode;
+	global $debug, $app_name, $app_version, $current_locale, $current_charset, $evo_charset, $locales, $Debuglog, $Settings, $demo_mode, $sendmail_additional_params;
 
 	// Memorize email address
 	$to_email_address = $to;
@@ -3240,9 +3270,12 @@ function send_mail( $to, $to_name, $subject, $message, $from = NULL, $from_name 
 	}
 
 	// Set an additional parameter for the return path:
-	if( !empty($return_path) )
+	if( ! empty( $sendmail_additional_params ) )
 	{
-		$additional_parameters = '-r '.$return_path;
+		$additional_parameters = str_replace(
+			array( '$from-address$', '$return-address$' ),
+			array( $from, ( empty( $return_path ) ? $from : $return_path ) ),
+			$sendmail_additional_params );
 	}
 	else
 	{

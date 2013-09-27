@@ -32,7 +32,7 @@
  * @author tswicegood: Travis SWICEGOOD.
  * @author vegarg: Vegar BERG GULDAL.
  *
- * @version $Id: _item.funcs.php 4319 2013-07-19 08:29:57Z attila $
+ * @version $Id: _item.funcs.php 4786 2013-09-17 14:04:53Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -178,9 +178,19 @@ function init_inskin_editing()
 		$redirect_to = url_add_param( $admin_url, 'ctrl=items&filter=restore&blog='.$Blog->ID, '&' );
 	}
 
-	// Used in the edit form
+	// Used in the edit form:
+
+	// We never allow HTML in titles, so we always encode and decode special chars.
 	$item_title = htmlspecialchars_decode( $edited_Item->title );
-	$item_content = htmlspecialchars_decode( $edited_Item->content );
+
+	if( $Blog->get_setting( 'allow_html_post' ) )
+	{	// HTML is allowed for this post, we have HTML in the DB and we can edit it:
+		$item_content = $edited_Item->content;
+	}
+	else
+	{	// HTML is disallowed for this post, content is encoded in DB and we need to decode it for editing:
+		$item_content = htmlspecialchars_decode( $edited_Item->content );
+	}
 
 	// Format content for editing, if we were not already in editing...
 	$Plugins_admin = & get_Plugins_admin();
@@ -724,7 +734,10 @@ function statuses_where_clause( $show_statuses = NULL, $dbprefix = 'post_', $req
 		{
 			foreach( $modules_condition as $condition )
 			{
-				$where[] = $condition;
+				if( ! empty( $condition ) )
+				{ // condition is not empty
+					$where[] = $condition;
+				}
 			}
 		}
 	}
@@ -733,7 +746,11 @@ function statuses_where_clause( $show_statuses = NULL, $dbprefix = 'post_', $req
 	{ // User is logged in and the account was activated
 		if( $current_User->check_perm( 'blogs', 'editall', false ) )
 		{ // User has permission to all blogs posts and comments, we don't have to check blog specific permissions.
-			$where[] = get_allowed_statuses_condition( $show_statuses, $dbprefix, NULL, $perm_prefix );
+			$allowed_statuses_cond = get_allowed_statuses_condition( $show_statuses, $dbprefix, NULL, $perm_prefix );
+			if( ! empty( $allowed_statuses_cond ) )
+			{ // condition is not empty
+				$where[] = $allowed_statuses_cond;
+			}
 			$filter_by_perm = false;
 			$show_statuses = NULL;
 		}
@@ -805,10 +822,10 @@ function statuses_where_clause( $show_statuses = NULL, $dbprefix = 'post_', $req
 
 	if( $filter_by_perm )
 	{ // filter allowed statuses by the current User perms and by the current page ( front or back office )
-		$allowd_statuses_cond = get_allowed_statuses_condition( $show_statuses, $dbprefix, $req_blog, $perm_prefix );
-		if( $allowd_statuses_cond )
+		$allowed_statuses_cond = get_allowed_statuses_condition( $show_statuses, $dbprefix, $req_blog, $perm_prefix );
+		if( ! empty( $allowed_statuses_cond ) )
 		{ // condition is not empty
-			$where[] = $allowd_statuses_cond;
+			$where[] = $allowed_statuses_cond;
 		}
 	}
 	elseif( count( $show_statuses ) )
@@ -1305,11 +1322,11 @@ function attach_browse_tabs( $display_tabs3 = true )
 			$AdminUI->add_menu_entries( array('items','comments'), array(
 					'fullview' => array(
 						'text' => T_('Full text view'),
-						'href' => $dispatcher.'?ctrl=comments&amp;tab3=fullview&amp;filter=restore'
+						'href' => $dispatcher.'?ctrl=comments&amp;tab3=fullview&amp;filter=restore&amp;blog='.$Blog->ID
 						),
 					'listview' => array(
 						'text' => T_('List view'),
-						'href' => $dispatcher.'?ctrl=comments&amp;tab3=listview&amp;filter=restore'
+						'href' => $dispatcher.'?ctrl=comments&amp;tab3=listview&amp;filter=restore&amp;blog='.$Blog->ID
 						),
 					)
 				);
@@ -1319,7 +1336,7 @@ function attach_browse_tabs( $display_tabs3 = true )
 
 	// What perms do we have?
 	$coll_settings_perm = $current_User->check_perm( 'options', 'view', false, $Blog->ID );
-	$settings_url = '?ctrl=itemtypes&amp;tab=settings&amp;tab3=types';
+	$settings_url = '?ctrl=itemtypes&amp;tab=settings&amp;tab3=types&amp;blog='.$Blog->ID;
 	if( $coll_chapters_perm = $current_User->check_perm( 'blog_cats', '', false, $Blog->ID ) )
 	{
 		$settings_url = '?ctrl=chapters&amp;blog='.$Blog->ID;
@@ -1354,12 +1371,12 @@ function attach_browse_tabs( $display_tabs3 = true )
 				'types' => array(
 					'text' => T_('Post types'),
 					'title' => T_('Post types management'),
-					'href' => '?ctrl=itemtypes&amp;tab=settings&amp;tab3=types'
+					'href' => '?ctrl=itemtypes&amp;tab=settings&amp;tab3=types&amp;blog='.$Blog->ID
 					),
 				'statuses' => array(
 					'text' => T_('Post statuses'),
 					'title' => T_('Post statuses management'),
-					'href' => '?ctrl=itemstatuses&amp;tab=settings&amp;tab3=statuses'
+					'href' => '?ctrl=itemstatuses&amp;tab=settings&amp;tab3=statuses&amp;blog='.$Blog->ID
 					),
 				)
 			);

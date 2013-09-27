@@ -40,8 +40,8 @@ class LinkItem extends LinkOwner
 		$this->_trans = array(
 			'Link this image to your owner' => NT_( 'Link this image to your item.' ),
 			'Link this file to your owner' => NT_( 'Link this file to your item.'),
-			'The file will be appended for download at the end of the owner' => NT_( 'The file will be appended for download at the end of the item' ),
-			'Insert the following code snippet into your owner' => NT_( 'Insert the following code snippet into your item' ),
+			'The file will be linked for download at the end of the owner' => NT_( 'The file will be appended for linked at the end of the item.' ),
+			'Insert the following code snippet into your owner' => NT_( 'Insert the following code snippet into your item.' ),
 			'View this owner...' => NT_( 'View this item...' ),
 			'Edit this owner...' => NT_( 'Edit this item...' ),
 			'Click on link %s icons below to link additional files to $ownerTitle$.' => NT_( 'Click on link %s icons below to link additional files to <strong>item</strong>.' ),

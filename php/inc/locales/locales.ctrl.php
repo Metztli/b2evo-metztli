@@ -29,7 +29,7 @@
  * @author blueyed: Daniel HAHLER
  * @author fplanque: Francois PLANQUE
  *
- * @version $Id: locales.ctrl.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: locales.ctrl.php 4870 2013-09-25 15:10:19Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -190,16 +190,11 @@ switch( $action )
 		// Check permission:
 		$current_User->check_perm( 'options', 'edit', true );
 
-		// reload locales from files
+		// forget DB locales:
 		unset( $locales );
-		include $conf_path.'_locales.php';
-		if( file_exists($conf_path.'_overrides_TEST.php') )
-		{ // also overwrite settings again:
-			include $conf_path.'_overrides_TEST.php';
-		}
 
 		// delete everything from locales table
-		$q = $DB->query( 'DELETE FROM T_locales WHERE 1=1' );
+		$q = $DB->query( 'DELETE FROM T_locales' );
 
 		if( !isset( $locales[$current_locale] ) )
 		{ // activate default locale
@@ -210,8 +205,19 @@ switch( $action )
 		$Settings->set( 'default_locale', $default_locale );
 		$Settings->dbupdate();
 
-		// Load all available locale defintions:
+		// Reload locales from files:
+		unset( $locales );
+		include $conf_path.'_locales.php';
+		if( file_exists($conf_path.'_overrides_TEST.php') )
+		{ // also overwrite settings again (just in case we override some local erelated things):
+			include $conf_path.'_overrides_TEST.php';
+		}
+
+		// Load all available locale defintions from locale folders:
 		locales_load_available_defs();
+
+		// Reenable default locale
+		locale_insert_default();
 
 		$Messages->add( T_('Locale definitions reset to defaults. (<code>/conf/_locales.php</code>)'), 'success' );
 
@@ -241,12 +247,11 @@ switch( $action )
 		}
 
 		$outfile = $locales_path.$locales[$edit_locale]['messages'].'/_global.php';
-		if( !is_writable($outfile) )
-		{
+		if( file_exists( $outfile ) && ( !is_writable( $outfile ) ) )
+		{ // The '_global.php' file exists but it is not writable
 			$Messages->add( sprintf( 'The file &laquo;%s&raquo; is not writable.', $outfile ) );
 			break;
 		}
-
 
 		load_class( 'locales/_pofile.class.php', 'POFile' );
 		$POFile = new POFile($po_file);

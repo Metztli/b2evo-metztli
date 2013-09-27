@@ -30,7 +30,7 @@
  *
  * @package evocore
  *
- * @version $Id: _blog.class.php 4326 2013-07-19 12:29:40Z yura $
+ * @version $Id: _blog.class.php 4818 2013-09-20 08:34:56Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -562,6 +562,15 @@ class Blog extends DataObject
 			// Set to show Latitude & Longitude params for this blog items
 			$this->set_setting( 'show_location_coordinates', param( 'show_location_coordinates', 'integer', 0 ) );
 
+			// Load custom double & varchar fields
+			$custom_field_names = array();
+			$this->load_custom_fields( 'double', $update_cascade_query, $custom_field_names );
+			$this->load_custom_fields( 'varchar', $update_cascade_query, $custom_field_names );
+			if( !empty( $update_cascade_query ) )
+			{ // Some custom fields were deleted and these fields must be deleted from the item settings table also. Add required query.
+				$this->CollectionSettings->add_update_cascade( $update_cascade_query );
+			}
+
 			// call modules update_collection_features on this blog
 			modules_call_method( 'update_collection_features', array( 'edited_Blog' => & $this ) );
 		}
@@ -673,15 +682,6 @@ class Blog extends DataObject
 			$this->set_setting( 'tags_meta_keywords', param( 'tags_meta_keywords', 'integer', 0 ) );
 		}
 
-		// Load custom double & varchar fields
-		$custom_field_names = array();
-		$this->load_custom_fields( 'double', $update_cascade_query, $custom_field_names );
-		$this->load_custom_fields( 'varchar', $update_cascade_query, $custom_field_names );
-		if( !empty( $update_cascade_query ) )
-		{ // Some custom fields were deleted and these fields must be deleted from the item settings table also. Add required query.
-			$this->CollectionSettings->add_update_cascade( $update_cascade_query );
-		}
-
 
 		/*
 		 * ADVANCED ADMIN SETTINGS
@@ -771,12 +771,15 @@ class Blog extends DataObject
 				if( $access_type == 'absolute' )
 				{
 					$blog_siteurl = param( 'blog_siteurl_absolute', 'string', true );
-					if( !preg_match( '#^https?://.+#', $blog_siteurl ) )
-					{
-						$Messages->add( T_('Blog Folder URL').': '
-														.T_('You must provide an absolute URL (starting with <code>http://</code> or <code>https://</code>)!'), 'error' );
+					if( preg_match( '#^https?://[^/]+/.*#', $blog_siteurl, $matches ) )
+					{ // It looks like valid absolute URL, so we may update the blog siteurl
+						$this->set( 'siteurl', $blog_siteurl );
 					}
-					$this->set( 'siteurl', $blog_siteurl );
+					else
+					{ // It is not valid absolute URL, don't update the blog 'siteurl' to avoid errors
+						$Messages->add( T_('Blog Folder URL').': '.sprintf( T_('%s is an invalid absolute URL'), '&laquo;'.htmlspecialchars( $blog_siteurl ).'&raquo;' )
+							.' '.T_('You must provide an absolute URL (starting with <code>http://</code> or <code>https://</code>) and it must contain at least one \'/\' sign after the domain name!'), 'error' );
+					}
 				}
 				elseif( $access_type == 'relative' )
 				{ // relative siteurl
@@ -891,7 +894,12 @@ class Blog extends DataObject
 		$empty_title_error = false; // use this to display empty title fields error message only ones
 		$real_custom_field_count = 0; // custom fields count after update
 		$custom_field_count = param( 'count_custom_'.$type, 'integer', 0 ); // all custom fields count ( contains even deleted fields )
-		$deleted_custom_fields = explode( ',', param( 'deleted_custom_'.$type, 'string', '' ) );
+		$delted_field_guids = param( 'deleted_custom_'.$type, 'string', '' );
+		if( ( $custom_field_count == 0 ) && empty( $delted_field_guids ) )
+		{ // There were no custom field add, update or delete request so no need for further checks
+			return;
+		}
+		$deleted_custom_fields = explode( ',', $delted_field_guids );
 
 		// Update custom fields
 		for( $i = 1 ; $i <= $custom_field_count; $i++ )
@@ -1097,8 +1105,8 @@ class Blog extends DataObject
 		}
 
 		if( substr( $url, -1 ) != '/' )
-		{	// Crop at the last "/"
-			$url = substr( $url, 0, strrpos($url,'/')+1 );
+		{ // Crop an url part after the last "/"
+			$url = substr( $url, 0, strrpos( $url, '/' ) + 1 );
 		}
 
 		// For case relative and absolute:

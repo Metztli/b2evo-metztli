@@ -828,3 +828,9 @@ div.results .status_trash span {
 [class*='vs_'] .btn_next_status {
 	display: inline-block;
 }
+
+.form_add_contacts .controls {
+	white-space: nowrap;
+	padding-left: 31px;
+	display: inline-block;
+}
