@@ -31,11 +31,12 @@ class videoplug_plugin extends Plugin
 
 	/**
 	 * Init
+	 * Jose/Metztli IT: 12-29-2013 added support for videos from rutube.ru
 	 */
 	function PluginInit( & $params )
 	{
 		$this->short_desc = T_('Video plug for a few popular video sites.');
-		$this->long_desc = T_('This is a basic video plug pluigin. Use it by entering [video:youtube:123xyz] or [video:dailymotion:123xyz] into your post, where 123xyz is the ID of the video.');
+		$this->long_desc = T_('This is a basic video plug pluigin. Use it by entering [video:rutube:123xyz], [video:youtube:123xyz] or [video:dailymotion:123xyz] into your post, where 123xyz is the ID of the video.');
 	}
 
 
@@ -52,8 +53,10 @@ class videoplug_plugin extends Plugin
 
 		// fp> removed some embeds to make it xhtml compliant, using only object. (Hari style ;)
 		// anyone, feel free to clean up the ones that have no object tag at all.
+	  	// Jose/Metztli IT: 12-29-2013 added support for videos from rutube.ru
 
 		$search_list = array(
+				'#\[video:rutube:(.+?)]#',      // Rutube
 				'#\[video:youtube:(.+?)]#',     // Youtube
 				'#\[video:dailymotion:(.+?)]#', // Dailymotion
 				'#\[video:google:(.+?)]#',      // Google video
@@ -62,6 +65,7 @@ class videoplug_plugin extends Plugin
 				'#\[video:vimeo:(.+?)]#',       // vimeo // blueyed> TODO: might want to use oEmbed (to get title etc separately and display it below video): http://vimeo.com/api/docs/oembed
 			);
 		$replace_list = array(
+				'<div class="videoblock"><object src="http://video.rutube.ru/\\1" type="application/x-shockwave-flash" wmode="transparent" width="480" height="270"><param name="movie" value="http://video.rutube.ru/\\1"></param><param name="wmode" value="window"></param></object></div>',
 				'<div class="videoblock"><object data="http://www.youtube.com/v/\\1" type="application/x-shockwave-flash" wmode="transparent" width="425" height="350"><param name="movie" value="http://www.youtube.com/v/\\1"></param><param name="wmode" value="transparent"></param></object></div>',
 				'<div class="videoblock"><object data="http://www.dailymotion.com/swf/\\1" type="application/x-shockwave-flash" width="425" height="335" allowfullscreen="true"><param name="movie" value="http://www.dailymotion.com/swf/\\1"></param><param name="allowfullscreen" value="true"></param></object></div>',
 				'<div class="videoblock"><embed style="width:400px; height:326px;" id="VideoPlayback" type="application/x-shockwave-flash" src="http://video.google.com/googleplayer.swf?docId=\\1&hl=en" flashvars=""></embed></div>',
@@ -120,6 +124,7 @@ class videoplug_plugin extends Plugin
 
 		echo '<div class="edit_toolbar" id="video_toolbar">';
 		echo T_('Video').': ';
+		echo '<input type="button" id="video_rutube" title="'.T_('Insert Rutube video').'" class="quicktags" onclick="videotag(\'rutube\');" value="RuTube" />';
 		echo '<input type="button" id="video_youtube" title="'.T_('Insert Youtube video').'" class="quicktags" onclick="videotag(\'youtube\');" value="YouTube" />';
 		echo '<input type="button" id="video_google" title="'.T_('Insert Google video').'" class="quicktags" onclick="videotag(\'google\');" value="Google video" />';
 		echo '<input type="button" id="video_dailymotion" title="'.T_('Insert DailyMotion video').'" class="quicktags" onclick="videotag(\'dailymotion\');" value="DailyMotion" />';
@@ -146,10 +151,19 @@ class videoplug_plugin extends Plugin
 
 					// Validate Video ID:
 					// TODO: verify validation / add for others..
+					// Jose/Metztli IT: 12-29-2013 added support for videos from rutube.ru
 					switch( tag )
 					{
 						case 'google':
 							if( video_ID.match( /^[0-9-]+$/ ) )
+							{ // valid
+								valid_video_ID = true;
+							}
+							break;
+
+						case 'rutube':
+							// Allow HD video code with ?hd=1 at the end
+							if( video_ID.match( /^[a-z0-9_?=-]+$/i ) )
 							{ // valid
 								valid_video_ID = true;
 							}
