@@ -46,8 +46,8 @@ AcceptPathInfo	On
 	# enabling this would prevent running in a subdir like /blog/index.php
 	# RewriteBase /
 
-	# Redirect anything that's not an existing directory or existing file to index.php:
+	# Redirect any .htm .html or no-extension-file that's not an existing file or directory to index.php:
 	RewriteCond %{REQUEST_FILENAME} !-d
 	RewriteCond %{REQUEST_FILENAME} !-f
-	RewriteRule . index.php [L]
+	RewriteRule ^[^.]+(\.(html|htm))?$ index.php [L]
 </IfModule>

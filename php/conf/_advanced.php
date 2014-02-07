@@ -7,7 +7,7 @@
  *
  * @package conf
  *
- * @version $Id: _advanced.php 4698 2013-09-11 10:32:51Z attila $
+ * @version $Id: _advanced.php 5209 2013-11-18 06:02:00Z yura $
  */
 if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page directly.' );
 
@@ -61,7 +61,6 @@ $display_errors_on_production = true;
 // Try uncommmenting the following line:
 // ini_set( 'memory_limit', '128M' );
 
-
 /**
  * Log application errors through {@link error_log() PHP's logging facilities}?
  *
@@ -74,6 +73,7 @@ $display_errors_on_production = true;
  * @global integer 0: off; 1: log errors; 2: include function backtraces (Default: 1)
  */
 $log_app_errors = 1;
+
 
 /**
  * Allows to force a timezone if PHP>=5.1
@@ -215,8 +215,6 @@ $basedomain = preg_replace( '/^( .* \. )? (.+? \. .+? )$/xi', '$2', $basehost );
  * readers surely will complain about it!
  *
  * You can change the notification email address alone a few lines below.
- *
- * @todo generate a random instance name at install and have it saved in the global params in the DB
  *
  * @global string Default: 'b2evo'
  */

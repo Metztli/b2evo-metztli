@@ -68,7 +68,7 @@ $SpecialList = array(
 	// webmails
 	'.mail.yahoo.com/',
 	'//mail.google.com/',
-	'//webmail.aol.com/',
+	'webmail.aol.com/',
 	// stat services
 	'sitemeter.com/',
 	// aggregators
@@ -220,9 +220,9 @@ $pc_user_devices = array(
 	'os2'      => 'os/2'
 );
 
-$user_devices = array_merge( 
-	$mobile_user_devices,
+$user_devices = array_merge(
 	$tablet_user_devices,
+	$mobile_user_devices,
 	$pc_user_devices
 );
 

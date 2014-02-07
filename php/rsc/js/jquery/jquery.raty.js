@@ -146,14 +146,14 @@
 	};
 	
 	function bindAll(context, opt, target) {
-		var id		= context.attr('id'),
-			score	= $('input#' + id + '-score'),
-			stars	= context.children('span.' + id);
+		var id = context.attr('id'),
+			score = $('input#' + id + '-score'),
+			stars = context.children('span.' + id);
 
 		context.mouseleave(function() {
-			initialize(context, score.val(), opt);
-			clearTarget(target, score, opt);
-			
+			var current_score = $('input#' + this.id + '-score');
+			initialize(context, current_score.val(), opt);
+			clearTarget(target, current_score, opt);
 		});
 
 		stars.bind(((opt.half) ? 'mousemove' : 'mouseover'), function(e) {

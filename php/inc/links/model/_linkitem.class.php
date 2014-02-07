@@ -105,6 +105,9 @@ class LinkItem extends LinkOwner
 		$edited_Link->set( 'order', $order );
 		$edited_Link->dbinsert();
 
+		// New link was added to the item, invalidate blog's media BlockCache
+		BlockCache::invalidate_key( 'media_coll_ID', $this->Item->get_blog_ID() );
+
 		// Update last touched date of the Item
 		$this->item_update_last_touched_date();
 	}

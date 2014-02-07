@@ -29,7 +29,7 @@
  * @author fplanque: Francois PLANQUE
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: _user.class.php 4839 2013-09-23 07:11:00Z yura $
+ * @version $Id: _user.class.php 5794 2014-01-27 06:56:34Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -4411,10 +4411,15 @@ class User extends DataObject
 	 */
 	function send_welcome_message()
 	{
-		global $Settings;
+		global $Settings, $UserSettings;
 
 		if( !$Settings->get( 'welcomepm_enabled' ) )
-		{	// Sending of welcome PM is disabled
+		{ // Sending of welcome PM is disabled
+			return false;
+		}
+
+		if( $UserSettings->get( 'welcome_message_sent', $this->ID ) )
+		{ // User already received the welcome message
 			return false;
 		}
 
@@ -4427,7 +4432,7 @@ class User extends DataObject
 		$UserCache = & get_UserCache();
 		$User = $UserCache->get_by_login( $Settings->get( 'welcomepm_from' ) );
 		if( !$User )
-		{	// Don't send an welcome email if sender login is incorrect
+		{ // Don't send an welcome email if sender login is incorrect
 			return false;
 		}
 
@@ -4443,7 +4448,12 @@ class User extends DataObject
 		$edited_Message->set( 'author_user_ID', $User->ID );
 		$edited_Message->creator_user_ID = $User->ID;
 		$edited_Message->set( 'text', $Settings->get( 'welcomepm_message' ) );
-		$edited_Message->dbinsert_individual( $User );
+		if( $edited_Message->dbinsert_individual( $User ) )
+		{ // The welcome message was sent/created successfully
+			// Change user setting to TRUE in order to don't send it twice
+			$UserSettings->set( 'welcome_message_sent', 1, $this->ID );
+			$UserSettings->dbupdate();
+		}
 	}
 
 

@@ -4,12 +4,11 @@
  *
  * @author fplanque: Francois PLANQUE
  *
- * @version $Id: _test.job.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _test.job.php 5555 2014-01-03 00:10:21Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
 $result_message = T_('The TEST cron controller says hello!');
 
 return 1; /* ok */
-
 ?>

@@ -1,7 +1,7 @@
 /**
  * General functions for the backoffice.
  * b2evolution - http://b2evolution.net/
- * @version $Id: admin.js 2923 2013-02-05 11:25:47Z yura $
+ * @version $Id: admin.js 5563 2014-01-06 10:21:07Z attila $
  */
 
 
@@ -117,6 +117,10 @@ function b2edit_reload( form, newaction, blog, params )
 	// Set the blog we are switching to:
 	if( typeof blog != 'undefined' )
 	{
+		if( blog == null )
+		{ // Set to an empty string, otherwise POST param value will be 'null' in IE and it cause issues
+			blog = '';
+		}
 		form.elements.blog.value = blog;
 	}
 

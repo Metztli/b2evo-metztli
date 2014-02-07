@@ -17,7 +17,7 @@
  *
  * @todo add 5 plugin hooks. Will be widgetized later (same as SkinTag became Widgets)
  *
- * @version $Id: dashboard.ctrl.php 4786 2013-09-17 14:04:53Z yura $
+ * @version $Id: dashboard.ctrl.php 4989 2013-10-16 09:46:31Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -534,7 +534,7 @@ if( $blog )
 					'restrict_to_image_position' => 'teaser',	// Optionally restrict to files/images linked to specific position: 'teaser'|'aftermore'
 				) );
 
-			echo '<span class="small">'.$Item->get_content_excerpt( 150 ).'</span>';
+			echo '<span class="small">'.htmlspecialchars( $Item->get_content_excerpt( 150 ) ).'</span>';
 
 			echo '<div style="clear:left;">'.get_icon('pixel').'</div>'; // IE crap
 			echo '</div>';

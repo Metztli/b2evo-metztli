@@ -29,7 +29,7 @@
  * @author fplanque
  * @author mbruneau: Marc BRUNEAU / PROGIDISTRI
  *
- * @version $Id: _html_header.inc.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _html_header.inc.php 5816 2014-01-28 11:18:44Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -38,7 +38,8 @@ global $month, $month_abbrev, $weekday, $weekday_abbrev; /* for localized calend
 global $debug, $Hit;
 
 headers_content_mightcache( 'text/html', 0 );		// Make extra sure we don't cache the admin pages!
-require_js( 'ajax.js' );	// Functions to work with AJAX response data
+require_js( 'functions.js' ); // General functions
+require_js( 'ajax.js' ); // Functions to work with AJAX response data
 ?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xml:lang="<?php locale_lang() ?>" lang="<?php locale_lang() ?>">

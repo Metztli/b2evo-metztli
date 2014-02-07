@@ -231,25 +231,24 @@ function prepare_maintenance_dir( $dir_name, $deny_access = true )
  * @param string source file path
  * @param string destination directory path
  * @param boolean true if create destination directory
+ * @param string Zip file name
  * @return boolean results
  */
-function unpack_archive( $src_file, $dest_dir, $mk_dest_dir = false )
+function unpack_archive( $src_file, $dest_dir, $mk_dest_dir = false, $src_file_name = '' )
 {
-	global $inc_path;
-
 	if( !file_exists( $dest_dir ) )
-	{	// We can create directory
-		if ( !mkdir_r( $dest_dir ) )
+	{ // We can create directory
+		if ( ! mkdir_r( $dest_dir ) )
 		{
-			echo '<p style="color:red">'.sprintf( T_( 'Unable to create &laquo;%s&raquo; directory.' ), $dest_dir ).'</p>';
+			echo '<p style="color:red">'.sprintf( T_( 'Unable to create &laquo;%s&raquo; directory to extract files from ZIP archive.' ), $dest_dir ).'</p>';
 			evo_flush();
 
 			return false;
 		}
 	}
 
-	if( function_exists('gzopen') )
-	{	// Unpack using 'zlib' extension and PclZip wrapper
+	if( function_exists( 'gzopen' ) )
+	{ // Unpack using 'zlib' extension and PclZip wrapper
 
 		// Load PclZip class (PHP4):
 		load_class( '_ext/pclzip/pclzip.lib.php', 'PclZip' );
@@ -257,7 +256,14 @@ function unpack_archive( $src_file, $dest_dir, $mk_dest_dir = false )
 		$PclZip = new PclZip( $src_file );
 		if( $PclZip->extract( PCLZIP_OPT_PATH, $dest_dir ) == 0 )
 		{
-			echo '<p style="color:red">'.sprintf( T_( 'Unable to unpack &laquo;%s&raquo; ZIP archive.' ), $src_file ).'</p>';
+			if( empty( $src_file_name ) )
+			{ // Set zip file name
+				$src_file_name = $src_file;
+			}
+			echo '<p style="color:red">'
+				.sprintf( T_( 'Unable to unpack &laquo;%s&raquo; ZIP archive.' ), $src_file_name ).'<br />'
+				.sprintf( T_( 'Error: %s' ), $PclZip->errorInfo( true ) )
+				.'</p>';
 			evo_flush();
 
 			return false;

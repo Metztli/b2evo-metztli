@@ -6,7 +6,7 @@
  *
  * @package evocore
  *
- * @version $Id: _files.install.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _files.install.php 5596 2014-01-08 06:15:02Z yura $
  */
 if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page directly.' );
 

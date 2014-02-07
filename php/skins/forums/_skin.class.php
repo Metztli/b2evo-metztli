@@ -196,8 +196,8 @@ class forums_Skin extends Skin
 	 */
 	function display_breadcrumbs( $chapter_ID, $params = array() )
 	{
-		if( $chapter_ID == 0 )
-		{	// No selected chapter
+		if( $chapter_ID <= 0 )
+		{ // No selected chapter, or an exlcude chapter filter is set
 			return;
 		}
 
@@ -328,9 +328,9 @@ class forums_Skin extends Skin
 				// Get children
 				$SQL->WHERE( 'cat_parent_ID = '.$DB->quote( $category->cat_ID ) );
 				$children = $DB->get_results( $SQL->get() );
-				foreach( $children as $child )
+				foreach( $children as $child_Chapter )
 				{
-					$skin_chapters_cache[$c]->children[] = $ChapterCache->get_by_ID( $child->cat_ID );
+					$skin_chapters_cache[$c]->children[$child_Chapter->cat_ID] = $ChapterCache->get_by_ID( $child_Chapter->cat_ID );
 				}
 			}
 		}
@@ -344,18 +344,18 @@ class forums_Skin extends Skin
 				$skin_chapters_cache = $ChapterCache->subset_cache[ $Blog->ID ];
 
 				foreach( $skin_chapters_cache as $c => $Chapter )
-				{	// Init children
-					foreach( $skin_chapters_cache as $child )
-					{	// Again go through all chapters to find a children for current chapter
-						if( $Chapter->ID == $child->get( 'parent_ID' ) )
-						{	// Add to array of children
-							$skin_chapters_cache[$c]->children[] = $child;
+				{ // Init children
+					foreach( $skin_chapters_cache as $child_Chapter )
+					{ // Again go through all chapters to find a children for current chapter
+						if( $Chapter->ID == $child_Chapter->get( 'parent_ID' ) )
+						{ // Add to array of children
+							$skin_chapters_cache[$c]->children[$child_Chapter->ID] = $child_Chapter;
 						}
 					}
 				}
 
 				foreach( $skin_chapters_cache as $c => $Chapter )
-				{	// Unset the child chapters
+				{ // Unset the child chapters
 					if( $Chapter->get( 'parent_ID' ) )
 					{
 						unset( $skin_chapters_cache[$c] );

@@ -31,7 +31,7 @@
  * @author fplanque: Francois PLANQUE - {@link http://fplanque.net/}
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: _plugins.class.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _plugins.class.php 4894 2013-10-02 07:35:30Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -2131,7 +2131,7 @@ class Plugins
 	/**
 	 * Validate renderer list.
 	 *
-	 * @deprecated by Plugins_admin::validate_renderer_list()
+	 * @deprecated by Plugins::validate_renderer_list()
 	 * @param array renderer codes ('default' will include all "opt-out"-ones)
 	 * @return array validated array of renderer codes
 	 */
@@ -2140,7 +2140,8 @@ class Plugins
 		global $Debuglog, $Plugins;
 		$Debuglog->add('Call to deprecated method Plugins::validate_list()', 'deprecated');
 
-		return $Plugins->validate_renderer_list($renderers);
+		// Return an empty array, because this method call is not supported anymore
+		return array();
 	}
 
 

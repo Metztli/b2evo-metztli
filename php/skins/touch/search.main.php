@@ -33,7 +33,7 @@ skin_include( '_html_header.inc.php' );
 // ------------------------- BODY HEADER INCLUDED HERE --------------------------
 skin_include( '_body_header.inc.php' );
 // Note: You can customize the default BODY header by copying the generic
-// /skins/_body_footer.inc.php file into the current skin folder.
+// /skins/_body_header.inc.php file into the current skin folder.
 // ------------------------------- END OF HEADER --------------------------------
 ?>
 

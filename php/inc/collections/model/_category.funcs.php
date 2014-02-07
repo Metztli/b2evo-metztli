@@ -40,7 +40,7 @@
  *
  * @todo implement CategoryCache based on LinkCache
  *
- * @version $Id: _category.funcs.php 3875 2013-05-30 13:01:41Z yura $
+ * @version $Id: _category.funcs.php 5650 2014-01-14 16:22:34Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -468,8 +468,9 @@ function compile_cat_array( $cat, $catsel, & $cat_array, & $cat_modifier, $restr
 	{ // specified a category string:
 		$cat_modifier = substr($cat, 0, 1 );
 		// echo 'cats['.$first_char.']';
-		if( ($cat_modifier == '*')
-			|| ($cat_modifier == '-') )
+		if( ( $cat_modifier == '*' ) ||
+		    ( $cat_modifier == '-' ) ||
+		    ( $cat_modifier == '|' ) )
 		{
 			$cat = substr( $cat, 1 );
 		}

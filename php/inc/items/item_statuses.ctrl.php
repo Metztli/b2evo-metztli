@@ -29,7 +29,7 @@
  * @author fplanque: Francois PLANQUE.
  * @author mbruneau: Marc BRUNEAU / PROGIDISTRI
  *
- * @version $Id: item_statuses.ctrl.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: item_statuses.ctrl.php 5707 2014-01-18 07:39:57Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -44,7 +44,7 @@ global $AdminUI;
 global $current_User;
 
 global $dispatcher;
-		
+
 // Check minimum permission:
 $current_User->check_perm( 'options', 'view', true );
 
@@ -72,7 +72,7 @@ $AdminUI->breadcrumbpath_add( T_('Post statuses'), '?ctrl=itemtypes&amp;blog=$bl
 
 $list_title = T_('Post statuses');
 $default_col_order = 'A';
-$edited_name_maxlen = 40;
+$edited_name_maxlen = 30;
 $perm_name = 'options';
 $perm_level = 'edit';
 $form_below_list = true;

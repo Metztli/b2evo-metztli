@@ -31,7 +31,7 @@
  *
  * @todo separate object inits and permission checks
  *
- * @version $Id: users.ctrl.php 4110 2013-07-02 07:53:56Z yura $
+ * @version $Id: users.ctrl.php 5534 2013-12-24 11:58:27Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -58,9 +58,9 @@ if( !$current_User->check_perm( 'users', 'view' ) )
 
 	// Make sure the user only edits himself:
 	$user_ID = $current_User->ID;
-	if( !in_array( $action, array( 'update', 'edit', 'default_settings' ) ) )
+	if( !in_array( $action, array( 'update', 'edit', 'default_settings', 'change_admin_skin' ) ) )
 	{
-		header_redirect( regenerate_url( 'ctrl,action', 'ctrl=user&amp;action=edit&amp;user_ID='.$user_ID ) );
+		header_redirect( regenerate_url( 'ctrl,action', 'ctrl=user&action=edit&user_ID='.$user_ID, '', '&' ) );
 	}
 }
 

@@ -4,7 +4,7 @@
  *
  * @author efy-asimo: Attila Simo
  *
- * @version $Id: _comment_notifications.job.php 3924 2013-06-05 07:28:33Z attila $
+ * @version $Id: _comment_notifications.job.php 5555 2014-01-03 00:10:21Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 

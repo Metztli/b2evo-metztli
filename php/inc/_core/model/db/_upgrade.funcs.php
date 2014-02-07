@@ -26,7 +26,7 @@
  * @author blueyed: Daniel HAHLER
  * @author Wordpress team
  *
- * @version $Id: _upgrade.funcs.php 4268 2013-07-17 06:21:41Z attila $
+ * @version $Id: _upgrade.funcs.php 5029 2013-10-23 06:21:23Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -1383,8 +1383,6 @@ function db_delta_table_engines( $tables, $silent )
 	$modify_engine_queries = array();
 	foreach( $tables as $table => $engine )
 	{
-		$table = strtolower( $table );
-		$engine = strtolower( $engine );
 		// get table engine from db
 		$current_engine = $DB->get_row( 'SHOW TABLE STATUS LIKE '.$DB->quote($table) );
 		$current_engine = $current_engine->Engine;

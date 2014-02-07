@@ -63,7 +63,7 @@ require_js( 'ajax.js', 'blog' );	// Functions to work with AJAX response data
 	}
 	?>
 	<link rel="EditURI" type="application/rsd+xml" title="RSD" href="<?php echo $Blog->disp( 'rsd_url', 'raw' ) ?>" />
-	<meta name="viewport" content="width = 750" />
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 	<?php include_headlines() /* Add javascript and css files included by plugins and skin */ ?>
 	<?php
 		$Blog->disp( 'blog_css', 'raw');

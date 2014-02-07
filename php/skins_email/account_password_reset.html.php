@@ -8,7 +8,7 @@
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
  * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
- * @version $Id: account_password_reset.html.php 3183 2013-03-10 21:59:41Z fplanque $
+ * @version $Id: account_password_reset.html.php 5299 2013-11-28 09:20:44Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -63,6 +63,9 @@ while( ( $iterator_User = & $UserCache->get_next() ) != NULL )
 		.'&reqID='.$params['request_id']
 		.'&sessID='.$Session->ID  // used to detect cookie problems
 		.$params['blog_param'];
+
+	// Restrict the password change url to be saved in the email logs
+	$url_change_password = '$secret_content_start$'.$url_change_password.'$secret_content_end$';
 
 	// Buttons:
 	$message_content .= '<div class="buttons">'."\n";

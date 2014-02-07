@@ -13,7 +13,6 @@
  * @package install
  */
 
-
 // Turn off the output buffering to do the correct work of the function flush()
 @ini_set( 'output_buffering', 'off' );
 
@@ -29,6 +28,9 @@ define( 'EVO_MAIN_INIT', true );
  * Define that we're in the install process.
  */
 define( 'EVO_IS_INSTALLING', true );
+
+// Force to display errors during install/upgrade, even when not in debug mode
+$display_errors_on_production = true;
 
 $script_start_time = time();
 $localtimenow = $script_start_time; // used e.g. for post_datemodified (sample posts)
@@ -117,6 +119,20 @@ switch( $action )
 
 $timestamp = time() - 120; // We start dates 2 minutes ago because their dates increase 1 second at a time and we want everything to be visible when the user watches the blogs right after install :P
 
+// Load all available locale defintions:
+locales_load_available_defs();
+param( 'locale', 'string' );
+$use_locale_from_request = false;
+if( preg_match( '/[a-z]{2}-[A-Z]{2}(-.{1,14})?/', $locale ) )
+{
+	$default_locale = $locale;
+	$use_locale_from_request = true;
+}
+if( ! empty( $default_locale ) && ! empty( $locales ) && isset( $locales[ $default_locale ] ) )
+{ // Set correct charset, The main using is for DB connection
+	$evo_charset = $locales[ $default_locale ]['charset'];
+}
+
 if( $config_is_done || $try_db_connect )
 { // Connect to DB:
 
@@ -158,14 +174,7 @@ if( $config_is_done || $try_db_connect )
 	}
 }
 
-// Load all available locale defintions:
-locales_load_available_defs();
-param( 'locale', 'string' );
-if( preg_match('/[a-z]{2}-[A-Z]{2}(-.{1,14})?/', $locale) )
-{
-	$default_locale = $locale;
-}
-else
+if( ! $use_locale_from_request )
 { // detect language
 	// try to check if db already exists and default locale is set on it
 	$default_locale = get_default_locale_from_db();
@@ -557,7 +566,7 @@ switch( $action )
 							$_SERVER['REMOTE_ADDR'] == '::1' );
 				?>
 				<input type="checkbox" name="local_installation" id="local_installation" value="1"<?php echo $is_local ? ' checked="checked"' : ''; ?> />
-				<label for="local_installation"><?php echo T_('This is a local / test / intranet.')?></label>
+				<label for="local_installation"><?php echo T_('This is a local / test / intranet installation.')?></label>
 				<?php
 					if( $test_install_all_features )
 					{	// Checkbox to install all features
@@ -874,7 +883,7 @@ block_close();
 			<?php echo T_('Online resources') ?>: <a href="http://b2evolution.net/" target="_blank"><?php echo T_('Official website') ?></a> &bull; <a href="http://b2evolution.net/about/recommended-hosting-lamp-best-choices.php" target="_blank"><?php echo T_('Find a host') ?></a> &bull; <a href="http://b2evolution.net/man/" target="_blank"><?php echo T_('Manual') ?></a> &bull; <a href="http://forums.b2evolution.net/" target="_blank"><?php echo T_('Forums') ?></a>
 		<!-- InstanceEndEditable --></div>
 
-	<div class="copyright"><!-- InstanceBeginEditable name="CopyrightTail" -->Copyright &copy; 2003-2013 by Fran&ccedil;ois Planque &amp; others &middot; <a href="http://b2evolution.net/about/license.html" target="_blank">GNU GPL license</a> &middot; <a href="http://b2evolution.net/contact/" target="_blank">Contact</a>
+	<div class="copyright"><!-- InstanceBeginEditable name="CopyrightTail" -->Copyright &copy; 2003-2014 by Fran&ccedil;ois Planque &amp; others &middot; <a href="http://b2evolution.net/about/license.html" target="_blank">GNU GPL license</a> &middot; <a href="http://b2evolution.net/contact/" target="_blank">Contact</a>
 		<!-- InstanceEndEditable --></div>
 
 	</div>

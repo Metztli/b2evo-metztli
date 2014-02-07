@@ -39,7 +39,7 @@
  * @author fplanque: Francois PLANQUE.
  * @author vegarg: Vegar BERG GULDAL.
  *
- * @version $Id: _hitlog.funcs.php 3817 2013-05-27 08:47:00Z yura $
+ * @version $Id: _hitlog.funcs.php 5720 2014-01-20 12:26:58Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -147,7 +147,7 @@ function hits_results_block( $params = array() )
 	$operator = ($exclude ? ' <> ' : ' = ' );
 
 	if( ! empty( $sess_ID ) )
-	{	// We want to filter on the session ID:
+	{ // We want to filter on the session ID:
 		$filter = 'hit_sess_ID' . $operator . $sess_ID;
 		$SQL->WHERE( $filter );
 		$CountSQL->WHERE( $filter );
@@ -176,7 +176,7 @@ function hits_results_block( $params = array() )
 	if( !empty($device) )
 	{
 		if( $device == 'other' )
-		{	// Unknown device
+		{ // Unknown device
 			$device = '';
 		}
 		$filter = 'sess_device = '. $DB->quote($device);
@@ -224,10 +224,12 @@ function hits_results_block( $params = array() )
 		$resuts_param_prefix = substr( $preset_referer_type, 0, 8 ).'_'.$resuts_param_prefix;
 	}
 
-	$Results = new Results( $SQL->get(), $resuts_param_prefix, '--D', $UserSettings->get( 'results_per_page' ), $CountSQL->get() );
+	$default_order = '--D';
+
+	$Results = new Results( $SQL->get(), $resuts_param_prefix, $default_order, $UserSettings->get( 'results_per_page' ), $CountSQL->get() );
 
 	// Initialize Results object
-	hits_results( $Results );
+	hits_results( $Results, array( 'default_order' => $default_order ) );
 
 	if( is_ajax_content() )
 	{ // init results param by template name
@@ -512,7 +514,8 @@ function generate_random_ip()
  */
 function generate_hit_stat( $days, $min_interval, $max_interval, $display_process = false )
 {
-	global $baseurlroot, $admin_url, $user_agents, $DB;
+	global $baseurlroot, $admin_url, $user_agents, $DB, $htsrv_url;
+
 	load_class('items/model/_itemlistlight.class.php', 'ItemListLight');
 	load_class('sessions/model/_hit.class.php', 'Hit');
 
@@ -590,6 +593,11 @@ function generate_hit_stat( $days, $min_interval, $max_interval, $display_proces
 		$links[] = array('link' => url_add_param( '/' . $listBlog->siteurl, 'disp=profile', '&' ),
 			'blog_id' => $blog_id,
 			'disp' => 'profile');
+
+		$links[] = array(
+				'link' => $htsrv_url.'anon_async.php',
+				'blog_id' => $blog_id
+			);
 	}
 
 	$referes = array('http://www.fake-referer1.com',

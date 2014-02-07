@@ -29,7 +29,7 @@
  * @author fplanque: Francois PLANQUE
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: _uiwidget.class.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _uiwidget.class.php 4944 2013-10-10 07:49:41Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -199,7 +199,12 @@ class Widget
 
 			case 'title':
 				// Results title:
-				return $this->replace_vars( $this->title );
+				// Espace $title$ strings from the title to avoid infinite loop replacing
+				$escaped_title = str_replace( '$title$', '&#36;title&#36;', $this->title );
+				// Replace vars on the title
+				$result = $this->replace_vars( $escaped_title );
+				// Replace back the $title$ strings and return the result
+				return str_replace( '&#36;title&#36;', '$title$', $result );
 
 			case 'no_results':
 				// No Results text:
@@ -1012,7 +1017,7 @@ class Table extends Widget
 				unset($extra_attr['format_to_output']);
 				$output = substr( $output, 0, -1 ).get_field_attribs_as_string( $extra_attr, $format_to_output ).'>';
 
-				
+
 			}
 
 		}

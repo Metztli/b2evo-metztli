@@ -284,7 +284,7 @@ foreach( $loaded_ids as $moderator_ID )
 					{ // User is not allowed to raise these comment statuses
 						continue;
 					}
-					// Check if the comment author level allows the edit permission 
+					// Check if the comment author level allows the edit permission:
 					foreach( $content as $level => $count )
 					{
 						switch( $perms['perm_edit'] )

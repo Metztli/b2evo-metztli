@@ -78,8 +78,8 @@ if( $params['disp_comment_form'] && $Item->can_comment( $params['before_comment_
 				$email_is_detected = true;
 			}
 
-			if( !$Blog->get_setting( 'threaded_comments' ) )
-			{
+			if( empty( $Comment->in_reply_to_cmt_ID ) )
+			{ // Display the comment preview here only if this comment is not a reply, otherwise it was already displayed
 				// ------------------ PREVIEW COMMENT INCLUDED HERE ------------------
 				skin_include( $params['comment_template'], array(
 						'Comment'              => & $Comment,

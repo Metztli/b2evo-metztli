@@ -274,7 +274,7 @@ function mail_log( $user_ID, $to, $subject, $message, $headers, $result )
 		( '.$DB->quote( $user_ID ).',
 		  '.$DB->quote( $to ).',
 		  '.$DB->quote( $result ).',
-		  '.$DB->quote( $subject ).',
+		  '.$DB->quote( evo_substr( $subject, 0, 255 ) ).',
 		  '.$DB->quote( $message ).',
 		  '.$DB->quote( $headers ).' )' );
 

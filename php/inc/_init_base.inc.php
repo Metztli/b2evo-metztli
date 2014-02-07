@@ -39,7 +39,7 @@
  * @author mfollett: Matt FOLLETT
  * @author mbruneau: Marc BRUNEAU / PROGIDISTRI
  *
- * @version $Id: _init_base.inc.php 3360 2013-03-29 12:42:27Z yura $
+ * @version $Id: _init_base.inc.php 5416 2013-12-11 04:34:50Z yura $
  */
 if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page directly.' );
 
@@ -91,6 +91,11 @@ $servertimenow = time();
 		}
 	}
 }
+
+/**
+ * Request/Transaction name, used for performance monitoring.
+ */
+$request_transaction_name = '';
 
 
 if( !$config_is_done )
@@ -153,17 +158,10 @@ $Messages = new Messages();
 /*
  * Start timer:
  */
-if( $debug )
-{
-	load_class( '_core/model/_timer.class.php', 'Timer' );
-	$Timer = new Timer('total');
-	$Timer->resume( '_init_base' );
-}
-else
-{
-	load_class( '_core/model/_timer.class.php', 'Timer_noop' );
-	$Timer = new Timer_noop();
-}
+load_class( '_core/model/_timer.class.php', 'Timer' );
+$Timer = new Timer('total');
+$Timer->resume( '_init_base' );
+$Timer->resume( '_MAIN.inc' );
 
 
 

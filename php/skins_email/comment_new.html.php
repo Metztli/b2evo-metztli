@@ -8,7 +8,7 @@
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
  * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
- * @version $Id: comment_new.html.php 3908 2013-06-04 10:41:52Z attila $
+ * @version $Id: comment_new.html.php 5299 2013-11-28 09:20:44Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -97,7 +97,7 @@ if( $params['notify_type'] == 'moderator' )
 { // moderation email
 	if( ( $Blog->get_setting( 'comment_quick_moderation' ) != 'never' ) && ( !empty( $Comment->secret ) ) )
 	{ // quick moderation is permitted, and comment secret was set
-		echo get_link_tag( $htsrv_url.'comment_review.php?cmt_ID='.$Comment->ID.'&secret='.$Comment->secret, T_('Quick moderation'), 'button_yellow' )."\n";
+		echo get_link_tag( '$secret_content_start$'.$htsrv_url.'comment_review.php?cmt_ID='.$Comment->ID.'&secret='.$Comment->secret.'$secret_content_end$', T_('Quick moderation'), 'button_yellow' )."\n";
 	}
 	echo get_link_tag( $admin_url.'?ctrl=comments&action=edit&comment_ID='.$Comment->ID, T_('Edit comment'), 'button_gray' )."\n";
 }

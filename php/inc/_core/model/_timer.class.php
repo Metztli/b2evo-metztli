@@ -29,7 +29,7 @@
  * @author fplanque: Francois PLANQUE.
  * @author blueyed: Daniel HAHLER.
  *
- * @version $Id: _timer.class.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _timer.class.php 5432 2013-12-12 04:48:13Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -168,7 +168,7 @@ class Timer
 
 
 	/**
-	 * Get the duration for a given category.
+	 * Get the duration for a given category in seconds,microseconds (configurable number of decimals)
 	 *
 	 * @param string Category name
 	 * @param integer Number of decimals after dot.
@@ -177,6 +177,17 @@ class Timer
 	function get_duration( $category, $decimals = 3 )
 	{
 		return number_format( $this->get_microtime($category), $decimals ); // TODO: decimals/seperator by locale!
+	}
+
+
+	/**
+	 * Log a duration with Application Performance Monitor
+	 *
+	 * @param mixed $category
+	 */
+	function log_duration( $category )
+	{
+		apm_log_custom_metric( $category, $this->get_microtime($category) * 1000 );
 	}
 
 
@@ -197,9 +208,9 @@ class Timer
 
 
 	/**
-	 * Get the time in microseconds that was spent in the given category.
+	 * Get the time that was spent in the given category in seconds with microsecond precision
 	 *
-	 * @return float
+	 * @return float (seconds.microseconds)
 	 */
 	function get_microtime( $category )
 	{
@@ -252,9 +263,9 @@ class Timer
 
 
 	/**
-	 * Get the current time in microseconds.
+	 * Get the current time with microsecond precision
 	 *
-	 * @return float
+	 * @return float (seconds.microseconds)
 	 */
 	function get_current_microtime()
 	{
@@ -262,28 +273,4 @@ class Timer
 		return ((float)$usec + (float)$sec);
 	}
 }
-
-
-/**
- * This is an implementation of {@link Timer}, which does nothing
- * (no-operation).
- * {@link $Timer} will get derived from this, if not running in
- * {@link $debug debug mode}.
- */
-class Timer_noop
-{
-	function Timer( $category = NULL ) {}
-	function reset( $category ) {}
-	function start( $category, $log = true ) {}
-	function stop( $category ) {}
-	function pause( $category ) {}
-	function resume( $category ) {}
-	function get_duration( $category, $decimals = 3 ) {}
-	function get_count( $category ) {}
-	function get_microtime( $category ) {}
-	function get_state( $category ) {}
-	function get_categories() {}
-	function get_current_microtime() {}
-}
-
 ?>

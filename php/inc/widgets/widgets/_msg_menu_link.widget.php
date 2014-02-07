@@ -21,7 +21,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author efy-asimo: Attila Simo
  *
- * @version $Id: _msg_menu_link.widget.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _msg_menu_link.widget.php 5866 2014-01-31 09:03:13Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -105,6 +105,24 @@ class msg_menu_link_Widget extends ComponentWidget
 					'type' => 'select',
 					'options' => $msg_menu_link_widget_link_types,
 					'defaultvalue' => 'messages',
+					'onchange' => '
+						var curr_link_type = this.value;
+						var allow_blockcache = jQuery("[id$=\'_set_allow_blockcache\']");
+						var show_badge = jQuery("[id$=\'_set_show_badge\']");
+						if( curr_link_type == "messages" )
+						{
+							allow_blockcache.removeAttr(\'checked\');
+							allow_blockcache.attr( \'disabled\', \'disabled\' );
+							show_badge.removeAttr(\'disabled\');
+							show_badge.attr( \'checked\', \'checked\' );
+						}
+						else
+						{
+							allow_blockcache.removeAttr(\'disabled\');
+							show_badge.attr( \'disabled\', \'disabled\' );
+							allow_blockcache.attr( \'checked\', \'checked\' );
+							show_badge.removeAttr(\'checked\');
+						};'
 				),
 				'link_text' => array(
 					'label' => T_( 'Link text' ),
@@ -129,6 +147,32 @@ class msg_menu_link_Widget extends ComponentWidget
 					'defaultvalue' => true,
 				),
 			), parent::get_param_definitions( $params )	);
+
+		// Do not modify anything during update because the editing form contains all of the required modifications
+		if( !isset( $params['for_updating'] ) )
+		{ // Not called from the update process
+			// Turn off allow blockcache by default, because it is forbidden in case of messages
+			// Note: we may call $this->get_param() only if this function was not called from there. This way we prevent infinite recursion/loop.
+			$link_type = ( empty( $this->params ) || isset( $params['infinite_loop'] ) ) ? 'messages' : $this->get_param( 'link_type', true );
+			if( $link_type == 'contacts' )
+			{
+				$r['show_badge']['defaultvalue'] = false;
+				$r['show_badge']['disabled'] = 'disabled';
+				if( ! empty( $this->params ) && ! isset( $params['infinite_loop'] ) )
+				{ // Force show_badge to false! It is never allowed to be on, no matter what was set in the database.
+					$this->set( 'show_badge', false );
+				}
+			}
+			else
+			{
+				$r['allow_blockcache']['defaultvalue'] = false;
+				$r['allow_blockcache']['disabled'] = 'disabled';
+				if( ! empty( $this->params ) && ! isset( $params['infinite_loop'] ) )
+				{ // Force allow_blockache to false! It is never allowed to be on, no matter what was set in the database.
+					$this->set( 'allow_blockcache', false );
+				}
+			}
+		}
 
 		return $r;
 	}
@@ -178,6 +222,8 @@ class msg_menu_link_Widget extends ComponentWidget
 			case 'messages':
 				$url = get_dispctrl_url( 'threads' );
 				$text = T_( 'Messages' );
+				// set allow blockcache to 0, this way make sure block cache is never allowed for messages
+				$this->disp_params[ 'allow_blockcache' ] = 0;
 				// Is this the current display?
 				if( $disp == 'threads' )
 				{	// The current page is currently displaying the messages:
@@ -208,6 +254,10 @@ class msg_menu_link_Widget extends ComponentWidget
 		if( ( $this->disp_params[ 'show_badge' ] ) && ( $unread_messages_count > 0 ) )
 		{
 			$badge = ' <span class="badge">'.$unread_messages_count.'</span>';
+			if( isset( $this->BlockCache ) )
+			{ // Do not cache if bage is displayed because the number of unread messages are always changing
+				$this->BlockCache->abort_collect();
+			}
 		}
 		else
 		{

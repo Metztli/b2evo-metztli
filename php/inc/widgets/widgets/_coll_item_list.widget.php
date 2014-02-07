@@ -21,7 +21,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _coll_item_list.widget.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _coll_item_list.widget.php 5851 2014-01-30 09:26:56Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -250,11 +250,6 @@ class coll_item_list_Widget extends ComponentWidget
 		global $Item;
 
 		$this->init_display( $params );
-
-		if( $this->disp_params[ 'order_by' ] == 'RAND' && isset($this->BlockCache) )
-		{	// Do NOT cache if display order is random
-			$this->BlockCache->abort_collect();
-		}
 
 		$listBlog = ( $this->disp_params[ 'blog_ID' ] ? $BlogCache->get_by_ID( $this->disp_params[ 'blog_ID' ], false ) : $Blog );
 

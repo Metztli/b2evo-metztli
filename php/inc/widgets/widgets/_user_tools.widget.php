@@ -21,7 +21,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _user_tools.widget.php 4555 2013-08-26 09:40:35Z yura $
+ * @version $Id: _user_tools.widget.php 5852 2014-01-30 09:37:55Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -211,6 +211,16 @@ class user_tools_Widget extends ComponentWidget
 				'defaultvalue' => T_( 'Logout' ),
 			),
 		), parent::get_param_definitions( $params )	);
+
+		if( isset( $r['allow_blockcache'] ) )
+		{ // Set default blockcache to false and disable this setting because caching is never allowed for this widget
+			$r['allow_blockcache']['defaultvalue'] = false;
+			$r['allow_blockcache']['disabled'] = 'disabled';
+			if( ! empty( $this->params ) && ( ! isset( $params['infinite_loop'] ) ) )
+			{ // Force allow_blockache to false! It is never allowed to be on, no matter what was set in the database.
+				$this->set( 'allow_blockcache', false );
+			}
+		}
 
 		return $r;
 	}

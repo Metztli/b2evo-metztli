@@ -31,7 +31,7 @@
  * @author fplanque: Francois PLANQUE.
  * @author mbruneau: Marc BRUNEAU / PROGIDISTRI
  *
- * @version $Id: _genericcategorycache.class.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _genericcategorycache.class.php 5127 2013-11-04 10:24:52Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -165,7 +165,7 @@ class GenericCategoryCache extends GenericCache
 					// echo $GenericCategory->name;
 					if( ! is_null( $GenericCategory->parent_ID ) )
 					{	// This category has a parent, so add it to its parent children list:
-						$this->cache[$GenericCategory->parent_ID]->add_children( $this->cache[$cat_ID] );
+						$this->cache[$GenericCategory->parent_ID]->add_child_category( $this->cache[$cat_ID] );
 					}
 					else
 					{	// This category has no parent, so add it to the parent categories list
@@ -228,7 +228,7 @@ class GenericCategoryCache extends GenericCache
 						if( ! is_null( $GenericCategory->parent_ID ) )
 						{	// This category has a parent, so add it to its parent children list:
 							$Debuglog->add( 'adding child with ID='.$cat_ID.' to parent ID='.$GenericCategory->parent_ID, 'CategoryCache' );
-							$this->cache[$GenericCategory->parent_ID]->add_children( $this->cache[$cat_ID] );
+							$this->cache[$GenericCategory->parent_ID]->add_child_category( $this->cache[$cat_ID] );
 						}
 						else
 						{	// This category has no parent, so add it to the parent categories list

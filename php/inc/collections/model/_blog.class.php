@@ -30,7 +30,7 @@
  *
  * @package evocore
  *
- * @version $Id: _blog.class.php 4818 2013-09-20 08:34:56Z attila $
+ * @version $Id: _blog.class.php 5843 2014-01-29 15:30:37Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -157,9 +157,11 @@ class Blog extends DataObject
 
 		$this->delete_restrictions = array(
 				array( 'table'=>'T_categories', 'fk'=>'cat_blog_ID', 'msg'=>T_('%d related categories') ),
+				array( 'table'=>'T_files', 'fk'=>'file_root_ID', 'and_condition' => 'file_root_type = "collection"', 'msg'=>T_('%d files in this blog file root') ),
 			);
 
 		$this->delete_cascades = array(
+				array( 'table'=>'T_coll_settings', 'fk'=>'cset_coll_ID', 'msg'=>T_('%d blog settings') ),
 				array( 'table'=>'T_coll_user_perms', 'fk'=>'bloguser_blog_ID', 'msg'=>T_('%d user permission definitions') ),
 				array( 'table'=>'T_coll_group_perms', 'fk'=>'bloggroup_blog_ID', 'msg'=>T_('%d group permission definitions') ),
 				array( 'table'=>'T_subscriptions', 'fk'=>'sub_coll_ID', 'msg'=>T_('%d subscriptions') ),
@@ -819,6 +821,7 @@ class Blog extends DataObject
 
 			if( param( 'blog_media_location',  'string', NULL ) !== NULL )
 			{	// Media files location:
+				$old_media_dir = $this->get_media_dir();
 				$this->set_from_Request( 'media_location' );
 				$this->set_media_subdir( param( 'blog_media_subdir', 'string', '' ) );
 				$this->set_media_fullpath( param( 'blog_media_fullpath', 'string', '' ) );
@@ -872,6 +875,23 @@ class Blog extends DataObject
 							}
 						}
 						break;
+				}
+
+				if( ! param_errors_detected() )
+				{ // If no error were created before we can try to move old files to new file root
+					$FileRootCache = & get_FileRootCache();
+					if( ( $blog_FileRoot = & $FileRootCache->get_by_type_and_ID( 'collection', $this->ID ) ) !== false )
+					{
+						$new_media_dir = $blog_FileRoot->ads_path;
+						if( ! empty( $old_media_dir ) && ! empty( $new_media_dir ) &&
+						    $old_media_dir != $new_media_dir )
+						{ // Blog's media dir was changed, We should move the files from old to new dir
+							if( ! @rename( $old_media_dir, $new_media_dir ) )
+							{ // Some error on renaming
+								$Messages->add( sprintf( T_('You cannot choose new media dir "%s" (cannot rename blog fileroot)'), $new_media_dir ), 'error' );
+							}
+						}
+					}
 				}
 			}
 		}
@@ -1557,7 +1577,7 @@ class Blog extends DataObject
 		if( $create && ! is_dir( $mediadir ) )
 		{
 			// Display absolute path to blog admin and relative path to everyone else
-			$msg_mediadir_path = $current_User->check_perm( 'blog_admin', 'edit', false, $this->ID ) ? $mediadir : rel_path_to_base($mediadir);
+			$msg_mediadir_path = ( is_logged_in() && $current_User->check_perm( 'blog_admin', 'edit', false, $this->ID ) ) ? $mediadir : rel_path_to_base( $mediadir );
 
 			// TODO: Link to some help page(s) with errors!
 			if( ! is_writable( dirname($mediadir) ) )
@@ -2330,13 +2350,32 @@ class Blog extends DataObject
 		$PageCache = new PageCache( $this );
 		$PageCache->cache_delete();
 
+		// Delete the blog files/links from DB
+		$DB->query( 'DELETE f, l, fv FROM T_files AS f
+			LEFT JOIN T_links l ON l.link_file_ID = f.file_ID
+			LEFT JOIN T_files__vote AS fv ON fv.fvot_file_ID = f.file_ID
+			    WHERE f.file_root_type = "collection"
+			      AND f.file_root_ID = '.$this->ID );
+
 		// remember ID, because parent method resets it to 0
 		$old_ID = $this->ID;
 
 		// Delete main (blog) object:
-		parent::dbdelete();
+		if( ! parent::dbdelete() )
+		{
+			$DB->rollback();
+
+			$Messages->add( 'Blog has not been deleted.', 'error' );
+			return false;
+		}
 
 		$DB->commit();
+
+		// Delete blog's media folder recursively
+		$FileRootCache = & get_FileRootCache();
+		$root_directory = $FileRootCache->get_root_dir( 'collection', $old_ID );
+		rmdir_r( $root_directory );
+		$Messages->add( T_('Deleted blog\'s files'), 'success' );
 
 		// re-set the ID for the Plugin event
 		$this->ID = $old_ID;
@@ -2426,10 +2465,38 @@ class Blog extends DataObject
 		return $this->name;
 	}
 
-
+	/**
+	 * Get the name of the blog limited by length
+	 *
+	 * @param integer Max length
+	 * @return string Limited name
+	 */
 	function get_maxlen_name( $maxlen = 50 )
 	{
 		return strmaxlen( $this->get_name(), $maxlen, NULL, 'raw' );
+	}
+
+
+	/**
+	 * Get short and long name of the blog
+	 *
+	 * @return string
+	 */
+	function get_extended_name()
+	{
+		$names = array();
+
+		if( ! empty( $this->shortname ) )
+		{ // Short name
+			$names[] = $this->shortname;
+		}
+
+		if( ! empty( $this->name ) )
+		{ // Title
+			$names[] = $this->name;
+		}
+
+		return implode( ' - ', $names );
 	}
 
 

@@ -247,7 +247,7 @@ if( $Item->can_see_comments( true ) )
 					'author_link_text' => $params['author_link_text'],
 					'link_to'         => $params['link_to'],		// 'userpage' or 'userurl' or 'userurl>userpage' or 'userpage>userurl'
 				) );
-			// Note: You can customize the default item feedback by copying the generic
+			// Note: You can customize the default item comment by copying the generic
 			// /skins/_item_comment.inc.php file into the current skin folder.
 			// ---------------------- END OF COMMENT ---------------------
 
@@ -293,7 +293,7 @@ else
 {
 	skin_include( '_item_comment_form.inc.php', $params );
 }
-// Note: You can customize the default item feedback by copying the generic
+// Note: You can customize the default item comment form by copying the generic
 // /skins/_item_comment_form.inc.php file into the current skin folder.
 // ---------------------- END OF COMMENT FORM ---------------------
 

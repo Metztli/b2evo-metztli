@@ -29,7 +29,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _file_browse.view.php 4491 2013-08-12 10:28:48Z yura $
+ * @version $Id: _file_browse.view.php 5526 2013-12-23 11:05:20Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -86,9 +86,22 @@ if( isset( $edited_User ) )
 		$Widget->global_icon( /* TRANS: verb */ T_('Upload...'), '', regenerate_url( 'ctrl', 'ctrl=upload' ), /* TRANS: verb */ T_('Upload ').' &raquo;', 1, 5 );
 	}
 
-	if( !empty($LinkOwner) )
-	{ // Return to post editing:
-		$Widget->global_icon( T_('Close file manager'), 'close', $LinkOwner->get_edit_url() );
+	if( ! empty( $LinkOwner ) )
+	{ // Display a link to close file browser and return to post editing:
+		$close_link_params = array();
+		global $mode;
+		if( $mode == 'upload' )
+		{ // Initialize JavaScript function to close popup window
+			echo '<script type="text/javascript">
+			function close_popup_window()
+			{
+				window.close();
+			}
+			</script>';
+			$close_link_params['onclick'] = 'return close_popup_window()';
+		}
+
+		$Widget->global_icon( T_('Close file manager'), 'close', $LinkOwner->get_edit_url(), '', 3, 2, $close_link_params );
 	}
 
 	$Widget->title = T_('File browser').get_manual_link('file_browser');

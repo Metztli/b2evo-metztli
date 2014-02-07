@@ -15,7 +15,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _dashboard.funcs.php 3914 2013-06-04 11:34:47Z yura $
+ * @version $Id: _dashboard.funcs.php 4891 2013-10-02 06:36:17Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -341,7 +341,12 @@ function show_comments_awaiting_moderation( $blog_ID, $CommentList = NULL, $limi
 		echo '</div>';
 
 		// Display Spam Voting system
-		$Comment->vote_spam( '', '', '&amp;', true, true );
+		$vote_spam_params = array();
+		if( ! $script )
+		{ // This is an async request, so javascript is enabled for sure and we may display voting
+			$vote_spam_params['display'] = true;
+		}
+		$Comment->vote_spam( '', '', '&amp;', true, true, $vote_spam_params );
 
 		echo '<div class="clear"></div>';
 		echo '</div>';

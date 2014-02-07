@@ -24,7 +24,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _fileroot.class.php 4494 2013-08-14 06:18:43Z yura $
+ * @version $Id: _fileroot.class.php 5596 2014-01-08 06:15:02Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -89,8 +89,8 @@ class FileRoot
 		 */
 		global $current_User;
 		global $Messages;
- 		global $Settings, $Debuglog;
- 		global $Blog;
+		global $Settings, $Debuglog;
+		global $Blog;
 
 		// Store type:
 		$this->type = $root_type;
@@ -159,14 +159,14 @@ class FileRoot
 				}
 				return;
 
-    	case 'skins':
-    		// fp> some stuff here should go out of here... but I don't know where to put it yet. I'll see after the Skin refactoring.
-     		if( ! $Settings->get( 'fm_enable_roots_skins' ) )
+			case 'skins':
+				// fp> some stuff here should go out of here... but I don't know where to put it yet. I'll see after the Skin refactoring.
+				if( ! $Settings->get( 'fm_enable_roots_skins' ) )
 				{ // Skins root is disabled:
 					$Debuglog->add( 'Attempt to access skins dir, but this feature is globally disabled', 'files' );
 				}
 				elseif( empty( $current_User ) || ( ! $current_User->check_perm( 'templates' ) ) )
-				{	// No perm to access templates:
+				{ // No perm to access templates:
 					$Debuglog->add( 'Attempt to access skins dir, but no permission', 'files' );
 				}
 				else
@@ -175,7 +175,7 @@ class FileRoot
 					$this->name = T_('Skins');
 					$this->ads_path = $skins_path;
 					if( isset($Blog) )
-					{	// (for now) Let's make skin files appear as being part of the currently displayed blog:
+					{ // (for now) Let's make skin files appear as being part of the currently displayed blog:
 						$this->ads_url = $Blog->get_local_skins_url();
 					}
 					else

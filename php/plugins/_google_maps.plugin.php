@@ -22,7 +22,7 @@
  *
  * @package plugins
  *
- * @version $Id: _google_maps.plugin.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _google_maps.plugin.php 5666 2014-01-15 13:09:14Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -62,8 +62,8 @@ class google_maps_plugin extends Plugin
 	 */
 	function PluginInit( & $params )
 	{
-		$this->short_desc = 'Google Maps plugin';
-		$this->long_desc = 'This plugin responds to positioning users';
+		$this->short_desc = T_('Google Maps plugin');
+		$this->long_desc = T_('This plugin responds to positioning users');
 	}
 
 
@@ -82,14 +82,14 @@ class google_maps_plugin extends Plugin
 	{
 		$r = array(
 			'height_back' => array(
-				'label' => 'Map height on edit post page',
+				'label' => T_( 'Map height on edit post page' ),
 				'defaultvalue' => '300',
 				'note' => '',
 				),
 			'map_type' => array(
 				'label' => T_( 'Map default view ' ),
 				'type' => 'radio',
-				'options' => array( array('map', T_( 'Map' )), array('satellite',T_( 'Satellite' ))),
+				'options' => array( array( 'map', T_( 'Map' ) ), array( 'satellite', T_( 'Satellite' ) ) ),
 				'defaultvalue' => 'map',
 				'note' => ''
 			)
@@ -108,13 +108,13 @@ class google_maps_plugin extends Plugin
 	{
 		$r = array(
 			'map_title' => array(
-				'label' => 'Widget title',
-				'defaultvalue' => 'Google maps Widget',
+				'label' => T_('Widget title'),
+				'defaultvalue' => T_('Google maps Widget'),
 				'note' => T_('Widget title'),
 				'set_for_plugin' => true,
 				),
 			'width' => array(
-				'label' => 'Map width on page',
+				'label' => T_('Map width on page'),
 				'defaultvalue' => '',
 				'note' => T_('100% width if left empty'),
 				),
@@ -126,7 +126,7 @@ class google_maps_plugin extends Plugin
 			'map_type' => array(
 				'label' => T_( 'Map default view ' ),
 				'type' => 'radio',
-				'options' => array( array('map', T_( 'Map' )), array('satellite',T_( 'Satellite' ))),
+				'options' => array( array('map', T_( 'Map' ) ), array( 'satellite', T_( 'Satellite' ) ) ),
 				'defaultvalue' => 'map',
 				'note' => ''),
 

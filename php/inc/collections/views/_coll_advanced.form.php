@@ -23,7 +23,7 @@
  * @package admin
  *
  *
- * @version $Id: _coll_advanced.form.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _coll_advanced.form.php 5843 2014-01-29 15:30:37Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -136,7 +136,7 @@ if( $current_User->check_perm( 'blog_admin', 'edit', false, $edited_Blog->ID ) )
 	$Form->radio( 'blog_media_location', $edited_Blog->get( 'media_location' ),
 			array(
 				array( 'none', T_('None') ),
-				array( 'default', T_('Default'), $media_path.$edited_Blog->urlname.'/' ),
+				array( 'default', T_('Default'), $media_path.'blogs/'.$edited_Blog->urlname.'/' ),
 				array( 'subdir', T_('Subdirectory of media folder').':',
 					'',
 					' <span class="nobr"><code>'.$media_path.'</code><input

@@ -14,7 +14,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _comments.ctrl.php 4698 2013-09-11 10:32:51Z attila $
+ * @version $Id: _comments.ctrl.php 5511 2013-12-23 06:06:07Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -292,6 +292,8 @@ switch( $action )
 
 		// Content:
 		param( 'content', $text_format );
+		// Don't allow the hidden text in comment content
+		$content = str_replace( '<!', '&lt;!', $content );
 
 		// Renderers:
 		if( param( 'renderers_displayed', 'integer', 0 ) )

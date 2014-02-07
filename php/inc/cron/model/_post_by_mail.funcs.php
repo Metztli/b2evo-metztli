@@ -14,7 +14,7 @@
  *
  * @package admin
  *
- * @version $Id: _post_by_mail.funcs.php 4326 2013-07-19 12:29:40Z yura $
+ * @version $Id: _post_by_mail.funcs.php 5851 2014-01-30 09:26:56Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -22,7 +22,7 @@ if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.'
  * Print out a debugging message with optional HTML color added
  *
  * @param string Message
- * @param string 
+ * @param string
  */
 function pbm_msg( $message, $cron = false )
 {
@@ -36,7 +36,7 @@ function pbm_msg( $message, $cron = false )
 	{	// We are in cron mode, log the message
 		if( $is_web )
 			$message .= '<br />';
-		
+
 		$result_message .= $message."\n";
 	}
 }
@@ -135,7 +135,7 @@ function pbm_process_messages( & $mbox, $limit )
 	// No execution time limit
 	set_max_execution_time(0);
 
-	// Are we in test mode? 
+	// Are we in test mode?
 	$test_mode_on = $Settings->get('eblog_test_mode');
 
 	$post_cntr = 0;
@@ -277,7 +277,7 @@ function pbm_process_messages( & $mbox, $limit )
 			if( ($auth = pbm_get_auth_tag($content)) === false )
 			{	// No <auth> tag, let's detect legacy "username:password" on the first line
 				$a_body = explode( "\n", $content, 2 );
-				
+
 				// tblue> splitting only into 2 parts allows colons in the user PW
 				// Note: login and password cannot include '<' !
 				$auth = explode( ':', strip_tags($a_body[0]), 2 );
@@ -445,7 +445,7 @@ function pbm_process_messages( & $mbox, $limit )
 		$Plugins_admin->filter_contents( $post_title /* by ref */, $content /* by ref */, $renderers, $params );
 
 		pbm_msg('Filtered post content: <pre style="font-size:10px">'.htmlspecialchars($content).'</pre>');
-		
+
 		$context = $Settings->get('eblog_html_tag_limit') ? 'commenting' : 'posting';
 		$post_title = check_html_sanity( $post_title, $context, $pbmUser );
 		$content = check_html_sanity( $content, $context, $pbmUser );
@@ -471,7 +471,7 @@ function pbm_process_messages( & $mbox, $limit )
 			load_class( 'items/model/_item.class.php', 'Item' );
 
 			global $pbm_items, $DB, $localtimenow;
-			
+
 			$post_status = 'published';
 
 			pbm_msg( sprintf('<h4>Saving item "%s" in the database</h4>', $post_title ) );
@@ -524,6 +524,9 @@ function pbm_process_messages( & $mbox, $limit )
 					$pbmLink->dbinsert();
 					pbm_msg( sprintf('File attached?: '.(isset($pbmLink->ID) ? 'yes' : 'no') ) );
 				}
+
+				// Invalidate blog's media BlockCache
+				BlockCache::invalidate_key( 'media_coll_ID', $edited_Item->get_blog_ID() );
 			}
 
 			// Save posted items sorted by author user for reports
@@ -587,7 +590,7 @@ function pbm_process_header( $header, & $subject, & $post_date )
 			return false;
 		}
 	}
-	
+
 	if( empty($ddate_U) )
 	{
 		$dmonths = array(
@@ -620,7 +623,7 @@ function pbm_process_header( $header, & $subject, & $post_date )
 
 		$ddate_U = mktime( $ddate_H, $ddate_i, $ddate_s, $ddate_m, $ddate_d, $ddate_Y );
 	}
-	
+
 	$post_date = date( 'Y-m-d H:i:s', $ddate_U );
 
 	return true;
@@ -793,7 +796,7 @@ function pbm_get_auth_tag( & $content )
 function pbm_prepare_html_message( $message )
 {
 	pbm_msg('Message body (original): <pre style="font-size:10px">'.htmlspecialchars($message).'</pre>');
-		
+
 	$marker = 0;
 	if( preg_match( '~<body[^>]*>(.*?)</body>~is', $message, $result ) )
 	{	// First see if we can get contents of <body> tag
@@ -832,11 +835,11 @@ function pbm_prepare_html_message( $message )
 		'~ moz-do-not-send="true"~',			// Thunderbird inline image with absolute "src"
 		'~ class="moz-signature" cols="\d+"~',	// Thunderbird signature in HTML message
 		'~ goomoji="[^"]+"~',					// Gmail smilies
-	);		
+	);
 	$content = preg_replace( $patterns, '', $content );
 
 	pbm_msg('Message body (processed): <pre style="font-size:10px">'.htmlspecialchars($content).'</pre>');
-	
+
 	return array( $auth, $content );
 }
 

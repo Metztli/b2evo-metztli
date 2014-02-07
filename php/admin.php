@@ -34,7 +34,7 @@
  *
  * @package main
  *
- * @version $Id: admin.php 4514 2013-08-16 10:46:42Z attila $
+ * @version $Id: admin.php 5052 2013-10-24 12:23:32Z yura $
  */
 
 
@@ -88,28 +88,7 @@ if( !$current_User->check_status( 'can_access_admin' ) )
 
 // Check that the request doesn't exceed the post max size
 // This is required because another way not even the $ctrl param can be initialized and the request may freeze
-if( ( $_SERVER['REQUEST_METHOD'] == 'POST' ) && empty( $_POST ) && empty( $_FILES ) && ( $_SERVER['CONTENT_LENGTH'] > 0 ) )
-{
-	// Check post max size ini setting
-	$post_max_size = ini_get( 'post_max_size' );
-
-	// Convert post_max_size value to bytes
-	switch ( substr( $post_max_size, -1 ) )
-	{
-		case 'G':
-			$post_max_size = $post_max_size * 1024;
-		case 'M':
-			$post_max_size = $post_max_size * 1024;
-		case 'K':
-			$post_max_size = $post_max_size * 1024;
-	}
-
-	// Add error message and redirect back to the referer url
-	$Messages->add( sprintf( T_('You have sent too much data (too many large files?) for the server to process (%s sent / %s maximum). Please try again by sending less data/files at a time.'), bytesreadable( $_SERVER['CONTENT_LENGTH'] ), bytesreadable( $post_max_size ) ) );
-	header_redirect( $_SERVER['HTTP_REFERER'] );
-	exit(0);
-}
-
+check_post_max_size_exceeded();
 
 /*
  * Get the blog from param, defaulting to the last selected one for this user:

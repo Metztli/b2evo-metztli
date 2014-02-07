@@ -35,7 +35,7 @@
  * @author blueyed: Daniel HAHLER
  * @author mbruneau: Marc BRUNEAU / PROGIDISTRI
  *
- * @version $Id: _dataobject.class.php 4110 2013-07-02 07:53:56Z yura $
+ * @version $Id: _dataobject.class.php 5675 2014-01-16 10:56:20Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -333,7 +333,7 @@ class DataObject
 	 *
 	 * @return boolean true on success
 	 */
-	function dbdelete()
+	function dbdelete( $ignore_restrictions = array() )
 	{
 		global $DB, $Messages, $Plugins, $db_config;
 
@@ -344,6 +344,14 @@ class DataObject
 
 			// Start transaction:
 			$DB->begin();
+
+			if( ! $this->check_delete( T_('Delete restriction error:'), $ignore_restrictions ) )
+			{ // Some restrictions still prevent deletion
+				// Note: This restrictions must be handled previously before dbdelete is called.
+				// If this code is executed it means there is an impelmentation issue and restricitons must be check there.
+				$DB->rollback();
+				return false;
+			}
 
 			foreach( $this->delete_cascades as $restriction )
 			{

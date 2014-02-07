@@ -25,7 +25,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _comment.funcs.php 4786 2013-09-17 14:04:53Z yura $
+ * @version $Id: _comment.funcs.php 5038 2013-10-23 14:13:17Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -472,7 +472,7 @@ function get_opentrash_link( $check_perm = true, $force_show = false )
 			$comment_list_param_prefix = $CommentList->param_prefix;
 		}
 		$result .= '<span class="floatright">'.action_icon( T_('Open recycle bin'), 'recycle_full',
-						$admin_url.'?ctrl=comments&amp;blog='.$CommentList->Blog->ID.'&amp;'.$comment_list_param_prefix.'show_statuses[]=trash', T_('Open recycle bin'), 5, 3 ).'</span> ';
+						$admin_url.'?ctrl=comments&amp;blog='.$blog.'&amp;'.$comment_list_param_prefix.'show_statuses[]=trash', T_('Open recycle bin'), 5, 3 ).'</span> ';
 	}
 	return $result.'</div>';
 }
@@ -638,30 +638,50 @@ function display_comment_replies( $comment_ID, $params = array(), $level = 1 )
 		), $params );
 
 	if( isset( $CommentReplies[ $comment_ID ] ) )
-	{	// This comment has the replies
+	{ // This comment has the replies
 		foreach( $CommentReplies[ $comment_ID ] as $Comment )
-		{	// Loop through the replies:
-			if( !empty( $Comment->ID ) )
-			{	// Comment from DB
+		{ // Loop through the replies:
+			if( empty( $Comment->ID ) )
+			{ // Get html tag of the comment block of preview
+				$comment_start = $Comment->email_is_detected ? $params['comment_error_start'] : $params['preview_start'];
+			}
+			else
+			{ // Get html tag of the comment block of existing comment
+				$comment_start = $params['comment_start'];
+			}
+
+			// Set margin left for each sub level comment
+			$attrs = ' style="margin-left:'.( 20 * $level ).'px"';
+			if( strpos( $comment_start, 'class="' ) === false )
+			{ // Add a class attribute for the replied comment
+				$attrs .= ' class="replied_comment"';
+			}
+			else
+			{ // Add a class name for the replied comment
+				$comment_start = str_replace( 'class="', 'class="replied_comment ', $comment_start );
+			}
+			$comment_start = str_replace( '>', $attrs.'>', $comment_start );
+
+			if( ! empty( $Comment->ID ) )
+			{ // Comment from DB
 				skin_include( $params['comment_template'], array(
 						'Comment'          => & $Comment,
-						'comment_start'    => str_replace( '>', ' style="margin-left:'.( 20 * $level ).'px">', $params['comment_start'] ),
+						'comment_start'    => $comment_start,
 						'comment_end'      => $params['comment_end'],
 						'link_to'          => $params['link_to'],		// 'userpage' or 'userurl' or 'userurl>userpage' or 'userpage>userurl'
 						'author_link_text' => $params['author_link_text'],
 					) );
 			}
 			else
-			{	// PREVIEW comment
+			{ // PREVIEW comment
 				skin_include( $params['comment_template'], array(
 						'Comment'              => & $Comment,
 						'comment_block_start'  => $Comment->email_is_detected ? '' : $params['preview_block_start'],
-						'comment_start'        => str_replace( '>', ' style="margin-left:'.( 20 * $level ).'px">', $Comment->email_is_detected ? $params['comment_error_start'] : $params['preview_start'] ),
+						'comment_start'        => $comment_start,
 						'comment_end'          => $Comment->email_is_detected ? $params['comment_error_end'] : $params['preview_end'],
 						'comment_block_end'    => $Comment->email_is_detected ? '' : $params['preview_block_end'],
 						'author_link_text'     => $params['author_link_text'],
 					) );
-
 			}
 
 			// Display the rest replies recursively

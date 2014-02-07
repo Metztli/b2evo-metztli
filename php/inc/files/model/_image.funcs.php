@@ -24,7 +24,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _image.funcs.php 4354 2013-07-23 09:19:09Z attila $
+ * @version $Id: _image.funcs.php 5034 2013-10-23 12:04:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -199,7 +199,13 @@ function load_image( $path, $mimetype )
 		$memory_limit = system_check_memory_limit();
 		$curr_mem_usage = memory_get_usage( true );
 		// Calculate the aproximative memory size which would be required to create the image resource
-		if( ( $memory_limit - $curr_mem_usage ) < ( 4 * $image_info[0] * $image_info[1] ) )
+		$tweakfactor = 1.8; // Or whatever works for you
+		$memory_needed = round( ( $image_info[0] * $image_info[1]
+				* ( isset( $image_info['bits'] ) ? $image_info['bits'] : 4 )
+				* ( isset( $image_info['channels'] ) ? $image_info['channels'] / 8 : 1 )
+				+ Pow( 2, 16 ) // number of bytes in 64K
+			) * $tweakfactor );
+		if( ( $memory_limit - $curr_mem_usage ) < $memory_needed )// ( 4 * $image_info[0] * $image_info[1] ) )
 		{ // Don't try to load the image into the memory because it would cause 'Allowed memory size exhausted' error
 			return array( "!Cannot resize too large image", false );
 		}

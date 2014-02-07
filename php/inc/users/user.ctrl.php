@@ -578,7 +578,7 @@ if( !$Messages->has_errors() )
 				if( $edited_User->delete_messages() &&
 				    $edited_User->delete_comments() &&
 				    $edited_User->delete_posts( 'created|edited' ) &&
-				    $edited_User->delete_blogs() && 
+				    $edited_User->delete_blogs() &&
 				    $edited_User->dbdelete( $Messages ) )
 				{	// User and all his contributions were deleted successfully
 					$Messages->add( sprintf( T_('The user &laquo;%s&raquo; and all his contributions were deleted.'), $user_login ), 'success' );

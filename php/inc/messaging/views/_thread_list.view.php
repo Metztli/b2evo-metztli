@@ -20,7 +20,7 @@
  * @author efy-maxim: Evo Factory / Maxim.
  * @author fplanque: Francois Planque.
  *
- * @version $Id: _thread_list.view.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _thread_list.view.php 5770 2014-01-23 11:06:01Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -43,7 +43,7 @@ $Results = get_threads_results( array(
 		'results_param_prefix' => $perm_abuse_management ? 'abuse_' : 'thrd_',
 		'search_word' => param( 's', 'string', '', true ),
 		'search_user' => param( 'u', 'string', '', true ),
-		'show_closed_threads' => param( 'show_closed', 'boolean', false, true ),
+		'show_closed_threads' => param( 'show_closed', 'boolean', NULL, true ),
 	) );
 
 $Results->Cache = & get_ThreadCache();
@@ -75,11 +75,21 @@ function filter_recipients( & $Form )
 	}
 }
 
+if( $perm_abuse_management )
+{ // In case of abuse management
+	$preset_filters = array( 'all' => array( T_('All'), get_dispctrl_url( 'abuse' ) ) );
+}
+else
+{ // In case of simple thread list view
+	$preset_filters = array(
+		'avtive' => array( T_('Active conversations'), get_dispctrl_url( 'threads', 'show_closed=0' ) ),
+		'all' => array( T_('All conversations'), get_dispctrl_url( 'threads', 'show_closed=1' ) )
+	);
+}
+
 $Results->filter_area = array(
 	'callback' => 'filter_recipients',
-	'presets' => array(
-		'all' => array( T_('All'), get_dispctrl_url( $perm_abuse_management ? 'abuse' : 'threads' ) ),
-		)
+	'presets' => $preset_filters,
 	);
 
 // Initialize Results object

@@ -116,6 +116,7 @@ form.bComment /* New comment form */
 	margin: 1ex 2ex;
 	padding: 0 1em 1em;
 	border: 1px dotted #999;
+	overflow: hidden;
 }
 form#user_checkchanges.bComment {
 	border-style: solid;
@@ -833,4 +834,8 @@ div.results .status_trash span {
 	white-space: nowrap;
 	padding-left: 31px;
 	display: inline-block;
+}
+
+form#comment_edit {
+	clear: both;
 }

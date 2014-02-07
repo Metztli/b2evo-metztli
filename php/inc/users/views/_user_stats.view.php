@@ -125,7 +125,7 @@ function stats_active_percent( $percent )
 	return floor( $percent * 100 ).' %';
 }
 $Results->cols[] = array(
-		'th' => T_('% of active users'),
+		'th' => /* xgettext:no-php-format */ T_('% of active users'),
 		'td' => '%stats_active_percent( #percent# )%',
 		'order' => 'percent',
 		'default_dir' => 'D',

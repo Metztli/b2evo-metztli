@@ -15,7 +15,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author efy-asimo: Attila Simo.
  *
- * @version $Id: _broken_posts.view.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _broken_posts.view.php 5586 2014-01-07 14:01:19Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -54,7 +54,7 @@ $Results->cols[] = array(
 	'td_class' => 'small center',
 );
 $Results->cols[] = array(
-	'th' => T_('Canoncical Slug ID'),
+	'th' => T_('Canonical Slug ID'),
 	'th_class' => 'shrinkwrap',
 	'order' => 'post_canonical_slug_ID',
 	'td' => '$post_canonical_slug_ID$',

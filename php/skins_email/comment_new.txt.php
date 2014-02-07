@@ -8,7 +8,7 @@
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
  * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
- * @version $Id: comment_new.txt.php 3908 2013-06-04 10:41:52Z attila $
+ * @version $Id: comment_new.txt.php 5299 2013-11-28 09:20:44Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -102,7 +102,7 @@ if( $params['notify_type'] == 'moderator' )
 { // moderation email
 	if( ( $Blog->get_setting( 'comment_quick_moderation' ) != 'never' ) && ( !empty( $Comment->secret ) ) )
 	{ // quick moderation is permitted, and comment secret was set
-		$notify_message .= T_('Quick moderation').': '.$htsrv_url.'comment_review.php?cmt_ID='.$Comment->ID.'&secret='.$Comment->secret."\n\n";
+		$notify_message .= T_('Quick moderation').': '.'$secret_content_start$'.$htsrv_url.'comment_review.php?cmt_ID='.$Comment->ID.'&secret='.$Comment->secret.'$secret_content_end$'."\n\n";
 	}
 	$notify_message .= T_('Edit comment').': '.$admin_url.'?ctrl=comments&action=edit&comment_ID='.$Comment->ID."\n\n";
 	$params['unsubscribe_text'] = T_( 'You are a moderator in this blog, and you are receiving notifications when a comments may need moderation.' )."\n";

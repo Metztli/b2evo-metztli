@@ -15,7 +15,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _item_list_sidebar.view.php 4449 2013-08-07 15:00:18Z yura $
+ * @version $Id: _item_list_sidebar.view.php 5792 2014-01-27 06:48:53Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -269,13 +269,13 @@ echo $Widget->replace_vars( $template['block_start'] );
 
 			echo '<li><input type="radio" name="'.$pp.'status" value="-" class="radio"';
 			if( '-' == $status ) echo ' checked="checked"';
-			echo ' /> <a href="'.regenerate_url( 'status', 'status=-' ).'">'.T_('Without status').'</a></li>';
+			echo ' /> <a href="'.regenerate_url( $pp.'status', $pp.'status=-' ).'">'.T_('Without status').'</a></li>';
 
 			foreach( $ItemStatusCache->cache as $loop_Obj )
 			{
 				echo '<li><input type="radio" name="'.$pp.'status" value="'.$loop_Obj->ID.'" class="radio"';
 				if( $loop_Obj->ID == $status ) echo ' checked="checked"';
-				echo ' /> <a href="'.regenerate_url( 'status', 'status='.$loop_Obj->ID ).'">';
+				echo ' /> <a href="'.regenerate_url( $pp.'status', $pp.'status='.$loop_Obj->ID ).'">';
 				$loop_Obj->disp('name');
 				echo '</a></li>';
 			}
@@ -288,7 +288,7 @@ echo $Widget->replace_vars( $template['block_start'] );
 				// CODE for the widget:
 				'widget' => 'coll_category_list',
 				// Optional display params
-				'block_start' => '<fieldset>',
+				'block_start' => '<fieldset class="widget_core_coll_category_list">',
 				'block_end' => '</fieldset>',
 				'block_title_start' => '<legend>',
 				'block_title_end' => '</legend>',

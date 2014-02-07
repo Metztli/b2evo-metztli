@@ -28,7 +28,7 @@
  * @author fplanque: Francois PLANQUE.
  * @author mbruneau: Marc BRUNEAU / PROGIDISTRI
  *
- * @version $Id: _genericcategory.class.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _genericcategory.class.php 5127 2013-11-04 10:24:52Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -125,12 +125,14 @@ class GenericCategory extends GenericElement
 
 	/**
 	 * Add a child
-	 * @todo dh> "children" is plural..!
 	 * @param GenericCategory
 	 */
-	function add_children( & $GenericCategory )
+	function add_child_category( & $GenericCategory )
 	{
-		$this->children[] = & $GenericCategory;
+		if( !isset( $this->children[$GenericCategory->ID] ) )
+		{ // Add only if it was not added yet
+			$this->children[$GenericCategory->ID] = & $GenericCategory;
+		}
 	}
 
 }

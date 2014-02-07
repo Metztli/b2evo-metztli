@@ -29,7 +29,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _template.funcs.php 4638 2013-09-05 06:46:32Z yura $
+ * @version $Id: _template.funcs.php 5732 2014-01-21 09:24:48Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -1101,19 +1101,17 @@ function add_js_for_toolbar( $relative_to = 'rsc_url' )
 	}
 
 	require_js( '#jquery#', $relative_to );
-	require_js( 'functions.js', $relative_to );	// for rollovers AddEvent - TODO: change to jQuery
-	require_js( 'rollovers.js', $relative_to );	// TODO: change to jQuery
 	// Superfish menus:
 	require_js( 'hoverintent.js', $relative_to );
 	require_js( 'superfish.js', $relative_to );
 	add_js_headline( '
-		jQuery( function() {
-			jQuery("ul.sf-menu").superfish({
-	            delay: 500, // mouseout
-	            animation: {opacity:"show",height:"show"},
-	            speed: "fast"
-	        });
-		} )');
+	jQuery( function() {
+	  jQuery("ul.sf-menu").superfish( {
+	    delay: 500, // mouseout
+	    animation: {opacity:"show",height:"show"},
+	    speed: "fast"
+	  } );
+	} );');
 
 	return true;
 }
@@ -2303,7 +2301,7 @@ function display_password_indicator( $params = array() )
 			pstatus.innerHTML = bar_status;
 		}
 		if( ".$params['disp-time']." ) {
-			document.getElementById('p-time').innerHTML = '".T_('Estimated crack time').": ' + passcheck.crack_time_display;
+			document.getElementById('p-time').innerHTML = '".TS_('Estimated crack time').": ' + passcheck.crack_time_display;
 		}
 	}
 </script>";

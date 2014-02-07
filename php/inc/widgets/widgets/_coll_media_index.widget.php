@@ -22,7 +22,7 @@
  * @author fplanque: Francois PLANQUE.
  * @author Yabba	- {@link http://www.astonishme.co.uk/}
  *
- * @version $Id: _coll_media_index.widget.php 3459 2013-04-11 12:35:09Z yura $
+ * @version $Id: _coll_media_index.widget.php 5854 2014-01-30 10:40:41Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -177,11 +177,6 @@ class coll_media_index_Widget extends ComponentWidget
 
 		$this->init_display( $params );
 
-		if( $this->disp_params[ 'order_by' ] == 'RAND' && isset($this->BlockCache) )
-		{	// Do NOT cache if display order is random
-			$this->BlockCache->abort_collect();
-		}
-
 		global $Blog;
 		$list_blogs = ( $this->disp_params[ 'blog_ID' ] ? $this->disp_params[ 'blog_ID' ] : $Blog->ID );
 		//pre_dump( $list_blogs );
@@ -326,6 +321,24 @@ class coll_media_index_Widget extends ComponentWidget
 		echo $this->disp_params[ 'block_end' ];
 
 		return true;
+	}
+
+
+	/**
+	 * Maybe be overriden by some widgets, depending on what THEY depend on..
+	 *
+	 * @return array of keys this widget depends on
+	 */
+	function get_cache_keys()
+	{
+		global $Blog;
+
+		return array(
+				'wi_ID'         => $this->ID,  // Have the widget settings changed?
+				'set_coll_ID'   => $Blog->ID,  // Have the settings of the blog changed? (ex: new skin)
+				'cont_coll_ID'  => empty($this->disp_params['blog_ID']) ? $Blog->ID : $this->disp_params['blog_ID'],  // Has the content of the displayed blog changed?
+				'media_coll_ID' => empty( $this->disp_params['blog_ID'] ) ? $Blog->ID : $this->disp_params['blog_ID'], 	// Have some media files attached to one of the blogs item?
+			);
 	}
 }
 

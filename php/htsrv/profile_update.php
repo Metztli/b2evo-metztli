@@ -32,7 +32,7 @@
  *
  * @todo integrate it into the skins to avoid ugly die() on error and confusing redirect on success.
  *
- * @version $Id: profile_update.php 4096 2013-06-28 10:39:15Z attila $
+ * @version $Id: profile_update.php 5058 2013-10-25 10:19:11Z yura $
  */
 
 /**
@@ -41,6 +41,9 @@
 require_once dirname(__FILE__).'/../conf/_config.php';
 
 require_once $inc_path.'_main.inc.php';
+
+// Check if the request exceed the post max size. If it does then the function will a call header_redirect.
+check_post_max_size_exceeded();
 
 $action = param_action();
 $disp = param( 'user_tab', 'string', '' );

@@ -14,7 +14,7 @@
  *
  * @package install
  *
- * @version $Id: _functions_evoupgrade.php 4419 2013-08-02 10:59:11Z attila $
+ * @version $Id: _functions_evoupgrade.php 5596 2014-01-08 06:15:02Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -2987,8 +2987,9 @@ function upgrade_b2evo_tables( $upgrade_action = 'evoupgrade' )
 		task_end();
 
 		task_begin( 'Upgrading settings table... ');
-		$DB->query( 'INSERT INTO T_settings (set_name, set_value)
-						VALUES ( "smart_hit_count", 1 )' );
+		// This query was removed later, to avoid performance issue because of the smart view counting
+		/*$DB->query( 'INSERT INTO T_settings (set_name, set_value)
+						VALUES ( "smart_hit_count", 1 )' );*/
 		$DB->query( 'ALTER TABLE T_coll_settings
 									CHANGE COLUMN cset_value cset_value   VARCHAR( 10000 ) NULL COMMENT "The AdSense plugin wants to store very long snippets of HTML"' );
   		task_end();
@@ -3743,6 +3744,8 @@ function upgrade_b2evo_tables( $upgrade_action = 'evoupgrade' )
 
 		task_begin( 'Upgrading general settings table...' );
 		$DB->query( 'UPDATE T_settings SET set_name = '.$DB->quote( 'smart_view_count' ).' WHERE set_name = '.$DB->quote( 'smart_hit_count' ) );
+		// This query below was added later to turn OFF smart view counting on upgrade from v4 to v5 for better performance
+		$DB->query( 'DELETE FROM T_settings WHERE set_name = '.$DB->quote( 'smart_view_count' ) );
 		task_end();
 
 		task_begin( 'Upgrading sessions table...' );

@@ -24,7 +24,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _cron.funcs.php 4858 2013-09-24 23:58:17Z fplanque $
+ * @version $Id: _cron.funcs.php 5555 2014-01-03 00:10:21Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -133,6 +133,8 @@ function call_job( $job_name, $job_params = array() )
 	$error_message = '';
 	$result_message = NULL;
 	$result_status = 'error';
+
+	apm_name_transaction( 'CRON/'.$job_name );
 
 	if( preg_match( '~^plugin_(\d+)_(.*)$~', $job_name, $match ) )
 	{ // Cron job provided by a plugin:

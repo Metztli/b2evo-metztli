@@ -26,10 +26,9 @@
  *	[more] – more tag
  *	[nextpage] – pagination
  *
- * @version $Id: _post_by_email.job.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _post_by_email.job.php 5555 2014-01-03 00:10:21Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
-
 
 global $Settings, $DB, $result_message;
 global $pbm_item_files, $pbm_messages, $pbm_items, $post_cntr, $del_cntr, $is_cron_mode;
@@ -127,5 +126,4 @@ if( $post_cntr > 0 )
 }
 
 return 1; // success
-
 ?>

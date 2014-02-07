@@ -33,6 +33,9 @@ require_once $inc_path.'_main.inc.php';
 // Stop a request from the blocked IP addresses
 antispam_block_ip();
 
+// Check if the request exceed the post max size. If it does then the function will a call header_redirect.
+check_post_max_size_exceeded();
+
 // Getting GET or POST parameters:
 param( 'comment_post_ID', 'integer', true ); // required
 param( 'redirect_to', 'url', '' );
@@ -81,6 +84,8 @@ else
 
 // Note: we use funky field names to defeat the most basic guestbook spam bots and/or their most basic authors
 $comment = param( $dummy_fields[ 'content' ], $text_format );
+// Don't allow the hidden text in comment content
+$comment = str_replace( '<!', '&lt;!', $comment );
 
 if( is_logged_in( false ) )
 {
@@ -446,7 +451,7 @@ if( $action == 'preview' )
 		{ // Users can register and we give them a links to log in and registration
 			if( is_null( $commented_Item ) )
 			{ // Initialize the commented Item object
-				$commented_Item = & $ItemCache->get_by_ID( $comment_item_ID );
+				$commented_Item = & $ItemCache->get_by_ID( $comment_post_ID );
 			}
 			$link_log_in = 'href="'.get_login_url( 'blocked comment email', $commented_Item->get_url( 'public_view' ) ).'"';
 			$link_register = 'href="'.get_user_register_url( $commented_Item->get_url( 'public_view' ), 'blocked comment email' ).'"';

@@ -29,7 +29,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _file.funcs.php 4373 2013-07-27 08:39:12Z attila $
+ * @version $Id: _file.funcs.php 5691 2014-01-17 11:03:06Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -53,9 +53,10 @@ if( ! function_exists('fnmatch') )
  *
  * @param integer bytes
  * @param boolean use HTML <abbr> tags
+ * @param boolean Display full text of size type when $htmlabbr == false
  * @return string bytes made readable
  */
-function bytesreadable( $bytes, $htmlabbr = true )
+function bytesreadable( $bytes, $htmlabbr = true, $display_size_type = true )
 {
 	static $types = NULL;
 
@@ -86,7 +87,7 @@ function bytesreadable( $bytes, $htmlabbr = true )
 
 	$r .= $htmlabbr ? ( '&nbsp;<abbr title="'.$types[$i]['text'].'">' ) : ' ';
 	$r .= $types[$i]['abbr'];
-	$r .= $htmlabbr ? '</abbr>' : ( ' ('.$types[$i]['text'].')' );
+	$r .= $htmlabbr ? '</abbr>' : ( $display_size_type ? ' ('.$types[$i]['text'].')' : '' );
 
 	// $r .= ' '.$precision;
 
@@ -971,6 +972,61 @@ function evo_mkdir( $dir_path, $chmod = NULL, $recursive = false )
 
 
 /**
+ * Copy directory recursively or one file
+ *
+ * @param mixed Source path
+ * @param mixed Destination path
+ */
+function copy_r( $source, $dest )
+{
+	$result = true;
+
+	if( is_dir( $source ) )
+	{ // Copy directory recusively
+		if( ! ( $dir_handle = @opendir( $source ) ) )
+		{ // Unable to open dir
+			return false;
+		}
+		$source_folder = basename( $source );
+		if( ! mkdir_r( $dest.'/'.$source_folder ) )
+		{ // No rights to create a dir
+			return false;
+		}
+		while( $file = readdir( $dir_handle ) )
+		{
+			if( $file != '.' && $file != '..' )
+			{
+				if( is_dir( $source.'/'.$file ) )
+				{ // Copy the files of subdirectory
+					$result = copy_r( $source.'/'.$file, $dest.'/'.$source_folder ) && $result;
+				}
+				else
+				{ // Copy one file of the directory
+					$result = @copy( $source.'/'.$file, $dest.'/'.$source_folder.'/'.$file ) && $result;
+				}
+			}
+		}
+		closedir( $dir_handle );
+	}
+	else
+	{ // Copy a file and check destination folder for existing
+		$dest_folder = preg_replace( '#(.+)/[^/]+$#', '$1', $dest );
+		if( ! file_exists( $dest_folder ) )
+		{ // Create destination folder recursively if it doesn't exist
+			if( ! mkdir_r( $dest_folder ) )
+			{ // Unable to create a destination folder
+				return false;
+			}
+		}
+		// Copy a file
+		$result = @copy( $source, $dest );
+	}
+
+	return $result;
+}
+
+
+/**
  * Is the given path absolute (non-relative)?
  *
  * @return boolean
@@ -1322,8 +1378,8 @@ function process_upload( $root_ID, $path, $create_path_dirs = false, $check_perm
 			continue;
 		}
 
-		if( !empty( $min_size ) )
-		{	// Check pictures for small sizes
+		if( ( !( $_FILES['uploadfile']['error'][$lKey] ) ) && ( !empty( $min_size ) ) )
+		{ // If there is no error and a minimum size is required, check if the uploaded picture satisfies the "minimum size" criteria
 			$image_sizes = imgsize( $_FILES['uploadfile']['tmp_name'][$lKey], 'widthheight' );
 			if( $image_sizes[0] < $min_size || $image_sizes[1] < $min_size )
 			{	// Abort upload for this file:
@@ -1549,7 +1605,7 @@ function prepare_uploaded_files( $uploadedFiles )
  */
 function prepare_uploaded_image( $File, $mimetype )
 {
-	global $Settings;
+	global $Settings, $Messages;
 
 	$thumb_width = $Settings->get( 'fm_resize_width' );
 	$thumb_height = $Settings->get( 'fm_resize_height' );
@@ -1570,17 +1626,23 @@ function prepare_uploaded_image( $File, $mimetype )
 
 	$resized_imh = null;
 	if( $do_resize )
-	{	// Resize image
+	{ // Resize image
 		list( $err, $src_imh ) = load_image( $File->get_full_path(), $mimetype );
 		if( empty( $err ) )
 		{
 			list( $err, $resized_imh ) = generate_thumb( $src_imh, 'fit', $thumb_width, $thumb_height );
 		}
-	}
 
-	if( !empty( $err ) )
-	{	// Error exists, Exit here
-		return;
+		if( empty( $err ) )
+		{ // Image was rezised successfully
+			$Messages->add( sprintf( T_( '%s was resized to %dx%d pixels.' ), '<b>'.$File->get('name').'</b>', imagesx( $resized_imh ), imagesy( $resized_imh ) ), 'success' );
+		}
+		else
+		{ // Image was not rezised
+			$Messages->add( sprintf( T_( '%s could not be resized to target resolution of %dx%d pixels.' ), '<b>'.$File->get('name').'</b>', $thumb_width, $thumb_height ), 'error' );
+			// Error exists, exit here
+			return;
+		}
 	}
 
 	if( $mimetype == 'image/jpeg' )
@@ -1613,34 +1675,45 @@ function exif_orientation( $file_name, & $imh/* = null*/, $save_image = false )
 	global $Settings;
 
 	if( !$Settings->get( 'exif_orientation' ) )
-	{	// Autorotate is disabled
+	{ // Autorotate is disabled
 		return;
 	}
 
 	if( ! function_exists('exif_read_data') )
-	{	// EXIF extension is not loaded
+	{ // Exif extension is not loaded
 		return;
 	}
 
-	$EXIF = exif_read_data( $file_name );
-	if( !( isset( $EXIF['Orientation'] ) && in_array( $EXIF['Orientation'], array( 3, 6, 8 ) ) ) )
-	{	// EXIF Orientation tag is not defined OR we don't interested in current value
+	$image_info = array();
+	getimagesize( $file_name, $image_info );
+	if( ! isset( $image_info['APP1'] ) || ( strpos( $image_info['APP1'], 'Exif' ) !== 0 ) )
+	{ // This file format is not an 'Exchangeable image file format' so there are no Exif data to read
+		return;
+	}
+
+	if( ( $exif_data = exif_read_data( $file_name ) ) === false )
+	{ // Could not read Exif data
+		return;
+	}
+
+	if( !( isset( $exif_data['Orientation'] ) && in_array( $exif_data['Orientation'], array( 3, 6, 8 ) ) ) )
+	{ // Exif Orientation tag is not defined OR we don't interested in current value
 		return;
 	}
 
 	load_funcs( 'files/model/_image.funcs.php' );
 
 	if( is_null( $imh ) )
-	{	// Create image resource from file name
+	{ // Create image resource from file name
 		$imh = imagecreatefromjpeg( $file_name );
 	}
 
 	if( !$imh )
-	{	// Image resource is incorrect
+	{ // Image resource is incorrect
 		return;
 	}
 
-	switch( $EXIF['Orientation'] )
+	switch( $exif_data['Orientation'] )
 	{
 		case 3:	// Rotate for 180 degrees
 			$imh = @imagerotate( $imh, 180, 0 );

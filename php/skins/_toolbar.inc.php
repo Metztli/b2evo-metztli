@@ -40,6 +40,8 @@ global $is_admin_page, $localtimenow, $disp_detail;
 
 global $home_url, $admin_url, $debug, $seo_page_type, $robots_index;
 
+global $request_transaction_name;
+
 /**
  * @var Hit
  */
@@ -94,7 +96,7 @@ $Plugins->trigger_event( 'AdminAfterEvobarInit' );
 
 			if( $debug )
 			{
-				echo '<div style="position:relative;left:5px;top:-7px;color:#999;z-index:-1;">'.$disp_detail.'</div>';
+				echo '<div style="position:relative;left:5px;top:-7px;color:#999;z-index:-1;">'.$request_transaction_name.'</div>';
 			}
 		}
 		?>

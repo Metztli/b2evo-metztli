@@ -7,12 +7,11 @@
  * @todo dh> Should this also handle feedback notifications (according to the "outbound_notifications_mode" setting)?
  * fp> No. The feedback notifications should have their own job.
  *
- * @version $Id: _post_notifications.job.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _post_notifications.job.php 5555 2014-01-03 00:10:21Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
 global $Settings, $Messages;
-
 
 if( $Settings->get( 'outbound_notifications_mode' ) != 'cron' )
 { // Autopruning is NOT requested
@@ -72,5 +71,4 @@ if( empty( $result_message ) )
 }
 
 return 1; /* ok */
-
 ?>

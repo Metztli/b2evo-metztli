@@ -29,7 +29,7 @@
  * @author fplanque: Francois PLANQUE.
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: plugins.ctrl.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: plugins.ctrl.php 5167 2013-11-13 07:36:23Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -204,8 +204,13 @@ switch( $action )
 		}
 
 		load_funcs('plugins/_plugin.funcs.php');
-		if( ! install_plugin_db_schema_action( $edit_Plugin ) )
-		{
+		if( install_plugin_db_schema_action( $edit_Plugin ) )
+		{ // Changes are done, or no changes
+			$action = 'list';
+		}
+		else
+		{ // delta queries have to be confirmed in payload
+			$action = 'install_db_schema';
 			$next_action = 'enable_plugin';
 			break;
 		}
@@ -314,8 +319,12 @@ switch( $action )
 		}
 
 		load_funcs('plugins/_plugin.funcs.php');
-		if( ! install_plugin_db_schema_action( $edit_Plugin ) )
-		{
+		if( install_plugin_db_schema_action( $edit_Plugin ) )
+		{ // Changes are done, or no changes
+			$action = 'list';
+		}
+		else
+		{ // delta queries have to be confirmed in payload
 			$next_action = 'install_db_schema';
 			break;
 		}

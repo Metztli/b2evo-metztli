@@ -39,16 +39,20 @@ if( isset( $_COOKIE[ $cookie_skin_width_name ] ) )
 }
 
 if( $disp == 'posts' && ! isset( $tag ) )
-{	// Display a list of forums instead of posts
+{
+	// Compile cat array to set the correct category params, and change to category display only if required
+	param_compile_cat_array();
+
+	// Display a list of forums instead of posts
 	if( ! isset( $cat ) )
-	{	// First page, Category is not selected, We should use special disp for forums
+	{ // First page, Category is not selected, We should use special disp for forums
 		$disp = 'catdir';
 	}
-	else
-	{
+	elseif( $cat > 0 )
+	{ // A specific category was requested
 		$chapters = $Skin->get_chapters( $cat );
 		if( count( $chapters ) > 0 )
-		{	// Current chapter has children
+		{ // Current chapter has children
 			$disp = 'catdir';
 		}
 	}

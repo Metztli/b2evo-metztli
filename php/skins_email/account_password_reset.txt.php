@@ -8,7 +8,7 @@
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
  * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
- * @version $Id: account_password_reset.txt.php 3152 2013-03-04 22:01:46Z fplanque $
+ * @version $Id: account_password_reset.txt.php 5299 2013-11-28 09:20:44Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -54,11 +54,13 @@ while( ( $iterator_User = & $UserCache->get_next() ) != NULL )
 
 	$message_content .= T_( 'Link to change your password:' )
 						."\n"
+						.'$secret_content_start$'
 						.$secure_htsrv_url.'login.php?action=changepwd'
 							.'&'.$dummy_fields[ 'login' ].'='.rawurlencode( $iterator_User->login )
 							.'&reqID='.$params['request_id']
 							.'&sessID='.$Session->ID  // used to detect cookie problems
 							.$params['blog_param']
+						.'$secret_content_end$'
 						."\n";
 }
 

@@ -27,7 +27,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _itemlistlight.class.php 4449 2013-08-07 15:00:18Z yura $
+ * @version $Id: _itemlistlight.class.php 5824 2014-01-29 04:19:25Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -623,30 +623,34 @@ class ItemListLight extends DataObjectList2
 		/*
 		elseif( !empty($this->filters['ymdhms']) // no restriction if we request a month... some permalinks may point to the archive!
 		*/
-		elseif( $this->filters['unit'] == 'days'    // We are going to limit to x days: no limit
-			 	 || $this->filters['unit'] == 'all' )	 // We want ALL results!
+		elseif( $this->filters['unit'] == 'days'  // We are going to limit to x days: no limit
+		     || $this->filters['unit'] == 'all' ) // We want ALL results!
 		{
 			$this->total_rows = NULL; // unknown!
 			$this->total_pages = 1;
 			$this->page = 1;
 		}
 		elseif( $this->filters['unit'] == 'posts' )
-		{
-			/*
-			 * TODO: The result is incorrect when using AND on categories
-			 * We would need to use a HAVING close and thyen COUNT, which would be a subquery
-			 * This is nto compatible with mysql 3.23
-			 * We need fallback code.
-			 */
-			$sql_count = '
-				SELECT COUNT( DISTINCT '.$this->Cache->dbIDname.') '
+		{ // Calculate a count of the posts
+			if( $this->ItemQuery->get_group_by() == '' )
+			{ // SQL query without GROUP BY clause
+				$sql_count = 'SELECT COUNT( DISTINCT '.$this->Cache->dbIDname.' )'
 					.$this->ItemQuery->get_from()
-					.$this->ItemQuery->get_where();
-
-			//echo $DB->format_query( $sql_count );
+					.$this->ItemQuery->get_where()
+					.$this->ItemQuery->get_limit();
+			}
+			else
+			{ // SQL query with GROUP BY clause, Summarize a count of each grouped result
+				$sql_count = 'SELECT SUM( cnt_tbl.cnt ) FROM (
+						SELECT COUNT( DISTINCT '.$this->Cache->dbIDname.' ) AS cnt '
+						.$this->ItemQuery->get_from()
+						.$this->ItemQuery->get_where()
+						.$this->ItemQuery->get_group_by()
+						.$this->ItemQuery->get_limit().'
+					) AS cnt_tbl ';
+			}
 
 			parent::count_total_rows( $sql_count );
-			//echo '<br />'.$this->total_rows;
 		}
 		else
 		{
@@ -891,11 +895,11 @@ class ItemListLight extends DataObjectList2
 			}
 			if( $this->filters['cat_modifier'] == '*' )
 			{
-				$cat_names_string = implode( ' + ', $cat_names );
+				$cat_names_string = '"'.implode( '" '.T_('and').' "', $cat_names ).'"';
 			}
 			else
 			{
-				$cat_names_string = implode( ', ', $cat_names );
+				$cat_names_string = '"'.implode( '" '.T_('or').' "', $cat_names ).'"';
 			}
 			if( !empty( $cat_names_string ) )
 			{
@@ -950,9 +954,23 @@ class ItemListLight extends DataObjectList2
 
 
 		// KEYWORDS:
-		if( !empty($this->filters['keywords']) )
+		if( ! empty( $this->filters['keywords'] ) )
 		{
-			$title_array['keywords'] = T_('Keyword(s)').': '.$this->filters['keywords'];
+			if( $this->filters['phrase'] == 'OR' || $this->filters['phrase'] == 'AND' )
+			{
+				$keywords = trim( preg_replace( '/("|, *)/', ' ', $this->filters['keywords'] ) );
+				$keywords = explode( ' ', $keywords );
+				$keywords_count = count( $keywords );
+				$keywords = '"'.implode( '" '.( $this->filters['phrase'] == 'OR' ? T_('or') : T_('and') ).' "', $keywords ).'"';
+			}
+			else
+			{
+				$keywords = '"'.$this->filters['keywords'].'"';
+				$keywords_count = 1;
+			}
+			$title_array['keywords'] = ( $keywords_count == 1 ? T_('Keyword') : T_('Keywords') ).': '
+				.( $this->filters['exact'] ? T_('Exact match').' ' : '' )
+				.$keywords;
 		}
 
 
@@ -967,6 +985,12 @@ class ItemListLight extends DataObjectList2
 		if( ! empty( $this->filters['authors'] ) || ! empty( $this->filters['authors_login'] ) )
 		{
 			$authors = trim( $this->filters['authors'].','.get_users_IDs_by_logins( $this->filters['authors_login'] ), ',' );
+			$exclude_authors = false;
+			if( substr( $authors, 0, 1 ) == '-' )
+			{ // Authors are excluded
+				$authors = substr( $authors, 1 );
+				$exclude_authors = true;
+			}
 			$authors = preg_split( '~\s*,\s*~', $authors, -1, PREG_SPLIT_NO_EMPTY );
 			$author_names = array();
 			if( $authors )
@@ -980,7 +1004,18 @@ class ItemListLight extends DataObjectList2
 					}
 				}
 			}
-			$title_array[] = T_('Author(s)').': '.implode( ', ', $author_names );
+			if( count( $author_names ) > 0 )
+			{ // Display info of filter by authors
+				if( $exclude_authors )
+				{ // 
+					$title_array[] = sprintf( T_('All authors except: %s'), implode( ' '.T_('and').' ', $author_names ) );
+				}
+				else
+				{ // 
+					$title_array[] = ( count( $author_names ) == 1 ? T_('Author') : T_('Authors') )
+						.': '.implode( ', ', $author_names );
+				}
+			}
 		}
 
 
@@ -1028,23 +1063,35 @@ class ItemListLight extends DataObjectList2
 			}
 			else
 			{
-				$title_array[] = T_('Status(es)').': '.$this->filters['statuses'];
+				$status_IDs = explode( ',', $this->filters['statuses'] );
+				$ItemStatusCache = & get_ItemStatusCache();
+				$statuses = array();
+				foreach( $status_IDs as $status_ID )
+				{
+					if( $ItemStatus = & $ItemStatusCache->get_by_ID( $status_ID ) )
+					{
+						$statuses[] = $ItemStatus->get_name();
+					}
+				}
+				$title_array[] = ( count( $statuses ) > 1 ? T_('Statuses') : T_('Status') )
+					.': '.implode( ', ', $statuses );
 			}
 		}
 
 
 		// SHOW STATUSES
-		if( count( $this->filters['visibility_array'] ) < 5
-			&& !in_array( 'visibility', $ignore ) )
+		if( !in_array( 'visibility', $ignore ) )
 		{
 			$post_statuses = get_visibility_statuses();
-
-			$status_titles = array();
-			foreach( $this->filters['visibility_array'] as $status )
-			{
-				$status_titles[] = $post_statuses[$status];
+			if( count( $this->filters['visibility_array'] ) != count( $post_statuses ) )
+			{ // Display it only when visibility filter is changed
+				$status_titles = array();
+				foreach( $this->filters['visibility_array'] as $status )
+				{
+					$status_titles[] = $post_statuses[$status];
+				}
+				$title_array[] = T_('Visibility').': '.implode( ', ', $status_titles );
 			}
-			$title_array[] = T_('Visibility').': '.implode( ', ', $status_titles );
 		}
 
 

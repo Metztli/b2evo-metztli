@@ -31,7 +31,7 @@
  * @todo (sessions) When creating a blog, provide "edit options" (3 tabs) instead of a single long "New" form (storing the new Blog object with the session data).
  * @todo Currently if you change the name of a blog it gets not reflected in the blog list buttons!
  *
- * @version $Id: collections.ctrl.php 4110 2013-07-02 07:53:56Z yura $
+ * @version $Id: collections.ctrl.php 5758 2014-01-22 12:58:45Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -175,6 +175,13 @@ switch( $action )
 			$redirect_to = param( 'redirect_to', 'url', '?ctrl=collections' );
 			header_redirect( $redirect_to, 303 ); // Will EXIT
 			// We have EXITed already at this point!!
+		}
+		else
+		{ // Check if blog has delete restrictions
+			if( ! $edited_Blog->check_delete( sprintf( T_('Cannot delete Blog &laquo;%s&raquo;'), $edited_Blog->get_name() ), array( 'file_root_ID', 'cat_blog_ID' ) ) )
+			{ // There are restrictions:
+				$action = 'view';
+			}
 		}
 		break;
 
@@ -338,11 +345,14 @@ switch($action)
 	case 'delete':
 		// ----------  Delete a blog from DB ----------
 		// Not confirmed
+		$FileRootCache = & get_FileRootCache();
+		$root_directory = $FileRootCache->get_root_dir( 'collection', $edited_Blog->ID );
 		?>
 		<div class="panelinfo">
 			<h3><?php printf( T_('Delete blog [%s]?'), $edited_Blog->dget( 'name' ) )?></h3>
 
-			<p><?php echo T_('Deleting this blog will also delete all its categories, posts and comments!') ?></p>
+			<p><?php echo sprintf( T_('Deleting this blog will also delete ALL its categories, posts, comments and ALL its attached files in the blog\'s fileroot (%s) !'),
+				$root_directory ) ?></p>
 
 			<p><?php echo T_('THIS CANNOT BE UNDONE!') ?></p>
 

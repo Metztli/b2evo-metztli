@@ -23,7 +23,7 @@
  * @author blueyed: Daniel HAHLER
  * @author fplanque: Francois PLANQUE
  *
- * @version $Id: _commentlist.class.php 3908 2013-06-04 10:41:52Z attila $
+ * @version $Id: _commentlist.class.php 5360 2013-12-04 12:20:18Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -125,7 +125,7 @@ class CommentList2 extends DataObjectList2
 				'expiry_statuses' => array( 'active' ), // Show active/expired comments
 				'types' => array( 'comment','trackback','pingback' ),
 				'orderby' => 'date',
-				'order' => !is_null( $this->Blog ) ? $this->Blog->get_setting('orderdir') : 'DESC',
+				'order' => !is_null( $this->Blog ) ? $this->Blog->get_setting('comments_orderdir') : 'DESC',
 				//'order' => 'DESC',
 				'comments' => $this->limit,
 				'page' => 1,

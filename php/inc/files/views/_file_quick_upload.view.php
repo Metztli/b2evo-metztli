@@ -27,7 +27,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author efy-asimo: Evo Factory / Attila Simo
  *
- * @version $Id: _file_quick_upload.view.php 4306 2013-07-18 14:19:54Z yura $
+ * @version $Id: _file_quick_upload.view.php 5034 2013-10-23 12:04:11Z yura $
  */
 
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -125,6 +125,11 @@ echo '<tbody>';
 					if (responseJSON.success.status != undefined && responseJSON.success.status == 'rename')
 					{
 						jQuery('#saveBtn').show();
+					}
+
+					if( responseJSON.success.warning != undefined && responseJSON.success.warning != '' )
+					{
+						text += '<div class="orange">' + responseJSON.success.warning + '</div>';
 					}
 					container.append(text);
 				},

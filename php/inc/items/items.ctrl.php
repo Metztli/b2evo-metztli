@@ -24,7 +24,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: items.ctrl.php 4573 2013-08-29 23:55:32Z fplanque $
+ * @version $Id: items.ctrl.php 5851 2014-01-30 09:26:56Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -288,6 +288,9 @@ switch( $action )
 				$edited_Link->dbinsert();
 
 				$DB->commit();
+
+				// Invalidate blog's media BlockCache
+				BlockCache::invalidate_key( 'media_coll_ID', $edited_Item->get_blog_ID() );
 
 				$Messages->add( sprintf( T_('&laquo;%s&raquo; has been posted.'), $l_File->dget('name') ), 'success' );
 				$fileNum++;
@@ -909,7 +912,9 @@ switch( $action )
 
 		if( $update_nr > 0 )
 		{
-			$Messages->add( $update_nr.' '.T_('post(s) has been updated!'), 'success' );
+			$Messages->add( $update_nr == 1 ?
+				T_('One post has been updated!') :
+				sprintf( T_('%d posts have been updated!'), $update_nr ), 'success' );
 		}
 		else
 		{

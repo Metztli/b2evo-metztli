@@ -29,7 +29,7 @@
  * @author fplanque: Francois PLANQUE
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: _usersettings.class.php 3908 2013-06-04 10:41:52Z attila $
+ * @version $Id: _usersettings.class.php 5754 2014-01-22 11:57:57Z yura $
  *
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -85,6 +85,7 @@ class UserSettings extends AbstractSettings
 		'last_activation_reminder_key' => NULL, // It will be set at the first time when activation reminder email will be sent
 		'activation_reminder_count' => 0, // How many activation reminder was sent since the user is not activated
 		'send_activation_reminder' => 1, // Send reminder to activate my account if it is not activated
+		'welcome_message_sent' => 0, // Used to know if user already received a welcome message after email activation
 
 		// admin user notifications
 		'send_cmt_moderation_reminder' => 1, // Send reminders about comments awaiting moderation

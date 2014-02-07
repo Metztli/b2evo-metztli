@@ -24,7 +24,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _itemquery.class.php 4449 2013-08-07 15:00:18Z yura $
+ * @version $Id: _itemquery.class.php 5792 2014-01-27 06:48:53Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -406,7 +406,10 @@ class ItemQuery extends SQL
 			$users_IDs = get_users_IDs_by_logins( $this->author_login );
 		}
 
-		$this->WHERE_and( $this->dbprefix.'creator_user_ID '.$eq.' ( '.$users_IDs.' )' );
+		if( ! empty( $users_IDs ) )
+		{
+			$this->WHERE_and( $this->dbprefix.'creator_user_ID '.$eq.' ( '.$users_IDs.' )' );
+		}
 	}
 
 
@@ -799,7 +802,7 @@ class ItemQuery extends SQL
 				$swords = 'AND';
 
 			// puts spaces instead of commas
-			$keywords = preg_replace('/, +/', '', $keywords);
+			$keywords = preg_replace('/, +/', ',', $keywords);
 			$keywords = str_replace(',', ' ', $keywords);
 			$keywords = str_replace('"', ' ', $keywords);
 			$keywords = trim($keywords);

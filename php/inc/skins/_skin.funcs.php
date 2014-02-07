@@ -22,7 +22,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _skin.funcs.php 4673 2013-09-09 14:49:25Z yura $
+ * @version $Id: _skin.funcs.php 5816 2014-01-28 11:18:44Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -119,10 +119,15 @@ function skin_init( $disp )
 		// CONTENT PAGES:
 		case 'single':
 		case 'page':
-			init_ajax_forms(); // auto requires jQuery
-			init_ratings_js();
-			init_voting_comment_js();
-			init_scrollwide_js(); // Add jQuery Wide Scroll plugin
+			if( ( ! $preview ) && ( empty( $Item ) ) )
+			{ // No Item, incorrect request and incorrect state of the application, a 404 redirect should have already happened
+				debug_die( 'Invalid page URL!' );
+			}
+
+			init_ajax_forms( 'blog' ); // auto requires jQuery
+			init_ratings_js( 'blog' );
+			init_voting_comment_js( 'blog' );
+			init_scrollwide_js( 'blog' ); // Add jQuery Wide Scroll plugin
 
 			if( $disp == 'single' )
 			{
@@ -229,7 +234,7 @@ function skin_init( $disp )
 					}
 
 					global $cat, $catsel;
-					if( empty( $catsel ) && preg_match( '~[0-9]+~', $cat ) )
+					if( empty( $catsel ) && preg_match( '~^[0-9]+$~', $cat ) )
 					{	// We are on a single cat page:
 						// NOTE: we must have selected EXACTLY ONE CATEGORY through the cat parameter
 						// BUT: - this can resolve to including children
@@ -902,14 +907,14 @@ function skin_description_tag()
 
 	if( is_default_page() )
 	{
-		if( !empty($Blog) )
+		if( ! empty( $Blog ) )
 		{	// Description for the blog:
-			$r = $Blog->get('shortdesc');
+			$r = $Blog->get( 'shortdesc' );
 		}
 	}
 	elseif( $disp_detail == 'posts-cat' || $disp_detail == 'posts-subcat' )
 	{
-		if( $Blog->get_setting( 'categories_meta_description') )
+		if( $Blog->get_setting( 'categories_meta_description' ) && ( ! empty( $Chapter ) ) )
 		{
 			$r = $Chapter->get( 'description' );
 		}

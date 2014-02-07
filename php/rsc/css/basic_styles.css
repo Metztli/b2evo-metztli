@@ -158,9 +158,29 @@ span.icon {
 	padding: 0 !important;
 	font-size: 9px;
 	display: inline-block !important;
+	overflow: hidden;
+	vertical-align: top;
 }
 span.icon.voted {
 	margin: 0 2px;
+}
+a.rollover_sprite:hover span.icon {
+	visibility: hidden;
+	visibility: visible\0/;/* IE8 */
+}
+@media screen and (min-width:0\0) { /* IE9-10 */
+	a.rollover_sprite:hover span.icon {
+		visibility: visible;
+	}
+}
+a.rollover_sprite:hover span.icon:before {
+	visibility: visible !important;
+	background: inherit;
+	float: left;
+	width: 32px;
+	height: 16px;
+	content: "";
+	margin-left: -16px;
 }
 .vote_spam span.icon.voted {
 	margin: auto;
@@ -392,4 +412,15 @@ div.edit_toolbar input:hover {
 div.comment_toolbars {
 	margin-top: 1em;
 	text-align: center;
+}
+
+/* Meta categories */
+.widget_core_coll_category_list .meta {
+	font-weight: bold;
+}
+.widget_core_coll_category_list .meta ul {
+	font-weight: normal;
+}
+.widget_core_coll_category_list .meta input[disabled="disabled"] {
+	visibility: hidden;
 }

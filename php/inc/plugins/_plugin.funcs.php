@@ -29,7 +29,7 @@
  * @author fplanque: Francois PLANQUE
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: _plugin.funcs.php 4728 2013-09-12 13:49:43Z yura $
+ * @version $Id: _plugin.funcs.php 5167 2013-11-13 07:36:23Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -1070,9 +1070,8 @@ function handle_array_keys_in_plugin_settings( & $a )
  */
 function install_plugin_db_schema_action( & $Plugin, $force_install_db_deltas = false )
 {
-	global $action, $inc_path, $install_db_deltas, $DB, $Messages;
+	global $inc_path, $install_db_deltas, $DB, $Messages;
 
-	$action = 'list';
 	// Prepare vars for DB layout changes
 	$install_db_deltas_confirm_md5 = param( 'install_db_deltas_confirm_md5' );
 
@@ -1100,7 +1099,6 @@ function install_plugin_db_schema_action( & $Plugin, $force_install_db_deltas = 
 		{ // delta queries to make
 			if( empty($install_db_deltas_confirm_md5) && !$force_install_db_deltas )
 			{ // delta queries have to be confirmed in payload
-				$action = 'install_db_schema';
 				return false;
 			}
 			elseif( $install_db_deltas_confirm_md5 == md5( implode('', $install_db_deltas) ) || $force_install_db_deltas )
@@ -1117,11 +1115,11 @@ function install_plugin_db_schema_action( & $Plugin, $force_install_db_deltas = 
 				$Messages->add( T_('The DB schema has been changed since confirmation.'), 'error' );
 
 				// delta queries have to be confirmed (again) in payload
-				$action = 'install_db_schema';
 				return false;
 			}
 		}
 	}
+
 	return true;
 }
 

@@ -24,7 +24,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _filerootcache.class.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _filerootcache.class.php 5596 2014-01-08 06:15:02Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -100,7 +100,7 @@ class FileRootCache
 				$r[ $skins_FileRoot->ID ] = & $skins_FileRoot;
 			}
 		}
-		
+
 		return $r;
 	}
 

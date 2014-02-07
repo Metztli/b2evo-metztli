@@ -29,7 +29,7 @@
  * @author fplanque: Francois PLANQUE
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: _plugin_settings.form.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _plugin_settings.form.php 5732 2014-01-21 09:24:48Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -124,7 +124,7 @@ $Form->end_fieldset();
 
 
 // --------------------------- EVENTS ---------------------------
-$Form->begin_fieldset( T_('Plugin events').' ('.T_('Advanced').') '.get_icon('expand', 'imgtag', array( 'id' => 'clickimg_pluginevents' ) ),
+$Form->begin_fieldset( T_('Plugin events').' ('.T_('Advanced').') '.get_icon( 'collapse', 'imgtag', array( 'id' => 'clickimg_pluginevents' ) ),
 											 array('legend_params' => array( 'onclick' => 'toggle_clickopen(\'pluginevents\')') )
 											 );
 	?>

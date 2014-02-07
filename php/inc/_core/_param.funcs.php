@@ -38,7 +38,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _param.funcs.php 4698 2013-09-11 10:32:51Z attila $
+ * @version $Id: _param.funcs.php 5650 2014-01-14 16:22:34Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -1230,7 +1230,7 @@ function param_compile_cat_array( $restrict_to_blog = 0, $cat_default = NULL, $c
 	// fp> we want might to use a $set_globals params to compile_cat_array()
 	global $cat_array, $cat_modifier;
 
-	$cat = param( 'cat', '/^[*\-]?([0-9]+(,[0-9]+)*)?$/', $cat_default, true ); // List of cats to restrict to
+	$cat = param( 'cat', '/^[*\-\|]?([0-9]+(,[0-9]+)*)?$/', $cat_default, true ); // List of cats to restrict to
 	$catsel = param( 'catsel', 'array/integer', $catsel_default, true );  // Array of cats to restrict to
 
 	$cat_array = array();

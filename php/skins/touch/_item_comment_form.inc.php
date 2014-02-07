@@ -78,8 +78,8 @@ if( $params['disp_comment_form'] && $Item->can_comment( $params['before_comment_
 				$email_is_detected = true;
 			}
 
-			if( !$Blog->get_setting( 'threaded_comments' ) )
-			{
+			if( empty( $Comment->in_reply_to_cmt_ID ) )
+			{ // Display the comment preview here only if this comment is not a reply, otherwise it was already displayed
 				// ------------------ PREVIEW COMMENT INCLUDED HERE ------------------
 				skin_include( $params['comment_template'], array(
 						'Comment'              => & $Comment,
@@ -89,7 +89,7 @@ if( $params['disp_comment_form'] && $Item->can_comment( $params['before_comment_
 						'comment_block_end'    => $Comment->email_is_detected ? '' : $params['preview_block_end'],
 						'author_link_text'     => $params['author_link_text'],
 					) );
-				// Note: You can customize the default item feedback by copying the generic
+				// Note: You can customize the default item comment by copying the generic
 				// /skins/_item_comment.inc.php file into the current skin folder.
 				// ---------------------- END OF PREVIEW COMMENT ---------------------
 			}
