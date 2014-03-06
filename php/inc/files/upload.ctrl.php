@@ -27,7 +27,7 @@
  * @author fplanque: Francois PLANQUE.
  * (dh please re-add)
  *
- * @version $Id: upload.ctrl.php 4851 2013-09-24 09:56:14Z yura $
+ * @version $Id: upload.ctrl.php 6041 2014-02-26 10:40:51Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -249,12 +249,12 @@ $failedFiles = array();
  * Remember renamed files (and the messages)
  * @var array
  */
-param( 'renamedFiles', 'array', array(), true );
+param( 'renamedFiles', 'array/array/string', array(), true );
 $renamedMessages = array();
 
 // Process files we want to get from an URL:
-param( 'uploadfile_url', 'array', array() );
-param( 'uploadfile_source', 'array', array() );
+param( 'uploadfile_url', 'array/string', array() );
+param( 'uploadfile_source', 'array/string', array() );
 if( ( $action != 'switchtab' ) && $uploadfile_url )
 {
 	// Check that this action request is not a CSRF hacked request:

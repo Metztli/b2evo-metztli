@@ -31,7 +31,7 @@
  * @todo (sessions) When creating a blog, provide "edit options" (3 tabs) instead of a single long "New" form (storing the new Blog object with the session data).
  * @todo Currently if you change the name of a blog it gets not reflected in the blog list buttons!
  *
- * @version $Id: collections.ctrl.php 5758 2014-01-22 12:58:45Z yura $
+ * @version $Id: collections.ctrl.php 5899 2014-02-05 09:19:35Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -158,17 +158,18 @@ switch( $action )
 			// Delete from DB:
 			$msg = sprintf( T_('Blog &laquo;%s&raquo; deleted.'), $edited_Blog->dget('name') );
 
-			$edited_Blog->dbdelete();
+			if( $edited_Blog->dbdelete() )
+			{ // Blog was deleted
+				$Messages->add( $msg, 'success' );
 
-			$Messages->add( $msg, 'success' );
-
-			$BlogCache->remove_by_ID( $blog );
-			unset( $edited_Blog );
-			unset( $Blog );
-			forget_param( 'blog' );
-			set_working_blog( 0 );
-			$UserSettings->delete( 'selected_blog' );	// Needed or subsequent pages may try to access the delete blog
-			$UserSettings->dbupdate();
+				$BlogCache->remove_by_ID( $blog );
+				unset( $edited_Blog );
+				unset( $Blog );
+				forget_param( 'blog' );
+				set_working_blog( 0 );
+				$UserSettings->delete( 'selected_blog' );	// Needed or subsequent pages may try to access the delete blog
+				$UserSettings->dbupdate();
+			}
 
 			$action = 'list';
 			// Redirect so that a reload doesn't write to the DB twice:
@@ -345,16 +346,24 @@ switch($action)
 	case 'delete':
 		// ----------  Delete a blog from DB ----------
 		// Not confirmed
-		$FileRootCache = & get_FileRootCache();
-		$root_directory = $FileRootCache->get_root_dir( 'collection', $edited_Blog->ID );
+		if( $current_User->check_perm( 'files', 'view', false ) )
+		{ // User has permission to view files in this blog's fileroot, diplay link
+			$delete_warning = sprintf( T_('Deleting this blog will also delete ALL its categories, posts, comments and ALL its attached files in the blog\'s <a %s>fileroot</a> !'),
+				'href="'.$edited_Blog->get_filemanager_link().'"' );
+		}
+		else
+		{ // User has no permission to view files in this blog's fielroot
+			$delete_warning = T_('Deleting this blog will also delete ALL its categories, posts, comments and ALL its attached files in the blog\'s <a %s>fileroot</a> !');
+		}
 		?>
 		<div class="panelinfo">
 			<h3><?php printf( T_('Delete blog [%s]?'), $edited_Blog->dget( 'name' ) )?></h3>
 
-			<p><?php echo sprintf( T_('Deleting this blog will also delete ALL its categories, posts, comments and ALL its attached files in the blog\'s fileroot (%s) !'),
-				$root_directory ) ?></p>
+			<p class="warning"><?php echo $delete_warning; ?></p>
 
-			<p><?php echo T_('THIS CANNOT BE UNDONE!') ?></p>
+			<p><?php echo T_('Note: Some files in this blog\'s fileroot may be linked to users or to other blogs posts and comments. Those links will be inadvertently deleted!') ?></p>
+
+			<p class="warning"><?php echo T_('THIS CANNOT BE UNDONE!') ?></p>
 
 			<p>
 

@@ -22,7 +22,7 @@
  *
  * @package evocore
  *
- * @version $Id: _pagecache.class.php 4073 2013-06-27 05:55:11Z yura $ }}}
+ * @version $Id: _pagecache.class.php 6033 2014-02-26 09:29:57Z attila $ }}}
  *
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -491,8 +491,10 @@ class PageCache
 
 	/**
 	 * We are going to output personal data and we want to abort collecting the data for the cache.
+	 *
+	 * @param boolean flush already collected data
 	 */
-	function abort_collect()
+	function abort_collect( $flush = true )
 	{
 		global $Debuglog;
 
@@ -503,7 +505,14 @@ class PageCache
 
  		$Debuglog->add( 'Aborting cache data collection...', 'pagecache' );
 
-		ob_end_flush();
+ 		if( $flush )
+ 		{ // Flush the output buffer and turn off buffering
+			ob_end_flush();
+ 		}
+ 		else
+ 		{ // Erase the output buffer and turn off buffering
+			ob_end_clean();
+ 		}
 
 		// We are no longer collecting...
 		$this->is_collecting = false;
@@ -556,7 +565,7 @@ class PageCache
 			}
 			global $skin;
 			if( !empty( $skin ) )
-			{ // add current skin folder into the cache file header 
+			{ // add current skin folder into the cache file header
 				$file_head .= 'skin:'.$skin."\n";
 			}
 

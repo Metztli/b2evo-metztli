@@ -29,7 +29,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _template.funcs.php 5732 2014-01-21 09:24:48Z yura $
+ * @version $Id: _template.funcs.php 6033 2014-02-26 09:29:57Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -65,8 +65,10 @@ function header_content_type( $type = 'text/html', $charset = '#' )
  *
  * @param string content-type; override for RSS feeds
  * @param integer seconds
+ * @param string charset
+ * @param boolean flush already collected content from the PageCache
  */
-function headers_content_mightcache( $type = 'text/html', $max_age = '#', $charset = '#' )
+function headers_content_mightcache( $type = 'text/html', $max_age = '#', $charset = '#', $flush_pagecache = true )
 {
 	global $Messages, $is_admin_page;
 	global $PageCache, $Debuglog;
@@ -86,7 +88,7 @@ function headers_content_mightcache( $type = 'text/html', $max_age = '#', $chars
 		if( !empty( $PageCache ) )
 		{ // Abort PageCache collect
 			$Debuglog->add( 'Abort server caching in headers_content_mightcache() function. This should have been prevented!' );
-			$PageCache->abort_collect();
+			$PageCache->abort_collect( $flush_pagecache );
 		}
 		return;
 	}

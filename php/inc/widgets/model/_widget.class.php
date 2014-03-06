@@ -21,7 +21,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _widget.class.php 5866 2014-01-31 09:03:13Z attila $
+ * @version $Id: _widget.class.php 5955 2014-02-12 07:01:56Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -331,7 +331,9 @@ class ComponentWidget extends DataObject
 		$params = $this->get_param_definitions( array( 'infinite_loop' => true ) );
 
 		if( isset( $params[$parname] ) )
-		{	// This is a widget specific param:
+		{ // This is a widget specific param:
+			// Make sure param_array is loaded before set the param value
+			$this->load_param_array();
 			$this->param_array[$parname] = $parvalue;
 			// This is what'll be saved to the DB:
 			return $this->set_param( 'params', 'string', serialize($this->param_array), $make_null );

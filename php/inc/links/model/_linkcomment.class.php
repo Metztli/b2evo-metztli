@@ -151,7 +151,8 @@ class LinkComment extends LinkOwner
 	 */
 	function get_edit_url()
 	{
-		return '?ctrl=comments&amp;comment_ID='.$this->Comment->ID;
+		$this->load_Blog();
+		return '?ctrl=comments&amp;blog='.$this->Blog->ID.'&amp;action=edit&amp;comment_ID='.$this->Comment->ID;
 	}
 
 	/**

@@ -32,7 +32,7 @@
  *
  * @todo Allow applying / re-checking of the known data, not just after an update!
  *
- * @version $Id: antispam.ctrl.php 3768 2013-05-22 06:14:32Z yura $
+ * @version $Id: antispam.ctrl.php 6041 2014-02-26 10:40:51Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -53,7 +53,7 @@ param( 'confirm', 'string' );
 param( 'keyword', 'string', '', true );
 param( 'domain', 'string' );
 param( 'filteron', 'string', '', true );
-param( 'filter', 'array', array() );
+param( 'filter', 'array/string', array() );
 
 $tab3 = param( 'tab3', 'string', '', true );
 $tool = param( 'tool', 'string', '', true );
@@ -246,7 +246,7 @@ switch( $action )
 		$Settings->set( 'antispam_report_to_central', $antispam_report_to_central );
 
 		$changed_weight = false;
-		param( 'antispam_plugin_spam_weight', 'array', array() );
+		param( 'antispam_plugin_spam_weight', 'array/integer', array() );
 		foreach( $antispam_plugin_spam_weight as $l_plugin_ID => $l_weight )
 		{
 			if( ! is_numeric($l_weight) )

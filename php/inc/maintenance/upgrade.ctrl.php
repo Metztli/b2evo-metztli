@@ -22,7 +22,7 @@
  * @author efy-maxim: Evo Factory / Maxim.
  * @author fplanque: Francois Planque.
  *
- * @version $Id: upgrade.ctrl.php 4753 2013-09-16 05:54:36Z yura $
+ * @version $Id: upgrade.ctrl.php 5963 2014-02-12 13:43:04Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -385,7 +385,7 @@ switch( $action )
 		$UserSettings->dbupdate();
 
 		$success = param_check_not_empty( 'svn_url', T_('Please enter the URL of repository') );
-		$success = $success && param_check_regexp( 'svn_folder', '#/blogs/$#', T_('A correct SVN folder path must ends with "/blogs/') );
+		$success = $success && param_check_regexp( 'svn_folder', '#/blogs/$#', T_('A correct SVN folder path must ends with "/blogs/"') );
 
 		if( ! $success )
 		{

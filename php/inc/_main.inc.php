@@ -33,7 +33,7 @@
  *
  * @package evocore
  *
- * @version $Id: _main.inc.php 5432 2013-12-12 04:48:13Z yura $
+ * @version $Id: _main.inc.php 5874 2014-02-03 13:37:01Z attila $
  */
 if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page directly.' );
 
@@ -112,8 +112,10 @@ $skinfaktory_links = array( '' => array( array( 73, 'http://evofactory.com/', ar
 												);
 
 
-// Move user to suspect group by IP address
-antispam_suspect_user();
+if( ! $is_cli )
+{ // Move user to suspect group by IP address
+	antispam_suspect_user();
+}
 
 
 $Timer->pause( '_MAIN.inc' );

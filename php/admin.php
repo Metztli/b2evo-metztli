@@ -34,7 +34,7 @@
  *
  * @package main
  *
- * @version $Id: admin.php 5052 2013-10-24 12:23:32Z yura $
+ * @version $Id: admin.php 5899 2014-02-05 09:19:35Z attila $
  */
 
 
@@ -103,8 +103,10 @@ if( isset($collections_Module) )
 	{ // Try the memorized blog from the previous action:
 		$blog = $user_selected_blog;
 		if( ! ($Blog = & $BlogCache->get_by_ID( $blog, false, false ) ) )
-		{	// That one doesn't exist either...
+		{ // That one doesn't exist either...
 			$blog = 0;
+			// Unset $Blog because otherwise isset( $Blog ) returns true and it may cause issues later
+			unset( $Blog );
 		}
 	}
 	elseif( $blog != $user_selected_blog )

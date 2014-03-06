@@ -41,7 +41,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: files.ctrl.php 4851 2013-09-24 09:56:14Z yura $
+ * @version $Id: files.ctrl.php 6041 2014-02-26 10:40:51Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -710,7 +710,7 @@ switch( $action )
 		}
 
 		param( 'confirmed', 'integer', 0 );
-		param( 'new_names', 'array', array() );
+		param( 'new_names', 'array/string', array() );
 
 		// Check params for each file to rename:
 		while( $loop_src_File = & $selected_Filelist->get_next() )
@@ -1233,9 +1233,9 @@ switch( $action )
 		}
 
 
-		param( 'perms', 'array', array() );
+		param( 'perms', 'array/integer', array() );
 		param( 'edit_perms_default' ); // default value when multiple files are selected
-		param( 'use_default_perms', 'array', array() ); // array of file IDs that should be set to default
+		param( 'use_default_perms', 'array/string', array() ); // array of file IDs that should be set to default
 
 		if( count( $use_default_perms ) && $edit_perms_default === '' )
 		{
@@ -1392,8 +1392,8 @@ switch( $fm_mode )
 		}
 
 		param( 'confirm', 'integer', 0 );
-		param( 'new_names', 'array', array() );
-		param( 'overwrite', 'array', array() );
+		param( 'new_names', 'array/string', array() );
+		param( 'overwrite', 'array/integer', array() );
 
 		// Check params for each file to rename:
 		while( $loop_src_File = & $fm_source_Filelist->get_next() )

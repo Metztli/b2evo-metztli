@@ -6,7 +6,7 @@
  * >c:\php4\php cron_exec.php
  * >c:\php4\php-cli cron_exec.php
  *
- * @version $Id: cron_exec.php 4068 2013-06-26 09:49:47Z attila $
+ * @version $Id: cron_exec.php 5874 2014-02-03 13:37:01Z attila $
  */
 
 
@@ -16,8 +16,8 @@
 require_once dirname(__FILE__).'/../conf/_config.php';
 
 /**
- * @todo fp> This MIGHT be overkill. check...
- *       dh> It IS overkill! (e.g. creating $Session, $Hit, etc)
+ * Include main initialization
+ * Note: This will initialize only the required objects ( e.g. $Session or $Hit objects will NOT be initialized in cli mode ).
  */
 require_once $inc_path .'_main.inc.php';
 

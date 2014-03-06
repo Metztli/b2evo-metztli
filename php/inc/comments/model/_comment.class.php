@@ -22,7 +22,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE
  *
- * @version $Id: _comment.class.php 4275 2013-07-17 10:52:24Z yura $
+ * @version $Id: _comment.class.php 5931 2014-02-10 05:57:23Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -300,7 +300,16 @@ class Comment extends DataObject
 		switch( $parname )
 		{
 			case 'rating':
-				return $this->set_param( $parname, 'string', $parvalue, true );
+				// Save star rating with checking correct values
+				if( $parvalue < 1 )
+				{ // cannot be less than 0
+					$parvalue = NULL;
+				}
+				elseif( $parvalue > 5 )
+				{ // cannot be more than 5
+					$parvalue = 5;
+				}
+				return $this->set_param( $parname, 'number', $parvalue, true );
 
 			case 'status':
 				// Save previous status temporarily to make some changes on dbinsert(), dbupdate() & dbdelete()

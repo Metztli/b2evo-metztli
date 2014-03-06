@@ -28,7 +28,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _itemlight.class.php 4760 2013-09-16 10:41:27Z yura $
+ * @version $Id: _itemlight.class.php 6041 2014-02-26 10:40:51Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -571,7 +571,7 @@ class ItemLight extends DataObject
 		{	// Preview mode
 			global $extracats, $post_category;
 
-			param( 'extracats', 'array', array() );
+			$extracats = param( 'post_extracats', 'array/integer', array() );
 			if( ( ! empty( $post_category ) ) && ( ! in_array( $post_category, $extracats ) ) )
 			{
 				$extracats[] = $post_category;

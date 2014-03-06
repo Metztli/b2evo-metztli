@@ -170,7 +170,7 @@ $comment_class = ' class="'.$comment_class.'"';
 
 			echo '<div class="floatright">';
 			$comment_redirect_url = rawurlencode( $Comment->get_permanent_url() );
-			$Comment->edit_link( ' ', '', '#', T_('Edit this post'), 'roundbutton_text', '&amp;', true, $comment_redirect_url ); /* Link for editing */
+			$Comment->edit_link( ' ', '', '#', T_('Edit this reply'), 'roundbutton_text', '&amp;', true, $comment_redirect_url ); /* Link for editing */
 			echo ' <span class="roundbutton_group">';
 			$delete_button_is_displayed = is_logged_in() && $current_User->check_perm( 'comment!CURSTATUS', 'delete', false, $Comment );
 			$Comment->moderation_links( array(

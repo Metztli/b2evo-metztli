@@ -16,7 +16,7 @@
  *
  * @package admin
  *
- * @version $Id: _coll_seo.form.php 4843 2013-09-23 20:08:55Z fplanque $
+ * @version $Id: _coll_seo.form.php 5963 2014-02-12 13:43:04Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -122,7 +122,7 @@ $Form->begin_fieldset( T_('Single post pages / "Permalink" pages').get_manual_li
 		), 'canonical_item_urls_options', T_('Make canonical') );
 
 	$Form->checkbox( 'excerpts_meta_description', $edited_Blog->get_setting( 'excerpts_meta_description' ),
-			T_('Meta description'), T_('When no meta description is proviced for an item, use the excerpt instead.') );
+			T_('Meta description'), T_('When no meta description is provided for an item, use the excerpt instead.') );
 
 	$Form->checkbox( 'tags_meta_keywords', $edited_Blog->get_setting( 'tags_meta_keywords' ),
 			T_('Meta Keywords'), T_('When no meta keywords are provided for an item, use tags instead.') );

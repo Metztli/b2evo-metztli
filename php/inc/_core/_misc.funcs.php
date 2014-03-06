@@ -30,7 +30,7 @@
  *
  * @package evocore
  *
- * @version $Id: _misc.funcs.php 5816 2014-01-28 11:18:44Z yura $
+ * @version $Id: _misc.funcs.php 6044 2014-02-26 10:56:13Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -2421,7 +2421,7 @@ function debug_die( $additional_info = '', $params = array() )
 		if( ! headers_sent() )
 		{
 			load_funcs('_core/_template.funcs.php');
-			headers_content_mightcache( 'text/html', 0 );		// Do NOT cache error messages! (Users would not see they fixed them)
+			headers_content_mightcache( 'text/html', 0, '#', false );  // Do NOT cache error messages! (Users would not see they fixed them)
 			$status_header = $_SERVER['SERVER_PROTOCOL'].' '.$params['status'];
 			header($status_header);
 		}
@@ -2547,7 +2547,7 @@ function bad_request_die( $additional_info = '' )
 	if( ! headers_sent() )
 	{
 		load_funcs('_core/_template.funcs.php');
-		headers_content_mightcache( 'text/html', 0 );		// Do NOT cache error messages! (Users would not see they fixed them)
+		headers_content_mightcache( 'text/html', 0, '#', false );		// Do NOT cache error messages! (Users would not see they fixed them)
 		header_http_response('400 Bad Request');
 	}
 

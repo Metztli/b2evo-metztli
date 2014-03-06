@@ -29,7 +29,7 @@
  * @author fplanque: Francois PLANQUE.
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: plugins.ctrl.php 5167 2013-11-13 07:36:23Z attila $
+ * @version $Id: plugins.ctrl.php 6041 2014-02-26 10:40:51Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -480,8 +480,8 @@ switch( $action )
 		param( 'edited_plugin_code' );
 		param( 'edited_plugin_priority' );
 		param( 'edited_plugin_apply_rendering' );
-		param( 'edited_plugin_displayed_events', 'array', array() );
-		param( 'edited_plugin_events', 'array', array() );
+		param( 'edited_plugin_displayed_events', 'array/string', array() );
+		param( 'edited_plugin_events', 'array/integer', array() );
 
 		$default_Plugin = & $admin_Plugins->register($edit_Plugin->classname);
 

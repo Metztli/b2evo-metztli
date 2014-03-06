@@ -11,7 +11,7 @@
  *
  * @package admin
  *
- * @version $Id: _item_expert.form.php 3928 2013-06-05 11:07:45Z yura $
+ * @version $Id: _item_expert.form.php 5909 2014-02-06 10:27:22Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -195,8 +195,10 @@ $Form->begin_form( '', '', $params );
 
 
 	// ####################### ATTACHMENTS/LINKS #########################
-	if( isset($GLOBALS['files_Module']) )
-	{
+	if( isset($GLOBALS['files_Module']) && ( !$creating ||
+		( $current_User->check_perm( 'item_post!CURSTATUS', 'edit', false, $edited_Item )
+		&& $current_User->check_perm( 'files', 'view', false ) ) ) )
+	{ // Files module is enabled, but in case of creating new posts we should show file attachments block only if user has all required permissions to attach files
 		load_class( 'links/model/_linkitem.class.php', 'LinkItem' );
 		$LinkOwner = new LinkItem( $edited_Item );
 		attachment_iframe( $Form, $LinkOwner, $iframe_name, $creating );

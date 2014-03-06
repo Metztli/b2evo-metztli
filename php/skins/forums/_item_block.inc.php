@@ -150,7 +150,7 @@ $Skin->display_breadcrumbs( $current_cat );
 			$Item->edit_link( array(
 					'before' => ' ',
 					'after'  => '',
-					'title'  => T_('Edit this post'),
+					'title'  => T_('Edit this topic'),
 					'text'   => '#',
 					'class'  => 'roundbutton_text',
 				) );
@@ -159,7 +159,7 @@ $Skin->display_breadcrumbs( $current_cat );
 			$redirect_after_publish = $Item->add_navigation_param( $Item->get_permanent_url(), 'same_category', $current_cat );
 			$Item->next_status_link( array( 'before' => ' ', 'class' => 'roundbutton_text', 'post_navigation' => 'same_category', 'nav_target' => $current_cat ), true );
 			$Item->next_status_link( array( 'class' => 'roundbutton_text', 'before_text' => '', 'post_navigation' => 'same_category', 'nav_target' => $current_cat ), false );
-			$Item->delete_link( '', '', '#', '#', 'roundbutton_text', false, '#', TS_('You are about to delete this post!\\nThis cannot be undone!'), get_caturl( $current_cat ) );
+			$Item->delete_link( '', '', '#', T_('Delete this topic'), 'roundbutton_text', false, '#', TS_('You are about to delete this post!\\nThis cannot be undone!'), get_caturl( $current_cat ) );
 			echo '</span>';
 			echo '</div>';
 		?>

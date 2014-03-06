@@ -8,7 +8,7 @@
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
  * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  *
- * @version $Id: post_new.html.php 3626 2013-05-01 05:42:38Z attila $
+ * @version $Id: post_new.html.php 5963 2014-02-12 13:43:04Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -84,8 +84,8 @@ echo "</div>\n";
 if( $params['notify_type'] == 'moderator' )
 { // moderation email
 	$params['unsubscribe_text'] = T_( 'You are a moderator in this blog, and you are receiving notifications when a post may need moderation.' ).'<br />';
-	$params['unsubscribe_text'] .= T_( 'If you don\'t want to receive any more notifications about post moderation, click here:' )
-			.' <a href="'.$htsrv_url.'quick_unsubscribe.php?type=post_moderator&user_ID=$user_ID$&key=$unsubscribe_key$">'
+	$params['unsubscribe_text'] .= T_( 'If you don\'t want to receive any more notifications about post moderation, click here' ).': '
+			.'<a href="'.$htsrv_url.'quick_unsubscribe.php?type=post_moderator&user_ID=$user_ID$&key=$unsubscribe_key$">'
 			.T_('instant unsubscribe').'</a>.';
 }
 else
