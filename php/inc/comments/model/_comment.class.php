@@ -5,7 +5,7 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2004-2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
@@ -22,7 +22,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE
  *
- * @version $Id: _comment.class.php 5931 2014-02-10 05:57:23Z yura $
+ * @version $Id: _comment.class.php 6255 2014-03-19 05:58:21Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -2475,18 +2475,34 @@ class Comment extends DataObject
 		$images_is_attached = false;
 		foreach ($attachments as $index => $attachment)
 		{
-			$r = '';
-			$params['File'] = $attachment;
-			$params['data'] = & $r;
+			$File = $attachment;
 
-			if( count($Plugins->trigger_event_first_true('RenderCommentAttachment', $params)) != 0 )
-			{
-				echo $r;
-				unset($attachments[$index]);
+			if( empty( $File ) )
+			{ // File doesn't exist in DB
+				unset( $attachments[ $index ] );
 				continue;
 			}
-			if( $attachment->is_image() )
-			{
+
+			if( ! $File->exists() )
+			{ // File doesn't exist
+				global $Debuglog;
+				$Debuglog->add( sprintf( 'File linked to comment #%d does not exist (%s)!', $this->ID, $File->get_full_path() ), array( 'error', 'files' ) );
+				unset( $attachments[ $index ] );
+				continue;
+			}
+
+			$r = '';
+			$params['File'] = $File;
+			$params['data'] = & $r;
+
+			if( count( $Plugins->trigger_event_first_true( 'RenderCommentAttachment', $params ) ) != 0 )
+			{ // File was processed by plugin
+				echo $r;
+				unset( $attachments[ $index ] );
+				continue;
+			}
+			if( $File->is_image() )
+			{ // File is image
 				if( $params['attachments_mode'] == 'view' )
 				{	// Only preview attachments
 					$image_link_rel = '';
@@ -2497,14 +2513,14 @@ class Comment extends DataObject
 					$image_link_rel = 'lightbox[c'.$this->ID.']';
 					$image_link_to = 'original';
 				}
-				echo $attachment->get_tag( $params['before_image'], $params['before_image_legend'], $params['after_image_legend'], $params['after_image'], $params['image_size'], $image_link_to, T_('Posted by ').$this->get_author_name(), $image_link_rel );
-				unset($attachments[$index]);
+				echo $File->get_tag( $params['before_image'], $params['before_image_legend'], $params['after_image_legend'], $params['after_image'], $params['image_size'], $image_link_to, T_('Posted by ').$this->get_author_name(), $image_link_rel );
+				unset( $attachments[ $index ] );
 				$images_is_attached = true;
 			}
 		}
 
 		if( $images_is_attached && $params['image_text'] != '' )
-		{	// Display info text below pictures
+		{ // Display info text below pictures
 			echo $params['image_text'];
 		}
 

@@ -3,7 +3,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  * @author yabs - http://innervisions.org.uk/
- * @version $Id: blog_widgets.js 2787 2013-01-17 13:58:47Z yura $
+ * @version $Id: blog_widgets.js 6556 2014-04-28 07:28:58Z attila $
  */
 
 
@@ -514,7 +514,7 @@ function addNewWidget( widget_list_item, admin_call )
 	var destination = jQuery( '.available_widgets' ).attr( 'id' );
 	destination = destination.substr( 18, destination.length ).replace( '_', ' ' );
 
-	SendAdminRequest( 'widgets', 'create', admin_call+"&container="+destination, true );
+	SendAdminRequest( 'widgets', 'create', admin_call+"&blog="+blog+"&container="+destination, true );
 }
 
 

@@ -7,7 +7,7 @@
  *
  * This file is part of the b2evolution project - {@link http://b2evolution.net/}
  *
- * @copyright (c)2009-2013 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @copyright (c)2009-2014 by Francois PLANQUE - {@link http://fplanque.net/}
  * @copyright (c)2009 by Yabba - {@link http://innervisiosn.org.uk/}.
  *
  * @license GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
@@ -16,7 +16,7 @@
  *
  * @author Yabba
  *
- * @version $Id: _test.disp.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _test.disp.php 6136 2014-03-08 07:59:48Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 ?>

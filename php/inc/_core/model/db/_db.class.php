@@ -15,7 +15,7 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2004 by Justin Vincent - {@link http://php.justinvincent.com}
  * Parts of this file are copyright (c)2004-2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
@@ -57,7 +57,7 @@
  * @author fplanque: Francois PLANQUE
  * @author Justin VINCENT
  *
- * @version $Id: _db.class.php 3611 2013-04-30 09:08:54Z attila $
+ * @version $Id: _db.class.php 6690 2014-05-14 13:02:06Z yura $
  * @todo transaction support
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -170,7 +170,7 @@ class DB
 
 	/**
 	 * Which transaction isolation level should be used?
-	 * 
+	 *
 	 * Possible values in case of MySQL: REPEATABLE READ | READ COMMITTED | READ UNCOMMITTED | SERIALIZABLE
 	 * Defailt value is REPEATABLE READ
 	 */
@@ -1650,9 +1650,9 @@ class DB
 	 * @param string PHP charset
 	 * @return string MYSQL charset or unchanged
 	 */
-	function php_to_mysql_charmap( $php_charset )
+	static function php_to_mysql_charmap( $php_charset )
 	{
-		$php_charset = strtolower($php_charset);
+		$php_charset = strtolower( $php_charset );
 
 		/**
 		 * This is taken from phpMyAdmin (libraries/select_lang.lib.php).
@@ -1683,9 +1683,9 @@ class DB
 				'windows-1257' => 'cp1257',
 			);
 
-		if( isset($mysql_charset_map[$php_charset]) )
+		if( isset( $mysql_charset_map[ $php_charset ] ) )
 		{
-			return $mysql_charset_map[$php_charset];
+			return $mysql_charset_map[ $php_charset ];
 		}
 
 		// for lack of a better answer:
@@ -1712,7 +1712,7 @@ class DB
 
 		if( $use_map )
 		{	// We want to use the map
-			$charset = $this->php_to_mysql_charmap( $charset );
+			$charset = self::php_to_mysql_charmap( $charset );
 		}
 
 		$r = true;

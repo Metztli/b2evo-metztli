@@ -3,7 +3,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2009-2013 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @copyright (c)2009-2014 by Francois PLANQUE - {@link http://fplanque.net/}
  * Parts of this file are copyright (c)2009 by The Evo Factory - {@link http://www.evofactory.com/}.
  *
  * {@internal License choice
@@ -43,7 +43,7 @@ class Userfield extends DataObject
 	var $group_ID = '';
 	var $type = '';
 	var $name = '';
-	var $options = '';
+	var $options = NULL;
 	var $required = 'optional';
 	var $duplicated = 'allowed';
 	var $order = '';
@@ -199,6 +199,10 @@ class Userfield extends DataObject
 				param_error( 'ufdf_options', T_('Please enter at least 2 options on 2 different lines.') );
 			}
 			$this->set_from_Request( 'options' );
+		}
+		else
+		{ // The 'options' field must be set because it doesn't have a default value
+			$this->set( 'options', '' );
 		}
 
 		// Required

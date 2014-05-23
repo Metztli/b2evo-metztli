@@ -13,7 +13,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
@@ -38,7 +38,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _param.funcs.php 6049 2014-02-26 13:39:06Z yura $
+ * @version $Id: _param.funcs.php 6136 2014-03-08 07:59:48Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -954,7 +954,7 @@ function param_date( $var, $err_msg, $required, $default = '', $date_format = NU
 		set_param( $var, $iso_date );
 	}
 
-	return $GLOBALS[$var];
+	return $iso_date;
 }
 
 

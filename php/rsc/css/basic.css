@@ -513,6 +513,7 @@ textarea.large {
 	width: 97%;
 	margin-left: 0;
 	margin-right: 0;
+	display: block;
 }
 
 label.radiooption {

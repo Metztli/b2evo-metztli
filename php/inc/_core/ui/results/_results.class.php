@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
  * {@internal License choice
@@ -29,7 +29,7 @@
  * @author fplanque: Francois PLANQUE
  * @author fsaya: Fabrice SAYA-GASNIER / PROGIDISTRI
  *
- * @version $Id: _results.class.php 5991 2014-02-14 08:58:19Z attila $
+ * @version $Id: _results.class.php 6158 2014-03-12 08:35:37Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -1556,20 +1556,22 @@ class Results extends Table
 	 *
 	 * This is one of the key functions to look at when you want to use the Results class.
 	 * - $var$
-	 * - £var£
+	 * - Â£varÂ£ - replaced by its utf-8 hex character (c2 a3)
+	 * - Â²varÂ² - replaced by its utf-8 hex character (c2 b2)
 	 * - #var#
 	 * - {row}
 	 * - %func()%
 	 * - ~func()~
+	 * - Â¤func()Â¤ - @deprecated by ~func()~ - replaced by its utf-8 hex character (c2 a4)
 	 */
 	function parse_col_content( $content )
 	{
 		// Make variable substitution for STRINGS:
 		$content = preg_replace( '#\$ (\w+) \$#ix', "'.format_to_output(\$row->$1).'", $content );
 		// Make variable substitution for URL STRINGS:
-		$content = preg_replace( '#\£ (\w+) \£#ix', "'.format_to_output(\$row->$1, 'urlencoded').'", $content );
+		$content = preg_replace( '#\x{c2}\x{a3} (\w+) \x{c2}\x{a3}#ix', "'.format_to_output(\$row->$1, 'urlencoded').'", $content );
 		// Make variable substitution for escaped strings:
-		$content = preg_replace( '#² (\w+) ²#ix', "'.htmlentities(\$row->$1).'", $content );
+		$content = preg_replace( '#\x{c2}\x{b2} (\w+) \x{c2}\x{b2}#ix', "'.htmlentities(\$row->$1).'", $content );
 		// Make variable substitution for RAWS:
 		$content = preg_replace( '!\# (\w+) \#!ix', "\$row->$1", $content );
 		// Make variable substitution for full ROW:
@@ -1584,7 +1586,7 @@ class Results extends Table
 		$content = preg_replace( '#~ (.+?) ~#ix', "'.$1.'", $content );
 
 		// @deprecated by ~func()~. Left here for backward compatibility only, to be removed in future versions.
-		$content = preg_replace( '#¤ (.+?) ¤#ix', "'.$1.'", $content );
+		$content = preg_replace( '#\x{c2}\x{a4} (.+?) \x{c2}\x{a4}#ix', "'.$1.'", $content );
 
 		// Make callback function move_icons for orderable lists // dh> what does it do?
 		$content = str_replace( '{move}', "'.\$this->move_icons().'", $content );

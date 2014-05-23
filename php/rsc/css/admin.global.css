@@ -810,6 +810,43 @@ td.diff-title-deletedline, td.diff-title-addedline {
 	font-weight: bold;
 }
 
+/* phpBB importer */
+.tool_steps {
+	text-align: center;
+	font-size: 14px;
+	font-weight: normal;
+	color: #999;
+	padding-bottom: 5px;
+}
+
+.tool_steps .step {
+	margin-right: 25px;
+	display: inline-block;
+}
+.tool_steps .step div {
+	background-color: #CCC;
+	border: 1px solid #999;
+	color: #999;
+	display: inline-block;
+	font-size: 15px;
+	margin-right: 5px;
+	padding: 5px;
+	text-align: center;
+	width: 20px;
+	-moz-border-radius: 90px 90px 90px 90px;
+	-webkit-border-radius: 90px 90px 90px 90px;
+	-khtml-border-radius: 90px 90px 90px 90px; 
+	border-radius: 90px 90px 90px 90px;
+}
+.tool_steps .step.current {
+	font-weight: bold;
+	color: #666;
+}
+.tool_steps .step.current div {
+	background-color: #666;
+	color: #FFF;
+}
+
 .RedButton {
 	background: #F00;
 	color: #FFF;

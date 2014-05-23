@@ -159,7 +159,7 @@ span.icon {
 	font-size: 9px;
 	display: inline-block !important;
 	overflow: hidden;
-	vertical-align: top;
+	vertical-align: middle;
 }
 span.icon.voted {
 	margin: 0 2px;

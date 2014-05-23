@@ -3,7 +3,7 @@
  * This file is part of b2evolution - {@link http://b2evolution.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2009-2013 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @copyright (c)2009-2014 by Francois PLANQUE - {@link http://fplanque.net/}
  * Parts of this file are copyright (c)2009 by The Evo Factory - {@link http://www.evofactory.com/}.
  *
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
@@ -19,30 +19,42 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois Planque.
  *
- * @version $Id: _upgrade_continue.form.php 4410 2013-08-01 18:24:32Z attila $
+ * @version $Id: _upgrade_continue.form.php 6180 2014-03-13 10:53:17Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
-global $block_item_Widget, $action;
+global $block_item_Widget, $upgrade_buttons;
 
 if( isset( $block_item_Widget ) )
 {
 	$block_item_Widget->disp_template_replaced( 'block_end' );
 }
 
-if( ( $action !== 'backup_and_overwrite' ) && ( $action !== 'backup_and_overwrite_svn' ) )
-{
+if( empty( $upgrade_buttons ) )
+{ // No button to continue the upgrade process
 	debug_die('Unhandled upgrade action!');
 }
 
-$Form = new Form( NULL, 'upgrade_form', 'post', 'compact' );
+$Form = new Form( NULL, 'upgrade_form', 'post' );
 
 $Form->hiddens_by_key( get_memorized( 'action' ) );
 
-$Form->begin_form( 'fform', T_('Upgrade') );
+$Form->begin_form( 'fform' );
 
-echo '<p><b>'.T_('We are ready to perform the upgrade.').'</b></p>';
+if( strpos( $action, 'ready' ) !== false )
+{ // Display the backup options to select what should be backuped
+	require( '_backup_options.form.php' );
+}
 
-$Form->end_form( array( array( 'submit', 'actionArray['.$action.']', T_('Backup & Overwrite source files!'), 'SaveButton' ) ) );
+// Display the form buttons
+$Form->begin_fieldset( T_( 'Actions' ) );
+
+$form_buttons = array();
+foreach( $upgrade_buttons as $btn_action => $btn_title )
+{
+	$form_buttons[] = array( 'submit', 'actionArray['.$btn_action.']', $btn_title, 'SaveButton' );
+}
+
+$Form->end_form( $form_buttons );
 
 ?>

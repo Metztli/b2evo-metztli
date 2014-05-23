@@ -5,11 +5,11 @@
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
  *
- * @version $Id: _stats_goalhits.view.php 4361 2013-07-24 06:22:58Z yura $
+ * @version $Id: _stats_goalhits.view.php 6136 2014-03-08 07:59:48Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -48,7 +48,7 @@ $goal_name = param( 'goal_name', 'string', NULL, true );
 if( param_errors_detected() )
 {
 	$sql = 'SELECT 0 AS count';
-	$sql_count = 'SELECT 0';
+	$sql_count = 0;
 }
 else
 {
@@ -93,9 +93,12 @@ else
 		$SQL_count->FROM_add( 'LEFT JOIN T_track__goal ON ghit_goal_ID = goal_ID' );
 		$SQL_count->WHERE_and( 'goal_name'.$operator.$DB->quote($goal_name.'%') );
 	}
+
+	$sql = $SQL->get();
+	$sql_count = $SQL_count->get();
 }
 
-$Results = new Results( $SQL->get(), 'ghits_', '--D', $UserSettings->get( 'results_per_page' ), $SQL_count->get() );
+$Results = new Results( $sql, 'ghits_', '--D', $UserSettings->get( 'results_per_page' ), $sql_count );
 
 $Results->title = T_('Recent goal hits').get_manual_link( 'goal-hits' );
 

@@ -3,7 +3,7 @@
  * This file is part of b2evolution - {@link http://b2evolution.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2009-2013 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @copyright (c)2009-2014 by Francois PLANQUE - {@link http://fplanque.net/}
  * Parts of this file are copyright (c)2009 by The Evo Factory - {@link http://www.evofactory.com/}.
  *
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
@@ -20,7 +20,7 @@
  * @author efy-maxim: Evo Factory / Maxim.
  * @author fplanque: Francois Planque.
  *
- * @version $Id: _item_mass.form.php 3520 2013-04-22 06:12:04Z attila $
+ * @version $Id: _item_mass.form.php 6136 2014-03-08 07:59:48Z manuel $
  */
 
 

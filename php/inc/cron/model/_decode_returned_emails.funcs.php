@@ -5,7 +5,7 @@
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE
@@ -535,7 +535,7 @@ function dre_prepare_html_message( $message )
 	);
 	$content = preg_replace( $patterns, '', $content );
 
-	pbm_msg('Message body (processed): <pre style="font-size:10px">'.htmlspecialchars($content).'</pre>');
+	dre_msg('Message body (processed): <pre style="font-size:10px">'.htmlspecialchars($content).'</pre>');
 
 	return $content;
 }
@@ -584,8 +584,8 @@ function dre_get_processing_content( $content, $emails )
 			$error_text = trim( evo_substr( $content, evo_strpos( $content, $email ) + evo_strlen( $email ) ) );
 		}
 		if( empty( $error_text ) )
-		{	// If error text is empty we should get all content before email
-			$error_text = trim( evo_substr( $content, 0, evo_strpos( $content, $email ) ) );
+		{	// If error text is empty we should get all content before email OR full content if no email address in content
+			$error_text = empty( $email ) ? $content : trim( evo_substr( $content, 0, evo_strpos( $content, $email ) ) );
 		}
 	}
 	else

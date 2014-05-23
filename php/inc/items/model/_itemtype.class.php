@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
  * {@internal License choice
@@ -34,7 +34,7 @@
  * @author mbruneau: Marc BRUNEAU / PROGIDISTRI
  * @author efy-sergey: Evo Factory / Sergey.
  *
- * @version $Id: _itemtype.class.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _itemtype.class.php 6425 2014-04-08 09:24:40Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -65,7 +65,6 @@ class ItemType extends DataObject
 		$this->allow_ID_insert = true;
 
 		$this->delete_restrictions = array(
-				array( 'table'=>'T_ityp_col', 'fk'=>'itco_ityp_ID', 'msg'=>T_('%d related collections') ), // "Lignes de missions"
 				array( 'table'=>'T_items__item', 'fk'=>'post_ptyp_ID', 'msg'=>T_('%d related items') ), // "Lignes de visit reports"
 			);
 

@@ -17,7 +17,7 @@
  *
  * @todo add 5 plugin hooks. Will be widgetized later (same as SkinTag became Widgets)
  *
- * @version $Id: dashboard.ctrl.php 4989 2013-10-16 09:46:31Z attila $
+ * @version $Id: dashboard.ctrl.php 6320 2014-03-25 04:37:43Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -683,7 +683,7 @@ if( $current_User->check_perm( 'options', 'edit' ) )
 	$block_item_Widget->disp_template_replaced( 'block_start' );
 
 
-	// Note: hopefully, the update swill have been downloaded in the shutdown function of a previous page (including the login screen)
+	// Note: hopefully, the updates will have been downloaded in the shutdown function of a previous page (including the login screen)
 	// However if we have outdated info, we will load updates here.
 	load_funcs( 'dashboard/model/_dashboard.funcs.php' );
 	// Let's clear any remaining messages that should already have been displayed before...
@@ -706,13 +706,11 @@ if( $current_User->check_perm( 'options', 'edit' ) )
 			}
 		}
 
-
 		$block_item_Widget->disp_template_replaced( 'block_end' );
 
 		/*
 		 * DashboardAdminMain to be added here (anyone?)
 		 */
-
 	}
 	else
 	{
@@ -721,6 +719,17 @@ if( $current_User->check_perm( 'options', 'edit' ) )
 	}
 
 	echo '</td><td>';
+
+	// Track just the first login into b2evolution to determine how many people installed manually vs automatic installs:
+	if( $current_User->ID == 1 && $UserSettings->get('first_login') == NULL )
+	{
+		echo 'This is the Admin\'s first ever login.';
+		echo '<img src="http://b2evolution.net/htsrv/track.php?key=first-ever-login" alt="" />';
+		// OK, done. Never do this again from now on:
+		$UserSettings->set('first_login', $localtimenow ); // We might actually display how long the system has been running somewhere
+		$UserSettings->dbupdate();
+	}
+
 
 	/*
 	 * RIGHT COL

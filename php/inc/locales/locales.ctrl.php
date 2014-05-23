@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -29,7 +29,7 @@
  * @author blueyed: Daniel HAHLER
  * @author fplanque: Francois PLANQUE
  *
- * @version $Id: locales.ctrl.php 4870 2013-09-25 15:10:19Z manuel $
+ * @version $Id: locales.ctrl.php 6664 2014-05-12 12:23:58Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -61,7 +61,7 @@ switch( $action )
 		// Check permission:
 		$current_User->check_perm( 'options', 'edit', true );
 
-		param( 'newdefault_locale', 'string', true);
+		param( 'newdefault_locale', 'string', true );
 		$Settings->set( 'default_locale', $newdefault_locale );
 
 		if( ! $Messages->has_errors() )
@@ -91,40 +91,50 @@ switch( $action )
 		$current_User->check_perm( 'options', 'edit', true );
 
 		param( 'newloc_locale', 'string', true );
-		param( 'newloc_enabled', 'integer', 0);
-		param( 'newloc_name', 'string', true);
-		param( 'newloc_charset', 'string', true);
-		param( 'newloc_datefmt', 'string', true);
-		param( 'newloc_timefmt', 'string', true);
-		param( 'newloc_startofweek', 'integer', true);
-		param( 'newloc_priority', 'integer', 1);
-		param( 'newloc_messages', 'string', true);
-		param( 'newloc_transliteration_map', 'string', true);
+		param_check_regexp( 'newloc_locale', '/^[a-z]{2,3}-[A-Z]{2}.*$/', T_('Please use valid locale format.') );
+		param( 'newloc_enabled', 'integer', 0 );
+		param( 'newloc_name', 'string', true );
+		param( 'newloc_charset', 'string', true );
+		param_check_not_empty( 'newloc_charset', T_('Charset cannot be empty.') );
+		param( 'newloc_datefmt', 'string', true );
+		param_check_not_empty( 'newloc_datefmt', T_('Date format cannot be empty.') );
+		param( 'newloc_timefmt', 'string', true );
+		param_check_not_empty( 'newloc_timefmt', T_('Time format cannot be empty.') );
+		param( 'newloc_startofweek', 'integer', 0 );
+		param( 'newloc_priority', 'integer', 1 );
+		param_check_range( 'newloc_priority', 1, 255, T_('Priority must be numeric (1-255).') );
+		param( 'newloc_messages', 'string', true );
+		param( 'newloc_transliteration_map', 'string', true );
+
+		if( param_errors_detected() )
+		{ // Don't save locale if errors exist
+			$action = 'edit';
+			break;
+		}
 
 		if( $action == 'updatelocale' )
 		{
-			param( 'oldloc_locale', 'string', true);
+			param( 'oldloc_locale', 'string', true );
 
-			$query = "SELECT loc_locale FROM T_locales WHERE loc_locale = '$oldloc_locale'";
-			if( $DB->get_var($query) )
+			if( $DB->get_var( 'SELECT loc_locale FROM T_locales WHERE loc_locale = '.$DB->quote( $oldloc_locale ) ) )
 			{ // old locale exists in DB
 				if( $oldloc_locale != $newloc_locale )
 				{ // locale key was renamed, we delete the old locale in DB and remember to create the new one
 					$q = $DB->query( 'DELETE FROM T_locales
-															WHERE loc_locale = "'.$oldloc_locale.'"' );
+															WHERE loc_locale = '.$DB->quote( $oldloc_locale ) );
 					if( $DB->rows_affected )
 					{
-						$Messages->add( sprintf(T_('Deleted settings for locale &laquo;%s&raquo; in database.'), $oldloc_locale), 'success' );
+						$Messages->add( sprintf( T_('Deleted settings for locale &laquo;%s&raquo; in database.'), $oldloc_locale ), 'success' );
 					}
 				}
 			}
-			else
+			elseif( isset( $locales[ $oldloc_locale ] ) )
 			{ // old locale is not in DB yet. Insert it.
 
 				$transliteration_map = '';
-				if( isset($locales[$oldloc_locale]['transliteration_map']) && is_array($locales[$oldloc_locale]['transliteration_map']) )
+				if( isset( $locales[$oldloc_locale]['transliteration_map']) && is_array( $locales[$oldloc_locale]['transliteration_map'] ) )
 				{
-					$transliteration_map = base64_encode( serialize($locales[$oldloc_locale]['transliteration_map']) );
+					$transliteration_map = base64_encode( serialize( $locales[$oldloc_locale]['transliteration_map'] ) );
 				}
 
 				$query = "INSERT INTO T_locales
@@ -136,25 +146,25 @@ switch( $action )
 									'{$locales[$oldloc_locale]['priority']}', '$transliteration_map'";
 				if( $oldloc_locale != $newloc_locale )
 				{ // disable old locale
-					$query .= ' 0)';
-					$Messages->add( sprintf(T_('Inserted (and disabled) locale &laquo;%s&raquo; into database.'), $oldloc_locale), 'success' );
+					$query .= ', 0 )';
+					$Messages->add( sprintf( T_('Inserted (and disabled) locale &laquo;%s&raquo; into database.'), $oldloc_locale ), 'success' );
 				}
 				else
 				{ // keep old state
-					$query .= ' '.$locales[$oldloc_locale]['enabled'].')';
-					$Messages->add( sprintf(T_('Inserted locale &laquo;%s&raquo; into database.'), $oldloc_locale), 'success' );
+					$query .= ', '.( $locales[$oldloc_locale]['enabled'] ).' )';
+					$Messages->add( sprintf( T_('Inserted locale &laquo;%s&raquo; into database.'), $oldloc_locale ), 'success' );
 				}
-				$q = $DB->query($query);
+				$q = $DB->query( $query );
 			}
 		}
 
 		$query = 'REPLACE INTO T_locales
 							( loc_locale, loc_charset, loc_datefmt, loc_timefmt, loc_startofweek, loc_name, loc_messages, loc_priority, loc_transliteration_map, loc_enabled )
-							VALUES ( '.$DB->quote($newloc_locale).', '.$DB->quote($newloc_charset).', '.$DB->quote($newloc_datefmt).', '
-								.$DB->quote($newloc_timefmt).', '.$DB->quote($newloc_startofweek).', '.$DB->quote($newloc_name).', '
-								.$DB->quote($newloc_messages).', '.$DB->quote($newloc_priority).', '.$DB->quote($newloc_transliteration_map).', '
-								.$DB->quote($newloc_enabled).' )';
-		$q = $DB->query($query);
+							VALUES ( '.$DB->quote( $newloc_locale ).', '.$DB->quote( $newloc_charset ).', '.$DB->quote( $newloc_datefmt ).', '
+								.$DB->quote( $newloc_timefmt ).', '.$DB->quote( $newloc_startofweek ).', '.$DB->quote( $newloc_name ).', '
+								.$DB->quote( $newloc_messages ).', '.$DB->quote( $newloc_priority ).', '.$DB->quote( $newloc_transliteration_map ).', '
+								.$DB->quote( $newloc_enabled ).' )';
+		$q = $DB->query( $query );
 		$Messages->add( sprintf(T_('Saved locale &laquo;%s&raquo;.'), $newloc_locale), 'success' );
 
 		// Redirect so that a reload doesn't write to the DB twice:

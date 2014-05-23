@@ -5,7 +5,7 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2004-2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
@@ -154,9 +154,14 @@ function display_attachments( & $LinkOwner, $params = array() )
 	$row_style = '';
 	foreach( $links as $Link )
 	{ // display each link attachment in a row
+		if( ! ( $link_File = & $Link->get_File() ) )
+		{ // No File object
+			global $Debuglog;
+			$Debuglog->add( sprintf( 'Link ID#%d does not have a file object!', $Link->ID ), array( 'error', 'files' ) );
+			continue;
+		}
 		$row_style = ( $row_style == 'even' ) ? 'odd' : 'even';
 		echo '<tr class="'.$row_style.'"><td class="firstcol">';
-		$link_File = & $Link->get_File();
 		echo $link_File->get_preview_thumb( 'fulltype' );
 		echo '</td><td class="nowrap left">';
 		echo $link_File->get_view_link();

@@ -4,14 +4,14 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2009-2013 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @copyright (c)2009-2014 by Francois PLANQUE - {@link http://fplanque.net/}
  *
  * @author waltercruz
  *
  * @see http://codex.wordpress.org/XML-RPC_wp
  *
  * @package xmlsrv
- * @version $Id: _wordpress.api.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _wordpress.api.php 6136 2014-03-08 07:59:48Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 

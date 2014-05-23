@@ -2,7 +2,7 @@
 
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
-global $Blog, $htsrv_url, $current_User, $Session, $admin_url, $status_list;
+global $Blog, $current_User, $Session, $admin_url, $status_list;
 
 ?>
 <script type="text/javascript">
@@ -26,7 +26,7 @@ function fadeInStatus( id, status )
 {
 	switch(status)
 	{
-		
+
 		case 'published':
 			return fadeIn( id, '#99EE44' );
 		case 'community':
@@ -55,7 +55,7 @@ function delete_comment_url( comment_id )
 
 	jQuery.ajax({
 		type: 'POST',
-		url: '<?php echo $htsrv_url; ?>async.php',
+		url: '<?php echo get_samedomain_htsrv_url(); ?>async.php',
 		data: 'blogid=' + <?php echo $Blog->ID ?> + '&commentid=' + comment_id + '&action=delete_comment_url' + '&' + <?php echo '\''.url_crumb('comment').'\''; ?>,
 		success: function(result) { jQuery('#' + divid).remove(); }
 	});
@@ -84,7 +84,7 @@ function setCommentStatus( id, status, redirect_to )
 
 	jQuery.ajax({
 	type: 'POST',
-	url: '<?php echo $htsrv_url; ?>async.php',
+	url: '<?php echo get_samedomain_htsrv_url(); ?>async.php',
 	data:
 		{ 'blogid': <?php echo '\''.$Blog->ID.'\''; ?>,
 			'commentid': id,
@@ -134,7 +134,7 @@ function setCommentVote( id, type, vote )
 
 	jQuery.ajax({
 	type: 'POST',
-	url: '<?php echo $htsrv_url; ?>anon_async.php',
+	url: '<?php echo get_samedomain_htsrv_url(); ?>anon_async.php',
 	data:
 		{ 'blogid': <?php echo '\''.$Blog->ID.'\''; ?>,
 			'commentid': id,
@@ -177,7 +177,7 @@ function deleteComment( commentIds )
 
 	jQuery.ajax({
 	type: 'POST',
-	url: '<?php echo $htsrv_url; ?>async.php',
+	url: '<?php echo get_samedomain_htsrv_url(); ?>async.php',
 	data: 'action=get_opentrash_link&' + <?php echo '\''.url_crumb('comment').'\''; ?>,
 	success: function(result)
 		{
@@ -187,8 +187,8 @@ function deleteComment( commentIds )
 
 	jQuery.ajax({
 	type: 'POST',
-	url: '<?php echo $htsrv_url; ?>async.php',
-	data: 
+	url: '<?php echo get_samedomain_htsrv_url(); ?>async.php',
+	data:
 		{ 'blogid': '<?php echo $Blog->ID; ?>',
 			'commentIds': commentIds,
 			'action': 'delete_comments',
@@ -375,7 +375,7 @@ function refresh_item_comments( item_id, currentpage )
 	}
 	jQuery.ajax({
 		type: 'POST',
-		url: '<?php echo $htsrv_url; ?>async.php',
+		url: '<?php echo get_samedomain_htsrv_url(); ?>async.php',
 		data: 'blogid=' + <?php echo $Blog->ID; ?> + '&action=refresh_item_comments&itemid=' + item_id + '&statuses=' + statuses + '&currentpage=' + currentpage + '&expiry_status=' + expiry_status,
 		success: function(result)
 		{

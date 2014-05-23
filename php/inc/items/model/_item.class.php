@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -31,7 +31,7 @@
  * @author gorgeb: Bertrand GORGE / EPISTEMA
  * @author mbruneau: Marc BRUNEAU / PROGIDISTRI
  *
- * @version $Id: _item.class.php 5855 2014-01-30 10:59:17Z attila $
+ * @version $Id: _item.class.php 6255 2014-03-19 05:58:21Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -2604,18 +2604,25 @@ class Item extends ItemLight
 		{
 			$params['File'] = $File;
 
-			if( count($Plugins->trigger_event_first_true('RenderItemAttachment', $params)) != 0 )
+			if( ! $File->exists() )
+			{ // File doesn't exist
+				global $Debuglog;
+				$Debuglog->add( sprintf( 'File linked to item #%d does not exist (%s)!', $this->ID, $File->get_full_path() ), array( 'error', 'files' ) );
+				continue;
+			}
+
+			if( count( $Plugins->trigger_event_first_true( 'RenderItemAttachment', $params ) ) != 0 )
 			{
 				continue;
 			}
 
 			if( $File->is_image() )
-			{	// Skip images because these are displayed inline already
+			{ // Skip images because these are displayed inline already
 				// fp> TODO: have a setting for each linked file to decide whether it should be displayed inline or as an attachment
 				continue;
 			}
 			elseif( $File->is_dir() )
-			{	// Skip directories/galleries
+			{ // Skip directories/galleries
 				continue;
 			}
 

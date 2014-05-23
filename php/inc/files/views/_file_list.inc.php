@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -29,7 +29,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _file_list.inc.php 4851 2013-09-24 09:56:14Z yura $
+ * @version $Id: _file_list.inc.php 6363 2014-03-27 13:10:09Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -427,7 +427,7 @@ $Form->begin_form();
 		{ // User can edit:
 			if( $lFile->is_editable( $all_perm ) )
 			{
-				echo action_icon( T_('Edit file...'), 'edit', regenerate_url( 'fm_selected', 'action=edit_file&amp;crumb_file='.url_crumb('file').'&amp;fm_selected[]='.rawurlencode($lFile->get_rdfp_rel_path()) ) );
+				echo action_icon( T_('Edit file...'), 'edit', regenerate_url( 'fm_selected', 'action=edit_file&amp;'.url_crumb('file').'&amp;fm_selected[]='.rawurlencode($lFile->get_rdfp_rel_path()) ) );
 			}
 			else
 			{
