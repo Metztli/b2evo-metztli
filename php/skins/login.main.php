@@ -4,11 +4,11 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  *
- * @version $Id: login.main.php 4657 2013-09-09 05:55:16Z yura $
+ * @version $Id: login.main.php 7043 2014-07-02 08:35:45Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -27,8 +27,8 @@ if( is_logged_in() )
 	$Messages->add( T_( 'You are already logged in.' ), 'note' );
 	$redirect_to = param( 'redirect_to', 'url', NULL );
 	if( empty( $redirect_to ) )
-	{
-		$redirect_to = regenerate_url( 'disp', '', '', '&' );
+	{ // If empty redirect to referer page
+		$redirect_to = '';
 	}
 	header_redirect( $redirect_to, 302 );
 	// will have exited

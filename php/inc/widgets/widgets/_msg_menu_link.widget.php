@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -21,7 +21,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author efy-asimo: Attila Simo
  *
- * @version $Id: _msg_menu_link.widget.php 5866 2014-01-31 09:03:13Z attila $
+ * @version $Id: _msg_menu_link.widget.php 6788 2014-05-28 04:22:08Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -109,10 +109,12 @@ class msg_menu_link_Widget extends ComponentWidget
 						var curr_link_type = this.value;
 						var allow_blockcache = jQuery("[id$=\'_set_allow_blockcache\']");
 						var show_badge = jQuery("[id$=\'_set_show_badge\']");
+						var allow_blockcache_note = allow_blockcache.find(".notes");
 						if( curr_link_type == "messages" )
 						{
 							allow_blockcache.removeAttr(\'checked\');
 							allow_blockcache.attr( \'disabled\', \'disabled\' );
+							allow_blockcache_note.html("'.T_('The current configuration prevents caching this widget in the block cache.').'");
 							show_badge.removeAttr(\'disabled\');
 							show_badge.attr( \'checked\', \'checked\' );
 						}
@@ -121,6 +123,7 @@ class msg_menu_link_Widget extends ComponentWidget
 							allow_blockcache.removeAttr(\'disabled\');
 							show_badge.attr( \'disabled\', \'disabled\' );
 							allow_blockcache.attr( \'checked\', \'checked\' );
+							allow_blockcache_note.html("'.T_('Uncheck to prevent this widget from ever being cached in the block cache. (The whole page may still be cached.) This is only needed when a widget is poorly handling caching and cache keys.').'");
 							show_badge.removeAttr(\'checked\');
 						};'
 				),
@@ -129,6 +132,13 @@ class msg_menu_link_Widget extends ComponentWidget
 					'note' => T_('Text to use for the link (leave empty for default).'),
 					'type' => 'text',
 					'size' => 20,
+					'defaultvalue' => '',
+				),
+				'blog_ID' => array(
+					'label' => T_('Blog ID'),
+					'note' => T_('Leave empty for current blog.'),
+					'type' => 'text',
+					'size' => 5,
 					'defaultvalue' => '',
 				),
 				'show_to' => array(
@@ -158,19 +168,12 @@ class msg_menu_link_Widget extends ComponentWidget
 			{
 				$r['show_badge']['defaultvalue'] = false;
 				$r['show_badge']['disabled'] = 'disabled';
-				if( ! empty( $this->params ) && ! isset( $params['infinite_loop'] ) )
-				{ // Force show_badge to false! It is never allowed to be on, no matter what was set in the database.
-					$this->set( 'show_badge', false );
-				}
 			}
 			else
 			{
 				$r['allow_blockcache']['defaultvalue'] = false;
 				$r['allow_blockcache']['disabled'] = 'disabled';
-				if( ! empty( $this->params ) && ! isset( $params['infinite_loop'] ) )
-				{ // Force allow_blockache to false! It is never allowed to be on, no matter what was set in the database.
-					$this->set( 'allow_blockcache', false );
-				}
+				$r['allow_blockcache']['note'] = T_('The current configuration prevents caching this widget in the block cache.');
 			}
 		}
 
@@ -184,15 +187,24 @@ class msg_menu_link_Widget extends ComponentWidget
 	 */
 	function display( $params )
 	{
-		/**
-		* @var Blog
-		*/
-		global $Blog;
-
 		global $current_User, $unread_messages_count;
 		global $disp;
 
 		$this->init_display( $params );
+
+		$blog_ID = intval( $this->disp_params['blog_ID'] );
+		if( $blog_ID > 0 )
+		{ // Try to use blog from widget setting
+			$BlogCache = & get_BlogCache();
+			$current_Blog = & $BlogCache->get_by_ID( $blog_ID, false, false );
+		}
+
+		if( empty( $current_Blog ) )
+		{ // Blog is not defined in setting or it doesn't exist in DB
+			global $Blog;
+			// Use current blog
+			$current_Blog = & $Blog;
+		}
 
 		switch( $this->disp_params['show_to'] )
 		{
@@ -217,29 +229,29 @@ class msg_menu_link_Widget extends ComponentWidget
 		// Default link class
 		$link_class = $this->disp_params['link_default_class'];
 
-		switch(	$this->disp_params[ 'link_type' ] )
+		switch( $this->disp_params[ 'link_type' ] )
 		{
 			case 'messages':
-				$url = get_dispctrl_url( 'threads' );
+				$url = $current_Blog->get( 'threadsurl' );
 				$text = T_( 'Messages' );
 				// set allow blockcache to 0, this way make sure block cache is never allowed for messages
 				$this->disp_params[ 'allow_blockcache' ] = 0;
 				// Is this the current display?
 				if( $disp == 'threads' )
-				{	// The current page is currently displaying the messages:
+				{ // The current page is currently displaying the messages:
 					// Let's display it as selected
 					$link_class = $this->disp_params['link_selected_class'];
 				}
 				break;
 
 			case 'contacts':
-				$url = get_dispctrl_url( 'contacts' );
+				$url = $current_Blog->get( 'contactsurl' );
 				$text = T_( 'Contacts' );
 				// set show badge to 0, this way make sure badge won't be displayed
 				$this->disp_params[ 'show_badge' ] = 0;
 				// Is this the current display?
 				if( $disp == 'contacts' )
-				{	// The current page is currently displaying the contacts:
+				{ // The current page is currently displaying the contacts:
 					// Let's display it as selected
 					$link_class = $this->disp_params['link_selected_class'];
 				}
@@ -265,13 +277,29 @@ class msg_menu_link_Widget extends ComponentWidget
 		}
 
 		echo $this->disp_params['block_start'];
+		echo $this->disp_params['block_body_start'];
 		echo $this->disp_params['list_start'];
 
-		echo $this->disp_params['item_start'];
+		if( $link_class == $this->disp_params['link_selected_class'] )
+		{
+			echo $this->disp_params['item_selected_start'];
+		}
+		else
+		{
+			echo $this->disp_params['item_start'];
+		}
 		echo '<a href="'.$url.'" class="'.$link_class.'">'.$text.$badge.'</a>';
-		echo $this->disp_params['item_end'];
+		if( $link_class == $this->disp_params['link_selected_class'] )
+		{
+			echo $this->disp_params['item_selected_end'];
+		}
+		else
+		{
+			echo $this->disp_params['item_end'];
+		}
 
 		echo $this->disp_params['list_end'];
+		echo $this->disp_params['block_body_end'];
 		echo $this->disp_params['block_end'];
 
 		return true;

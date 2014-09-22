@@ -7,7 +7,7 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2003 by Nobuo SAKIYAMA - {@link http://www.sakichan.org/}
  * Parts of this file are copyright (c)2004-2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
@@ -33,7 +33,7 @@
  * @author sakichan: Nobuo SAKIYAMA.
  * @author Simon Willison.
  *
- * @version $Id: _xhtml_validator.class.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _xhtml_validator.class.php 6274 2014-03-20 11:23:11Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -96,6 +96,22 @@ class XHTML_Validator
 			case 'commenting':
 				$this->tags = & $comments_allowed_tags;
 				$this->tagattrs = & $comments_allowed_attributes;
+				break;
+
+			case 'head_extension':
+				$this->tags = array(
+					'body' => 'meta link style script',
+					'meta' => '',
+					'link' => '',
+					'style' => '#PCDATA',
+					'script' => '#PCDATA'
+				);
+				$this->tagattrs = array(
+					'meta' => 'name content charset',
+					'link' => 'charset href hreflang media rel sizes type',
+					'style' => 'media scoped type',
+					'script' => 'async charset defer src type'
+				);
 				break;
 
 			default:
@@ -217,7 +233,7 @@ class XHTML_Validator
 					break;
 			}
 			$pos = xml_get_current_byte_index($this->parser);
-			$xml_error_string .= ' near <code>'.htmlspecialchars( evo_substr( $xhtml, $this->last_checked_pos, $pos-$this->last_checked_pos+20 ) ).'</code>';
+			$xml_error_string .= ' near <code>'.evo_htmlspecialchars( evo_substr( $xhtml, $this->last_checked_pos, $pos-$this->last_checked_pos+20 ) ).'</code>';
 
 			$this->html_error( T_('Parser error: ').$xml_error_string );
 		}

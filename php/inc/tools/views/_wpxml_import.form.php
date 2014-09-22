@@ -5,7 +5,7 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
@@ -20,7 +20,7 @@
 
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
-global $wp_blog_ID, $dispatcher;
+global $wp_blog_ID;
 
 $Form = new Form( NULL, '', 'post', NULL, 'multipart/form-data' );
 
@@ -38,8 +38,7 @@ $Form->begin_fieldset( T_('Report of the import') );
 $Form->end_fieldset();
 
 $Form->buttons( array(
-		array( 'button', 'button', T_('Go to Blog'), 'SaveButton', 'onclick' => 'location.href="'.$Blog->get( 'url' ).'"' ),
-		array( 'button', 'button', T_('Back'), 'SaveButton', 'onclick' => 'location.href="'.$dispatcher.'?ctrl=wpimportxml"' )
+		array( 'button', 'button', T_('Go to Blog'), 'SaveButton', 'onclick' => 'location.href=\''.$Blog->get( 'url' ).'\'' ),
 	) );
 
 $Form->end_form();

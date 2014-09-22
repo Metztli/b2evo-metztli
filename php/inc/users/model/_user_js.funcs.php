@@ -23,7 +23,7 @@ function userfield_criteria_autocomplete( obj_this )
 	}
 	else
 	{	// Destroy autocomplete event from previous binding
-		obj_this.next().find( 'input' ).autocomplete( 'destroy' );
+		obj_this.next().find( 'input' ).autocomplete().autocomplete( 'destroy' );
 	}
 }
 
@@ -49,12 +49,17 @@ for(var c = 0; c < jQuery( 'select[id^=criteria_type]' ).length; c++ )
 }
 
 jQuery( document ).on( 'click', 'span[rel=add_criteria]', function()
-{	// Add new criteria to search
+{ // Add new criteria to search
+	var params = '<?php
+			global $b2evo_icons_type;
+			echo empty( $b2evo_icons_type ) ? '' : '&b2evo_icons_type='.$b2evo_icons_type;
+		?>';
+
 	obj_this = jQuery( this ).parent().parent();
 	jQuery.ajax({
 	type: 'POST',
 	url: '<?php echo get_samedomain_htsrv_url(); ?>anon_async.php',
-	data: 'action=get_userfields_criteria',
+	data: 'action=get_userfields_criteria' + params,
 	success: function( result )
 		{	// Display fieldset of new Specific criteria
 			obj_this.after( ajax_debug_clear( result ) );
@@ -82,30 +87,22 @@ if( is_admin_page() && is_logged_in() && $current_User->check_perm( 'users', 'ed
 ?>
 jQuery(document).ready( function()
 {
-	jQuery('.user_level_edit').editable( htsrv_url+'async.php?action=user_level_edit&<?php echo url_crumb( 'userlevel' )?>',
+<?php
+	$user_levels = array();
+	for( $l = 0; $l <= 10; $l++ )
 	{
-		data : function(value, settings){
-				value = ajax_debug_clear( value );
-				var re = /rel="(.*)"/;
-				var result = value.match(re);
-				return {'0':'0','1':'1','2':'2','3':'3','4':'4','5':'5','6':'6','7':'7','8':'8','9':'9','10':'10', 'selected' : result[1]}
-			},
-		type     : 'select',
-		name     : 'new_user_level',
-		tooltip  : '<?php echo TS_('Click to edit'); ?>',
-		event    : 'click',
-		callback : function (settings, original){
-				evoFadeSuccess(this);
-			},
-		onsubmit: function(settings, original) {},
-		submitdata : function(value, settings) {
-				var user_ID =  jQuery(':first',jQuery(this).parent()).text();
-				return {user_ID: user_ID}
-			},
-		onerror : function(settings, original, xhr) {
-				evoFadeFailure(original);
-			}
-	} );
+		$user_levels[ $l ] = $l;
+	}
+	// Print JS to edit an user level
+	echo_editable_column_js( array(
+		'column_selector' => '.user_level_edit',
+		'ajax_url'        => get_secure_htsrv_url().'async.php?action=user_level_edit&'.url_crumb( 'userlevel' ),
+		'options'         => $user_levels,
+		'new_field_name'  => 'new_user_level',
+		'ID_value'        => 'jQuery( ":first", jQuery( this ).parent() ).text()',
+		'ID_name'         => 'user_ID',
+		'print_init_tags' => false ) );
+?>
 });
 <?php } ?>
 </script>

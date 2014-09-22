@@ -4,14 +4,14 @@
  *
  * This file is not meant to be called directly.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
  *
  * @package evocore
  *
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author asimo: Evo Factory / Attila Simo
  *
- * @version $Id: _register.disp.php 4264 2013-07-17 04:50:09Z yura $
+ * @version $Id: _register.disp.php 6677 2014-05-13 12:44:29Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -41,7 +41,7 @@ if( empty( $session_registration_trigger_url/*$Session->get( 'registration_trigg
 }
 
 $login = param( $dummy_fields[ 'login' ], 'string', '' );
-$email = param( $dummy_fields[ 'email' ], 'string', '' );
+$email = evo_strtolower( param( $dummy_fields[ 'email' ], 'string', '' ) );
 $firstname = param( 'firstname', 'string', '' );
 $gender = param( 'gender', 'string', false );
 $source = param( 'source', 'string', 'register form' );
@@ -75,16 +75,11 @@ $Form->hidden( 'action', 'register' );
 $Form->hidden( 'source', $source );
 $Form->hidden( 'redirect_to', $redirect_to );
 
-$Form->begin_field();
 $Form->text_input( $dummy_fields[ 'login' ], $login, 22, T_('Login'), T_('Choose an username.'), array( 'maxlength' => 20, 'class' => 'input_text', 'required' => true, 'input_suffix' => ' <span id="login_status"></span>' ) );
-$Form->end_field();
 
-$Form->begin_field();
-$Form->password_input( $dummy_fields[ 'pass1' ], '', 18, T_('Password'), array( 'note'=>T_('Choose a password.'), 'maxlength' => 70, 'class' => 'input_text', 'required'=>true ) );
-$Form->password_input( $dummy_fields[ 'pass2' ], '', 18, '', array( 'note'=>T_('Please type your password again.'), 'maxlength' => 70, 'class' => 'input_text', 'required'=>true ) );
-$Form->end_field();
+$Form->password_input( $dummy_fields[ 'pass1' ], '', 18, T_('Password'), array( 'note'=>T_('Choose a password.'), 'maxlength' => 70, 'class' => 'input_text', 'required'=>true, 'autocomplete' => 'off' ) );
+$Form->password_input( $dummy_fields[ 'pass2' ], '', 18, '', array( 'note'=>T_('Please type your password again.'), 'maxlength' => 70, 'class' => 'input_text', 'required'=>true, 'autocomplete' => 'off' ) );
 
-$Form->begin_field();
 $Form->text_input( $dummy_fields[ 'email' ], $email, 50, T_('Email'), '<br />'.T_('We respect your privacy. Your email will remain strictly confidential.'),
 				array( 'maxlength'=>255, 'class'=>'input_text wide_input', 'required'=>true ) );
 
@@ -100,9 +95,7 @@ $registration_require_firstname = (bool)$Settings->get('registration_require_fir
 
 if( $registration_require_firstname )
 { // firstname required
-	$Form->begin_field();
 	$Form->text_input( 'firstname', $firstname, 18, T_('First name'), T_('Your real first name.'), array( 'maxlength' => 50, 'class' => 'input_text', 'required' => true ) );
-	$Form->end_field();
 }
 
 $registration_require_gender = $Settings->get( 'registration_require_gender' );
@@ -119,14 +112,11 @@ if( $Settings->get( 'registration_ask_locale' ) )
 	$locale = 'en_US';
 	$Form->select( 'locale', $locale, 'locale_options_return', T_('Locale'), T_('Preferred language') );
 }
-$Form->end_field();
-
-$Form->end_fieldset();
 
 $Plugins->trigger_event( 'DisplayRegisterFormFieldset', array( 'Form' => & $Form, 'inskin' => true ) );
 
 // Submit button:
-$submit_button = array( array( 'name'=>'register', 'value'=>T_('Register my account now!'), 'class'=>'search', 'style'=>'font-size: 120%' ) );
+$submit_button = array( array( 'name'=>'register', 'value'=>T_('Register my account now!'), 'class'=>'search btn-primary btn-lg' ) );
 
 $Form->buttons_input($submit_button);
 

@@ -6,7 +6,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package plugins
  *
@@ -27,7 +27,7 @@ class star_plugin extends Plugin
 	var $group = 'rendering';
 	var $short_desc;
 	var $long_desc;
-	var $help_url = 'http://b2evolution.net/man/technical-reference/renderer-plugins/star-plugin';
+	var $help_topic = 'star-plugin';
 	var $number_of_installs = 1;
 
 	/*
@@ -57,6 +57,15 @@ class star_plugin extends Plugin
 	 */
 	function SkinBeginHtmlHead()
 	{
+		global $Blog;
+
+		if( ! isset( $Blog ) || (
+		    $this->get_coll_setting( 'coll_apply_rendering', $Blog ) == 'never' && 
+		    $this->get_coll_setting( 'coll_apply_comment_rendering', $Blog ) == 'never' ) )
+		{ // Don't load css/js files when plugin is not enabled
+			return;
+		}
+
 		require_css( $this->get_plugin_url( true ).'star.css', 'blog' );
 	}
 
@@ -86,9 +95,9 @@ class star_plugin extends Plugin
 
 	/**
 	 * Perform rendering of Message content
-	 * 
+	 *
 	 * NOTE: Use default coll settings of comments as messages settings
-	 * 
+	 *
 	 * @see Plugin::RenderMessageAsHtml()
 	 */
 	function RenderMessageAsHtml( & $params )

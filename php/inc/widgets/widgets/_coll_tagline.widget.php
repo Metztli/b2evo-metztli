@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -21,7 +21,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _coll_tagline.widget.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _coll_tagline.widget.php 6411 2014-04-07 15:17:33Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -90,9 +90,11 @@ class coll_tagline_Widget extends ComponentWidget
 
 		// Collection tagline:
 		echo $this->disp_params['block_start'];
+		echo $this->disp_params['block_body_start'];
 		// TODO: there appears to be no possibility to wrap the tagline in e.g. "<h2>%s</h2>"
 		//       Should there be a widget param for this?  fp> probably yes
 		$Blog->disp( 'tagline', 'htmlbody' );
+		echo $this->disp_params['block_body_end'];
 		echo $this->disp_params['block_end'];
 
 		return true;

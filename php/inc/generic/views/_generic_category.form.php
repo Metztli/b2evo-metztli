@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -21,7 +21,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _generic_category.form.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _generic_category.form.php 6135 2014-03-08 07:54:05Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -62,14 +62,12 @@ $Form->end_fieldset();
 
 if( $creating )
 {
-	$Form->end_form( array( array( 'submit', 'submit', T_('Record'), 'SaveButton' ),
-													array( 'reset', '', T_('Reset'), 'ResetButton' ) ) );
+	$Form->end_form( array( array( 'submit', 'submit', T_('Record'), 'SaveButton' ) ) );
 }
 else
 {
 	$Form->hidden( $edited_GenericCategory->dbIDname, $edited_GenericCategory->ID );
-	$Form->end_form( array( array( 'submit', 'submit', T_('Update'), 'SaveButton' ),
-													array( 'reset', '', T_('Reset'), 'ResetButton' ) ) );
+	$Form->end_form( array( array( 'submit', 'submit', T_('Save Changes!'), 'SaveButton' ) ) );
 }
 
 ?>

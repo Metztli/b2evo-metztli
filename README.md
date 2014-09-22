@@ -3,17 +3,17 @@ b2evolution on OpenShift
 b2evolution is a downloadable, open source (GPL licensed) powerful free blog/CMS engine you can install on Red Hat OpenShift online
 platform as a service (PaaS).
 
-b2evolution is an open source security-conscious alternative to WordPress.
+b2evolution is an open source security-conscious -- full-featured -- alternative to WordPress.
 
 More information can be found on the official b2evolution website at http://b2evolution.net
 
 Running on OpenShift
 --------------------
 
-Create an account at http://openshift.redhat.com/
+Create an account at https://www.openshift.com/
 
 I assume that you have installed the rhc command line tools for your operating system, as guided in Getting Started With OpenShift:
-https://openshift.redhat.com/community/get-started
+https://developers.openshift.com/en/getting-started-overview.html
 
 Create a PHP application. Evidently and to make your task ahead easier, create a working directory and change to that location.
 All the rhc commands below are relative to your working directory location.
@@ -26,7 +26,7 @@ OR, alternatively,
 
 rhc app create -a b2evo -t php-5.4
 
-since as of January 2014, OpenShift added PHP 5.4.
+(since as of January 2014, OpenShift added PHP 5.4.)
 
 A new directory named as your application (i.e. b2evo in this case) will be created at your current location. You may examine its content.
 
@@ -38,7 +38,7 @@ OR, alternatively,
 
 rhc cartridge add -c mysql-5.5 -a b2evo
 
-since as of January 2014, OpenShift added MySQL 5.5.
+(since as of January 2014, OpenShift added MySQL 5.5.)
 
 Make a note of the username, password, and host name (for reference purposes since your b2evolution instance will be provided with relevant values).
 
@@ -56,7 +56,7 @@ Then push the repo upstream to OpenShift
 
 git push
 
-That's it, you can now instanciate your b2evolution application at:
+That's it, you can now instantiate your b2evolution application at:
 
 http://b2evo-yourNameSpace.rhcloud.com
 

@@ -24,7 +24,7 @@
  * @package evocore
 
  *
- * @version $Id: _display.form.php 6136 2014-03-08 07:59:48Z manuel $
+ * @version $Id: _display.form.php 7172 2014-07-22 08:07:56Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -63,9 +63,14 @@ $Form->begin_fieldset( T_('Profile pictures').get_manual_link('profile-picture-s
 
 	$Form->checkbox_input( 'use_gravatar', $Settings->get('use_gravatar'), T_('Use gravatar'), array( 'note' => T_('Fall back to Gravatar if a user has not uploaded a profile picture.') ) );
 
-	global $default_avatar;
+	$default_avatar_unknown = get_default_avatar_url();
+	$default_avatar_men = get_default_avatar_url( 'M' );
+	$default_avatar_women = get_default_avatar_url( 'F' );
+	$default_images_info = '<br />'.T_('For unknow gender').': <a href="'.$default_avatar_unknown.'" target="_blank">'.$default_avatar_unknown.'</a>';
+	$default_images_info .= '<br />'.T_('For men').': <a href="'.$default_avatar_men.'" target="_blank">'.$default_avatar_men.'</a>';
+	$default_images_info .= '<br />'.T_('For women').': <a href="'.$default_avatar_women.'" target="_blank">'.$default_avatar_women.'</a>';
 	$Form->radio( 'default_gravatar', $Settings->get('default_gravatar'),
-		array( array( 'b2evo', T_('Default image'), $default_avatar ),
+		array( array( 'b2evo', T_('Default image'), $default_images_info ),
 					array( '', 'Gravatar' ),
 					array( 'identicon', 'Identicon' ),
 					array( 'monsterid', 'Monsterid' ),
@@ -85,7 +90,7 @@ $Form->end_fieldset();
 
 // --------------------------------------------
 
-$Form->begin_fieldset( T_('Bubble tips in back-office').get_manual_link('user-bubble-tips-settings')  );
+$Form->begin_fieldset( T_('Username display in back-office').get_manual_link('user-bubble-tips-settings')  );
 
 	$Form->checkbox_input( 'bubbletip', $Settings->get('bubbletip'), T_('Username bubble tips'), array( 'note'=>T_('Check to enable bubble tips on usernames') ) );
 
@@ -98,7 +103,12 @@ $Form->end_fieldset();
 
 // --------------------------------------------
 
-$Form->begin_fieldset( T_('Bubble tips in front-office for logged in users').get_manual_link('user-bubble-tips-settings') );
+$Form->begin_fieldset( T_('Username display for logged-in users (front-office)').get_manual_link('user-bubble-tips-settings') );
+
+	$Form->radio( 'user_url_loggedin', $Settings->get( 'user_url_loggedin' ),
+		array( array( 'page', T_('Always user page'), '' ),
+					array( 'url', T_('User website if available (fallback to user page)'), '' ),
+		), T_('Link to'), true );
 
 	$Form->info( T_('Note'), T_('Enable bubble tips in each skin\'s settings.') );
 
@@ -111,7 +121,15 @@ $Form->end_fieldset();
 
 // --------------------------------------------
 
-$Form->begin_fieldset( T_('Bubble tips for anonymous users').get_manual_link('user-bubble-tips-settings') );
+$Form->begin_fieldset( T_('Username display for anonymous user (front-office)').get_manual_link('user-bubble-tips-settings') );
+
+	$Form->radio( 'user_url_anonymous', $Settings->get( 'user_url_anonymous' ),
+		array( array( 'page', T_('Always user page (if allowed)'), '' ),
+					array( 'url', T_('User website if available (fallback to user page)'), '' ),
+		), T_('Link to'), true );
+
+	// Allow anonymous users to see the user display ( disp=user )
+	$Form->checkbox_input( 'allow_anonymous_user_profiles', $Settings->get('allow_anonymous_user_profiles'), T_('Allow to see user profiles') );
 
 	$Form->info( T_('Note'), T_('Enable bubble tips in each skin\'s settings.') );
 
@@ -132,8 +150,6 @@ $Form->end_fieldset();
 $Form->begin_fieldset( T_('Other permissions for anonymous users').get_manual_link('anonymous-users-permissions') );
 
 	$Form->checkbox_input( 'allow_anonymous_user_list', $Settings->get('allow_anonymous_user_list'), T_('Allow to see user list') );
-	// Allow anonymous users to see the user display ( disp=user )
-	$Form->checkbox_input( 'allow_anonymous_user_profiles', $Settings->get('allow_anonymous_user_profiles'), T_('Allow to see user profiles') );
 
 $Form->end_fieldset();
 
@@ -141,8 +157,7 @@ $Form->end_fieldset();
 
 if( $current_User->check_perm( 'users', 'edit' ) )
 {
-	$Form->end_form( array( array( 'submit', 'submit', T_('Save !'), 'SaveButton' ),
-													array( 'reset', '', T_('Reset'), 'ResetButton' ) ) );
+	$Form->end_form( array( array( 'submit', 'submit', T_('Save Changes!'), 'SaveButton' ) ) );
 }
 
 ?>

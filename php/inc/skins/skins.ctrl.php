@@ -4,7 +4,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
@@ -17,7 +17,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: skins.ctrl.php 4110 2013-07-02 07:53:56Z yura $
+ * @version $Id: skins.ctrl.php 7178 2014-07-23 08:11:33Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -74,7 +74,10 @@ switch( $action )
 		$Messages->add( T_('Skin has been installed.'), 'success' );
 
 		// We want to highlight the edited object on next list display:
-		$Session->set( 'fadeout_array', array( 'skin_ID' => array($edited_Skin->ID) ) );
+		$Session->set( 'fadeout_array', array( 'skin_ID' => array( $edited_Skin->ID ) ) );
+
+		// Replace a mask by value. Used for install skin on creating of new blog
+		$redirect_to = str_replace( '$skin_ID$', $edited_Skin->ID, $redirect_to );
 
 		// PREVENT RELOAD & Switch to list mode:
 		header_redirect( $redirect_to );
@@ -116,14 +119,11 @@ switch( $action )
 		// Check that this action request is not a CSRF hacked request:
 		$Session->assert_received_crumb( 'skin' );
 
- 		// Check permission:
+		// Check permission:
 		$current_User->check_perm( 'options', 'edit', true );
 
 		// Make sure we got an skin_ID:
 		param( 'skin_ID', 'integer', true );
-
-		// Look for containers in skin file:
-		$edited_Skin->discover_containers();
 
 		// Save to DB:
 		$edited_Skin->db_save_containers();
@@ -207,7 +207,7 @@ $AdminUI->set_path( 'blogs', 'skin', 'manage_skins' );
  */
 $AdminUI->set_coll_list_params( 'blog_properties', 'edit',
 											array( 'ctrl' => 'skins' ),
-											T_('All'), '?ctrl=collections&amp;blog=0' );
+											T_('Site'), '?ctrl=collections&amp;blog=0' );
 
 
 $AdminUI->breadcrumbpath_init();

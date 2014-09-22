@@ -8,7 +8,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -71,8 +71,8 @@ class test_plugin extends Plugin
 	 */
 	function PluginInit( & $params )
 	{
-		$this->short_desc = 'Test plugin';
-		$this->long_desc = 'This plugin responds to virtually all possible plugin events :P';
+		$this->short_desc = T_('Test plugin');
+		$this->long_desc = T_('This plugin responds to virtually all possible plugin events :P');
 
 		// Trigger plugin settings instantiation (for testing).
 		if( $params['is_installed'] )

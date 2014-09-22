@@ -27,7 +27,7 @@
  * @author evofactory-test
  * @author fplanque: Francois Planque.
  *
- * @version $Id: userfields.ctrl.php 6136 2014-03-08 07:59:48Z manuel $
+ * @version $Id: userfields.ctrl.php 6135 2014-03-08 07:54:05Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -242,7 +242,7 @@ switch( $action )
 		// Get near field, We should exchange the order with this field
 		$switched_Userfield = $DB->get_row( 'SELECT ufdf_ID, ufdf_order
 			FROM T_users__fielddefs
-			WHERE ufdf_ufgp_ID = '.$edited_Userfield->group_ID.'
+			WHERE ufdf_ufgp_ID = '.$edited_Userfield->ufgp_ID.'
 				AND ufdf_order '.$order_condition.' '.$edited_Userfield->order.'
 			ORDER BY ufdf_order '.$order_direction.'
 			LIMIT 1' );

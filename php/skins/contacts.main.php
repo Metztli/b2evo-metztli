@@ -4,11 +4,11 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  *
- * @version $Id: contacts.main.php 3547 2013-04-26 04:10:19Z yura $
+ * @version $Id: contacts.main.php 7043 2014-07-02 08:35:45Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -33,7 +33,16 @@ if( !$current_User->check_status( 'can_view_contacts' ) )
 
 	// Redirect to the blog url for users without messaging permission
 	$Messages->add( 'You are not allowed to view Contacts!' );
-	header_redirect( $Blog->gen_blogurl(), 302 );
+	$blogurl = $Blog->gen_blogurl();
+	// If it was a front page request or the front page is set to display 'contacts' then we must not redirect to the front page because it is forbidden for the current User
+	$redirect_to = ( is_front_page() || ( $Blog->get_setting( 'front_disp' ) == 'contacts' ) ) ? url_add_param( $blogurl, 'disp=403', '&' ) : $blogurl;
+	header_redirect( $redirect_to, 302 );
+}
+
+if( has_cross_country_restriction( 'any' ) && empty( $current_User->ctry_ID ) )
+{ // User may browse/contact other users only from the same country
+	$Messages->add( T_('Please specify your country before attempting to contact other users.') );
+	header_redirect( get_user_profile_url() );
 }
 
 // Get action parameter from request:
@@ -42,7 +51,10 @@ param_action();
 if( ( $action != 'report_user' && $action != 'remove_report' ) && ( !$current_User->check_perm( 'perm_messaging', 'reply' ) ) )
 { // Redirect to the blog url for users without messaging permission
 	$Messages->add( 'You are not allowed to view Contacts!' );
-	header_redirect( $Blog->gen_blogurl(), 302 );
+	$blogurl = $Blog->gen_blogurl();
+	// If it was a front page request or the front page is set to display 'contacts' then we must not redirect to the front page because it is forbidden for the current User
+	$redirect_to = ( is_front_page() || ( $Blog->get_setting( 'front_disp' ) == 'contacts' ) ) ? url_add_param( $blogurl, 'disp=403', '&' ) : $blogurl;
+	header_redirect( $redirect_to, 302 );
 	// will have exited
 }
 

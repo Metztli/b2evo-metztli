@@ -4,7 +4,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal Open Source relicensing agreement:
  * }}
@@ -14,7 +14,7 @@
  *
  * @package admin
  *
- * @version $Id: widgets.ctrl.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: widgets.ctrl.php 7178 2014-07-23 08:11:33Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -91,6 +91,8 @@ switch( $action )
 		param( 'code', 'string', true );
 	case 'new':
 		param( 'container', 'string', true, true );	// memorize
+		// Change the symbols back to normal view as they are stored in DB
+		$container = str_replace( array( '_', '-' ), array( ' ', ':' ), $container );
 		break;
 
 	case 're-order' : // js request
@@ -99,7 +101,7 @@ switch( $action )
 		$containers = array();
 		foreach( $containers_list as $a_container )
 		{	// add each container and grab its widgets:
-			if( $container_name = trim( str_replace( array( 'container_', '_' ), array( '', ' ' ), $a_container ), ',' ) )
+			if( $container_name = trim( str_replace( array( 'container_', '_', '-' ), array( '', ' ', ':' ), $a_container ), ',' ) )
 			{
 				$containers[ $container_name ] = explode( ',', param( trim( $a_container, ',' ), 'string', true ) );
 			}
@@ -457,9 +459,6 @@ switch( $action )
 		 */
 		$edited_Skin = & $SkinCache->get_by_ID( $blog_normal_skin_ID );
 
-		// Look for containers in skin file:
-		$edited_Skin->discover_containers();
-
 		// Save to DB:
 		$edited_Skin->db_save_containers();
 
@@ -477,7 +476,7 @@ if( $display_mode == 'normal' )
 	 * Display page header, menus & messages:
 	 */
 	$AdminUI->set_coll_list_params( 'blog_properties', 'edit', array( 'ctrl' => 'widgets' ),
-				T_('All'), '?ctrl=collections&amp;blog=0' );
+				T_('Site'), '?ctrl=collections&amp;blog=0' );
 
 	$AdminUI->set_path( 'blogs', 'widgets' );
 
@@ -510,7 +509,7 @@ if( $display_mode == 'normal' )
 	require_css( 'blog_widgets.css' );
 
 
-	$AdminUI->breadcrumbpath_init( true );
+	$AdminUI->breadcrumbpath_init( true, array( 'text' => T_('Structure'), 'url' => '?ctrl=coll_settings' ) );
 	$AdminUI->breadcrumbpath_add( T_('Settings'), '?ctrl=coll_settings&amp;blog=$blog$' );
 	$AdminUI->breadcrumbpath_add( T_('Widgets'), '?ctrl=widgets&amp;blog=$blog$' );
 

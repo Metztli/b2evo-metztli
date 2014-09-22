@@ -26,7 +26,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _userfield.form.php 6136 2014-03-08 07:59:48Z manuel $
+ * @version $Id: _userfield.form.php 6135 2014-03-08 07:54:05Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -53,7 +53,7 @@ $Form->begin_form( 'fform', $creating ?  T_('New user field') : T_('User field')
 
 	$Form->hiddens_by_key( get_memorized( 'action' ) ); // (this allows to come back to the right list order & page)
 
-	$Form->select_input_array( 'ufdf_ufgp_ID', $edited_Userfield->group_ID, $edited_Userfield->get_groups(),
+	$Form->select_input_array( 'ufdf_ufgp_ID', $edited_Userfield->ufgp_ID, $edited_Userfield->get_groups(),
 		T_('Group'), '', array( 'required' => true, 'force_keys_as_values' => true ) );
 
 	$Form->text_input( 'ufdf_name', $edited_Userfield->name, 50, T_('Field name'), '', array( 'maxlength'=> 255, 'required'=>true ) );
@@ -81,13 +81,11 @@ if( $creating )
 {
 	$Form->end_form( array( array( 'submit', 'actionArray[create]', T_('Record'), 'SaveButton' ),
 													array( 'submit', 'actionArray[create_new]', T_('Record, then Create New'), 'SaveButton' ),
-													array( 'submit', 'actionArray[create_copy]', T_('Record, then Create Similar'), 'SaveButton' ),
-													array( 'reset', '', T_('Reset'), 'ResetButton' ) ) );
+													array( 'submit', 'actionArray[create_copy]', T_('Record, then Create Similar'), 'SaveButton' ) ) );
 }
 else
 {
-	$Form->end_form( array( array( 'submit', 'actionArray[update]', T_('Update'), 'SaveButton' ),
-													array( 'reset', '', T_('Reset'), 'ResetButton' ) ) );
+	$Form->end_form( array( array( 'submit', 'actionArray[update]', T_('Save Changes!'), 'SaveButton' ) ) );
 }
 ?>
 <script type="text/javascript">

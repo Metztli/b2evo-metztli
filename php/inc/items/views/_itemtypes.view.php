@@ -27,7 +27,7 @@
  * @author efy-sergey: Evo Factory / Sergey.
  * @author fplanque: Francois Planque.
  *
- * @version $Id: _itemtypes.view.php 6136 2014-03-08 07:59:48Z manuel $
+ * @version $Id: _itemtypes.view.php 6135 2014-03-08 07:54:05Z manuel $
  */
 
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );

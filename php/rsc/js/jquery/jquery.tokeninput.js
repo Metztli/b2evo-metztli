@@ -503,7 +503,7 @@ $.TokenList = function (input, url_or_data, settings) {
             token_list.children().each(function () {
                 var existing_token = $(this);
                 var existing_data = $.data(existing_token.get(0), "tokeninput");
-                if(existing_data && existing_data.id === item.id) {
+                if(existing_data && item && existing_data.id === item.id) {
                     found_existing_token = existing_token;
                     return false;
                 }

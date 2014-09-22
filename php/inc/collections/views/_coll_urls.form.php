@@ -4,7 +4,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal Open Source relicensing agreement:
@@ -18,7 +18,7 @@
  * @author blueyed: Daniel HAHLER
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _coll_urls.form.php 5786 2014-01-24 18:36:00Z yura $
+ * @version $Id: _coll_urls.form.php 6405 2014-04-07 03:01:41Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -167,7 +167,7 @@ $Form->begin_fieldset( T_('Blog URL').' ['.T_('Admin').']'.get_manual_link('blog
 			array( 'relative', T_('Relative to baseurl').':',
 										'',
 										'<span class="nobr"><code>'.$baseurl.'</code>'
-										.'<input type="text" id="blog_siteurl_relative" class="form_text_input" name="blog_siteurl_relative" size="35" maxlength="120" value="'
+										.'<input type="text" id="blog_siteurl_relative" class="form_text_input form-control" name="blog_siteurl_relative" size="35" maxlength="120" value="'
 										.format_to_output( $blog_siteurl_relative, 'formvalue' )
 										.'" onkeyup="update_urlpreview( \''.$baseurl.'\'+this.value );"
 										onfocus="document.getElementsByName(\'blog_access_type\')[3].checked=true;
@@ -181,7 +181,7 @@ $Form->begin_fieldset( T_('Blog URL').' ['.T_('Admin').']'.get_manual_link('blog
 			),
 			array( 'absolute', T_('Absolute URL').':',
 										'',
-										'<input type="text" id="blog_siteurl_absolute" class="form_text_input" name="blog_siteurl_absolute" size="50" maxlength="120" value="'
+										'<input type="text" id="blog_siteurl_absolute" class="form_text_input form-control" name="blog_siteurl_absolute" size="50" maxlength="120" value="'
 											.format_to_output( $blog_siteurl_absolute, 'formvalue' )
 											.'" onkeyup="update_urlpreview( this.value );"
 											onfocus="document.getElementsByName(\'blog_access_type\')[5].checked=true;
@@ -343,8 +343,7 @@ $Form->begin_fieldset( T_('Single post URLs') );
 $Form->end_fieldset();
 
 
-$Form->buttons( array( array( 'submit', 'submit', T_('Save !'), 'SaveButton' ),
-													array( 'reset', '', T_('Reset'), 'ResetButton' ) ) );
+$Form->buttons( array( array( 'submit', 'submit', T_('Save Changes!'), 'SaveButton' ) ) );
 
 $Form->end_form();
 

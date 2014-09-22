@@ -53,13 +53,12 @@ $Form->begin_form( 'fform', $creating ?  T_('Add new translated string') : T_('E
 	$Form->add_crumb( 'translation' );
 	$Form->hiddens_by_key( get_memorized( 'action'.( $creating ? ',itst_ID' : '' ) ) ); // (this allows to come back to the right list order & page)
 
-	$Form->info( T_('Original string'), htmlspecialchars( $edited_String->iost_string ) );
+	$Form->info( T_('Original string'), evo_htmlspecialchars( $edited_String->iost_string ) );
 
 	$Form->info( T_('Locale'), $edited_String->itst_locale );
 
 	$Form->textarea( 'itst_standard', $edited_String->itst_standard, 5, T_('Translated string'), '', 100, '', true );
 
-$Form->end_form( array( array( 'submit', 'actionArray[update]', $creating ? T_('Add') : T_('Update'), 'SaveButton' ),
-												array( 'reset', '', T_('Reset'), 'ResetButton' ) ) );
+$Form->end_form( array( array( 'submit', 'actionArray[update]', $creating ? T_('Add') : T_('Save Changes!'), 'SaveButton' ) ) );
 
 ?>

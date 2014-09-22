@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -21,7 +21,7 @@
  *
  * @package admin
  *
- * @version $Id: _stats_sessions_list.view.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _stats_sessions_list.view.php 6411 2014-04-07 15:17:33Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -58,17 +58,7 @@ $this->disp_payload_begin();
 
 // ------------------- PREV/NEXT USER LINKS -------------------
 user_prevnext_links( array(
-		'block_start'  => '<table class="prevnext_user"><tr>',
-		'prev_start'   => '<td width="33%">',
-		'prev_end'     => '</td>',
-		'prev_no_user' => '<td width="33%">&nbsp;</td>',
-		'back_start'   => '<td width="33%" class="back_users_list">',
-		'back_end'     => '</td>',
-		'next_start'   => '<td width="33%" class="right">',
-		'next_end'     => '</td>',
-		'next_no_user' => '<td width="33%">&nbsp;</td>',
-		'block_end'    => '</tr></table>',
-		'user_tab'     => 'sessions'
+		'user_tab' => 'sessions'
 	) );
 // ------------- END OF PREV/NEXT USER LINKS -------------------
 

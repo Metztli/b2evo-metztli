@@ -8,7 +8,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
  * {@internal License choice
@@ -32,7 +32,7 @@
  * @author fplanque: Francois PLANQUE.
  * @author mbruneau: Marc BRUNEAU / PROGIDISTRI
  *
- * @version $Id: _generic_recursive_listeditor.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _generic_recursive_listeditor.php 6972 2014-06-24 19:12:29Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -293,11 +293,6 @@ switch( $action )
 		$AdminUI->disp_payload_end();
 		break;
 }
-
-
-// Fadeout javascript
-echo '<script type="text/javascript" src="'.$rsc_url.'js/fadeout.js"></script>';
-echo '<script type="text/javascript">addEvent( window, "load", Fat.fade_all, false);</script>';
 
 
 // End payload block:

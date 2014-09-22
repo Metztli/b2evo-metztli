@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -29,7 +29,7 @@
  * @author fplanque: Francois PLANQUE
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: _plugin_settings.form.php 5732 2014-01-21 09:24:48Z yura $
+ * @version $Id: _plugin_settings.form.php 6135 2014-03-08 07:54:05Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -177,7 +177,7 @@ $Form->end_fieldset();
 if( $current_User->check_perm( 'options', 'edit', false ) )
 {
 	$Form->buttons_input( array(
-		array( 'type' => 'submit', 'name' => 'actionArray[update_settings]', 'value' => T_('Save !'), 'class' => 'SaveButton' ),
+		array( 'type' => 'submit', 'name' => 'actionArray[update_settings]', 'value' => T_('Save Changes!'), 'class' => 'SaveButton' ),
 		) );
 }
 $Form->end_form();

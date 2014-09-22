@@ -8,7 +8,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  */
@@ -16,7 +16,6 @@ if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.'
 
 global $disp_detail;
 global $more;
-global $shutdown_count_item_views;
 
 // Default params:
 $params = array_merge( array(
@@ -184,9 +183,6 @@ switch( $content_mode )
 		// Full dislpay:
 		echo $params['content_start_full'];
 
-		// Increment view count of first post on page:
-		$shutdown_count_item_views[] = $Item->ID;
-
 		if( ! empty($params['image_size']) )
 		{
 			// Display images that are linked to this post:
@@ -275,6 +271,7 @@ switch( $content_mode )
 					'before'      => $params['before_content_extension'],
 					'after'       => $params['after_content_extension'],
 					'force_more'  => $params['force_more'],
+					'image_size'          => $params['image_size'],
 				) );
 
 			// Links to post pages (for multipage posts):

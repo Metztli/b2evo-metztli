@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -18,7 +18,7 @@
  *
  * @package admin
  *
- * @version $Id: chapters.ctrl.php 4485 2013-08-11 16:17:01Z fplanque $
+ * @version $Id: chapters.ctrl.php 6135 2014-03-08 07:54:05Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -481,9 +481,8 @@ attach_browse_tabs();
 
 $AdminUI->set_path( 'items', 'settings', 'chapters' );
 
-$AdminUI->breadcrumbpath_init();
-$AdminUI->breadcrumbpath_add( T_('Contents'), '?ctrl=items&amp;blog=$blog$&amp;tab=full&amp;filter=restore' );
-$AdminUI->breadcrumbpath_add( T_('Settings'), '?ctrl=chapters&amp;blog=$blog$' );
+$AdminUI->breadcrumbpath_init( true, array( 'text' => T_('Contents'), 'url' => '?ctrl=items&amp;blog=$blog$&amp;tab=full&amp;filter=restore' ) );
+$AdminUI->breadcrumbpath_add( T_('Content settings'), '?ctrl=chapters&amp;blog=$blog$' );
 $AdminUI->breadcrumbpath_add( T_('Categories'), '?ctrl=chapters&amp;blog=$blog$' );
 
 // Display <html><head>...</head> section! (Note: should be done early if actions do not redirect)

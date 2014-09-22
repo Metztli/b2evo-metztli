@@ -20,7 +20,7 @@
  * @author efy-maxim: Evo Factory / Maxim.
  * @author fplanque: Francois Planque.
  *
- * @version $Id: _messaging.funcs.php 6136 2014-03-08 07:59:48Z manuel $
+ * @version $Id: _messaging.funcs.php 6411 2014-04-07 15:17:33Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -1747,7 +1747,7 @@ function threads_results_block( $params = array() )
 		}
 	}
 
-	global $DB, $current_User;
+	global $DB, $current_User, $AdminUI;
 
 	param( 'user_tab', 'string', '', true );
 	param( 'user_ID', 'integer', 0, true );
@@ -1766,7 +1766,7 @@ function threads_results_block( $params = array() )
 		$threads_Results->title = $params['results_title'];
 		$threads_Results->no_results_text = $params['results_no_text'];
 
-		if( $threads_Results->total_rows > 0 )
+		if( $threads_Results->get_total_rows() > 0 )
 		{	// Display action icon to delete all records if at least one record exists
 			$threads_Results->global_icon( sprintf( T_('Delete all private messages sent by %s'), $edited_User->login ), 'delete', '?ctrl=user&amp;user_tab=activity&amp;action=delete_all_messages&amp;user_ID='.$edited_User->ID.'&amp;'.url_crumb('user'), ' '.T_('Delete all'), 3, 4 );
 		}
@@ -1789,8 +1789,9 @@ function threads_results_block( $params = array() )
 			$threads_Results->init_params_by_skin( $params[ 'skin_type' ], $params[ 'skin_name' ] );
 		}
 
+		$results_params = $AdminUI->get_template( 'Results' );
 		$display_params = array(
-			'before' => '<div class="results" style="margin-top:25px" id="threads_result">'
+			'before' => str_replace( '>', ' style="margin-top:25px" id="threads_result">', $results_params['before'] ),
 		);
 		$threads_Results->display( $display_params );
 

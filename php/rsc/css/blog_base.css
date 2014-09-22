@@ -104,6 +104,7 @@ div.powered_by {
 	text-align: center;
 }
 div.error_404,
+div.error_403,
 div.error_additional_content {
 	margin: 1em;
 }
@@ -257,8 +258,7 @@ form.bComment fieldset div.avatartag a {
 }
 
 /* bComment TextArea */
-.bComment.form_textarea_input,
-#content.bComment.form_textarea_input {
+textarea.form_textarea_input {
 	width: 100%;
 }
 
@@ -277,6 +277,9 @@ form.bComment fieldset div.avatartag a {
 	text-align: center;
 	color: #999;
 	font-size: 78%;
+}
+.standard_login_link {
+	margin: 1em;
 }
 
 
@@ -620,27 +623,6 @@ div.item_location {
 	text-align: center
 }
 
-/* jQuery Wide Scroll plugin */
-div.wide_scroll {
-	overflow: auto;
-	display: block;
-}
-.wscontrol {
-	border: 1px solid #999;
-	background: #FFFFCC url(jquery/scrollwide/images/arrows.png) repeat-y 5px 10px;
-	text-align: center;
-	cursor: pointer;
-}
-.wscontrol:hover, .wscontrol.wsover {
-	background-color: #FFFF00;
-}
-.wscontrol.wsclick {
-	background-color: #FFFF00;
-}
-.wscontrol.wsleft {
-	background-position: -12px 10px;
-}
-
 /* jQuery Tokeninput plugin */
 #ffield_item_tags ul.token-input-list-facebook {
 	width: 100%;
@@ -720,7 +702,6 @@ div.wide_scroll {
 	-moz-transform: rotate(45deg);
 	-o-transform: rotate(45deg);
 	-ms-transform: rotate(45deg);
-	filter: progid:DXImageTransform.Microsoft.Matrix(sizingMethod='auto expand', M11=0.7071067811865476, M12=-0.7071067811865475, M21=0.7071067811865475, M22=0.7071067811865476); /* IE6,IE7 */
 	-ms-filter: "progid:DXImageTransform.Microsoft.Matrix(SizingMethod='auto expand', M11=0.7071067811865476, M12=-0.7071067811865475, M21=0.7071067811865475, M22=0.7071067811865476)"; /* IE8 */
 }
 
@@ -830,6 +811,32 @@ div.results .status_trash span {
 	display: inline-block;
 }
 
+/* Photo Index */
+.image_index {
+	margin: 1ex auto;
+	text-align: center;
+}
+.image_index div {
+	display: inline-block;
+	background: #DDD;
+	text-align: center;
+	vertical-align: middle;
+	border: 1px solid #999;
+	-moz-border-radius: 2px;
+	-webkit-border-radius: 2px;
+	-khtml-border-radius: 2px;
+	border-radius: 2px;
+	padding: 2px;
+	margin: 2px 2px 1px 1px;
+}
+.image_index div:hover {
+	background: #EEE;
+}
+.image_index div span {
+	display: table-cell;
+	vertical-align: middle;
+}
+
 .form_add_contacts .controls {
 	white-space: nowrap;
 	padding-left: 31px;
@@ -838,4 +845,18 @@ div.results .status_trash span {
 
 form#comment_edit {
 	clear: both;
+}
+
+input.btn-lg {
+	font-size: 120%;
+}
+
+#download_timer_js, #download_info_nojs {
+	font-size: 84%;
+	background: #CCC;
+	padding: 3px 5px;
+	border-radius: 3px;
+	-moz-border-radius: 3px;
+	-webkit-border-radius: 3px;
+	-khtml-border-radius: 3px;
 }

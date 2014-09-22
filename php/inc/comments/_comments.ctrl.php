@@ -4,7 +4,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal Open Source relicensing agreement:
  * }}
@@ -14,7 +14,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _comments.ctrl.php 5511 2013-12-23 06:06:07Z yura $
+ * @version $Id: _comments.ctrl.php 7281 2014-09-05 12:22:20Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -44,6 +44,11 @@ switch( $action )
 	case 'delete_url':
 	case 'update_publish':
 	case 'delete':
+		if( $action != 'edit' && $action != 'switch_view' )
+		{ // Stop a request from the blocked IP addresses or Domains
+			antispam_block_request();
+		}
+
 		param( 'comment_ID', 'integer', true );
 		$edited_Comment = & Comment_get_by_ID( $comment_ID );
 
@@ -79,13 +84,16 @@ switch( $action )
 		// Format content for editing, if we were not already in editing...
 		$Plugins_admin = & get_Plugins_admin();
 		$params = array( 'object_type' => 'Comment', 'object_Blog' => & $Blog );
-		$Plugins_admin->unfilter_contents( $comment_title /* by ref */, $comment_content /* by ref */, $edited_Comment_Item->get_renderers_validated(), $params );
+		$Plugins_admin->unfilter_contents( $comment_title /* by ref */, $comment_content /* by ref */, $edited_Comment->get_renderers_validated(), $params );
 
 		// Where are we going to redirect to?
 		param( 'redirect_to', 'url', url_add_param( $admin_url, 'ctrl=items&blog='.$blog.'&p='.$edited_Comment_Item->ID, '&' ) );
 		break;
 
 	case 'elevate':
+		// Stop a request from the blocked IP addresses or Domains
+		antispam_block_request();
+
 		global $blog;
 		load_class( 'items/model/_item.class.php', 'Item' );
 
@@ -172,8 +180,7 @@ switch( $action )
 // Set the third level tab
 param( 'tab3', 'string', '', true );
 
-$AdminUI->breadcrumbpath_init();
-$AdminUI->breadcrumbpath_add( T_('Contents'), '?ctrl=items&amp;blog=$blog$&amp;tab=full&amp;filter=restore' );
+$AdminUI->breadcrumbpath_init( true, array( 'text' => T_('Contents'), 'url' => '?ctrl=items&amp;blog=$blog$&amp;tab=full&amp;filter=restore' ) );
 $AdminUI->breadcrumbpath_add( T_('Comments'), '?ctrl=comments&amp;blog=$blog$&amp;filter=restore' );
 switch( $tab3 )
 {
@@ -187,6 +194,12 @@ switch( $tab3 )
 }
 
 $AdminUI->set_path( 'items' );	// Sublevel may be attached below
+
+if( in_array( $action, array( 'edit', 'elevate', 'update_publish', 'update', 'switch_view' ) ) )
+{ // Page with comment edit form
+	// Set an url for manual page
+	$AdminUI->set_page_manual_link( 'editing-comments' );
+}
 
 /**
  * Perform action:
@@ -303,13 +316,41 @@ switch( $action )
 			$edited_Comment->set_renderers( $renderers );
 		}
 
+		if( $edited_Comment_Item->Blog->get_setting( 'threaded_comments' ) &&
+		    ( param( 'in_reply_to_cmt_ID', 'integer', NULL, false, false, false ) !== false ) )
+		{ // Change a field "In reply to comment ID" if threaded comments are enabled for the blog
+			$in_reply_to_cmt_ID = get_param( 'in_reply_to_cmt_ID' );
+			$CommentCache = & get_CommentCache();
+			if( $in_reply_to_cmt_ID > 0 )
+			{ // Check new entered comment ID
+				if( ! empty( $edited_Comment->ID ) && $in_reply_to_cmt_ID == $edited_Comment->ID )
+				{ // Restrict such brake case
+					$Messages->add( T_('You cannot use current comment ID for the field "In reply to comment ID".'), 'error' );
+				}
+				elseif( ! ( $Comment = & $CommentCache->get_by_ID( $in_reply_to_cmt_ID, false, false ) ) )
+				{ // No comment exists
+					$Messages->add( T_('Field "In reply to comment ID" has an unexisting comment ID.'), 'error' );
+				}
+				elseif( $Comment->item_ID != $edited_Comment_Item->ID )
+				{ // Item of new reply comment is not same
+					$Messages->add( T_('Use a comment for field "In reply to comment ID" only from the same post.'), 'error' );
+				}
+			}
+			else
+			{ // Deny wrong comment ID
+				$in_reply_to_cmt_ID = NULL;
+			}
+			$edited_Comment->set( 'in_reply_to_cmt_ID', $in_reply_to_cmt_ID, true );
+		}
+
 		// Trigger event: a Plugin could add a $category="error" message here..
 		// This must get triggered before any internal validation and must pass all relevant params.
 		// The OpenID plugin will validate a given OpenID here (via redirect and coming back here).
 		$Plugins->trigger_event( 'CommentFormSent', array(
 				'dont_remove_pre' => true,
-				'comment_post_ID' => $edited_Comment_Item->ID,
+				'comment_item_ID' => $edited_Comment_Item->ID,
 				'comment' => & $content,
+				'renderers' => $edited_Comment->get_renderers(),
 			) );
 
 		param_check_html( 'content', T_('Invalid comment text.') );	// Check this is backoffice content (NOT with comment rules)
@@ -473,40 +514,27 @@ switch( $action )
 		break;
 
 
-
 	case 'trash_delete':
 		// Check that this action request is not a CSRF hacked request:
 		$Session->assert_received_crumb( 'comment' );
 
-		$query = 'SELECT T_comments.*
+		if( isset( $blog_ID ) && ( $blog_ID != 0 ) )
+		{ // delete by comment ids
+			$query = 'SELECT comment_ID
 					FROM T_blogs LEFT OUTER JOIN T_categories ON blog_ID = cat_blog_ID
 						LEFT OUTER JOIN T_items__item ON cat_ID = post_main_cat_ID
-						LEFT OUTER JOIN T_comments ON post_ID = comment_post_ID
-					WHERE comment_status = "trash"';
-
-		if( isset($blog_ID) && ( $blog_ID != 0 ) )
-		{
-			$query .=  'AND blog_ID='.$blog_ID;
+						LEFT OUTER JOIN T_comments ON post_ID = comment_item_ID
+					WHERE comment_status = "trash" AND blog_ID = '.$blog_ID;
+			$comment_ids = $DB->query->get_col( $query, 'get trash comment ids' );
+			$result = comments_delete_where( NULL, $comment_ids );
+		}
+		else
+		{ // delete by where clause
+			$result = comments_delete_where( 'comment_status = "trash"' );
 		}
 
-		$DB->begin();
-		$trash_comments = $DB->get_results( $query, OBJECT, 'get_trash_comments' );
-
-		$result = true;
-		foreach( $trash_comments as $row_stats )
+		if( $result !== false )
 		{
-			$Comment = new Comment( $row_stats );
-			$result = $result && $Comment->dbdelete();
-			if( !$result )
-			{
-				$DB->rollback();
-				break;
-			}
-		}
-
-		if( $result )
-		{
-			$DB->commit();
 			$Messages->add( T_('Recycle bin contents were successfully deleted.'), 'success' );
 		}
 		else
@@ -546,14 +574,18 @@ switch( $action )
 		$new_Item->set( 'title', T_( 'Elevated from comment' ) );
 		$new_Item->set( 'content', $item_content );
 
-		if( !$new_Item->dbinsert() )
+		if( ! $new_Item->dbinsert() )
 		{
 			$Messages->add( T_( 'Unable to create the new post!' ), 'error' );
 			break;
 		}
 
+		// Deprecate the comment after elevating
 		$edited_Comment->set( 'status', 'deprecated' );
 		$edited_Comment->dbupdate();
+
+		// Move all child comments to new created post
+		move_child_comments_to_item( $edited_Comment->ID, $new_Item->ID );
 
 		header_redirect( url_add_param( $admin_url, 'ctrl=items&blog='.$blog.'&action=edit&p='.$new_Item->ID, '&' ) );
 		break;
@@ -640,9 +672,14 @@ switch( $action )
 
 $AdminUI->set_path( 'items', 'comments' );
 
-if( ( $action == 'edit' ) || ( $action == 'update_publish' ) || ( $action == 'update' ) || ( $action == 'elevate' ) )
-{ // load date picker style for _comment.form.php
-	require_css( 'ui.datepicker.css' );
+if( $tab3 == 'fullview' )
+{ // Load jquery UI to animate background color on change comment status and to transfer a comment to recycle bin
+	require_js( '#jqueryUI#' );
+}
+
+if( in_array( $action, array( 'edit', 'update_publish', 'update', 'elevate' ) ) )
+{ // Initialize date picker for _comment.form.php
+	init_datepicker_js();
 }
 
 require_css( 'rsc/css/blog_base.css', true ); // Default styles for the blog navigation
@@ -698,8 +735,10 @@ switch( $action )
 		// Begin payload block:
 		$AdminUI->disp_payload_begin();
 
-		echo '<table class="browse" cellspacing="0" cellpadding="0" border="0"><tr>';
-		echo '<td class="browse_left_col">';
+		$table_browse_template = $AdminUI->get_template( 'table_browse' );
+		echo $table_browse_template['table_start'];
+
+		echo $table_browse_template['left_col_start'];
 
 		if( ! empty( $process_action ) && $process_action == 'mass_delete' && !empty( $mass_type ) )
 		{ // Mass deleting of the comments
@@ -716,14 +755,14 @@ switch( $action )
 		{
 			$AdminUI->disp_view( 'comments/views/_comment_list_table.view.php' );
 		}
-		echo '</td>';
+		echo $table_browse_template['left_col_end'];
 
-		echo '<td class="browse_right_col">';
+		echo $table_browse_template['right_col_start'];
 			// Display VIEW:
 			$AdminUI->disp_view( 'comments/views/_comments_sidebar.view.php' );
-		echo '</td>';
+		echo $table_browse_template['right_col_end'];
 
-		echo '</tr></table>';
+		echo $table_browse_template['table_end'];
 
 		// End payload block:
 		$AdminUI->disp_payload_end();

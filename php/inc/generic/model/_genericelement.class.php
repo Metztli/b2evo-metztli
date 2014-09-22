@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
  * {@internal License choice
@@ -29,7 +29,7 @@
  * @author fplanque: Francois PLANQUE.
  * @author mbruneau: Marc BRUNEAU / PROGIDISTRI
  *
- * @version $Id: _genericelement.class.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _genericelement.class.php 6135 2014-03-08 07:54:05Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -122,16 +122,7 @@ class GenericElement extends DataObject
 
 		if( ! $creating ) $Form->hidden( $this->dbIDname, $this->ID );
 
-		if( $creating )
-		{
-			$Form->end_form( array( array( 'submit', 'submit', T_('Record'), 'SaveButton' ),
-															array( 'reset', '', T_('Reset'), 'ResetButton' ) ) );
-		}
-		else
-		{
-			$Form->end_form( array( array( 'submit', 'submit', T_('Update'), 'SaveButton' ),
-															array( 'reset', '', T_('Reset'), 'ResetButton' ) ) );
-		}
+		$Form->end_form( array( array( 'submit', 'submit', ( $creating ? T_('Record') : T_('Save Changes!') ), 'SaveButton' ) ) );
 	}
 
 

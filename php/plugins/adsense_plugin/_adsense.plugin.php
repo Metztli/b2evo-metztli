@@ -4,7 +4,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package plugins
  */
@@ -232,13 +232,15 @@ class adsense_plugin extends Plugin
 			return false;
 		}
 
-		echo '<div class="edit_toolbar">';
-		echo '<input type="button" id="adsense_default" title="'.T_('Insert AdSense block').'" class="quicktags" onclick="textarea_wrap_selection( b2evoCanvas, \'[adsense:]\', \'\', 1 );" value="'.T_('AdSense').'" />';
+		// Load js to work with textarea
+		require_js( 'functions.js', 'blog', true, true );
+
+		echo '<div class="edit_toolbar">AdSense: ';
+		echo '<input type="button" id="adsense_default" title="'.T_('Insert AdSense block').'" class="quicktags" data-func="textarea_wrap_selection|b2evoCanvas|[adsense:]| |1" value="'.T_('AdSense').'" />';
 		echo '</div>';
 
 		return true;
 	}
-
 }
 
 ?>

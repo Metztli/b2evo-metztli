@@ -9,7 +9,7 @@
  *
  * @package admin
  *
- * @version $Id: _stats_goalhits.view.php 6136 2014-03-08 07:59:48Z manuel $
+ * @version $Id: _stats_goalhits.view.php 7032 2014-07-01 11:20:28Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -24,26 +24,28 @@ require_once dirname(__FILE__).'/_stats_view.funcs.php';
 global $datestartinput, $datestart, $datestopinput, $datestop;
 
 if( param_date( 'datestartinput', T_('Invalid date'), false,  NULL ) !== NULL )
-{	// We have a user provided localized date:
-	memorize_param( 'datestart', 'string', NULL, trim(form_date($datestartinput)) );
+{ // We have a user provided localized date:
+	memorize_param( 'datestart', 'string', NULL, trim( form_date( $datestartinput ) ) );
+	memorize_param( 'datestartinput', 'string', NULL, empty( $datestartinput ) ? NULL : date( locale_datefmt(), strtotime( $datestartinput ) ) );
 }
 else
-{	// We may have an automated param transmission date:
+{ // We may have an automated param transmission date:
 	param( 'datestart', 'string', '', true );
 }
 if( param_date( 'datestopinput', T_('Invalid date'), false, NULL ) !== NULL )
-{	// We have a user provided localized date:
-	memorize_param( 'datestop', 'string', NULL, trim(form_date($datestopinput)) );
+{ // We have a user provided localized date:
+	memorize_param( 'datestop', 'string', NULL, trim( form_date( $datestopinput ) ) );
+	memorize_param( 'datestopinput', 'string', NULL, empty( $datestopinput ) ? NULL : date( locale_datefmt(), strtotime( $datestopinput ) ) );
 }
 else
-{	// We may have an automated param transmission date:
+{ // We may have an automated param transmission date:
 	param( 'datestop', 'string', '', true );
 }
-//pre_dump( $datestart, $datestop );
 
 $exclude = param( 'exclude', 'integer', 0, true );
 $sess_ID = param( 'sess_ID', 'integer', NULL, true );
 $goal_name = param( 'goal_name', 'string', NULL, true );
+$goal_cat = param( 'goal_cat', 'integer', 0, true );
 
 if( param_errors_detected() )
 {
@@ -54,14 +56,15 @@ else
 {
 	// Create result set:
 	$SQL = new SQL();
-	$SQL->SELECT( 'hit_ID, sess_ID, hit_datetime, hit_referer_type, hit_uri, hit_blog_ID, hit_referer, hit_remote_addr,
-									user_login, hit_agent_type, dom_name, goal_name, keyp_phrase' );
+	$SQL->SELECT( 'hit_ID, sess_ID, hit_datetime, hit_referer_type, hit_uri, hit_coll_ID, hit_referer, hit_remote_addr,
+									user_login, hit_agent_type, dom_name, goal_name, keyp_phrase, gcat_color' );
 	$SQL->FROM( 'T_track__goalhit LEFT JOIN T_hitlog ON ghit_hit_ID = hit_ID
 									LEFT JOIN T_basedomains ON dom_ID = hit_referer_dom_ID
-								  LEFT JOIN T_track__keyphrase ON hit_keyphrase_keyp_ID = keyp_ID
+									LEFT JOIN T_track__keyphrase ON hit_keyphrase_keyp_ID = keyp_ID
 									LEFT JOIN T_sessions ON hit_sess_ID = sess_ID
 									LEFT JOIN T_users ON sess_user_ID = user_ID
-									LEFT JOIN T_track__goal ON ghit_goal_ID = goal_ID' );
+									LEFT JOIN T_track__goal ON ghit_goal_ID = goal_ID
+									LEFT JOIN T_track__goalcat ON gcat_ID = goal_gcat_ID' );
 
 	$SQL_count = new SQL();
 	$SQL_count->SELECT( 'COUNT(ghit_ID)' );
@@ -86,12 +89,22 @@ else
 		$SQL_count->WHERE_and( 'hit_sess_ID'.$operator.$sess_ID );
 	}
 
-	if( !empty($goal_name) ) // TODO: allow combine
-	{ // We want to filter on the goal name:
-		$operator = ($exclude ? ' NOT LIKE ' : ' LIKE ' );
-		$SQL->WHERE_and( 'goal_name'.$operator.$DB->quote($goal_name.'%') );
+	if( ! empty( $goal_name ) || ! empty( $goal_cat ) )
+	{
 		$SQL_count->FROM_add( 'LEFT JOIN T_track__goal ON ghit_goal_ID = goal_ID' );
-		$SQL_count->WHERE_and( 'goal_name'.$operator.$DB->quote($goal_name.'%') );
+		if( ! empty( $goal_name ) ) // TODO: allow combine
+		{ // We want to filter on the goal name:
+			$operator = ($exclude ? ' NOT LIKE ' : ' LIKE ' );
+			$SQL->WHERE_and( 'goal_name'.$operator.$DB->quote($goal_name.'%') );
+			$SQL_count->WHERE_and( 'goal_name'.$operator.$DB->quote($goal_name.'%') );
+		}
+
+		if( ! empty( $goal_cat ) )
+		{ // We want to filter on the goal category:
+			$operator = ($exclude ? ' != ' : ' = ' );
+			$SQL->WHERE_and( 'goal_gcat_ID'.$operator.$DB->quote( $goal_cat ) );
+			$SQL_count->WHERE_and( 'goal_gcat_ID'.$operator.$DB->quote( $goal_cat ) );
+		}
 	}
 
 	$sql = $SQL->get();
@@ -117,6 +130,10 @@ function filter_goal_hits( & $Form )
 	$Form->checkbox_basic_input( 'exclude', get_param('exclude'), T_('Exclude').' &rarr; ' );
 	$Form->text_input( 'sess_ID', get_param('sess_ID'), 15, T_('Session ID'), '', array( 'maxlength'=>20 ) );
 	$Form->text_input( 'goal_name', get_param('goal_name'), 20, T_('Goal names starting with'), '', array( 'maxlength'=>50 ) );
+
+	$GoalCategoryCache = & get_GoalCategoryCache( T_('All') );
+	$GoalCategoryCache->load_all();
+	$Form->select_input_object( 'goal_cat', get_param('goal_cat'), $GoalCategoryCache, T_('Goal category'), array( 'allow_none' => true ) );
 }
 $Results->filter_area = array(
 	'callback' => 'filter_goal_hits',
@@ -179,6 +196,7 @@ $Results->cols[] = array(
 		'order' => 'goal_name',
 		'default_dir' => 'D',
 		'td' => '$goal_name$',
+		'extra' => array( 'style' => 'color:#gcat_color#' )
 	);
 
 // Display results:

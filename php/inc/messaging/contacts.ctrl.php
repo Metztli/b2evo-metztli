@@ -20,7 +20,7 @@
  * @author efy-maxim: Evo Factory / Maxim.
  * @author fplanque: Francois Planque.
  *
- * @version $Id: contacts.ctrl.php 6136 2014-03-08 07:59:48Z manuel $
+ * @version $Id: contacts.ctrl.php 6135 2014-03-08 07:54:05Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -132,6 +132,9 @@ if( isset( $mct_blocked ) )
 $AdminUI->breadcrumbpath_init( false );  // fp> I'm playing with the idea of keeping the current blog in the path here...
 $AdminUI->breadcrumbpath_add( T_('Messages'), '?ctrl=threads' );
 $AdminUI->breadcrumbpath_add( T_('Contacts'), '?ctrl=contacts' );
+
+// Display messages depending on user email status
+display_user_email_status_message();
 
 // Display <html><head>...</head> section! (Note: should be done early if actions do not redirect)
 $AdminUI->disp_html_head();

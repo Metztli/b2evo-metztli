@@ -8,6 +8,10 @@ Author URI: http://www.freewpthemes.net
 */
 
 /* Default styles overriden for this skin: */
+div#skin_wrapper div.sitewide_header {
+	margin-bottom: 0;
+}
+
 table.prevnext_post {
 	margin-top: 30px;
 	width: 810px;

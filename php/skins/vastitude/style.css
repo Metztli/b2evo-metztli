@@ -44,7 +44,7 @@ ul#mainnav a {color:#997340; text-decoration: none;}
 ul#mainnav li, ul#mainnav a.selected, .leftside h3, .bCommentTitle {color:#c09261;}
 .text h2 a, .leftside h2 {color:#402416;}
 .footer a, .footer a:hover {color:#908070;}
-.notes, .subtext, .dimmed, code, div.amazon {color:#572d12;}
+.notes, .subtext, .dimmed, code, samp, div.amazon {color:#572d12;}
 
 #bannertop ul li a {color:#4b3528;}
 #bannertop a:hover {color:#fff;}
@@ -57,6 +57,10 @@ a:hover {
 	text-decoration: underline;
 }
 .topicons a img {border:none;}
+
+.action_messages a {
+	color: #00F;
+}
 
 .searchcloud {font-size:0.9em;clear:both;margin:auto 40px 40px;text-align:center;border:1px solid #9e7d55;background-color: #6b4634;padding:10px;}
 .searchcloud h3 {margin-top:0px;color:#b2916f;font-weight:bold;font-size:1.1em;}
@@ -73,9 +77,6 @@ a.search_cloud_9 {color:#ede0cc;}
 a.search_cloud_10 {color:#f7ecda;}
 .searchcloud a:hover {color:#fff;}
 
-#prewrap {width:912px; margin:-10px auto;}
-#prewrap ul {padding-top:20px;}
-#prewrap ul li {margin-left:0px; display:inline;}
 #wrap {
 	width:900px;
 	background:#895c46 url(img/vast_foot.gif) bottom repeat-x;

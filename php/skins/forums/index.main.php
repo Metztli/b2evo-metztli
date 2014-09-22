@@ -38,29 +38,27 @@ if( isset( $_COOKIE[ $cookie_skin_width_name ] ) )
 	}
 }
 
-if( $disp == 'posts' && ! isset( $tag ) )
-{
-	// Compile cat array to set the correct category params, and change to category display only if required
-	param_compile_cat_array();
-
-	// Display a list of forums instead of posts
-	if( ! isset( $cat ) )
-	{ // First page, Category is not selected, We should use special disp for forums
-		$disp = 'catdir';
-	}
-	elseif( $cat > 0 )
-	{ // A specific category was requested
-		$chapters = $Skin->get_chapters( $cat );
-		if( count( $chapters ) > 0 )
-		{ // Current chapter has children
-			$disp = 'catdir';
-		}
-	}
-}
-
 // This is the main template; it may be used to display very different things.
 // Do inits depending on current $disp:
 skin_init( $disp );
+
+global $cat;
+$posts_text = T_('Forum');
+if( $disp == 'posts' )
+{
+	if( !empty( $cat ) && ( $cat > 0 ) )
+	{ // Set category name when some forum is opened
+		$ChapterCache = & get_ChapterCache();
+		if( $Chapter = $ChapterCache->get_by_ID( $cat ) )
+		{
+			$posts_text .= ': '.$Chapter->get( 'name' );
+		}
+	}
+	else
+	{ // Set title for ?disp=posts
+		$posts_text = T_('Latest topics');
+	}
+}
 
 // -------------------------- HTML HEADER INCLUDED HERE --------------------------
 skin_include( '_html_header.inc.php', array(
@@ -69,12 +67,20 @@ skin_include( '_html_header.inc.php', array(
 	'catdir_text'       => T_('Forum'),
 	'category_text'     => T_('Forum').': ',
 	'comments_text'     => T_('Latest Replies'),
+	'front_text'        => T_('Forum'),
+	'posts_text'        => $posts_text,
 	'useritems_text'    => T_('User\'s topics'),
 	'usercomments_text' => T_('User\'s replies'),
 ) );
 // Note: You can customize the default HTML header by copying the generic
 // /skins/_html_header.inc.php file into the current skin folder.
 // -------------------------------- END OF HEADER --------------------------------
+
+
+// ---------------------------- SITE HEADER INCLUDED HERE ----------------------------
+// If site headers are enabled, they will be included here:
+siteskin_include( '_site_body_header.inc.php' );
+// ------------------------------- END OF SITE HEADER --------------------------------
 ?>
 
 
@@ -96,7 +102,7 @@ skin_include( '_html_header.inc.php', array(
 	?>
 </div>
 
-<div class="pageHeader">
+<div class="pageHeader<?php echo $Settings->get( 'site_skins_enabled' ) ? ' site_skins' : ''; ?>">
 	<?php
 		// ------------------------- "Header" CONTAINER EMBEDDED HERE --------------------------
 		// Display container and contents:
@@ -140,7 +146,7 @@ skin_include( '_html_header.inc.php', array(
 
 
 <?php
-if( $disp == 'catdir' )
+if( $disp == 'front' || $disp == 'posts' )
 {
 	// ------------------------- "Menu Top" CONTAINER EMBEDDED HERE --------------------------
 	// Display container and contents:
@@ -188,6 +194,8 @@ if( $disp == 'catdir' )
 				'categories_text'   => '',
 				'catdir_text'       => '',
 				'comments_text'     => T_('Latest Replies'),
+				'front_text'        => '',
+				'posts_text'        => '',
 				'useritems_text'    => T_('User\'s topics'),
 				'usercomments_text' => T_('User\'s replies'),
 			) );
@@ -204,8 +212,8 @@ if( $disp == 'catdir' )
 			'skin_form_params'      => array(
 					'formstart'      => '<table class="bForums" width="100%" cellspacing="1" cellpadding="2" border="0">',
 					'formend'        => '</table>',
-					'fieldset_begin' => '<tr><th colspan="3" $fieldset_attribs$>$fieldset_title$',
-					'fieldset_end'   => '</th></tr>',
+					'fieldset_begin' => '<tr><th colspan="3" $fieldset_attribs$>$fieldset_title$</th></tr>',
+					'fieldset_end'   => '',
 					'fieldstart'     => '<tr $ID$>',
 					'fieldend'       => '</tr>',
 					'labelstart'     => '<td class="row1 left">',
@@ -331,8 +339,17 @@ if( !empty( $cookie_skin_width_value ) )
 {	// Fix this cookie value because in the cookie we cannot store the width in percent values (See js function switch_width() to understand why)
 	$cookie_skin_width_value_fixed = $cookie_skin_width_value != '960px' ? '100%' : $cookie_skin_width_value;
 }
+
+$switcher_layout_top = is_logged_in() ? 26 : 3;
+$switcher_layout_top += $Settings->get( 'site_skins_enabled' ) ? 153 : 3;
+
+$switcher_top = is_logged_in() ? 26 : 0;
+$switcher_top += $Settings->get( 'site_skins_enabled' ) ? 54 : 0;
+
+$switcher_class = !$Settings->get( 'site_skins_enabled' ) ? ' fixed' : '';
 ?>
-<div id="width_switcher"<?php echo is_logged_in() ? ' style="top:30px"' : ''; ?> class="roundbutton_group">
+<div id="width_switcher_layout"<?php echo $switcher_layout_top ? ' style="top:'.$switcher_layout_top.'px"' : ''; ?>>
+	<div id="width_switcher"<?php echo $switcher_top ? ' style="top:'.$switcher_top.'px"' : ''; ?> class="roundbutton_group<?php echo $switcher_class; ?>">
 <?php
 $ws = 0;
 $ws_count = count( $width_switchers );
@@ -350,9 +367,53 @@ foreach( $width_switchers as $ws_size => $ws_icon )
 	$ws++;
 }
 ?>
+	</div>
 </div>
 <?php
+if( $Settings->get( 'site_skins_enabled' ) )
+{ // Change position of width switcher only when Site Header is displayed
+?>
+<script type="text/javascript">
+var has_touch_event;
+window.addEventListener( 'touchstart', function set_has_touch_event ()
+{
+	has_touch_event = true;
+	// Remove event listener once fired, otherwise it'll kill scrolling
+	window.removeEventListener( 'touchstart', set_has_touch_event );
+}, false );
+
+var $switcher = jQuery( '#width_switcher ');
+var switcher_size = $switcher.size();
+var switcher_top = <?php echo $switcher_top ?>;
+jQuery( window ).scroll( function ()
+{
+	if( has_touch_event )
+	{ // Don't fix the objects on touch devices
+		return;
+	}
+
+	if( switcher_size )
+	{ // Width switcher exists
+		if( !$switcher.hasClass( 'fixed' ) && jQuery( window ).scrollTop() > $switcher.offset().top - switcher_top )
+		{ // Make switcher as fixed if we scroll down
+			$switcher.addClass( 'fixed' );
+		}
+		else if( $switcher.hasClass( 'fixed' ) && jQuery( window ).scrollTop() < jQuery( '#width_switcher_layout' ).offset().top - switcher_top )
+		{ // Remove 'fixed' class from switcher if we scroll to the top of page
+			$switcher.removeClass( 'fixed' );
+		}
+	}
+} );
+</script>
+<?php
+}
 // ------------------------- END OF WIDTH SWITCHER --------------------------
+
+
+// ---------------------------- SITE FOOTER INCLUDED HERE ----------------------------
+// If site footers are enabled, they will be included here:
+siteskin_include( '_site_body_footer.inc.php' );
+// ------------------------------- END OF SITE FOOTER --------------------------------
 
 
 // ------------------------- HTML FOOTER INCLUDED HERE --------------------------

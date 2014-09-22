@@ -7,13 +7,13 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
  *
  * @package evocore
  *
- * @version $Id: _xhtml_dtd.inc.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _xhtml_dtd.inc.php 6135 2014-03-08 07:54:05Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 

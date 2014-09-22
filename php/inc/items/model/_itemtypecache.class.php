@@ -29,7 +29,7 @@
  * @author fplanque: Francois PLANQUE.
  * @author mbruneau: Marc BRUNEAU / PROGIDISTRI
  *
- * @version $Id: _itemtypecache.class.php 6425 2014-04-08 09:24:40Z yura $
+ * @version $Id: _itemtypecache.class.php 6427 2014-04-08 16:29:18Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 

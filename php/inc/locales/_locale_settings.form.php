@@ -29,7 +29,7 @@
  * @author fplanque: Francois PLANQUE.
  * @author blueyed: Daniel HAHLER.
  *
- * @version $Id: _locale_settings.form.php 6664 2014-05-12 12:23:58Z yura $
+ * @version $Id: _locale_settings.form.php 6665 2014-05-12 12:37:03Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -44,8 +44,7 @@ global $current_User;
 global $Settings;
 
 global $rsc_subdir, $conf_subdir, $pagenow, $locales_path, $locales, $action, $edit_locale, $loc_transinfo, $template, $allow_po_extraction;
-global $localtimenow;
-
+global $localtimenow, $warning_message, $saved_params;
 
 if( $action == 'edit' )
 { // Edit a locale:
@@ -140,8 +139,7 @@ if( $action == 'edit' )
 		$l_warnfor = str_replace("'$newlocale'", "'thiswillneverevermatch'", $l_warnfor);
 	}
 
-	$Form->end_form( array( array( 'submit', 'submit', ($edit_locale == '_new_') ? T_('Create') : T_('Update'), 'SaveButton' ),
-													array( 'reset', '', T_('Reset'), 'ResetButton' ) ) );
+	$Form->end_form( array( array( 'submit', 'submit', ($edit_locale == '_new_') ? T_('Create') : T_('Save Changes!'), 'SaveButton' ) ) );
 
 	?>
 	<div class="panelinfo">
@@ -189,6 +187,29 @@ if( $action == 'edit' )
 		You can escape characters by preceding them with a \ to print them as-is.') ?></p>
 	</div>
 <?php
+}
+elseif( $action == 'update' && ( ! empty( $warning_message ) ) )
+{
+	$Form = new Form( NULL, 'loc_confirm' );
+
+	$Form->begin_form( 'fform' );
+
+	$Form->add_crumb( 'locales' );
+	$Form->hidden( 'ctrl', 'locales' );
+	$Form->hidden( 'newdefault_locale', $Settings->get('default_locale') );
+	foreach( $saved_params as $key => $value )
+	{
+		$Form->hidden( $key, $value );
+	}
+
+	$Form->begin_fieldset( T_('Confirm update') );
+	$Form->custom_content( $warning_message );
+	$Form->end_fieldset();
+
+	$Form->end_form( array(
+		array( '', 'actionArray[confirm_update]', T_('Confirm') ),
+		array( '', 'actionArray[abort_update]', T_('Abort') )
+	) );
 }
 else
 { // show main form
@@ -239,7 +260,7 @@ else
 	}
 	echo '</p>';
 
-	echo '<table class="grouped" cellspacing="0">';
+	echo '<table class="grouped table table-striped table-bordered table-hover table-condensed" cellspacing="0">';
 
 	?>
 	<tr>
@@ -314,17 +335,17 @@ else
 					<input type="checkbox" name="loc_'.$i.'_enabled" value="1"'. ( $locales[$lkey]['enabled'] ? 'checked="checked"' : '' ).' />
 				</td>
 				<td>
-					<input type="text" name="loc_'.$i.'_name" value="'.format_to_output( $locales[$lkey]['name'], 'formvalue' ).'" maxlength="40" size="17" />
+					<input type="text" name="loc_'.$i.'_name" value="'.format_to_output( $locales[$lkey]['name'], 'formvalue' ).'" maxlength="40" size="17" class="form-control input-sm" />
 				</td>
 				<td>
-					<input type="text" name="loc_'.$i.'_datefmt" value="'.format_to_output( $locales[$lkey]['datefmt'], 'formvalue' ).'" maxlength="20" size="6" title="'.format_to_output( sprintf( T_('Preview: %s'), $datefmt_preview ), 'formvalue' ).'" />
+					<input type="text" name="loc_'.$i.'_datefmt" value="'.format_to_output( $locales[$lkey]['datefmt'], 'formvalue' ).'" maxlength="20" size="6" title="'.format_to_output( sprintf( T_('Preview: %s'), $datefmt_preview ), 'formvalue' ).'" class="form-control input-sm" />
 				</td>
 				<td>
-					<input type="text" name="loc_'.$i.'_timefmt" value="'.format_to_output( $locales[$lkey]['timefmt'], 'formvalue' ).'" maxlength="20" size="6" title="'.format_to_output( sprintf( T_('Preview: %s'), $timefmt_preview ), 'formvalue' ).'" />
+					<input type="text" name="loc_'.$i.'_timefmt" value="'.format_to_output( $locales[$lkey]['timefmt'], 'formvalue' ).'" maxlength="20" size="6" title="'.format_to_output( sprintf( T_('Preview: %s'), $timefmt_preview ), 'formvalue' ).'" class="form-control input-sm" />
 				</td>
 				<td>';
 			$Form->switch_layout( 'none' );
-			$Form->dayOfWeek( 'loc_'.$i.'_startofweek', $locales[$lkey]['startofweek'], '', '' );
+			$Form->dayOfWeek( 'loc_'.$i.'_startofweek', $locales[$lkey]['startofweek'], '', '', 'input-sm' );
 			$Form->switch_layout( NULL ); // Restore layout
 			echo '</td>';
 
@@ -425,8 +446,7 @@ else
 
 	if( $current_User->check_perm( 'options', 'edit' ) )
 	{
-		$Form->end_form( array( array( 'submit', '', T_('Save !'), 'SaveButton' ),
-														array( 'reset', '', T_('Reset'), 'ResetButton' ) ) ) ;
+		$Form->end_form( array( array( 'submit', 'submit', T_('Save Changes!'), 'SaveButton' ) ) ) ;
 	}
 }
 

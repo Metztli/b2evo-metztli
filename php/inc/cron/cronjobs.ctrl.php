@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -24,7 +24,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: cronjobs.ctrl.php 4858 2013-09-24 23:58:17Z fplanque $
+ * @version $Id: cronjobs.ctrl.php 6894 2014-06-13 09:56:09Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -82,6 +82,7 @@ if( in_array( $action, array( 'new', 'create', 'edit', 'update', 'copy' ) ) )
 			'return_path' => T_('Process the return path inbox'),
 			'light_db_maintenance' => T_('Light DB maintenance (ANALYZE)'),
 			'heavy_db_maintenance' => T_('Heavy DB maintenance (CHECK & OPTIMIZE)'),
+			'prune_recycled_comments' => T_('Prune recycled comments'),
 			// post notifications, not user schedulable
 			// comment notifications, not user schedulable
 		);
@@ -124,6 +125,9 @@ if( in_array( $action, array( 'new', 'create', 'edit', 'update', 'copy' ) ) )
 				'params' => NULL ),
 			'heavy_db_maintenance' => array(
 				'ctrl' => 'cron/jobs/_heavy_db_maintenance.job.php',
+				'params' => NULL ),
+			'prune_recycled_comments' => array(
+				'ctrl' => 'cron/jobs/_prune_recycled_comments.job.php',
 				'params' => NULL ),
 			// post notifications, not user schedulable
 		);
@@ -337,8 +341,8 @@ $AdminUI->breadcrumbpath_add( T_('System'), '?ctrl=system' );
 $AdminUI->breadcrumbpath_add( T_('Scheduler'), '?ctrl=crontab' );
 
 if( in_array( $action, array( 'new', 'create', 'edit', 'update', 'copy' ) ) )
-{ // load date picker style for cronjob.form.php
-	require_css( 'ui.datepicker.css' );
+{ // Initialize date picker for cronjob.form.php
+	init_datepicker_js();
 }
 
 // Display <html><head>...</head> section! (Note: should be done early if actions do not redirect)

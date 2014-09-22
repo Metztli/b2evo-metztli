@@ -10,7 +10,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -40,7 +40,7 @@
  * @author jeffbearer: Jeff BEARER - {@link http://www.jeffbearer.com/}.
  * @author mfollett:  Matt FOLLETT - {@link http://www.mfollett.com/}.
  *
- * @version $Id: _session.class.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _session.class.php 6135 2014-03-08 07:54:05Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -273,7 +273,7 @@ class Session
 			$this->ID = $DB->insert_id;
 
 			// Set a cookie valid for ~ 10 years:
-			setcookie( $cookie_session, $this->ID.'_'.$this->key, time()+315360000, $cookie_path, $cookie_domain );
+			evo_setcookie( $cookie_session, $this->ID.'_'.$this->key, time()+315360000, $cookie_path, $cookie_domain, false, true );
 
 			$Debuglog->add( 'Session: ID (generated): '.$this->ID, 'request' );
 			$Debuglog->add( 'Session: Cookie sent.', 'request' );
@@ -354,7 +354,7 @@ class Session
 		$this->user_ID = NULL; // Unset user_ID after invalidating/saving the session above, to keep the user info attached to the old session.
 
 		// clean up the session cookie:
-		setcookie( $cookie_session, '', 200000000, $cookie_path, $cookie_domain );
+		evo_setcookie( $cookie_session, '', 200000000, $cookie_path, $cookie_domain, false, true );
 	}
 
 
@@ -678,6 +678,17 @@ class Session
 		global $tablet_user_devices;
 
 		return array_key_exists( $this->sess_device, $tablet_user_devices );
+	}
+
+
+	/**
+	 * Was this session created from a desktop device
+	 */
+	function is_desktop_session()
+	{
+		global $pc_user_devices;
+
+		return array_key_exists( $this->sess_device, $pc_user_devices );
 	}
 }
 

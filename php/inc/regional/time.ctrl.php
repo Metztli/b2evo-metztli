@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -93,7 +93,6 @@ switch( $action )
 
 		if( ! $Messages->has_errors() )
 		{
-			locale_updateDB();
 			$Settings->dbupdate();
 			$Messages->add( T_('Time settings updated.'), 'success' );
 			// Redirect so that a reload doesn't write to the DB twice:

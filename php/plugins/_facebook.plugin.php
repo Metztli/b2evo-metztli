@@ -4,14 +4,14 @@
  * 
  * This file is part of the b2evolution project - {@link http://b2evolution.net/}
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  * 
  * @package plugins
  * 
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author asimo: Evo Factory - Attila Simo
  * 
- * @version $Id: _facebook.plugin.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _facebook.plugin.php 6135 2014-03-08 07:54:05Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 

@@ -8,7 +8,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
@@ -33,7 +33,7 @@
  *
  * @package evocore
  *
- * @version $Id: _init_login.inc.php 4698 2013-09-11 10:32:51Z attila $
+ * @version $Id: _init_login.inc.php 7206 2014-08-04 07:57:37Z yura $
  */
 if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page directly.' );
 
@@ -109,8 +109,8 @@ $UserCache = & get_UserCache();
 if( ! empty($login_action) || (! empty($login) && ! empty($pass)) )
 { // User is trying to login right now
 
-	// Stop a request from the blocked IP addresses
-	antispam_block_ip();
+	// Stop a request from the blocked IP addresses or Domains
+	antispam_block_request();
 
 	global $action;
 	// Set $action so it can be recorded in the hitlog:
@@ -257,6 +257,18 @@ if( ! empty($login_action) || (! empty($login) && ! empty($pass)) )
 		{ // save the user for later hits
 			$Session->set_User( $current_User );
 
+			$current_user_locale = $current_User->get( 'locale' );
+			if( ( ! isset( $locales[$current_user_locale] ) ) || ( ! $locales[$current_user_locale]['enabled'] ) )
+			{ // Current user locale doesn't exists or it is not enabled, update to the default locale if it is valid
+				$def_locale = $Settings->get( 'default_locale' );
+				if( isset( $locales[$def_locale] ) && $locales[$def_locale]['enabled'] )
+				{ // Update user locale to the default, and add warning message about the update
+					$current_User->set( 'locale', $def_locale );
+					$current_User->dbupdate();
+					$Messages->add( T_('Your locale was invalid, now it was automitcally updated to the default locale.'), 'warning' );
+				}
+			}
+
 			if( $Settings->get('system_lock') && $current_User->check_perm( 'users', 'edit' ) )
 			{ // System is locked for maintenance but current user has permission to log in, Display a message about this mode
 				$system_lock_url = ' href="'.$admin_url.'?ctrl=gensettings"';
@@ -318,8 +330,6 @@ else
 		 */
 		// echo ' NOT logged in...';
 		$Debuglog->add( 'Login: NOT logged in... (did not try)', '_init_login' );
-
-		$login_error = T_('You must log in!');
 	}
 }
 unset($pass);
@@ -357,7 +367,8 @@ if( !empty($login_action) && empty( $login_error ) && ( $action != 'logout' ) )
 			else
 			{
 				$redirect_to = param( 'redirect_to', 'url', $baseurl );
-				if( preg_match( '#/login.php([&?].*)?$#', $redirect_to ) ||
+				if( empty( $redirect_to ) ||
+					preg_match( '#/login.php([&?].*)?$#', $redirect_to ) ||
 					preg_match( '#/register.php([&?].*)?$#', $redirect_to ) ||
 					preg_match( '#disp=(login|register|lostpassword)#', $redirect_to ) )
 				{ // avoid redirect back to login/register screen. This shouldn't occur.
@@ -376,8 +387,8 @@ if( !empty($login_action) && empty( $login_error ) && ( $action != 'logout' ) )
 	}
 }
 
-if( ! empty( $login_error ) )
-{	// ----- LOGIN FAILED -----
+if( ! empty( $login_error ) || ( $login_required && ! is_logged_in() ) )
+{ // ----- LOGIN FAILED ----- OR Login is required and user is not logged in yet
 	$Debuglog->add( 'Login error: '.$login_error, '_init_login' );
 	// inskin param is set when the login request come from the front office
 	// we need this to decide if we should use display in-skin login from or not

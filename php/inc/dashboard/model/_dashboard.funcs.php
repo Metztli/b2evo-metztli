@@ -5,7 +5,7 @@
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal Open Source relicensing agreement:
  * }}
@@ -15,7 +15,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _dashboard.funcs.php 4891 2013-10-02 06:36:17Z attila $
+ * @version $Id: _dashboard.funcs.php 7283 2014-09-05 12:58:59Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -214,7 +214,7 @@ function get_comments_awaiting_moderation_number( $blog_ID )
 
 	$sql = 'SELECT COUNT(DISTINCT(comment_ID))
 				FROM T_comments
-					INNER JOIN T_items__item ON comment_post_ID = post_ID ';
+					INNER JOIN T_items__item ON comment_item_ID = post_ID ';
 
 	$sql .= 'INNER JOIN T_postcats ON post_ID = postcat_post_ID
 				INNER JOIN T_categories othercats ON postcat_cat_ID = othercats.cat_ID ';
@@ -306,6 +306,11 @@ function show_comments_awaiting_moderation( $blog_ID, $CommentList = NULL, $limi
 		$Comment->author_url_with_actions( '', true );
 		$Comment->author_email( '', ' &bull; Email: <span class="bEmail">', '</span> &bull; ' );
 		$Comment->author_ip( 'IP: <span class="bIP">', '</span> ', true );
+		if( ! empty( $Comment->author_IP ) )
+		{ // Display icon of yellow lightning with link to antispam page
+			$antispam_icon = get_icon( 'lightning', 'imgtag', array( 'title' => T_( 'Go to edit this IP address in antispam control panel' ) ) );
+			echo implode( ', ', get_linked_ip_list( array( $Comment->author_IP ), NULL, $antispam_icon ) );
+		}
 		$Comment->ip_country();
 		$Comment->spam_karma( ' &bull; '.T_('Spam Karma').': %s%', ' &bull; '.T_('No Spam Karma') );
 		echo '</div>';
@@ -325,17 +330,17 @@ function show_comments_awaiting_moderation( $blog_ID, $CommentList = NULL, $limi
 
 		echo '<div class="floatleft">';
 
-		$Comment->edit_link( ' ', ' ', get_icon( 'edit' ), '#', 'roundbutton', '&amp;', true, $redirect_to );
+		$Comment->edit_link( ' ', ' ', get_icon( 'edit' ), '#', button_class(), '&amp;', true, $redirect_to );
 
-		echo '<span class="roundbutton_group">';
+		echo '<span class="'.button_class( 'group' ).'">';
 		// Display publish NOW button if current user has the rights:
-		$Comment->publish_link( '', '', '#', '#', 'roundbutton_text', '&amp;', true, true );
+		$Comment->publish_link( '', '', '#', '#', button_class( 'text' ), '&amp;', true, true );
 
 		// Display deprecate button if current user has the rights:
-		$Comment->deprecate_link( '', '', '#', '#', 'roundbutton_text', '&amp;', true, true );
+		$Comment->deprecate_link( '', '', '#', '#', button_class( 'text' ), '&amp;', true, true );
 
 		// Display delete button if current user has the rights:
-		$Comment->delete_link( '', '', '#', '#', 'roundbutton_text', false, '&amp;', true, true );
+		$Comment->delete_link( '', '', '#', '#', button_class( 'text' ), false, '&amp;', true, true );
 		echo '</span>';
 
 		echo '</div>';
@@ -355,7 +360,7 @@ function show_comments_awaiting_moderation( $blog_ID, $CommentList = NULL, $limi
 
 	if( !$script )
 	{
-		echo '<input type="hidden" id="new_badge" value="'.$CommentList->total_rows.'"/>';
+		echo '<input type="hidden" id="new_badge" value="'.$CommentList->get_total_rows().'"/>';
 	}
 }
 
@@ -449,7 +454,8 @@ function display_posts_awaiting_moderation( $status, & $block_item_Widget )
 		$Item->edit_link( array( // Link to backoffice for editing
 				'before'    => ' ',
 				'after'     => ' ',
-				'class'     => 'ActionButton btn'
+				'class'     => 'ActionButton btn btn-default',
+				'text'      => get_icon( 'edit_button' ).' '.T_('Edit')
 			) );
 		$Item->publish_link( '', '', '#', '#', 'PublishButton' );
 		echo get_icon( 'pixel' );
@@ -478,4 +484,34 @@ function display_posts_awaiting_moderation( $status, & $block_item_Widget )
 	return true;
 }
 
+
+/**
+ * Limit number by min and max values
+ *
+ * @param integer Number
+ * @param integer|NULL Minimum value or NULL to don't limit
+ * @param integer|NULL Maximum value or NULL to don't limit
+ */
+function limit_number_by_interval( $number, $min = NULL, $max = NULL )
+{
+	$number = intval( $number );
+
+	if( is_null( $min ) && is_null( $max ) )
+	{ // Nothing to limit
+		return $number;
+	}
+
+	if( ! is_null( $min ) && $number < $min )
+	{ // Limit by min
+		return $min;
+	}
+
+	if( ! is_null( $max ) && $number > $max )
+	{ // Limit by max
+		return $max;
+	}
+
+	// Original value
+	return $number;
+}
 ?>

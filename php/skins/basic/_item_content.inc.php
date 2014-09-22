@@ -31,11 +31,6 @@ $Item->images( array(
 
 <div>
 	<?php
-		// Increment view count of first post on page:
-		$Item->count_view( array(
-				'allow_multiple_counts_per_page' => false,
-			) );
-
 		// Display CONTENT:
 		$Item->content_teaser( array(
 				'before'      => '',

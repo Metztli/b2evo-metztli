@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -29,7 +29,7 @@
  * @author fplanque: Francois PLANQUE
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: _uiwidget.class.php 4944 2013-10-10 07:49:41Z attila $
+ * @version $Id: _uiwidget.class.php 6972 2014-06-24 19:12:29Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -363,14 +363,6 @@ class Table extends Widget
 		{
 			$this->fadeout_array = $fadeout;
 		}
-
-		if( !empty( $this->fadeout_array ) )
-		{ // Initialize fadeout javascript:
-			global $rsc_url;
-			echo '<script type="text/javascript" src="'.$rsc_url.'js/fadeout.js"></script>';
-			echo '<script type="text/javascript">addEvent( window, "load", Fat.fade_all, false);</script>';
-		}
-
 	}
 
 

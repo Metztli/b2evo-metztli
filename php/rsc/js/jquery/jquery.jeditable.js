@@ -457,6 +457,7 @@
                     /* https://bugzilla.mozilla.org/show_bug.cgi?id=236791 */
                     //input[0].setAttribute('autocomplete','off');
                     input.attr('autocomplete','off');
+                    if (settings.class_name != '') { input.addClass( settings.class_name ); }
                     $(this).append(input);
                     return(input);
                 }
@@ -474,6 +475,7 @@
                     } else if (settings.width != "none") {
                         textarea.width(settings.width);
                     }
+                    if (settings.class_name != '') { textarea.addClass( settings.class_name ); }
                     $(this).append(textarea);
                     return(textarea);
                 }
@@ -481,6 +483,7 @@
             select: {
                element : function(settings, original) {
                     var select = $('<select />');
+                    if (settings.class_name != '') { select.addClass( settings.class_name ); }
                     $(this).append(select);
                     return(select);
                 },
@@ -538,6 +541,7 @@
         loadtype   : 'GET',
         loadtext   : 'Loading...',
         placeholder: 'Click to edit',
+        class_name : '',
         loaddata   : {},
         submitdata : {},
         ajaxoptions: {}

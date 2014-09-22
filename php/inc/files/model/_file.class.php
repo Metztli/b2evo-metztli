@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -29,7 +29,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _file.class.php 5679 2014-01-16 15:47:09Z yura $
+ * @version $Id: _file.class.php 7215 2014-08-06 05:50:24Z attila $
  *
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -76,10 +76,16 @@ class File extends DataObject
 	var $desc;
 
 	/**
-	 * Meta data: Hash value of file path
+	 * Meta data: Hash value of file content
 	 * @var string
 	 */
 	var $hash;
+
+	/**
+	 * Meta data: Hash value of file path variables: $root_type, $root_ID, $rdfp_rel_path
+	 * @var string
+	 */
+	var $path_hash;
 
 	/**
 	 * FileRoot of this file
@@ -246,9 +252,7 @@ class File extends DataObject
 				array( 'table'=>'T_users', 'fk'=>'user_avatar_file_ID', 'msg'=>T_('%d linked users (profile pictures)') ),
 			);
 
-		$this->delete_cascades = array(
-				array( 'table'=>'T_files__vote', 'fk'=>'fvot_file_ID', 'msg'=>T_('%d votes') ),
-			);
+		$this->delete_cascades = array();
 
 		// Memorize filepath:
 		$FileRootCache = & get_FileRootCache();
@@ -293,9 +297,7 @@ class File extends DataObject
 			{	// No DB data has been provided:
 				$row = $DB->get_row( "
 					SELECT * FROM T_files
-					 WHERE file_root_type = '".$this->_FileRoot->type."'
-					   AND file_root_ID = ".$this->_FileRoot->in_type_ID."
-					   AND file_path = ".$DB->quote($this->_rdfp_rel_path),
+					 WHERE file_path_hash = ".$DB->quote( md5( $this->_FileRoot->type.$this->_FileRoot->in_type_ID.$this->_rdfp_rel_path, true ) ),
 					OBJECT, 0, 'Load file meta data' );
 			}
 
@@ -312,6 +314,7 @@ class File extends DataObject
 				{
 					$this->hash  = $row->file_hash;
 				}
+				$this->path_hash = $row->file_path_hash;
 
 				// Store this in the FileCache:
 				$FileCache = & get_FileCache();
@@ -1029,6 +1032,8 @@ class File extends DataObject
 	 * @param string image align
 	 * @param string image rel
 	 * @param string image caption/description
+	 * @param integer Link ID
+	 * @param integer Ratio size, can be 1, 2 and etc.
 	 */
 	function get_tag( $before_image = '<div class="image_block">',
 	                  $before_image_legend = '<div class="image_legend">', // can be NULL
@@ -1041,10 +1046,12 @@ class File extends DataObject
 	                  $image_class = '',
 	                  $image_align = '',
 	                  $image_alt = '',
-	                  $image_desc = '#' )
+	                  $image_desc = '#',
+	                  $image_link_id = '',
+	                  $image_size_x = 1 )
 	{
 		if( $this->is_dir() )
-		{	// We can't reference a directory
+		{ // We can't reference a directory
 			return '';
 		}
 
@@ -1054,27 +1061,45 @@ class File extends DataObject
 		{ // Make an IMG link:
 			$r = $before_image;
 
-			if( $image_class != '' )
-			{
-				$image_class = ' class="'.$image_class.'"';
+			$x_sizes = array( 1 ); // Standard ratio size = 1x
+			$image_size_x = intval( $image_size_x );
+			if( $image_size_x > 1 )
+			{ // Additional ratio size
+				$x_sizes[] = $image_size_x;
 			}
 
-			if( $image_align != '' )
+			$img = '';
+			foreach( $x_sizes as $x_size )
 			{
-				$image_align =' align="'.$image_align.'"';
+				$img_attribs = $this->get_img_attribs( $size_name, NULL, NULL, $x_size );
+
+				$image_class_attr = $image_class;
+				if( $x_size > 1 )
+				{ // Add class to detect what image is resized for speacial ratio
+					$image_class_attr = trim( $image_class_attr.' image-'.$x_size.'x' );
+				}
+
+				if( $image_class_attr != '' )
+				{ // Image class
+					$img_attribs['class'] = $image_class_attr;
+				}
+
+				if( $image_align != '' )
+				{ // Image align
+					$img_attribs['align'] = $image_align;
+				}
+
+				if( $img_attribs['alt'] == '' )
+				{ // Image alt
+					$img_attribs['alt'] = $image_alt;
+				}
+
+				// Image tag
+				$img .= '<img'.get_field_attribs_as_string( $img_attribs ).' />';
 			}
-
-			$img_attribs = $this->get_img_attribs($size_name);
-
-			if( $img_attribs['alt'] == '' )
-			{
-				$img_attribs['alt'] = $image_alt;
-			}
-
-			$img = '<img'.get_field_attribs_as_string($img_attribs).$image_class.$image_align.' />';
 
 			if( $image_link_to == 'original' )
-			{	// special case
+			{ // special case
 				$image_link_to = $this->get_url();
 			}
 			if( !empty( $image_link_to ) )
@@ -1088,13 +1113,16 @@ class File extends DataObject
 
 				if( !empty($image_link_title) )
 				{
-					$a .= ' title="'.htmlspecialchars($image_link_title).'"';
+					$a .= ' title="'.evo_htmlspecialchars($image_link_title).'"';
 				}
 				if( !empty($image_link_rel) )
 				{
-					$a .= ' rel="'.htmlspecialchars($image_link_rel).'"';
+					$a .= ' rel="'.evo_htmlspecialchars($image_link_rel).'"';
 				}
-				$a .= ' id="f'.$this->ID.'"';
+				if( !empty( $image_link_id ) )
+				{ // Set attribute "id" for link
+					$a .= ' id="'.$image_link_id.'"';
+				}
 				$img = $a.'>'.$img.'</a>';
 			}
 			$r .= $img;
@@ -1112,7 +1140,7 @@ class File extends DataObject
 			$r .= $after_image;
 		}
 		else
-		{	// Make an A HREF link:
+		{ // Make an A HREF link:
 			$r = '<a href="'.$this->get_url().'"'
 						// title
 						.( $this->get('desc') ? ' title="'.$this->dget('desc', 'htmlattr').'"' : '' ).'>'
@@ -1584,11 +1612,14 @@ class File extends DataObject
 	 * @access public
 	 * @return boolean true on success, false on failure
 	 */
-	function unlink()
+	function unlink( $use_transactions = true )
 	{
 		global $DB;
 
-		$DB->begin();
+		if( $use_transactions )
+		{
+			$DB->begin();
+		}
 
 		// Check if there is meta data to be removed:
 		if( $this->load_meta() )
@@ -1609,16 +1640,22 @@ class File extends DataObject
 			$unlinked =	@unlink( $this->_adfp_full_path );
 		}
 
-		if( !$unlinked )
+		if( ! $unlinked )
 		{
-			$DB->rollback();
+			if( $use_transactions )
+			{
+				$DB->rollback();
+			}
 
 			return false;
 		}
 
 		$this->_exists = false;
 
-		$DB->commit();
+		if( $use_transactions )
+		{
+			$DB->commit();
+		}
 
 		return true;
 	}
@@ -1683,9 +1720,10 @@ class File extends DataObject
 		$this->set_param( 'root_type', 'string', $this->_FileRoot->type );
 		$this->set_param( 'root_ID', 'number', $this->_FileRoot->in_type_ID );
 		$this->set_param( 'path', 'string', $this->_rdfp_rel_path );
+		$this->set_param( 'path_hash', 'string', md5( $this->_FileRoot->type.$this->_FileRoot->in_type_ID.$this->_rdfp_rel_path, true ) );
 		if( ! $this->is_dir() )
 		{ // create hash value only for files but not for folders
-			$this->set_param( 'hash', 'string', md5_file( $this->get_full_path() ) );
+			$this->set_param( 'hash', 'string', md5_file( $this->get_full_path(), true ) );
 		}
 
 		// Let parent do the insert:
@@ -1714,6 +1752,11 @@ class File extends DataObject
 
 		$DB->begin();
 
+		$file_path_hash = md5( $this->_FileRoot->type.$this->_FileRoot->in_type_ID.$this->_rdfp_rel_path, true );
+		if( $file_path_hash != $this->path_hash )
+		{ // The file path was changed
+			$this->set_param( 'path_hash', 'string', $file_path_hash );
+		}
 		// Let parent do the update:
 		if( ( $r = parent::dbupdate() ) !== false )
 		{
@@ -1725,7 +1768,7 @@ class File extends DataObject
 				$LinkOwner = & $Link->get_LinkOwner();
 				if( $LinkOwner != NULL )
 				{
-					$LinkOwner->item_update_last_touched_date();
+					$LinkOwner->update_last_touched_date();
 				}
 			}
 
@@ -1797,10 +1840,13 @@ class File extends DataObject
 	 * @param string|NULL Text when user has no access for this file
 	 * @param string Format for text of the link: $text$
 	 * @param string Class name of the link
+	 * @param string URL
 	 * @return string Link tag
 	 */
-	function get_view_link( $text = NULL, $title = NULL, $no_access_text = NULL, $format = '$text$', $class = '' )
+	function get_view_link( $text = NULL, $title = NULL, $no_access_text = NULL, $format = '$text$', $class = '', $url = NULL )
 	{
+		global $Blog;
+
 		if( is_null( $text ) )
 		{ // Use file root+relpath+name by default
 			$text = $this->get_root_and_rel_path();
@@ -1817,8 +1863,15 @@ class File extends DataObject
 			$no_access_text = $text;
 		}
 
-		// Get the URL for viewing the file/dir:
-		$url = $this->get_view_url( false );
+		if( is_null( $url ) )
+		{ // Get the URL for viewing the file/dir:
+			$url = $this->get_view_url( false );
+			$ignore_popup = false;
+		}
+		else
+		{ // Ignore a popup window when URL is defined from param
+			$ignore_popup = true;
+		}
 
 		if( empty( $url ) )
 		{ // Display this text when current user has no access
@@ -1831,10 +1884,13 @@ class File extends DataObject
 		// Init an attribute for class
 		$class_attr = empty( $class ) ? '' : ' class="'.$class.'"';
 
+		// rel="nofollow"
+		$rel_attr = ( ! empty( $Blog ) && $Blog->get_setting( 'download_nofollowto' ) ) ? ' rel="nofollow"' : '';
+
 		$Filetype = & $this->get_Filetype();
-		if( $Filetype && in_array( $Filetype->viewtype, array( 'external', 'download' ) ) )
+		if( $ignore_popup || ( $Filetype && in_array( $Filetype->viewtype, array( 'external', 'download' ) ) ) )
 		{ // Link to open in the curent window
-			return '<a href="'.$url.'" title="'.$title.'"'.$class_attr.'>'.$text.'</a>';
+			return '<a href="'.$url.'" title="'.$title.'"'.$class_attr.$rel_attr.'>'.$text.'</a>';
 		}
 		else
 		{ // Link to open in a new window
@@ -1846,7 +1902,7 @@ class File extends DataObject
 				."this.target = ''; return pop_up_window( '$url', '$target', "
 				.(( $width = $this->get_image_size( 'width' ) ) ? ( $width + 100 ) : 750 ).', '
 				.(( $height = $this->get_image_size( 'height' ) ) ? ( $height + 150 ) : 550 ).' )"'
-				.$class_attr.'>'
+				.$class_attr.$rel_attr.'>'
 				.$text.'</a>';
 		}
 	}
@@ -1943,9 +1999,12 @@ class File extends DataObject
 	/**
 	 * Get the thumbnail URL for this file
 	 *
-	 * @param string
+	 * @param string Thumbnail size name
+	 * @param string Glue between url params
+	 * @param integer Ratio size, can be 1, 2 and etc.
+	 * @return string Thumbnail URL
 	 */
-	function get_thumb_url( $size_name = 'fit-80x80', $glue = '&amp;' )
+	function get_thumb_url( $size_name = 'fit-80x80', $glue = '&amp;', $size_x = 1 )
 	{
 		global $public_access_to_media, $htsrv_url;
 
@@ -1956,14 +2015,17 @@ class File extends DataObject
 
 		if( $public_access_to_media )
 		{
-			$af_thumb_path = $this->get_af_thumb_path( $size_name, NULL, false );
+			$af_thumb_path = $this->get_af_thumb_path( $size_name, NULL, false, $size_x );
 			if( $af_thumb_path[0] != '!' )
 			{ // If the thumbnail was already cached, we could publicly access it:
 				if( @is_file( $af_thumb_path ) )
 				{	// The thumb IS already in cache! :)
 					// Let's point directly into the cache:
 					global $Settings;
-					$url = $this->_FileRoot->ads_url.dirname($this->_rdfp_rel_path).'/'.$Settings->get( 'evocache_foldername' ).'/'.$this->_name.'/'.$size_name.'.'.$this->get_ext().'?mtime='.$this->get_lastmod_ts();
+					// Get the relative dirpath of this file to use in the url
+					$rdfp_dirname = dirname( $this->_rdfp_rel_path );
+					$rdfp_dirpath = ( $rdfp_dirname == '.' ) ? '' : $rdfp_dirname.'/';
+					$url = $this->_FileRoot->ads_url.$rdfp_dirpath.$Settings->get( 'evocache_foldername' ).'/'.$this->_name.'/'.$this->get_thumb_name( $size_name, $size_x ).'?mtime='.$this->get_lastmod_ts();
 					$url = str_replace( '\/', '', $url ); // Fix incorrect path
 					return $url;
 				}
@@ -1971,7 +2033,7 @@ class File extends DataObject
 		}
 
 		// No thumbnail available (at least publicly), we need to go through getfile.php!
-		$url = $this->get_getfile_url($glue).$glue.'size='.$size_name;
+		$url = $this->get_getfile_url( $glue ).$glue.'size='.$size_name.( $size_x != 1 ? $glue.'size_x='.$size_x : '' );
 
 		return $url;
 	}
@@ -2032,11 +2094,12 @@ class File extends DataObject
 	 * - height
 	 *
 	 * @param string what size do we want src to link to, can be "original" or a thumnbail size
-	 * @param string
-	 * @param string
+	 * @param string Title img attribute
+	 * @param string Alt img attribute
+	 * @param integer Ratio size, can be 1, 2 and etc.
 	 * @return array List of HTML attributes for the image.
 	 */
-	function get_img_attribs( $size_name = 'fit-80x80', $title = NULL, $alt = NULL )
+	function get_img_attribs( $size_name = 'fit-80x80', $title = NULL, $alt = NULL, $size_x = 1 )
 	{
 		$img_attribs = array(
 				'title' => isset($title) ? $title : $this->get('title'),
@@ -2055,17 +2118,17 @@ class File extends DataObject
 		if( $size_name == 'original' )
 		{	// We want src to link to the original file
 			$img_attribs['src'] = $this->get_url();
-			if( ( $size_arr = $this->get_image_size('widthheight_assoc') ) )
+			if( ( $size_arr = $this->get_image_size( 'widthheight_assoc' ) ) )
 			{
 				$img_attribs += $size_arr;
 			}
 		}
 		else
 		{ // We want src to link to a thumbnail
-			$img_attribs['src'] = $this->get_thumb_url( $size_name, '&' );
-			$thumb_path = $this->get_af_thumb_path($size_name, NULL, true);
-			if( substr($thumb_path, 0, 1) != '!'
-				&& ( $size_arr = imgsize($thumb_path, 'widthheight_assoc') ) )
+			$img_attribs['src'] = $this->get_thumb_url( $size_name, '&', $size_x );
+			$thumb_path = $this->get_af_thumb_path( $size_name, NULL, true );
+			if( substr( $thumb_path, 0, 1 ) != '!'
+				&& ( $size_arr = imgsize( $thumb_path, 'widthheight_assoc' ) ) )
 			{ // no error, add width and height attribs
 				$img_attribs += $size_arr;
 			}
@@ -2079,10 +2142,13 @@ class File extends DataObject
 	 * Displays a preview thumbnail which is clickable and opens a view popup
 	 *
 	 * @param string what do do with files that are not images? 'fulltype'
-	 * @param boolean TRUE - to init colorbox plugin for images
+	 * @param array colorbox plugin params:
+	 *   - 'init': set true to init colorbox plugin for images and show preview thumb in colorbox
+	 *   - 'lightbox_rel': set a specific group id string if the displayed image belongs to a group of images
+	 *   - 'link_id': this must be set only if the displayed file belongs to a Link object
 	 * @return string HTML to display
 	 */
-	function get_preview_thumb( $format_for_non_images = '', $preview_image = false )
+	function get_preview_thumb( $format_for_non_images = '', $cbox_params = array() )
 	{
 		if( $this->is_image() )
 		{	// Ok, it's an image:
@@ -2090,17 +2156,22 @@ class File extends DataObject
 			$img_attribs = $this->get_img_attribs( 'fit-80x80', $type, $type );
 			$img = '<img'.get_field_attribs_as_string( $img_attribs ).' />';
 
-			if( $preview_image )
-			{	// Create link to preview image by colorbox plugin
-				$link = '<a href="'.$this->get_url().'" rel="lightbox" id="f'.$this->ID.'">'.$img.'</a>';
+			$cbox_params = array_merge( array(
+					'init' => false,
+					'lightbox_rel' => 'lightbox',
+					'link_id' => 'f'.$this->ID
+				), $cbox_params );
+			if( $cbox_params['init'] )
+			{ // Create link to preview image by colorbox plugin
+				$link = '<a href="'.$this->get_url().'" rel="'.$cbox_params['lightbox_rel'].'" id="'.$cbox_params['link_id'].'">'.$img.'</a>';
 			}
 			else
-			{	// Get link to view the file (fallback to no view link - just the img):
+			{ // Get link to view the file (fallback to no view link - just the img):
 				$link = $this->get_view_link( $img );
 			}
 
 			if( ! $link )
-			{	// no view link available:
+			{ // no view link available:
 				$link = $img;
 			}
 
@@ -2183,9 +2254,10 @@ class File extends DataObject
 	 * @param string size name (e.g. "fit-80x80")
 	 * @param string mimetype of thumbnail (NULL if we're ready to take whatever is available)
 	 * @param boolean shall we create the dir if it doesn't exist?
+	 * @param integer Ratio size, can be 1, 2 and etc.
 	 * @return string absolute filename or !error
 	 */
-	function get_af_thumb_path( $size_name, $thumb_mimetype = NULL, $create_evocache_if_needed = false )
+	function get_af_thumb_path( $size_name, $thumb_mimetype = NULL, $create_evocache_if_needed = false, $size_x = 1 )
 	{
 		$Filetype = & $this->get_Filetype();
 		if( isset($Filetype) )
@@ -2209,7 +2281,7 @@ class File extends DataObject
 		$ads_evocache = $this->get_ads_evocache( $create_evocache_if_needed );
 		if( $ads_evocache[0] != '!' )
 		{	// Not an error
-			return $ads_evocache.$size_name.'.'.$this->get_ext();
+			return $ads_evocache.$this->get_thumb_name( $size_name, $size_x );
 		}
 
 		// error
@@ -2224,14 +2296,16 @@ class File extends DataObject
 	 * @param string size name
 	 * @param string mimetype of thumbnail
 	 * @param integer JPEG image quality
+	 * @param integer Ratio size, can be 1, 2 and etc.
 	 */
-	function save_thumb_to_cache( $thumb_imh, $size_name, $thumb_mimetype, $thumb_quality = 90 )
+	function save_thumb_to_cache( $thumb_imh, $size_name, $thumb_mimetype, $thumb_quality = 90, $size_x = 1 )
 	{
 		global $Plugins;
 
 		$Plugins->trigger_event( 'BeforeThumbCreate', array(
 			  'imh' => & $thumb_imh,
 			  'size' => & $size_name,
+			  'size_x' => & $size_x,
 			  'mimetype' => & $thumb_mimetype,
 			  'quality' => & $thumb_quality,
 			  'File' => & $this,
@@ -2239,7 +2313,7 @@ class File extends DataObject
 			  'root_type_ID' => $this->_FileRoot->in_type_ID,
 		  ) );
 
-		$af_thumb_path = $this->get_af_thumb_path( $size_name, $thumb_mimetype, true );
+		$af_thumb_path = $this->get_af_thumb_path( $size_name, $thumb_mimetype, true, $size_x );
 		if( $af_thumb_path[0] != '!' )
 		{	// We obtained a path for the thumbnail to be saved:
 			return save_image( $thumb_imh, $af_thumb_path, $thumb_mimetype, $thumb_quality );
@@ -2255,13 +2329,14 @@ class File extends DataObject
 	 * @param string size name
 	 * @param string mimetype of thumbnail
 	 * @param int Modified time of the file (should have been provided as GET param)
+	 * @param integer Ratio size, can be 1, 2 and etc.
 	 * @return mixed NULL on success, otherwise string ("!Error code")
 	 */
-	function output_cached_thumb( $size_name, $thumb_mimetype, $mtime = NULL )
+	function output_cached_thumb( $size_name, $thumb_mimetype, $mtime = NULL, $size_x = 1 )
 	{
 		global $servertimenow;
 
-		$af_thumb_path = $this->get_af_thumb_path( $size_name, $thumb_mimetype, false );
+		$af_thumb_path = $this->get_af_thumb_path( $size_name, $thumb_mimetype, false, $size_x );
 		//pre_dump($af_thumb_path);
 		if( $af_thumb_path[0] != '!' )
 		{	// We obtained a path for the thumbnail to be saved:
@@ -2296,7 +2371,9 @@ class File extends DataObject
 
 
 	/**
-	 * @param LinkOwner
+	 * Link file to object
+	 *
+	 * @param object LinkOwner
 	 * @param integer Order
 	 * @param string Position
 	 */
@@ -2319,8 +2396,10 @@ class File extends DataObject
 				return;
 			}
 			$existing_order = $loop_Link->get('order');
-			if( $existing_order >= $order )
-				$order = $existing_order+1;
+			if( $set_order == 1 && $existing_order >= $order )
+			{ // Set order if $set_order is default
+				$order = $existing_order + 1;
+			}
 		}
 
 		$DB->begin();
@@ -2440,6 +2519,32 @@ class File extends DataObject
 		}
 
 		return $r;
+	}
+
+
+	/**
+	 * Get thumbnail file name
+	 *
+	 * @param string Thumbnail size name
+	 * @param integer Ratio size, can be 1, 2 and etc.
+	 * @return string Thumbnail file name
+	 */
+	function get_thumb_name( $size_name, $size_x = 1 )
+	{
+		$size_x = intval( $size_x );
+
+		if( $size_x == 1 || $size_x != 2 )
+		{ // 1x size or wrong $size_x
+			return $size_name.'.'.$this->get_ext();
+		}
+
+		if( preg_match( '#^([^\d]+)(\d+)x(\d+)(.*)$#', $size_name, $size_match ) )
+		{ // Modify size name by increasing width and height values, E.g. crop-32x32 will be crop-64x64 for $size_x = 2
+			return $size_match[1].( $size_match[2] * $size_x ).'x'.( $size_match[3] * $size_x ).$size_match[4].'.'.$this->get_ext();
+		}
+
+		// Unknown wrong thumbnail size name
+		return $size_name.'.'.$this->get_ext();
 	}
 }
 

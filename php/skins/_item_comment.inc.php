@@ -6,7 +6,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  */
@@ -81,7 +81,7 @@ $Comment = & $params['Comment'];
 						'text' 			=> T_('Trackback'),
 						'nofollow'	=> true,
 					) );
-				$Comment->author( '', '#', '', '#', 'htmlbody', true, $params['author_link_text'] );
+				$Comment->author( '', '#', '', '#', 'htmlbody', true );
 				break;
 
 			case 'pingback': // Display a pingback:
@@ -91,7 +91,7 @@ $Comment = & $params['Comment'];
 						'text' 			=> T_('Pingback'),
 						'nofollow'	=> true,
 					) );
-				$Comment->author( '', '#', '', '#', 'htmlbody', true, $params['author_link_text'] );
+				$Comment->author( '', '#', '', '#', 'htmlbody', true );
 				break;
 		}
 	?>

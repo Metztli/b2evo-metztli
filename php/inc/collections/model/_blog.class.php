@@ -30,7 +30,7 @@
  *
  * @package evocore
  *
- * @version $Id: _blog.class.php 6136 2014-03-08 07:59:48Z manuel $
+ * @version $Id: _blog.class.php 7163 2014-07-21 13:13:37Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -82,6 +82,7 @@ class Blog extends DataObject
 	var $advanced_perms = 0;
 
 	var $locale;
+	var $order;
 	var $access_type;
 
 	/*
@@ -98,7 +99,6 @@ class Blog extends DataObject
 	var $allowblogcss = 0;
 	var $allowusercss = 0;
 	var $in_bloglist = 1;
-	var $UID;
 	var $media_location = 'default';
 	var $media_subdir = '';
 	var $media_fullpath = '';
@@ -140,6 +140,11 @@ class Blog extends DataObject
 	 */
 	var $type;
 
+	/**
+	 * @var boolean TRUE if blog is favorite
+	 */
+	var $favorite = 0;
+
 
 	/**
 	 * Constructor
@@ -166,7 +171,7 @@ class Blog extends DataObject
 				array( 'table'=>'T_coll_group_perms', 'fk'=>'bloggroup_blog_ID', 'msg'=>T_('%d group permission definitions') ),
 				array( 'table'=>'T_subscriptions', 'fk'=>'sub_coll_ID', 'msg'=>T_('%d subscriptions') ),
 				array( 'table'=>'T_widget', 'fk'=>'wi_coll_ID', 'msg'=>T_('%d widgets') ),
-				array( 'table'=>'T_hitlog', 'fk'=>'hit_blog_ID', 'msg'=>T_('%d hits') ),
+				array( 'table'=>'T_hitlog', 'fk'=>'hit_coll_ID', 'msg'=>T_('%d hits') ),
 			);
 
 		if( $db_row == NULL )
@@ -179,13 +184,17 @@ class Blog extends DataObject
 		}
 		else
 		{
+			/**
+			 * NOTE: Check each new added or renamed field by function isset() below,
+			 *       Otherwise it may create issues during upgrade process from old to new DB:
+			 */
 			$this->ID = $db_row->blog_ID;
 			$this->shortname = $db_row->blog_shortname;
 			$this->name = $db_row->blog_name;
 			$this->owner_user_ID = $db_row->blog_owner_user_ID;
 			$this->advanced_perms = $db_row->blog_advanced_perms;
 			$this->tagline = $db_row->blog_tagline;
-			$this->shortdesc = $db_row->blog_description;	// description
+			$this->shortdesc = isset( $db_row->blog_shortdesc ) ? $db_row->blog_shortdesc : '';	// description
 			$this->longdesc = $db_row->blog_longdesc;
 			$this->locale = $db_row->blog_locale;
 			$this->access_type = $db_row->blog_access_type;
@@ -202,8 +211,9 @@ class Blog extends DataObject
 			$this->media_subdir = $db_row->blog_media_subdir;
 			$this->media_fullpath = $db_row->blog_media_fullpath;
 			$this->media_url = $db_row->blog_media_url;
-			$this->UID = $db_row->blog_UID;
-			$this->type = $db_row->blog_type;
+			$this->type = isset( $db_row->blog_type ) ? $db_row->blog_type : 'std';
+			$this->order = isset( $db_row->blog_order ) ? $db_row->blog_order : 0;
+			$this->favorite = isset( $db_row->blog_favorite ) ? $db_row->blog_favorite : 0;
 		}
 
 		$Timer->pause( 'Blog constructor' );
@@ -222,7 +232,7 @@ class Blog extends DataObject
 				$this->set( 'name', empty($name) ? T_('My photoblog') : $name );
 				$this->set( 'shortname', empty($shortname) ? T_('Photoblog') : $shortname );
 				$this->set( 'urlname', empty($urlname) ? 'photo' : $urlname );
-				$this->set_setting( 'posts_per_page', 1 );
+				$this->set_setting( 'posts_per_page', 12 );
 				$this->set_setting( 'archive_mode', 'postbypost' );
 				break;
 
@@ -249,6 +259,7 @@ class Blog extends DataObject
 				$this->set_setting( 'orderby', 'last_touched_ts' );
 				$this->set_setting( 'orderdir', 'DESC' );
 				$this->set_setting( 'enable_goto_blog', 'post' );
+				$this->set_setting( 'front_disp', 'front' );
 				break;
 
 			case 'manual':
@@ -259,6 +270,7 @@ class Blog extends DataObject
 				$this->set_setting( 'post_navigation', 'same_category' );
 				$this->set_setting( 'single_links', 'chapters' );
 				$this->set_setting( 'enable_goto_blog', 'post' );
+				$this->set_setting( 'front_disp', 'front' );
 				break;
 
 			case 'std':
@@ -305,8 +317,10 @@ class Blog extends DataObject
 		if( param( 'blog_name', 'string', NULL ) !== NULL )
 		{ // General params:
 			$this->set_from_Request( 'name' );
-			$this->set( 'shortname',     param( 'blog_shortname',     'string', true ) );
-			$this->set( 'locale',        param( 'blog_locale',        'string', $default_locale ) );
+			$this->set( 'shortname', param( 'blog_shortname', 'string', true ) );
+			$this->set( 'locale',    param( 'blog_locale',    'string', $default_locale ) );
+			$this->set( 'order',     param( 'blog_order',     'integer' ) );
+			$this->set( 'favorite',  param( 'favorite', 'integer', 0 ) );
 		}
 
 
@@ -409,23 +423,43 @@ class Blog extends DataObject
 		}
 
 		if( param( 'normal_skin_ID', 'integer', NULL ) !== NULL )
-		{	// Default blog:
+		{ // Normal skin ID:
 			$this->set_setting( 'normal_skin_ID', get_param( 'normal_skin_ID' ) );
 		}
 
 		if( param( 'mobile_skin_ID', 'integer', NULL ) !== NULL )
-		{	// Default blog:
-			$this->set_setting( 'mobile_skin_ID', get_param( 'mobile_skin_ID' ) );
+		{ // Mobile skin ID:
+			if( get_param( 'mobile_skin_ID' ) == 0 )
+			{ // Don't store this empty setting in DB
+				$this->delete_setting( 'mobile_skin_ID' );
+			}
+			else
+			{ // Set mobile skin
+				$this->set_setting( 'mobile_skin_ID', get_param( 'mobile_skin_ID' ) );
+			}
 		}
 
 		if( param( 'tablet_skin_ID', 'integer', NULL ) !== NULL )
-		{	// Default blog:
-			$this->set_setting( 'tablet_skin_ID', get_param( 'tablet_skin_ID' ) );
+		{ // Tablet skin ID:
+			if( get_param( 'tablet_skin_ID' ) == 0 )
+			{ // Don't store this empty setting in DB
+				$this->delete_setting( 'tablet_skin_ID' );
+			}
+			else
+			{ // Set tablet skin
+				$this->set_setting( 'tablet_skin_ID', get_param( 'tablet_skin_ID' ) );
+			}
 		}
 
 		if( param( 'archives_sort_order', 'string', NULL ) !== NULL )
-		{
+		{ // Archive sorting
 			$this->set_setting( 'archives_sort_order', param( 'archives_sort_order', 'string', false ) );
+		}
+
+		if( param( 'download_delay', 'integer', NULL ) !== NULL )
+		{ // Download delay
+			param_check_range( 'download_delay', 0, 10, T_('Download delay must be numeric (0-10).') );
+			$this->set_setting( 'download_delay', get_param( 'download_delay' ) );
 		}
 
 		if( param( 'feed_content', 'string', NULL ) !== NULL )
@@ -449,9 +483,9 @@ class Blog extends DataObject
 			$this->set_setting( 'require_title', get_param( 'require_title' ) );
 		}
 
-		if( param( 'blog_description', 'string', NULL ) !== NULL )
+		if( param( 'blog_shortdesc', 'string', NULL ) !== NULL )
 		{	// Description:
-			$this->set_from_Request( 'shortdesc', 'blog_description' );
+			$this->set_from_Request( 'shortdesc' );
 		}
 
 		if( param( 'blog_keywords', 'string', NULL ) !== NULL )
@@ -508,6 +542,19 @@ class Blog extends DataObject
 			$this->set_setting( 'use_workflow',  param( 'blog_use_workflow', 'integer', 0 ) );
 		}
 
+		if( in_array( 'home', $groups ) )
+		{ // we want to load the front page params:
+			$front_disp = param( 'front_disp', 'string', '' );
+			$this->set_setting( 'front_disp', $front_disp );
+
+			$front_post_ID = param( 'front_post_ID', 'integer', 0 );
+			if( $front_disp == 'page' )
+			{ // Post ID must be required
+				param_check_not_empty( 'front_post_ID', T_('Please enter a specific post ID') );
+			}
+			$this->set_setting( 'front_post_ID', $front_post_ID );
+		}
+
 		if( in_array( 'features', $groups ) )
 		{ // we want to load the workflow checkboxes:
 			$this->set_setting( 'allow_html_post', param( 'allow_html_post', 'integer', 0 ) );
@@ -530,6 +577,9 @@ class Blog extends DataObject
 
 			$this->set_setting( 'orderby', param( 'orderby', 'string', true ) );
 			$this->set_setting( 'orderdir', param( 'orderdir', 'string', true ) );
+
+			// Front office statuses
+			$this->load_inskin_statuses( 'post' );
 
 			// Time frame
 			$this->set_setting( 'timestamp_min', param( 'timestamp_min', 'string', '' ) );
@@ -647,6 +697,9 @@ class Blog extends DataObject
 			$this->set_setting( 'comments_per_page', get_param( 'comments_per_page' ) );
 			$this->set_setting( 'comments_avatars', param( 'comments_avatars', 'integer', 0 ) );
 			$this->set_setting( 'comments_latest', param( 'comments_latest', 'integer', 0 ) );
+
+			// load blog front office comment statuses
+			$this->load_inskin_statuses( 'comment' );
 		}
 
 
@@ -682,6 +735,9 @@ class Blog extends DataObject
 			$this->set_setting( 'excerpts_meta_description', param( 'excerpts_meta_description', 'integer', 0 ) );
 			$this->set_setting( 'categories_meta_description', param( 'categories_meta_description', 'integer', 0 ) );
 			$this->set_setting( 'tags_meta_keywords', param( 'tags_meta_keywords', 'integer', 0 ) );
+			$this->set_setting( 'tags_open_graph', param( 'tags_open_graph', 'integer', 0 ) );
+			$this->set_setting( 'download_noindex', param( 'download_noindex', 'integer', 0 ) );
+			$this->set_setting( 'download_nofollowto', param( 'download_nofollowto', 'integer', 0 ) );
 		}
 
 
@@ -712,7 +768,7 @@ class Blog extends DataObject
 
 			if( param( 'blog_head_includes', 'html', NULL ) !== NULL )
 			{	// HTML header includes:
-				param_check_html( 'blog_head_includes', T_('Invalid Custom meta section') );
+				param_check_html( 'blog_head_includes', T_('Invalid Custom meta section'), '#', 'head_extension' );
 				$this->set_setting( 'head_includes', get_param( 'blog_head_includes' ) );
 			}
 
@@ -758,8 +814,9 @@ class Blog extends DataObject
 						$blog_urlname = NULL;
 					}
 
-					if( isset($blog_urlname) )
-					{
+					if( isset( $blog_urlname ) )
+					{ // Set new urlname and save old media dir in order to rename folder to new
+						$old_media_dir = $this->get_media_dir( false );
 						$this->set_from_Request( 'urlname' );
 					}
 				}
@@ -781,7 +838,7 @@ class Blog extends DataObject
 					else
 					{ // It is not valid absolute URL, don't update the blog 'siteurl' to avoid errors
 						$allow_new_access_type = false; // If site url is not updated do not allow access_type update either
-						$Messages->add( T_('Blog Folder URL').': '.sprintf( T_('%s is an invalid absolute URL'), '&laquo;'.htmlspecialchars( $blog_siteurl ).'&raquo;' )
+						$Messages->add( T_('Blog Folder URL').': '.sprintf( T_('%s is an invalid absolute URL'), '&laquo;'.evo_htmlspecialchars( $blog_siteurl ).'&raquo;' )
 							.' '.T_('You must provide an absolute URL (starting with <code>http://</code> or <code>https://</code>) and it must contain at least one \'/\' sign after the domain name!'), 'error' );
 					}
 				}
@@ -826,9 +883,11 @@ class Blog extends DataObject
 			}
 
 
-			if( param( 'blog_media_location',  'string', NULL ) !== NULL )
-			{	// Media files location:
-				$old_media_dir = $this->get_media_dir();
+			$media_location = param( 'blog_media_location', 'string', NULL );
+			if( $media_location !== NULL )
+			{ // Media files location:
+				$old_media_dir = $this->get_media_dir( false );
+				$old_media_location = $this->get( 'media_location' );
 				$this->set_from_Request( 'media_location' );
 				$this->set_media_subdir( param( 'blog_media_subdir', 'string', '' ) );
 				$this->set_media_fullpath( param( 'blog_media_fullpath', 'string', '' ) );
@@ -883,24 +942,13 @@ class Blog extends DataObject
 						}
 						break;
 				}
-
-				if( ! param_errors_detected() )
-				{ // If no error were created before we can try to move old files to new file root
-					$FileRootCache = & get_FileRootCache();
-					if( ( $blog_FileRoot = & $FileRootCache->get_by_type_and_ID( 'collection', $this->ID ) ) !== false )
-					{
-						$new_media_dir = $blog_FileRoot->ads_path;
-						if( ! empty( $old_media_dir ) && ! empty( $new_media_dir ) &&
-						    $old_media_dir != $new_media_dir )
-						{ // Blog's media dir was changed, We should move the files from old to new dir
-							if( ! @rename( $old_media_dir, $new_media_dir ) )
-							{ // Some error on renaming
-								$Messages->add( sprintf( T_('You cannot choose new media dir "%s" (cannot rename blog fileroot)'), $new_media_dir ), 'error' );
-							}
-						}
-					}
-				}
 			}
+
+			if( ! param_errors_detected() && ! empty( $old_media_dir ) )
+			{ // No error were detected before and possibly the media directory path was updated, check if it can be managed
+				$this->check_media_dir_change( $old_media_dir, isset( $old_media_location ) ? $old_media_location : NULL );
+			}
+
 		}
 
 		return ! param_errors_detected();
@@ -991,6 +1039,32 @@ class Blog extends DataObject
 
 
 	/**
+	 * Load blog front office post/comment statuses
+	 *
+	 * @param string type = 'post' or 'comment'
+	 */
+	function load_inskin_statuses( $type )
+	{
+		if( ( $type != 'post' ) && ( $type != 'comment' ) )
+		{ // Invalid type
+			debug_die( 'Invalid type to load blog inskin statuses!' );
+		}
+
+		// Get possible front office statuses
+		$inskin_statuses = get_visibility_statuses( 'keys', array( 'deprecated', 'trash', 'redirected' ) );
+		$selected_inskin_statuses = array();
+		foreach( $inskin_statuses as $status )
+		{
+			if( param( $type.'_inskin_'.$status, 'integer', 0 ) )
+			{ // This status was selected
+				$selected_inskin_statuses[] = $status;
+			}
+		}
+		$this->set_setting( $type.'_inskin_statuses', implode( ',', $selected_inskin_statuses ) );
+	}
+
+
+	/**
 	 * Set the media folder's subdir
 	 *
 	 * @param string the subdirectory
@@ -1040,11 +1114,6 @@ class Blog extends DataObject
 			case 'allowtrackbacks':
 			case 'blog_in_bloglist':
 				return $this->set_param( $parname, 'number', $parvalue, $make_null );
-				break;
-
-			case 'shortdesc':
-				$this->shortdesc = $parvalue;
-				return $this->set_param( 'description', 'string', $parvalue, $make_null );
 				break;
 
 			default:
@@ -1771,41 +1840,62 @@ class Blog extends DataObject
 			case 'baseurlroot':
 				return $this->get_baseurl_root();
 
+			case 'recentpostsurl':
+				$disp_param = 'posts';
+				break;
+
 			case 'lastcommentsurl':
-				return url_add_param( $this->gen_blogurl(), 'disp=comments' );
+				$disp_param = 'comments';
+				break;
 
 			case 'searchurl':
-				return url_add_param( $this->gen_blogurl(), 'disp=search' );
+				$disp_param = 'search';
+				break;
 
 			case 'arcdirurl':
-				return url_add_param( $this->gen_blogurl(), 'disp=arcdir' );
+				$disp_param = 'arcdir';
+				break;
 
 			case 'catdirurl':
-				return url_add_param( $this->gen_blogurl(), 'disp=catdir' );
+				$disp_param = 'catdir';
+				break;
 
 			case 'postidxurl':
-				return url_add_param( $this->gen_blogurl(), 'disp=postidx' );
+				$disp_param = 'postidx';
+				break;
 
 			case 'mediaidxurl':
-				return url_add_param( $this->gen_blogurl(), 'disp=mediaidx' );
+				$disp_param = 'mediaidx';
+				break;
 
 			case 'sitemapurl':
-				return url_add_param( $this->gen_blogurl(), 'disp=sitemap' );
+				$disp_param = 'sitemap';
+				break;
 
 			case 'msgformurl':
-				return url_add_param( $this->gen_blogurl(), 'disp=msgform' );
+				$disp_param = 'msgform';
+				break;
 
 			case 'userurl':
 				return url_add_param( $this->gen_blogurl(), 'disp=user' );
 
 			case 'usersurl':
-				return url_add_param( $this->gen_blogurl(), 'disp=users' );
+				$disp_param = 'users';
+				break;
 
 			case 'loginurl':
 				return url_add_param( $this->gen_blogurl(), 'disp=login' );
 
 			case 'subsurl':
 				return url_add_param( $this->gen_blogurl(), 'disp=subs#subs' );
+
+			case 'threadsurl':
+				$disp_param = 'threads';
+				break;
+
+			case 'contactsurl':
+				$disp_param = 'contacts';
+				break;
 
 			case 'helpurl':
 				if( $this->get_setting( 'help_link' ) == 'slug' )
@@ -1814,7 +1904,8 @@ class Blog extends DataObject
 				}
 				else
 				{
-					return url_add_param( $this->gen_blogurl(), 'disp=help' );
+					$disp_param = 'help';
+					break;
 				}
 
 			case 'skin_ID':
@@ -1890,6 +1981,18 @@ class Blog extends DataObject
 				// All other params:
 				return parent::get( $parname );
 		}
+
+		if( !empty( $disp_param ) )
+		{ // Get url depending on value of param 'disp'
+			if( $this->get_setting( 'front_disp' ) == $disp_param )
+			{ // Get home page of this blog because front page displays current disp
+				return $this->gen_blogurl( 'default' );
+			}
+			else
+			{ // Add disp param to blog's url when current disp is not a front page
+				return url_add_param( $this->gen_blogurl(), 'disp='.$disp_param );
+			}
+		}
 	}
 
 
@@ -1954,6 +2057,15 @@ class Blog extends DataObject
 				{ // moderation_statuses was not set yet, set the default value, which depends from the blog type
 					$default = 'review,draft';
 					$result = ( $this->type == 'forum' ) ? 'community,protected,'.$default : $default;
+				}
+				break;
+
+			case 'comment_inskin_statuses':
+			case 'post_inskin_statuses':
+				if( $result == NULL )
+				{ // inskin_statuses was not set yet, set the default value, which depends from the blog type
+					$default = 'published,community,protected,private,review';
+					$result = ( $this->type == 'forum' ) ? $default.',draft' : $default;
 				}
 				break;
 
@@ -2062,6 +2174,15 @@ class Blog extends DataObject
 		global $DB, $Plugins;
 
 		$DB->begin();
+
+		if( $this->get( 'order' ) == 0 )
+		{ // Set an order as max value of previous order + 1 if it is not defined yet
+			$SQL = new SQL();
+			$SQL->SELECT( 'MAX( blog_order )' );
+			$SQL->FROM( 'T_blogs' );
+			$max_order = intval( $DB->get_var( $SQL->get() ) );
+			$this->set( 'order', $max_order + 1 );
+		}
 
 		if( parent::dbinsert() )
 		{
@@ -2229,14 +2350,10 @@ class Blog extends DataObject
 
 		$DB->commit();
 
-		// Thick grained invalidation:
-		// This collection has been modified, cached content depending on it should be invalidated:
-		BlockCache::invalidate_key( 'coll_ID', $this->ID );
-
-		// Fine grained invalidation:
-		// EXPERIMENTAL: Below are more granular invalidation dates:
+		// BLOCK CACHE INVALIDATION:
 		BlockCache::invalidate_key( 'set_coll_ID', $this->ID ); // Settings have changed
 		BlockCache::invalidate_key( 'set_coll_ID', 'any' ); // Settings of a have changed (for widgets tracking a change on ANY blog)
+
 		// cont_coll_ID  // Content has not changed
 	}
 
@@ -2302,13 +2419,13 @@ class Blog extends DataObject
 				$comments_list = implode( ',', $DB->get_col( "
 						SELECT comment_ID
 						  FROM T_comments
-						 WHERE comment_post_ID IN ($post_list)" ) );
+						 WHERE comment_item_ID IN ($post_list)" ) );
 				if( !empty( $comments_list ) )
 				{	// Delete the comments & dependencies
 					$DB->query( "DELETE FROM T_comments__votes
 												WHERE cmvt_cmt_ID IN ($comments_list)" );
 					$ret = $DB->query( "DELETE FROM T_comments
-															WHERE comment_post_ID IN ($post_list)" );
+															WHERE comment_item_ID IN ($post_list)" );
 				}
 				else
 				{	// No comments in this blog
@@ -2332,8 +2449,9 @@ class Blog extends DataObject
 											WHERE isub_item_ID IN ($post_list)" );
 				$DB->query( "DELETE FROM T_items__version
 											WHERE iver_itm_ID IN ($post_list)" );
-				$DB->query( "DELETE FROM T_links
-											WHERE link_itm_ID IN ($post_list)" );
+				$DB->query( "DELETE l, lv FROM T_links AS l
+					 LEFT JOIN T_links__vote AS lv ON lv.lvot_link_ID = l.link_ID
+					WHERE l.link_itm_ID IN ($post_list)" );
 				$DB->query( "DELETE FROM T_slug
 											WHERE slug_itm_ID IN ($post_list)" );
 				$ret = $DB->query( "DELETE FROM T_items__item
@@ -2358,9 +2476,9 @@ class Blog extends DataObject
 		$PageCache->cache_delete();
 
 		// Delete the blog files/links from DB
-		$DB->query( 'DELETE f, l, fv FROM T_files AS f
+		$DB->query( 'DELETE f, l, lv FROM T_files AS f
 			LEFT JOIN T_links l ON l.link_file_ID = f.file_ID
-			LEFT JOIN T_files__vote AS fv ON fv.fvot_file_ID = f.file_ID
+			LEFT JOIN T_links__vote AS lv ON lv.lvot_link_ID = l.link_ID
 			    WHERE f.file_root_type = "collection"
 			      AND f.file_root_ID = '.$this->ID );
 
@@ -2508,27 +2626,67 @@ class Blog extends DataObject
 
 
 	/*
-	 * Get the blog skin ID which correspond to the current session device
+	 * Get the blog skin ID which correspond to the current session device or which correspond to the selected skin type
 	 *
+	 * @param string Skin type: 'auto', 'normal', 'mobile', 'tablet'
 	 * @return integer skin ID
 	 */
-	function get_skin_ID()
+	function get_skin_ID( $skin_type = 'auto' )
 	{
-		global $Session;
-
-		if( !empty( $Session ) )
+		switch( $skin_type )
 		{
-			if( $Session->is_mobile_session() )
-			{
+			case 'auto':
+				// Auto detect skin by session type
+				global $Session;
+				if( ! empty( $Session ) )
+				{
+					if( $Session->is_mobile_session() )
+					{
+						return $this->get_setting( 'mobile_skin_ID' );
+					}
+					if( $Session->is_tablet_session() )
+					{
+						return $this->get_setting( 'tablet_skin_ID' );
+					}
+				}
+				return $this->get_setting( 'normal_skin_ID' );
+
+			case 'normal':
+				// Normal skin
+				return $this->get_setting( 'normal_skin_ID' );
+
+			case 'mobile':
+				// Mobile skin
 				return $this->get_setting( 'mobile_skin_ID' );
-			}
-			if( $Session->is_tablet_session() )
-			{
+
+			case 'tablet':
+				// Tablet skin
 				return $this->get_setting( 'tablet_skin_ID' );
-			}
 		}
 
-		return $this->get_setting( 'normal_skin_ID' );
+		// Deny to request invalid skin types
+		debug_die( 'The requested skin type is invalid.' );
+	}
+
+
+	/**
+	 * Get skin folder/name by skin type
+	 *
+	 * @param string Force session type: 'auto', 'normal', 'mobile', 'tablet'
+	 * @return string Skin folder/name
+	 */
+	function get_skin_folder( $skin_type = 'auto' )
+	{
+		$blog_skin_ID = $this->get_skin_ID( $skin_type );
+		if( empty( $blog_skin_ID ) && $skin_type != 'auto' )
+		{ // Get default skin ID if it is not defined for the selected session type yet
+			$blog_skin_ID = $this->get_skin_ID( 'auto' );
+		}
+
+		$SkinCache = & get_SkinCache();
+		$Skin = & $SkinCache->get_by_ID( $blog_skin_ID );
+
+		return $Skin->folder;
 	}
 
 
@@ -2920,6 +3078,97 @@ class Blog extends DataObject
 	function city_visible()
 	{
 		return $this->get_setting( 'location_city' ) != 'hidden';
+	}
+
+
+	/**
+	 * Check if the media directory or it's location was changed and perform the required data migration
+	 *
+	 * @param string the media directory path before update
+	 * @param string the media directory location before update
+	 * @return boolean true if the media directory was not changed or the change was successful, false otherwise
+	 */
+	function check_media_dir_change( $old_media_dir, $old_media_location = NULL )
+	{
+		global $Messages;
+
+		$new_media_dir = $this->get_media_dir( false );
+		if( $new_media_dir == $old_media_dir )
+		{ // The media dir was not changed, no need fo further updates
+			return true;
+		}
+
+		$new_media_location = $this->get( 'media_location' );
+		if( $old_media_location == NULL )
+		{ // Media location was not changed
+			$old_media_location = $new_media_location;
+		}
+
+		switch( $new_media_location )
+		{
+			case 'none':
+				if( is_empty_directory( $old_media_dir ) )
+				{ // Delete old media dir if it is empty
+					if( file_exists( $old_media_dir ) && ( ! rmdir_r( $old_media_dir ) ) )
+					{
+						$Messages->add( T_('The old media dir could not be removed, please remove it manually!'), 'warning' );
+					}
+				}
+				else
+				{ // The old media dir is not empty, but it must be cleared before it can be changed to none
+					$Messages->add( T_('Blog media folder is not empty, you cannot change it to "None".'), 'error' );
+					return false;
+				}
+				break;
+
+			case 'default':
+			case 'subdir':
+			case 'custom':
+				global $media_path;
+				if( file_exists( $new_media_dir ) )
+				{ // Don't use the existing folder twice
+					$Messages->add( sprintf( T_('Folder %s already exists, it cannot be used for several media locations.'), '<b>'.$new_media_dir.'</b>' ), 'error' );
+					return false;
+				}
+				if( in_array( trim( $new_media_dir, '/\\' ), array( $media_path.'blogs', $media_path.'import', $media_path.'shared', $media_path.'users' ) ) )
+				{ // Don't use the reserved paths
+					$Messages->add( sprintf( T_('Please use another folder name, because %s is reserved.'), '<b>'.$new_media_dir.'</b>' ), 'error' );
+					return false;
+				}
+				if( $new_media_location == 'custom' )
+				{ // Check for folder is not used by other blog, and it is not a sub-folder of other blog folder
+					$BlogCache = & get_BlogCache();
+					$BlogCache->clear( true );
+					$BlogCache->load_where( 'blog_ID != '.$this->ID );
+					$other_blog_IDs = $BlogCache->get_ID_array();
+					foreach( $other_blog_IDs as $other_blog_ID )
+					{
+						$other_Blog = & $BlogCache->get_by_ID( $other_blog_ID, false, false );
+						$other_media_dir = $other_Blog->get_media_dir( false );
+						if( ! empty( $other_media_dir ) && strpos( $new_media_dir, $other_media_dir ) === 0 )
+						{
+							$Messages->add( sprintf( T_('Please use another folder name, because %s cannot be folder or subfolder of other blog media location.'), '<b>'.$new_media_dir.'</b>' ), 'error' );
+							return false;
+						}
+					}
+				}
+				if( ( $old_media_location == 'none' ) || ( ! file_exists( $old_media_dir ) ) )
+				{ // The media folder was not used before, create the new media folder
+					return $this->get_media_dir( true );
+				}
+				if( ! @rename( $old_media_dir, $new_media_dir ) )
+				{ // Some error on renaming
+					$Messages->add( sprintf( T_('Could not move the media folder content from "%s" to the new "%s" location.'), '<b>'.$old_media_dir.'</b>', '<b>'.$new_media_dir.'</b>' ), 'error' );
+					return false;
+				}
+				break;
+
+			default:
+				debug_die('Invalid media location setting received!');
+		}
+
+		$Messages->add( T_('The media directory was successfully moved to the new path, with all of its content.'), 'note' );
+		return true;
 	}
 }
 

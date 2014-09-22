@@ -29,7 +29,7 @@
  * @author blueyed: Daniel HAHLER
  * @author fplanque: Francois PLANQUE
  *
- * @version $Id: locales.ctrl.php 6664 2014-05-12 12:23:58Z yura $
+ * @version $Id: locales.ctrl.php 6665 2014-05-12 12:37:03Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -43,7 +43,7 @@ $UserSettings->dbupdate();
 
 $AdminUI->set_path( 'options', 'regional', 'locales' );
 
-param( 'action', 'string' );
+$action = param_action();
 param( 'edit_locale', 'string' );
 param( 'loc_transinfo', 'integer', 0 );
 
@@ -52,7 +52,12 @@ locales_load_available_defs();
 
 switch( $action )
 {
+	case 'abort_update':
+		// Update was aborted
+		break;
+
 	case 'update':
+	case 'confirm_update':
 		// UPDATE regional settings
 
 		// Check that this action request is not a CSRF hacked request:
@@ -64,19 +69,14 @@ switch( $action )
 		param( 'newdefault_locale', 'string', true );
 		$Settings->set( 'default_locale', $newdefault_locale );
 
-		if( ! $Messages->has_errors() )
+		if( ( ! $Messages->has_errors() ) && ( locale_updateDB() ) )
 		{
-			locale_updateDB();
 			$Settings->dbupdate();
 			$Messages->add( T_('Regional settings updated.'), 'success' );
 			// Redirect so that a reload doesn't write to the DB twice:
 			header_redirect( '?ctrl=locales'.( $loc_transinfo ? '&loc_transinfo=1' : '' ), 303 ); // Will EXIT
 			// We have EXITed already at this point!!
 		}
-
-		// load locales from DB into $locales array:
-		// fp> not sure we need this...
-		locale_overwritefromDB();
 		break;
 
 

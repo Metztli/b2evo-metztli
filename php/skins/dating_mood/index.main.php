@@ -10,7 +10,7 @@
  * @package evoskins
  * @subpackage dating_mood
  *
- * @version $Id: index.main.php 4275 2013-07-17 10:52:24Z yura $
+ * @version $Id: index.main.php 6473 2014-04-15 11:33:37Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -19,14 +19,16 @@ if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.'
 skin_init( $disp );
 
 // -------------------------- HTML HEADER INCLUDED HERE --------------------------
-// Initializations:
-add_headline( '<!--[if IE]><link rel="stylesheet" type="text/css" href="ie.css" /><![endif]-->' );
-
-// Include the HTML HEAD:
 skin_include( '_html_header.inc.php' );
 // Note: You can customize the default HTML header by copying the
 // _html_header.inc.php file into the current skin folder.
 // -------------------------------- END OF HEADER --------------------------------
+
+
+// ---------------------------- SITE HEADER INCLUDED HERE ----------------------------
+// If site headers are enabled, they will be included here:
+siteskin_include( '_site_body_header.inc.php' );
+// ------------------------------- END OF SITE HEADER --------------------------------
 ?>
 
 
@@ -139,12 +141,14 @@ skin_include( '_html_header.inc.php' );
 ?>
 
 <?php
-    // -------------------- PREV/NEXT PAGE LINKS (POST LIST MODE) --------------------
-    mainlist_page_links( array(
-            'block_start' => '<p class="center">'.T_('Pages:').' <strong>',
-            'block_end' => '</strong></p>',
-        ) );
-    // ------------------------- END OF PREV/NEXT PAGE LINKS -------------------------
+if( $disp != 'front' && $disp != 'download' )
+{
+	// -------------------- PREV/NEXT PAGE LINKS (POST LIST MODE) --------------------
+	mainlist_page_links( array(
+			'block_start' => '<p class="center">'.T_('Pages:').' <strong>',
+			'block_end' => '</strong></p>',
+		) );
+	// ------------------------- END OF PREV/NEXT PAGE LINKS -------------------------
 ?>
 
 <?php
@@ -192,7 +196,7 @@ skin_include( '_html_header.inc.php' );
 			$Item->issue_time( array(
 					'before'    => ', ',
 					'after'     => '',
-					'date_format' => 'l j F Y à H:i',
+					'date_format' => 'l j F Y ï¿½ H:i',
 				) );
 			$Item->categories( array(
 					'before'          => ', '.T_('Categories').': ',
@@ -290,6 +294,7 @@ skin_include( '_html_header.inc.php' );
             'block_end' => '</strong></p>',
         ) );
     // ------------------------- END OF PREV/NEXT PAGE LINKS -------------------------
+}
 	?>
 
 
@@ -408,6 +413,12 @@ skin_include( '_html_header.inc.php' );
 </div>
 
 <?php
+// ---------------------------- SITE FOOTER INCLUDED HERE ----------------------------
+// If site footers are enabled, they will be included here:
+siteskin_include( '_site_body_footer.inc.php' );
+// ------------------------------- END OF SITE FOOTER --------------------------------
+
+
 // ------------------------- HTML FOOTER INCLUDED HERE --------------------------
 skin_include( '_html_footer.inc.php' );
 // Note: You can customize the default HTML footer by copying the

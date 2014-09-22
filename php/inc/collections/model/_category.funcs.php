@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  * Parts of this file are copyright (c)2004 by The University of North Carolina at Charlotte as
  * contributed by Jason Edgecombe {@link http://tst.uncc.edu/team/members/jason_bio.php}.
@@ -40,7 +40,7 @@
  *
  * @todo implement CategoryCache based on LinkCache
  *
- * @version $Id: _category.funcs.php 5650 2014-01-14 16:22:34Z yura $
+ * @version $Id: _category.funcs.php 7118 2014-07-15 05:32:58Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -56,8 +56,9 @@ if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.'
  * @param string Category description
  * @param boolean Set to true if the new object needs to be added into the ChapterCache after it was created
  * @param integer Category order
+ * @param boolean Is meta category?
  */
-function cat_create( $cat_name, $cat_parent_ID, $cat_blog_ID = NULL, $cat_description = NULL, $add_to_cache = false, $cat_order = NULL )
+function cat_create( $cat_name, $cat_parent_ID, $cat_blog_ID = NULL, $cat_description = NULL, $add_to_cache = false, $cat_order = NULL, $meta = false )
 {
 	global $DB;
 
@@ -65,7 +66,10 @@ function cat_create( $cat_name, $cat_parent_ID, $cat_blog_ID = NULL, $cat_descri
 
 	if( ! $cat_blog_ID )
 	{
-		if( empty($cat_parent_ID) ) debug_die ( 'cat_create(-) missing parameters (cat_parent_ID)!' );
+		if( empty( $cat_parent_ID ) )
+		{
+			debug_die ( 'cat_create(-) missing parameters (cat_parent_ID)!' );
+		}
 
 		$ChapterCache = & get_ChapterCache();
 		$Chapter = $ChapterCache->get_by_ID($cat_parent_ID);
@@ -73,21 +77,28 @@ function cat_create( $cat_name, $cat_parent_ID, $cat_blog_ID = NULL, $cat_descri
 	}
 
 	if( $cat_parent_ID === 'NULL' )
-		// fix old use case
+	{ // fix old use case
 		$cat_parent_ID = NULL;
-
-	$new_Chapter = new Chapter(NULL, $cat_blog_ID);
-	$new_Chapter->set('name', $cat_name);
-	$new_Chapter->set('parent_ID', $cat_parent_ID);
-	if( !empty( $cat_description ) )
-	{	// Set decription
-		$new_Chapter->set('description', $cat_description);
 	}
-	$new_Chapter->set('order', $cat_order);
+
+	$new_Chapter = new Chapter( NULL, $cat_blog_ID );
+	$new_Chapter->set( 'name', $cat_name );
+	$new_Chapter->set( 'parent_ID', $cat_parent_ID );
+	if( !empty( $cat_description ) )
+	{ // Set decription
+		$new_Chapter->set( 'description', $cat_description );
+	}
+	$new_Chapter->set( 'order', $cat_order );
+	if( $meta )
+	{ // Set this category as meta
+		$new_Chapter->set( 'meta', 1 );
+	}
 
 
 	if( ! $new_Chapter->dbinsert() )
+	{
 		return 0;
+	}
 
 	if( $add_to_cache )
 	{ // add new Category into the Cache
@@ -249,15 +260,16 @@ function get_postcount_in_category( $cat_ID, $blog_ID = NULL )
 
 	if( !isset( $number_of_posts_in_cat[ (string) $blog_ID ] ) )
 	{
+		global $posttypes_specialtypes;
+
 		$SQL = new SQL( 'Get # of posts for each category in a blog' );
 		$SQL->SELECT( 'cat_ID, count( postcat_post_ID ) c' );
 		$SQL->FROM( 'T_categories' );
 		$SQL->FROM_add( 'INNER JOIN T_postcats ON postcat_cat_ID = cat_id' );
 		$SQL->FROM_add( 'INNER JOIN T_items__item ON postcat_post_ID = post_id' );
 		$SQL->WHERE( 'cat_blog_ID = '.$DB->quote( $blog_ID ) );
-		// fp> TODO: the following probably needs to be ALL except $posttypes_specialtypes
-		$SQL->WHERE_and( 'post_ptyp_ID IN ( '.$DB->quote( array( 1, 2000 ) ).' )' );
-		$SQL->WHERE_and( statuses_where_clause( get_inskin_statuses(), 'post_', $blog_ID, 'blog_post!', true ) );
+		$SQL->WHERE_and( 'post_ptyp_ID NOT IN ( '.$DB->quote( $posttypes_specialtypes ).' )' );
+		$SQL->WHERE_and( statuses_where_clause( get_inskin_statuses( $blog_ID, 'post' ), 'post_', $blog_ID, 'blog_post!', true ) );
 		$SQL->GROUP_BY( 'cat_ID' );
 		$number_of_posts_in_cat[ (string) $blog_ID ] = $DB->get_assoc( $SQL->get() );
 	}
@@ -287,13 +299,13 @@ function get_commentcount_in_category( $cat_ID, $blog_ID = NULL )
 		$SQL = new SQL();
 		$SQL->SELECT( 'cat_ID, COUNT( comment_ID ) c' );
 		$SQL->FROM( 'T_comments' );
-		$SQL->FROM_add( 'LEFT JOIN T_postcats ON comment_post_ID = postcat_post_ID' );
+		$SQL->FROM_add( 'LEFT JOIN T_postcats ON comment_item_ID = postcat_post_ID' );
 		$SQL->FROM_add( 'LEFT JOIN T_categories ON postcat_cat_ID = cat_id' );
-		$SQL->FROM_add( 'LEFT JOIN T_items__item ON comment_post_ID = post_id' );
+		$SQL->FROM_add( 'LEFT JOIN T_items__item ON comment_item_ID = post_id' );
 		$SQL->WHERE( 'cat_blog_ID = '.$DB->quote( $blog_ID ) );
-		$SQL->WHERE_and( statuses_where_clause( get_inskin_statuses(), 'comment_', $blog_ID, 'blog_comment!', true ) );
+		$SQL->WHERE_and( statuses_where_clause( get_inskin_statuses( $blog_ID, 'comment' ), 'comment_', $blog_ID, 'blog_comment!', true ) );
 		// add where condition to show only those posts commetns which are visible for the current User
-		$SQL->WHERE_and( statuses_where_clause( get_inskin_statuses(), 'post_', $blog_ID, 'blog_post!', true ) );
+		$SQL->WHERE_and( statuses_where_clause( get_inskin_statuses( $blog_ID, 'post' ), 'post_', $blog_ID, 'blog_post!', true ) );
 		$SQL->GROUP_BY( 'cat_ID' );
 
 		$number_of_comments_in_cat[(string) $blog_ID] = $DB->get_assoc( $SQL->get() );

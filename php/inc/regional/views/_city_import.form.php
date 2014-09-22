@@ -55,7 +55,6 @@ $Form->begin_form( 'fform', T_('Import cities') );
 
 	$Form->input_field( array( 'label' => T_('CSV File'), 'name' => 'csv', 'type' => 'file', 'required' => true ) );
 
-$Form->end_form( array( array( 'submit', 'actionArray[import]', T_('Import'), 'SaveButton' ),
-												array( 'reset', '', T_('Reset'), 'ResetButton' ) ) );
+$Form->end_form( array( array( 'submit', 'actionArray[import]', T_('Import'), 'SaveButton' ) ) );
 
 ?>

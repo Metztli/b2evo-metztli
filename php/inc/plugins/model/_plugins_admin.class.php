@@ -6,7 +6,7 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2006 by Daniel HAHLER - {@link http://daniel.hahler.de/}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
@@ -21,7 +21,7 @@
  *
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: _plugins_admin.class.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _plugins_admin.class.php 7298 2014-09-09 07:16:07Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -175,7 +175,6 @@ class Plugins_admin extends Plugins
 				'ItemApplyAsRenderer' => 'Asks the plugin if it wants to apply as a renderer for an item.',
 				'ItemCanComment' => 'Asks the plugin if an item can receive comments/feedback.',
 				'ItemSendPing' => 'Send a ping to a service about new items.',
-				'ItemViewsIncreased' => 'Called when the view counter of an item got increased.',
 
 				'SkinTag' => 'This method gets invoked when a plugin is called by its code. Providing this method causes the plugin to be listed as a widget.',
 
@@ -229,6 +228,8 @@ class Plugins_admin extends Plugins
 
 				'AfterLoginAnonymousUser' => 'Gets called at the end of the login procedure for anonymous visitors.',
 				'AfterLoginRegisteredUser' => 'Gets called at the end of the login procedure for registered users.',
+
+				'BeforeBlockableAction' => 'Gets called at the end of antispam block ip/domain call.',
 
 				'BeforeBlogDisplay' => 'Gets called before a (part of the blog) gets displayed.',
 				'InitMainList' => 'Initializes the MainList object. Use this method to create your own MainList, see init_MainList()',
@@ -921,6 +922,11 @@ class Plugins_admin extends Plugins
 	{
 		global $DB;
 
+		if( strlen( $code ) < 8 )
+		{
+			return T_( 'The minimum length of a plugin code is 8 characters.' );
+		}
+
 		if( strlen( $code ) > 32 )
 		{
 			return T_( 'The maximum length of a plugin code is 32 characters.' );
@@ -938,8 +944,8 @@ class Plugins_admin extends Plugins
 			{ // Already set to same value
 				return true;
 			}
-			else
-			{
+			elseif( $this->index_code_ID[$code] > 0 )
+			{ // If code exists in DB for another plugin
 				return T_( 'The plugin code is already in use by another plugin.' );
 			}
 		}
@@ -960,15 +966,48 @@ class Plugins_admin extends Plugins
 			$this->index_code_Plugins[$code] = & $Plugin;
 		}
 
-		// Update references to code:
-		// TODO: dh> we might want to update item renderer codes and blog ping plugin codes here! (old code=>new code)
+		if( $Plugin->code == $code )
+		{ // Don't update if code has not been changed
+			return false;
+		}
+
+		$old_code = $Plugin->code;
+
+		$DB->begin();
 
 		$Plugin->code = $code;
 
-		return $DB->query( '
-			UPDATE T_plugins
-			  SET plug_code = '.$DB->quote($code).'
+		// Update the plugin code
+		$result = $DB->query( 'UPDATE T_plugins
+			  SET plug_code = '.$DB->quote( $code ).'
 			WHERE plug_ID = '.$plugin_ID );
+
+		if( $result )
+		{ // Update references to code:
+			// Widgets
+			$DB->query( 'UPDATE T_widget
+				  SET wi_code = '.$DB->quote( $code ).'
+				WHERE wi_code = '.$DB->quote( $old_code ) );
+			// Update the renderer fields in the tables of Items, Comments:
+			$renderer_fields = array(
+					// Items
+					'T_items__item'             => 'post_renderers',
+					'T_items__prerendering'     => 'itpr_renderers',
+					// Comments
+					'T_comments'                => 'comment_renderers',
+					'T_comments__prerendering'  => 'cmpr_renderers',
+				);
+			foreach( $renderer_fields as $renderer_table => $renderer_field )
+			{
+				$DB->query( 'UPDATE '.$renderer_table.'
+					  SET '.$renderer_field.' = TRIM( BOTH "." FROM REPLACE( CONCAT( ".", '.$renderer_field.', "." ), ".'.$old_code.'.", ".'.$code.'." ) )
+					WHERE '.$renderer_field.' LIKE "%'.addcslashes( $old_code, '%_' ).'%"' );
+			}
+		}
+
+		$DB->commit();
+
+		return $result;
 	}
 
 
@@ -1466,28 +1505,11 @@ class Plugins_admin extends Plugins
 
 		foreach( $filter_Plugins as $loop_filter_Plugin )
 		{ // Go through whole list of renders
-			switch( $loop_filter_Plugin->get_coll_setting( $rendering_setting_name, $params['object_Blog'] ) )
-			{
-				case 'stealth':
-				case 'always':
-					// echo 'FORCED ';
-					$this->call_method( $loop_filter_Plugin->ID, $event, $params );
-					break;
+			$rendering_setting_value = $loop_filter_Plugin->get_coll_setting( $rendering_setting_name, $params['object_Blog'] );
 
-				case 'opt-out':
-				case 'opt-in':
-				case 'lazy':
-					if( in_array( $loop_filter_Plugin->code, $renderers ) )
-					{ // Option is activated
-						// echo 'OPT ';
-						$this->call_method( $loop_filter_Plugin->ID, $event, $params );
-					}
-					// else echo 'NOOPT ';
-					break;
-
-				case 'never':
-					// echo 'NEVER ';
-					break;	// STOP, don't render, go to next renderer
+			if( $loop_filter_Plugin->is_renderer_enabled( $rendering_setting_value, $renderers ) )
+			{ // Plugin is enabled to call method
+				$this->call_method( $loop_filter_Plugin->ID, $event, $params );
 			}
 		}
 

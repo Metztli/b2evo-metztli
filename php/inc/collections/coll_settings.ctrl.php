@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -31,7 +31,7 @@
  * @todo (sessions) When creating a blog, provide "edit options" (3 tabs) instead of a single long "New" form (storing the new Blog object with the session data).
  * @todo Currently if you change the name of a blog it gets not reflected in the blog list buttons!
  *
- * @version $Id: coll_settings.ctrl.php 3332 2013-03-26 12:40:36Z yura $
+ * @version $Id: coll_settings.ctrl.php 6426 2014-04-08 16:26:27Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -135,6 +135,7 @@ switch( $action )
 				}
 				break;
 
+			case 'home':
 			case 'features':
 			case 'comments':
 			case 'other':
@@ -302,6 +303,47 @@ switch( $action )
 		header_redirect( $update_redirect_url, 303 ); // Will EXIT
 
 		break;
+
+	case 'enable_setting':
+	case 'disable_setting':
+		// Update DB:
+
+		// Check that this action request is not a CSRF hacked request:
+		$Session->assert_received_crumb( 'collection' );
+
+		// Check permissions:
+		$current_User->check_perm( 'blog_properties', 'edit', true, $blog );
+
+		$update_redirect_url = '?ctrl=collections&tab=list';
+
+		$setting = param( 'setting', 'string', '' );
+		switch( $setting )
+		{
+			case 'plist':
+				// Blog in public list
+				$setting_name = 'in_bloglist';
+				break;
+
+			case 'fav':
+				// Favorite Blog
+				$setting_name = 'favorite';
+				break;
+
+			default:
+				// Incorrect setting name
+				header_redirect( $update_redirect_url, 303 ); // Will EXIT
+				break;
+		}
+
+		$setting_value = $action == 'enable_setting' ? '1' : '0';
+		$edited_Blog->set( $setting_name, $setting_value );
+		$edited_Blog->dbupdate();
+
+		$Messages->add( T_('The blog setting has been updated'), 'success' );
+		// Redirect so that a reload doesn't write to the DB twice:
+		header_redirect( $update_redirect_url, 303 ); // Will EXIT
+
+		break;
 }
 
 $AdminUI->set_path( 'blogs',  $tab  );
@@ -312,19 +354,28 @@ $AdminUI->set_path( 'blogs',  $tab  );
  */
 $AdminUI->set_coll_list_params( 'blog_properties', 'edit',
 											array( 'ctrl' => 'coll_settings', 'tab' => $tab, 'action' => 'edit' ),
-											T_('All'), '?ctrl=collections&amp;blog=0' );
+											T_('Site'), '?ctrl=collections' );
 
 
-$AdminUI->breadcrumbpath_init( true );
+$AdminUI->breadcrumbpath_init( true, array( 'text' => T_('Structure'), 'url' => '?ctrl=coll_settings' ) );
 $AdminUI->breadcrumbpath_add( T_('Settings'), '?ctrl=coll_settings&amp;blog=$blog$' );
 switch( $AdminUI->get_path(1) )
 {
 	case 'general':
 		$AdminUI->breadcrumbpath_add( T_('General'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab='.$tab );
+		$AdminUI->set_page_manual_link( 'general-collection-settings' );
 		if( $action == 'type' )
 		{
 			$AdminUI->breadcrumbpath_add( T_('Collection type'), '?ctrl=coll_settings&amp;blog=$blog$&amp;action=type&amp;tab='.$tab );
 		}
+		// Init JS to autcomplete the user logins
+		init_autocomplete_login_js( 'rsc_url', $AdminUI->get_template( 'autocomplete_plugin' ) );
+		break;
+
+	case 'home':
+		$AdminUI->set_path( 'blogs', 'features', $tab );
+		$AdminUI->breadcrumbpath_add( T_('Features'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab='.$tab );
+		$AdminUI->breadcrumbpath_add( T_('Front page'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab='.$tab );
 		break;
 
 	case 'features':
@@ -361,6 +412,7 @@ switch( $AdminUI->get_path(1) )
 
 	case 'plugin_settings':
 		$AdminUI->breadcrumbpath_add( T_('Blog specific plugin settings'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab='.$tab );
+		$AdminUI->set_page_manual_link( 'blog-plugin-settings' );
 		break;
 
 	case 'urls':
@@ -416,6 +468,9 @@ switch( $AdminUI->get_path(1) )
 	case 'features':
 		switch( $AdminUI->get_path(2) )
 		{
+			case 'features';
+				$AdminUI->disp_view( 'collections/views/_coll_features.form.php' );
+				break;
 			case 'comments';
 				$AdminUI->disp_view( 'collections/views/_coll_comments.form.php' );
 				break;
@@ -423,7 +478,7 @@ switch( $AdminUI->get_path(1) )
 				$AdminUI->disp_view( 'collections/views/_coll_other.form.php' );
 				break;
 			default:
-				$AdminUI->disp_view( 'collections/views/_coll_features.form.php' );
+				$AdminUI->disp_view( 'collections/views/_coll_home.form.php' );
 				break;
 		}
 		break;

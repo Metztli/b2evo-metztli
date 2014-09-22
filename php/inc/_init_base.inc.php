@@ -8,7 +8,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
@@ -39,7 +39,7 @@
  * @author mfollett: Matt FOLLETT
  * @author mbruneau: Marc BRUNEAU / PROGIDISTRI
  *
- * @version $Id: _init_base.inc.php 5416 2013-12-11 04:34:50Z yura $
+ * @version $Id: _init_base.inc.php 6135 2014-03-08 07:54:05Z manuel $
  */
 if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page directly.' );
 
@@ -247,15 +247,6 @@ $month_abbrev['10'] = NT_('Oct');
 $month_abbrev['11'] = NT_('Nov');
 // TRANS: abbrev. for December
 $month_abbrev['12'] = NT_('Dec');
-
-
-/**
- * IDs of items for which we should increment the view count on shutdown
- *
- * @var array
- * @todo fp> find a better place to init this
- */
-$shutdown_count_item_views = array();
 
 
 /**

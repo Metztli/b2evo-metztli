@@ -1,4 +1,4 @@
-/* Designed by François PLANQUE - http://fplanque.net/ */
+/* Designed by Francois PLANQUE - http://fplanque.net/ */
 
 body {
 	background: #fff;
@@ -6,6 +6,19 @@ body {
 	margin: 0px;
 	color: #000;
 }
+
+div#skin_wrapper div.sitewide_header {
+	margin-bottom: 0;
+	position: fixed;
+	top: 0;
+	width: 100%;
+	z-index: 10000;
+	-webkit-font-smoothing: subpixel-antialiased;
+}
+div#skin_wrapper.skin_wrapper_loggedin div.sitewide_header {
+	top: 23px;
+}
+
 textarea, input, select, option, optgroup, ul.ui-autocomplete, li.token-input-token-facebook, div.token-input-dropdown-facebook {
 	font: 11px Verdana, Arial, Helvetica, sans-serif;
 }
@@ -40,8 +53,7 @@ a.forumlink:hover, a.postlink:hover {
 	font-size: 11px !important;
 }
 
-div.pageHeader h1 a,
-div.pageHeader h1 a:visited {  /* IE6 */
+div.pageHeader h1 a {
 	text-decoration: none;
 }
 div.pageHeader h1 a:hover {
@@ -55,6 +67,11 @@ h2 {
 }
 h2.page_title {
 	padding: 0 2px;
+	font-weight: normal;
+}
+.post_panel h2.page_title {
+	float: left;
+	padding: 0;
 }
 h2 a:link{
 	font-weight: normal;
@@ -70,6 +87,10 @@ h3 {
 h4 {
 	color: #069;
 	font-size: 110%;
+}
+
+.bText h1, .bText h2, .bText h3, .bText h4, .bText h5, .bText h6 {
+	color: #000;
 }
 
 table.invisible
@@ -117,11 +138,11 @@ div#wrapper {
 	font: 11px Verdana, Arial, Helvetica, sans-serif;
 	width: 960px;
 	margin: 0 auto;
-	transition: width 1s;
-	-moz-transition: width 1s; /* Firefox 4 */
-	-webkit-transition: width 1s; /* Safari and Chrome */
-	-o-transition: width 1s; /* Opera */
-	-ms-transition: width 1s; /* IE */
+	transition: all 1s;
+	-moz-transition: all 1s; /* Firefox 4 */
+	-webkit-transition: all 1s; /* Safari and Chrome */
+	-o-transition: all 1s; /* Opera */
+	-ms-transition: all 1s; /* IE */
 }
 div.pageTop, div.pageHeader, div#pageFooter {
 	font: 84% Arial, Helvetica, sans-serif;
@@ -131,6 +152,16 @@ div.pageHeader {
 	margin: 0;
 	border-bottom: 1px solid #000;
 	text-align: center;
+}
+div.pageHeader.site_skins {
+	margin-top: 43px;
+}
+/* Devices with max width <= 1024px (iPhone,iPad):
+   Remove margin-top from page header because .sitewide_header has no fixed position */
+@media only screen and (max-device-width: 1024px) {
+	div.pageHeader.site_skins {
+		margin-top: 0;
+	}
 }
 
 div.pageHeader h1 {
@@ -627,8 +658,7 @@ table.bForums div.avatartag {
 }
 .breadcrumbs {
 	font-weight: bold;
-	float: left;
-	padding-top: 5px;
+	padding: 10px 0 2px;
 }
 .breadcrumbs a {
 	text-decoration: none;
@@ -763,7 +793,7 @@ table.legend td {
 	border: none;
 }
 
-.bForums .bComment.form_textarea_input {
+.bForums .form_textarea_input {
 	width: 99%;
 }
 
@@ -780,16 +810,37 @@ td.message_text {
 	width: 90%;
 }
 
+div.comment_toolbars div.edit_toolbar,
+div.message_toolbars div.edit_toolbar {
+	width: 99%;
+}
+
+#width_switcher_layout {
+	position: absolute;
+	top: 115px;
+	right: 3px;
+	z-index: 10001;
+}
 #width_switcher {
 	display: none;
-	position: fixed;
-	top: 10px;
-	right: 10px;
 }
 #width_switcher a {
 	width: 26px;
 	height: 36px;
 	text-decoration: none;
+}
+#width_switcher.fixed {
+	position: fixed;
+	top: 3px;
+	right: 3px;
+}
+/* Devices with max width <= 1024px (iPhone,iPad):
+   Don't fix a width switcher */
+@media only screen and (max-device-width: 1024px) {
+	#width_switcher.fixed {
+		position: absolute;
+		width: 75px;
+	}
 }
 div.edit_toolbars, div.comment_toolbars {
 	margin: 0;
@@ -797,6 +848,10 @@ div.edit_toolbars, div.comment_toolbars {
 div.edit_toolbars div.edit_toolbar, div.comment_toolbars div.edit_toolbar {
 	width: 99%;
 	text-align: center;
+	margin-left: 1px;
+}
+td.comment_content textarea {
+	margin: 0 0 0 1px;
 }
 
 /* Code highlight plugin */
@@ -872,7 +927,7 @@ div.edit_toolbars div.edit_toolbar, div.comment_toolbars div.edit_toolbar {
 	padding-right: 5px;
 }
 
-/* Add this padding temporarily because moderator links are higher then img */
+/* Add this padding temporarily because moderator links are higher then img */ 
 .bForums td.left a img {
 	padding-top: 1px;
 }

@@ -4,11 +4,11 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  *
- * @version $Id: user.main.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: user.main.php 7043 2014-07-02 08:35:45Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -58,6 +58,23 @@ if( !empty($user_ID) )
 		$Messages->add( T_('The requested user account is closed!') );
 		header_redirect( $error_redirect_to );
 		// will have exited
+	}
+
+	if( has_cross_country_restriction( 'any' ) )
+	{
+		if( empty( $current_User->ctry_ID  ) )
+		{ // Current User country is not set
+			$Messages->add( T_('Please specify your country before attempting to contact other users.') );
+			header_redirect( get_user_profile_url() );
+			// will have exited
+		}
+
+		if( has_cross_country_restriction( 'user' ) && ( $current_User->ctry_ID !== $User->ctry_ID ) )
+		{ // Current user country is different then edited user country and cross country user browsing is not enabled.
+			$Messages->add( T_('You don\'t have permission to view this user profile.') );
+			header_redirect( url_add_param( $error_redirect_to, 'disp=403', '&' ) );
+			// will have exited
+		}
 	}
 }
 

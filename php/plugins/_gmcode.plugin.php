@@ -6,7 +6,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package plugins
  */
@@ -39,7 +39,7 @@ class gmcode_plugin extends Plugin
 	 */
 	var $search = array(
 			'# \*\* (.+?) \*\* #x',                // **bold**
-			'# \x5c\x5c (.+?) \x5c\x5c #x',        // \\italics\\
+			'# \\\\ (.+?) \\\\ #x',                // \\italics\\
 			'# (?<!:) \x2f\x2f (.+?) \x2f\x2f #x', // //italics// (not preceded by : as in http://)
 			'# __ (.+?) __ #x',                    // __underline__
 			'/ \#\# (.+?) \#\# /x',                // ##tt##
@@ -72,7 +72,7 @@ class gmcode_plugin extends Plugin
 	function PluginInit( & $params )
 	{
 		$this->short_desc = T_('GreyMatter style formatting');
-		$this->long_desc = T_('**bold** \\italics\\ //italics// __underline__ ##tt## %%codeblock%%');
+		$this->long_desc = T_('**bold** \\\\italics\\\\ //italics// __underline__ ##tt## %%codeblock%%');
 	}
 
 

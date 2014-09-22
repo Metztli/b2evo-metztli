@@ -20,7 +20,7 @@
  * @author efy-maxim: Evo Factory / Maxim.
  * @author fplanque: Francois Planque.
  *
- * @version $Id: _backup.form.php 6143 2014-03-10 14:29:28Z yura $
+ * @version $Id: _backup.form.php 6144 2014-03-10 14:37:52Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -106,7 +106,6 @@ if( function_exists('gzopen') )
 $Form->add_crumb( 'backup' );
 $Form->end_fieldset();
 
-$Form->end_form( array( array( 'submit', 'actionArray[backup]', T_('Backup'), 'SaveButton' ),
-												array( 'reset', '', T_('Reset'), 'ResetButton' ) ) );
+$Form->end_form( array( array( 'submit', 'actionArray[backup]', T_('Backup'), 'SaveButton' ) ) );
 
 ?>

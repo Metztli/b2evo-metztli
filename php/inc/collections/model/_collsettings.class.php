@@ -6,7 +6,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -25,7 +25,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE
  *
- * @version $Id: _collsettings.class.php 4058 2013-06-26 06:23:03Z attila $
+ * @version $Id: _collsettings.class.php 6643 2014-05-08 13:08:08Z yura $
  *
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -46,6 +46,7 @@ class CollectionSettings extends AbstractSettings
 	 */
 	var $_defaults = array(
 		// Home page settings:
+			'front_disp'             => 'posts',
 			'what_to_show'           => 'posts',        // posts, days
 			'main_content'           => 'normal',
 			'posts_per_page'         => '5',
@@ -72,10 +73,13 @@ class CollectionSettings extends AbstractSettings
 			'show_location_coordinates' => 0,
 			'tags_meta_keywords' => 1,
 			'slug_limit' => 5,
+			'tags_open_graph' => 1,
 
 		// Comment settings:
 			// 'new_feedback_status' => 'review',		// Default status for new anonymous comments: 'published', 'community', 'protected', 'private', 'review', 'draft' or 'deprecated'. We don't specify a general default because it depends from the blog type ( see @Blog::get_setting() )
 			// 'moderation_statuses' => NULL,			// Possible values are a list of statuses from: 'community', 'protected', 'review', 'draft', but we don't specify a general default because it depends from the blog type ( see @Blog::get_setting() )
+			// 'comment_inskin_statuses' => NULL,       // Possible value is a set of statuses wihtout the 'trash' status, but we don't specify a general default because it depends from the blog type ( see @Blog::get_setting() )
+			// 'post_inskin_statuses' => NULL,          // Same as in case of comments
 			'allow_comments' => 'any',
 			'allow_view_comments' => 'any',				// 'any', 'registered', 'member', 'moderator'
 			'disable_comments_bypost' => '1',
@@ -195,6 +199,11 @@ class CollectionSettings extends AbstractSettings
 			'location_region'    => 'hidden', // Editing mode of region for item:    "optional" | "required" | "hidden"
 			'location_subregion' => 'hidden', // Editing mode of subregion for item: "optional" | "required" | "hidden"
 			'location_city'      => 'hidden', // Editing mode of city for item:      "optional" | "required" | "hidden"
+		
+		// Download settings:
+			'download_delay' => 5,
+			'download_noindex' => 1,
+			'download_nofollowto' => 1,
 		);
 
 	/**

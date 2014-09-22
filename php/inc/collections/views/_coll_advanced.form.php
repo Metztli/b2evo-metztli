@@ -5,7 +5,7 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2004-2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
@@ -23,7 +23,7 @@
  * @package admin
  *
  *
- * @version $Id: _coll_advanced.form.php 5843 2014-01-29 15:30:37Z yura $
+ * @version $Id: _coll_advanced.form.php 6828 2014-06-02 11:53:41Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -93,12 +93,12 @@ $Form->end_fieldset();
 $Form->begin_fieldset( T_('External Feeds').get_manual_link('external_feeds') );
 
 	$Form->text_input( 'atom_redirect', $edited_Blog->get_setting( 'atom_redirect' ), 50, T_('Atom Feed URL'),
-	'<br />'.T_('Example: Your Feedburner Atom URL which should replace the original feed URL.').'<br />'
+	T_('Example: Your Feedburner Atom URL which should replace the original feed URL.').'<br />'
 			.sprintf( T_( 'Note: the original URL was: %s' ), url_add_param( $edited_Blog->get_item_feed_url( '_atom' ), 'redir=no' ) ),
 	array('maxlength'=>255, 'class'=>'large') );
 
 	$Form->text_input( 'rss2_redirect', $edited_Blog->get_setting( 'rss2_redirect' ), 50, T_('RSS2 Feed URL'),
-	'<br />'.T_('Example: Your Feedburner RSS2 URL which should replace the original feed URL.').'<br />'
+	T_('Example: Your Feedburner RSS2 URL which should replace the original feed URL.').'<br />'
 			.sprintf( T_( 'Note: the original URL was: %s' ), url_add_param( $edited_Blog->get_item_feed_url( '_rss2' ), 'redir=no' ) ),
 	array('maxlength'=>255, 'class'=>'large') );
 
@@ -140,19 +140,19 @@ if( $current_User->check_perm( 'blog_admin', 'edit', false, $edited_Blog->ID ) )
 				array( 'subdir', T_('Subdirectory of media folder').':',
 					'',
 					' <span class="nobr"><code>'.$media_path.'</code><input
-						type="text" name="blog_media_subdir" class="form_text_input" size="20" maxlength="255"
+						type="text" name="blog_media_subdir" class="form_text_input form-control" size="20" maxlength="255"
 						class="'.( param_has_error('blog_media_subdir') ? 'field_error' : '' ).'"
 						value="'.$edited_Blog->dget( 'media_subdir', 'formvalue' ).'" /></span>', '' ),
 				array( 'custom',
 					T_('Custom location').':',
 					'',
-					'<fieldset>'
-					.'<div class="label">'.T_('directory').':</div><div class="input"><input
-						type="text" class="form_text_input" name="blog_media_fullpath" size="50" maxlength="255"
+					'<fieldset class="form-group">'
+					.'<div class="label control-label col-lg-2">'.T_('directory').':</div><div class="input controls col-xs-8"><input
+						type="text" class="form_text_input form-control" name="blog_media_fullpath" size="50" maxlength="255"
 						class="'.( param_has_error('blog_media_fullpath') ? 'field_error' : '' ).'"
 						value="'.$edited_Blog->dget( 'media_fullpath', 'formvalue' ).'" /></div>'
-					.'<div class="label">'.T_('URL').':</div><div class="input"><input
-						type="text" class="form_text_input" name="blog_media_url" size="50" maxlength="255"
+					.'<div class="label control-label col-lg-2">'.T_('URL').':</div><div class="input controls col-xs-8"><input
+						type="text" class="form_text_input form-control" name="blog_media_url" size="50" maxlength="255"
 						class="'.( param_has_error('blog_media_url') ? 'field_error' : '' ).'"
 						value="'.$edited_Blog->dget( 'media_url', 'formvalue' ).'" /></div></fieldset>' )
 			), T_('Media directory'), true
@@ -163,17 +163,17 @@ if( $current_User->check_perm( 'blog_admin', 'edit', false, $edited_Blog->ID ) )
 
 $Form->begin_fieldset( T_('Meta data').get_manual_link('blog_meta_data') );
 	// TODO: move stuff to coll_settings
-	$Form->text( 'blog_description', $edited_Blog->get( 'description' ), 60, T_('Short Description'), T_('This is is used in meta tag description and RSS feeds. NO HTML!'), 250, 'large' );
+	$Form->text( 'blog_shortdesc', $edited_Blog->get( 'shortdesc' ), 60, T_('Short Description'), T_('This is is used in meta tag description and RSS feeds. NO HTML!'), 250, 'large' );
 	$Form->text( 'blog_keywords', $edited_Blog->get( 'keywords' ), 60, T_('Keywords'), T_('This is is used in meta tag keywords. NO HTML!'), 250, 'large' );
 	$Form->text( 'blog_footer_text', $edited_Blog->get_setting( 'blog_footer_text' ), 60, T_('Blog footer'), sprintf(
 		T_('Use &lt;br /&gt; to insert a line break. You might want to put your copyright or <a href="%s" target="_blank">creative commons</a> notice here.'),
 		'http://creativecommons.org/license/' ), 1000, 'large' );
 	$Form->textarea( 'single_item_footer_text', $edited_Blog->get_setting( 'single_item_footer_text' ), 2, T_('Single post footer'),
-		T_('This will be displayed after each post in single post view.').' '.sprintf( T_('Available variables: %s.'), '<b>$perm_url$</b>, <b>$title$</b>, <b>$excerpt$</b>, <b>$views$</b>, <b>$author$</b>, <b>$author_login$</b>' ), 50, 'large' );
+		T_('This will be displayed after each post in single post view.').' '.sprintf( T_('Available variables: %s.'), '<b>$perm_url$</b>, <b>$title$</b>, <b>$excerpt$</b>, <b>$author$</b>, <b>$author_login$</b>' ), 50 );
 	$Form->textarea( 'xml_item_footer_text', $edited_Blog->get_setting( 'xml_item_footer_text' ), 2, T_('Post footer in RSS/Atom'),
-		T_('This will be appended to each post in your RSS/Atom feeds.').' '.sprintf( T_('Available variables: %s.'), T_('same as above') ), 50, 'large' );
+		T_('This will be appended to each post in your RSS/Atom feeds.').' '.sprintf( T_('Available variables: %s.'), T_('same as above') ), 50 );
 	$Form->textarea( 'blog_notes', $edited_Blog->get( 'notes' ), 5, T_('Notes'),
-		T_('Additional info. Appears in the backoffice.'), 50, 'large' );
+		T_('Additional info. Appears in the backoffice.'), 50 );
 $Form->end_fieldset();
 
 $Form->begin_fieldset( T_('Software credits').get_manual_link('software_credits') );
@@ -194,17 +194,15 @@ if( $current_User->check_perm( 'blog_admin', 'edit', false, $edited_Blog->ID ) )
 		$Form->checkbox( 'blog_allowblogcss', $edited_Blog->get( 'allowblogcss' ), T_('Allow customized blog CSS file'), T_('You will be able to customize the blog\'s skin stylesheet with a file named style.css in the blog\'s media file folder.') );
 		$Form->checkbox( 'blog_allowusercss', $edited_Blog->get( 'allowusercss' ), T_('Allow user customized CSS file for this blog'), T_('Users will be able to customize the blog and skin stylesheets with a file named style.css in their personal file folder.') );
 		$Form->textarea( 'blog_head_includes', $edited_Blog->get_setting( 'head_includes' ), 5, T_('Custom meta tag/css section (before &lt;/head&gt;)'),
-			T_('Add custom meta tags and/or css styles to the &lt;head&gt; section. Example use: website verification, Google+, favicon image...'), 50, 'large' );
+			T_('Add custom meta tags and/or css styles to the &lt;head&gt; section. Example use: website verification, Google+, favicon image...'), 50 );
 		$Form->textarea( 'blog_footer_includes', $edited_Blog->get_setting( 'footer_includes' ), 5, T_('Custom javascript section (before &lt;/body&gt;)'),
-			T_('Add custom javascript before the closing &lt;/body&gt; tag in order to avoid any issues with page loading delays for visitors with slow connection speeds.<br />Example use: tracking scripts, javascript libraries...'), 50, 'large' );
+			T_('Add custom javascript before the closing &lt;/body&gt; tag in order to avoid any issues with page loading delays for visitors with slow connection speeds.<br />Example use: tracking scripts, javascript libraries...'), 50 );
 	$Form->end_fieldset();
 
 }
 
 
-$Form->end_form( array(
-	array( 'submit', 'submit', T_('Save !'), 'SaveButton' ),
-	array( 'reset', '', T_('Reset'), 'ResetButton' ) ) );
+$Form->end_form( array( array( 'submit', 'submit', T_('Save Changes!'), 'SaveButton' ) ) );
 
 ?>
 

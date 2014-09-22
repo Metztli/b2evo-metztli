@@ -129,17 +129,10 @@ class forums_Skin extends Skin
 	 */
 	function display_init()
 	{
+		global $disp;
+
 		// call parent:
 		parent::display_init();
-
-		// Add CSS:
-		require_css( 'basic_styles.css', 'blog' ); // the REAL basic styles
-		require_css( 'basic.css', 'blog' ); // Basic styles
-		require_css( 'blog_base.css', 'blog' ); // Default styles for the blog navigation
-		require_css( 'item_base.css', 'blog' ); // Default styles for the post CONTENT
-
-		// Make sure standard CSS is called ahead of custom CSS generated below:
-		require_css( 'style.css', true );
 
 		// Add custom CSS:
 		$custom_css = '';
@@ -176,15 +169,14 @@ class forums_Skin extends Skin
 			add_headline( $custom_css );
 		}
 
-		// Colorbox (a lightweight Lightbox alternative) allows to zoom on images and do slideshows with groups of images:
-		if($this->get_setting("colorbox"))
-		{
-			require_js_helper( 'colorbox', 'blog' );
-		}
-
 		// Functions to switch between the width sizes
 		require_js( '#jquery#', 'blog' );
 		require_js( 'widthswitcher.js', 'blog' );
+
+		if( in_array( $disp, array( 'single', 'page', 'comments' ) ) )
+		{ // Load jquery UI to animate background color on change comment status or on vote
+			require_js( '#jqueryUI#', 'blog' );
+		}
 	}
 
 
@@ -202,8 +194,8 @@ class forums_Skin extends Skin
 		}
 
 		$params = array_merge( array(
-				'before'    => '<span class="breadcrumbs">',
-				'after'     => '</span>',
+				'before'    => '<div class="breadcrumbs">',
+				'after'     => '</div>',
 				'separator' => ' -> ',
 			), $params );
 

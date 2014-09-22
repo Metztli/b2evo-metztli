@@ -8,7 +8,7 @@
  * @package skins
  * @subpackage manual
  *
- * @version $Id: _skin.class.php 992 2012-03-06 07:25:35Z yura $
+ * @version $Id: _skin.class.php 7069 2014-07-04 08:32:23Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -19,7 +19,7 @@ if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.'
  */
 class manual_Skin extends Skin
 {
-  /**
+	/**
 	 * Get default name for the skin.
 	 * Note: the admin can customize it.
 	 */
@@ -120,15 +120,6 @@ class manual_Skin extends Skin
 		// call parent:
 		parent::display_init();
 
-		// Add CSS:
-		require_css( 'basic_styles.css', 'blog' ); // the REAL basic styles
-		require_css( 'basic.css', 'blog' ); // Basic styles
-		require_css( 'blog_base.css', 'blog' ); // Default styles for the blog navigation
-		require_css( 'item_base.css', 'blog' ); // Default styles for the post CONTENT
-
-		// Make sure standard CSS is called ahead of custom CSS generated below:
-		require_css( 'style.css', true );
-
 		// Add custom CSS:
 		$custom_css = '';
 
@@ -162,12 +153,6 @@ class manual_Skin extends Skin
 '.$custom_css.'	-->
 	</style>';
 			add_headline( $custom_css );
-		}
-
-		// Colorbox (a lightweight Lightbox alternative) allows to zoom on images and do slideshows with groups of images:
-		if($this->get_setting("colorbox"))
-		{
-			require_js_helper( 'colorbox', 'blog' );
 		}
 
 		// Functions to switch between the width sizes
@@ -569,10 +554,10 @@ class manual_Skin extends Skin
 
 		// Get the posts of current category
 		$ItemList = new ItemList2( $Blog, $Blog->get_timestamp_min(), $Blog->get_timestamp_max(), $Blog->get_setting('posts_per_page') );
-		$ItemList->load_from_Request();
 		$ItemList->set_filters( array(
-				'cat_array' => array( $params['chapter_ID'] ), // Limit only by selected cat (exclude posts from child categories)
-				'unit'      => 'all', // Display all items of this category, Don't limit by page
+				'cat_array'    => array( $params['chapter_ID'] ), // Limit only by selected cat (exclude posts from child categories)
+				'cat_modifier' => NULL,
+				'unit'         => 'all', // Display all items of this category, Don't limit by page
 			) );
 		$ItemList->query();
 

@@ -7,7 +7,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  * @subpackage manual
@@ -57,7 +57,7 @@ if( ( $disp == 'single' ) && empty( $cat ) )
 			'text'   => $Item->is_intro() ? get_icon( 'edit' ).' '.T_('Edit Intro') : '#',
 			'class'  => 'roundbutton roundbutton_text',
 		) );
-	if( $Item->is_intro() && $Item->ptyp_ID != 1500 )
+	if( $Item->is_intro() && $Item->ptyp_ID > 1500 )
 	{ // Link to edit category
 		$ItemChapter = & $Item->get_main_Chapter();
 		if( !empty( $ItemChapter ) )
@@ -107,12 +107,10 @@ if( ( $disp == 'single' ) && empty( $cat ) )
 				'link_text' => 'login',
 			) );
 		'</p>';
-		if( is_logged_in() && $current_User->check_perm( 'item_post!CURSTATUS', 'edit', false, $Item ) )
-		{	// Check permission to view histories of this item
-			global $admin_url;
-			echo '  &bull; ';
-			echo '<a href="'.$admin_url.'?ctrl=items&amp;action=history&amp;p='.$Item->ID.'">'.T_('View history').'</a>';
-		}
+		echo $Item->get_history_link( array(
+				'before'    => ' &bull; ',
+				'link_text' => T_('View history')
+			) );
 
 		// ------------------ FEEDBACK (COMMENTS/TRACKBACKS) INCLUDED HERE ------------------
 		skin_include( '_item_feedback.inc.php', array_merge( $params, array(

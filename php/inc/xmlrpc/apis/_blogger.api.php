@@ -4,7 +4,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * @see http://b2evolution.net/man/blogger-api
  * @see http://www.blogger.com/developers/api/1_docs/
@@ -12,7 +12,7 @@
  *
  * @package xmlsrv
  *
- * @version $Id: _blogger.api.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _blogger.api.php 6135 2014-03-08 07:54:05Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 

@@ -29,7 +29,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _file_list.inc.php 6363 2014-03-27 13:10:09Z yura $
+ * @version $Id: _file_list.inc.php 6617 2014-05-06 13:39:35Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -88,7 +88,7 @@ $Form->begin_form();
 	$Form->hidden( 'md5_cwd', md5($fm_Filelist->get_ads_list_path()) );
 	$Form->hiddens_by_key( get_memorized('fm_selected') ); // 'fm_selected' gets provided by the form itself
 ?>
-<table class="filelist">
+<table class="filelist table table-striped table-bordered table-hover table-condensed">
 	<thead>
 	<?php
 		/*****************  Col headers  ****************/
@@ -158,7 +158,7 @@ $Form->begin_form();
 	?>
 	</thead>
 
-	<tbody>
+	<tbody id="filelist_tbody">
 	<?php
 	$checkall = param( 'checkall', 'integer', 0 );  // Non-Javascript-CheckAll
 	$fm_highlight = param( 'fm_highlight', 'string', NULL );
@@ -218,12 +218,12 @@ $Form->begin_form();
 			}
 			else
 			{
-				echo $lFile->get_preview_thumb( 'fulltype', true );
+				echo $lFile->get_preview_thumb( 'fulltype', array( 'init' => true ) );
 			}
 		}
 		else
 		{	// No image preview, small type:
- 			if( $lFile->is_dir() )
+			if( $lFile->is_dir() )
 			{ // Navigate into Directory
 				echo '<a href="'.$lFile->get_view_url().'" title="'.T_('Change into this directory').'">'.$lFile->get_icon().'</a>';
 			}
@@ -239,12 +239,23 @@ $Form->begin_form();
 		if( $fm_flatmode )
 		{
 			echo '<td class="filepath">';
-			echo dirname($lFile->get_rdfs_rel_path()).'/';
+			echo dirname( $lFile->get_rdfs_rel_path() ).'/';
 			echo '</td>';
 		}
 
-
-		echo '<td class="fm_filename">';
+		/*******************  File name: ******************/
+		if( ! $fm_flatmode ||
+		    ( $selected_Filelist->get_rds_list_path() === false && dirname( $lFile->get_rdfs_rel_path() ) == '.' ) ||
+		    ( $selected_Filelist->get_rds_list_path() == dirname( $lFile->get_rdfs_rel_path() ).'/' ) )
+		{ // Use attribute "rel" only for current folder and not for subfolders
+		  // It is used to detect a duplicate file on quick upload
+			$td_filename_rel_attr = ' rel="'.$lFile->get_name().'"';
+		}
+		else
+		{ // Don't set attribute "rel" for this file because it is from another folder
+			$td_filename_rel_attr = '';
+		}
+		echo '<td class="fm_filename"'.$td_filename_rel_attr.'>';
 
 			/*************  Invalid filename warning:  *************/
 
@@ -325,7 +336,7 @@ $Form->begin_form();
 			}
 			else
 			{ // File
-				if( $view_link = $lFile->get_view_link( $lFile->get_name(), NULL, NULL ) )
+				if( $view_link = $lFile->get_view_link( '<span class="fname">'.$lFile->get_name().'</span>', NULL, NULL ) )
 				{
 					echo $view_link;
 				}
@@ -485,13 +496,99 @@ $Form->begin_form();
 
 		<?php
 	}
-	else
+
+	echo '</tbody>';
+
+	echo '<tfoot>';
+
+	// -------------
+	// Quick upload with drag&drop button:
+	// --------------
+	if( $Settings->get( 'upload_enabled' ) && $current_User->check_perm( 'files', 'add', false, $fm_FileRoot ) )
+	{ // Upload is enabled and we have permission to use it...
+	?>
+		<tr id="fileuploader_form" class="listfooter firstcol lastcol">
+			<td colspan="<?php echo $filetable_cols ?>">
+			<?php
+			if( isset( $LinkOwner ) && $LinkOwner->check_perm( 'edit' ) )
+			{ // Offer option to link the file to an Item (or anything else):
+				$link_attribs = array();
+				$link_action = 'link';
+				if( $mode == 'upload' )
+				{ // We want the action to happen in the post attachments iframe:
+					$link_attribs['target'] = $iframe_name;
+					$link_action = 'link_inpost';
+				}
+				$icon_to_link_files = action_icon( T_('Link this file!'), 'link',
+							regenerate_url( 'fm_selected', 'action='.$link_action.'&amp;fm_selected[]=$file_path$&amp;'.url_crumb('file') ),
+							NULL, NULL, NULL, $link_attribs ).' ';
+			}
+			else
+			{ // No icon to link files
+				$icon_to_link_files = '';
+			}
+
+			$template_filerow = '<table><tr>'
+				.'<td class="checkbox firstcol">&nbsp;</td>'
+				.'<td class="icon_type qq-upload-image"><span class="qq-upload-spinner">&nbsp;</span></td>';
+			if( $fm_flatmode )
+			{
+				$template_filerow .= '<td class="filepath">'.( empty( $path ) ? './' : $path ).'</td>';
+			}
+			$template_filerow .= '<td class="fm_filename qq-upload-file">&nbsp;</td>';
+			if( $UserSettings->get('fm_showtypes') )
+			{
+				$template_filerow .= '<td class="type">&nbsp;</td>';
+			}
+			$template_filerow .= '<td class="size"><span class="qq-upload-size">&nbsp;</span><span class="qq-upload-spinner">&nbsp;</span></td>';
+			if( $UserSettings->get('fm_showdate') != 'no' )
+			{
+				$template_filerow .= '<td class="qq-upload-status timestamp">'.TS_('Uploading...').'</td>';
+			}
+			if( $UserSettings->get('fm_showfsperms') )
+			{
+				$template_filerow .= '<td class="perms">&nbsp;</td>';
+			}
+			if( $UserSettings->get('fm_showfsowner') )
+			{
+				$template_filerow .= '<td class="fsowner">&nbsp;</td>';
+			}
+			if( $UserSettings->get('fm_showfsgroup') )
+			{
+				$template_filerow .= '<td class="fsgroup">&nbsp;</td>';
+			}
+			$template_filerow .= '<td class="actions lastcol">';
+			if( $UserSettings->get('fm_showdate') == 'no' )
+			{ // Display status in the last column if column with datetime is hidden
+				$template_filerow .= '<span class="qq-upload-status">'.TS_('Uploading...').'</span> ';
+			}
+			$template_filerow .= '<a class="qq-upload-cancel" href="#">'.TS_('Cancel').'</a>'
+				.'</td>'
+			.'</tr></table>';
+			// Display a button to quick upload the files by drag&drop method
+			display_dragdrop_upload_button( array(
+					'fileroot_ID'         => $fm_FileRoot->ID,
+					'path'                => $path,
+					'list_style'          => 'table',
+					'template_filerow'    => $template_filerow,
+					'display_support_msg' => false,
+					'additional_dropzone' => '#filelist_tbody',
+					'filename_before'     => $icon_to_link_files,
+				) );
+			?>
+			</td>
+		</tr>
+	<?php
+	}
+
+
+	if( $countFiles > 0 )
 	{
 		// -------------
 		// Footer with "check all", "with selected: ..":
 		// --------------
 		?>
-		<tr class="listfooter firstcol lastcol">
+		<tr class="listfooter firstcol lastcol file_selector">
 			<td colspan="<?php echo $filetable_cols ?>">
 
 			<?php
@@ -509,9 +606,11 @@ $Form->begin_form();
 				$field_options['link'] = $LinkOwner->translate( 'Link files to current owner' );
 			}
 
-			if( $mode != 'upload' && ($fm_Filelist->get_root_type() == 'collection' || !empty($Blog))
+			if( ( $fm_Filelist->get_root_type() == 'collection' || ( ! empty( $Blog )
+						&& $current_User->check_perm( 'blog_post_statuses', 'edit', false, $Blog->ID ) ) )
+				&& $mode != 'upload'
 				&& $current_User->check_perm( 'admin', 'normal' ) )
-			{	// We are browsing files for a collection:
+			{ // We are browsing files for a collection:
 				// User must have access to admin permission
 				// fp> TODO: use current as default but let user choose into which blog he wants to post
 				$field_options['make_post'] = T_('Make one post (including all images)');
@@ -570,7 +669,7 @@ $Form->begin_form();
 		<?php
 	}
 	?>
-	</tbody>
+	</tfoot>
 </table>
 <?php
 	$Form->end_form();
@@ -674,7 +773,7 @@ $Form->begin_form();
 			jQuery( function() {
 				var fm_hl = jQuery("#fm_highlighted");
 				if( fm_hl.length ) {
-					jQuery.getScript('<?php echo $rsc_url ?>js/jquery/jquery.scrollto.js', function () {
+					jQuery.getScript('<?php echo get_require_url( '#scrollto#' ); ?>', function () {
 						jQuery.scrollTo( fm_hl,
 						{ onAfter: function()
 							{

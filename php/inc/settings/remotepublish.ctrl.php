@@ -5,11 +5,11 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
  *
- * @version $Id: remotepublish.ctrl.php 3520 2013-04-22 06:12:04Z attila $
+ * @version $Id: remotepublish.ctrl.php 6455 2014-04-13 10:51:51Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -194,6 +194,7 @@ switch( $tab )
 {
 	case 'eblog':
 		$AdminUI->breadcrumbpath_add( T_('Post by Email'), '?ctrl=remotepublish&amp;tab='.$tab );
+		$AdminUI->set_page_manual_link( 'post-by-email' );
 		break;
 
 	case 'xmlrpc':

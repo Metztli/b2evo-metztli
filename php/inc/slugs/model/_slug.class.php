@@ -5,7 +5,7 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
 *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
  *
@@ -20,7 +20,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author asimo: Evo Factory / Attila Simo
  *
- * @version $Id: _slug.class.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _slug.class.php 6225 2014-03-16 10:01:05Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -250,7 +250,7 @@ class Slug extends DataObject
 
 			default:
 				// not defined restriction
-				debug_die('Slug::get_object: Unhandled object type: '.htmlspecialchars($this->type));
+				debug_die('Slug::get_object: Unhandled object type: '.evo_htmlspecialchars($this->type));
 		}
 	}
 

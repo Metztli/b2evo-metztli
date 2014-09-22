@@ -14,7 +14,7 @@
  * @package evoskins
  * @subpackage terrafirma
  *
- * @version $Id: index.main.php 4275 2013-07-17 10:52:24Z yura $
+ * @version $Id: index.main.php 6462 2014-04-14 13:28:56Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -33,9 +33,14 @@ skin_include( '_html_header.inc.php' );
 // Note: You can customize the default HTML header by copying the generic
 // /skins/_html_header.inc.php file into the current skin folder.
 // -------------------------------- END OF HEADER --------------------------------
+
+
+// ---------------------------- SITE HEADER INCLUDED HERE ----------------------------
+// If site headers are enabled, they will be included here:
+siteskin_include( '_site_body_header.inc.php' );
+// ------------------------------- END OF SITE HEADER --------------------------------
 ?>
 <div id="wrapper">
-	<div id="upbg"></div>
 	<div id="inner">
 
 		<div class="pageHeader">
@@ -145,6 +150,8 @@ skin_include( '_html_header.inc.php' );
 				?>
 
 				<?php
+				if( $disp != 'front' && $disp != 'download' )
+				{
 					// --------------------------------- START OF POSTS -------------------------------------
 					// Display message if no post:
 					display_if_empty();
@@ -171,6 +178,7 @@ skin_include( '_html_header.inc.php' );
 						'next_text' => '&gt;&gt;',
 						) );
 					// ------------------------- END OF PREV/NEXT PAGE LINKS -------------------------
+				}
 				?>
 
 
@@ -290,6 +298,12 @@ skin_include( '_html_header.inc.php' );
 </div>
 
 <?php
+// ---------------------------- SITE FOOTER INCLUDED HERE ----------------------------
+// If site footers are enabled, they will be included here:
+siteskin_include( '_site_body_footer.inc.php' );
+// ------------------------------- END OF SITE FOOTER --------------------------------
+
+
 // ------------------------- HTML FOOTER INCLUDED HERE --------------------------
 skin_include( '_html_footer.inc.php' );
 // Note: You can customize the default HTML footer by copying the

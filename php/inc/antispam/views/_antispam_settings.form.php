@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -28,7 +28,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: _antispam_settings.form.php 4434 2013-08-07 01:40:27Z fplanque $
+ * @version $Id: _antispam_settings.form.php 6135 2014-03-08 07:54:05Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -102,8 +102,7 @@ $Form->end_fieldset();
 if( $current_User->check_perm( 'options', 'edit' ) )
 {
 	$Form->end_form( array(
-		array( 'submit', 'submit', T_('Update'), 'SaveButton' ),
-		array( 'reset', '', T_('Reset'), 'ResetButton' ),
+		array( 'submit', 'submit', T_('Save Changes!'), 'SaveButton' ),
 		array( 'submit', 'submit[restore_defaults]', T_('Restore defaults'), 'ResetButton' ),
 		) );
 }

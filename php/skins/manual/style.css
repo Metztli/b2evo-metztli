@@ -1,11 +1,23 @@
-/* Designed by François PLANQUE - http://fplanque.net/ */
-
+/* Designed by Francois PLANQUE - http://fplanque.net/ */
 body {
 	padding: 0px;
 	margin: 0px;
 	color: #000;
 	font: 84% Arial, Helvetica, sans-serif;
 }
+
+div#skin_wrapper div.sitewide_header {
+	margin-bottom: 0;
+	position: fixed;
+	top: 0;
+	width: 100%;
+	z-index: 10000;
+	-webkit-font-smoothing: subpixel-antialiased;
+}
+div#skin_wrapper.skin_wrapper_loggedin div.sitewide_header {
+	top: 23px;
+}
+
 textarea, input, select, option, optgroup, ul.ui-autocomplete, li.token-input-token-facebook, div.token-input-dropdown-facebook {
 	font: 13.43px Arial, Helvetica, sans-serif;
 }
@@ -22,6 +34,16 @@ div.pageHeader {
 	border: 1px solid #000;
 	border-top: none;
 	text-align: center;
+}
+div.pageHeader.site_skins {
+	margin-top: 43px;
+}
+/* Devices with max width <= 1024px (iPhone,iPad):
+   Remove margin-top from page header because .sitewide_header is not fixed */
+@media only screen and (max-device-width: 1024px) {
+	div.pageHeader.site_skins {
+		margin-top: 0;
+	}
 }
 
 div.pageHeader h1 {
@@ -100,11 +122,11 @@ div#wrapper {
 	width: 960px;
 	margin: 0 auto;
 	padding: 0 0 10px 0;
-	transition: width 1s;
-	-moz-transition: width 1s; /* Firefox 4 */
-	-webkit-transition: width 1s; /* Safari and Chrome */
-	-o-transition: width 1s; /* Opera */
-	-ms-transition: width 1s; /* IE */
+	transition: all 1s;
+	-moz-transition: all 1s; /* Firefox 4 */
+	-webkit-transition: all 1s; /* Safari and Chrome */
+	-o-transition: all 1s; /* Opera */
+	-ms-transition: all 1s; /* IE */
 }
 
 div.PageTop ul {
@@ -267,7 +289,6 @@ textarea.bComment
 {
 	background-color: #eee;
 	border: 1px solid #ccc;
-	width: 97%;
 	padding: 2px;
 	margin: 0ex;
 }
@@ -285,6 +306,20 @@ select.bComment  /* Used by the profile form */
 	float: left;
 	width: 235px;
 	padding-right: 10px;
+	background: #FFF;
+}
+.bSideBar.fixed {
+	position: fixed;
+}
+/* Windows with max height <= 800px:
+   Don't fix a position of the left side bar */
+@media (max-height:800px) {
+	.bSideBar.fixed {
+		position: static;
+	}
+	.fixed_spacer {
+		display: none;
+	}
 }
 
 .bSideItem {
@@ -399,16 +434,32 @@ div.input ul.token-input-list-facebook {
 }
 
 
+#width_switcher_layout {
+	position: absolute;
+	top: 115px;
+	right: 3px;
+	z-index: 10001;
+}
 #width_switcher {
 	display: none;
-	position: fixed;
-	top: 10px;
-	right: 10px;
 }
 #width_switcher a {
 	width: 26px;
 	height: 36px;
 	text-decoration: none;
+}
+#width_switcher.fixed {
+	position: fixed;
+	top: 3px;
+	right: 3px;
+}
+/* Devices with max width <= 1024px (iPhone,iPad):
+   Don't fix a position of the width switcher */
+@media only screen and (max-device-width: 1024px) {
+	#width_switcher.fixed {
+		position: absolute;
+		width: 75px;
+	}
 }
 
 div.breadcrumbs {
@@ -520,6 +571,18 @@ div.error_404 {
 	left: 14px;
 }
 
+.search_title {
+	color: #00E;
+}
+
 .form_add_contacts .controls {
 	padding-left: 0;
+}
+
+/* disp=user */
+body.disp_user form.bComment fieldset.fieldset {
+	margin: 2em 0;
+}
+body.disp_user legend {
+	margin-bottom: 1em;
 }

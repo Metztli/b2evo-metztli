@@ -6,7 +6,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  */
@@ -196,7 +196,7 @@ function validateCommentForm(form)
 	//           before display!
 
 	$Form->add_crumb( 'comment' );
-	$Form->hidden( 'comment_post_ID', $Item->ID );
+	$Form->hidden( 'comment_item_ID', $Item->ID );
 	if( !empty( $comment_reply_ID ) )
 	{
 		$Form->hidden( 'reply_ID', $comment_reply_ID );
@@ -240,10 +240,11 @@ function validateCommentForm(form)
 	}
 
 	if( $Item->can_rate() )
-	{	// Comment rating:
-		echo $Form->begin_field( NULL, T_('Your vote'), true );
+	{ // Comment rating:
+		ob_start();
 		$Comment->rating_input( array( 'item_ID' => $Item->ID ) );
-		echo $Form->end_field();
+		$comment_rating = ob_get_clean();
+		$Form->info_field( T_('Your vote'), $comment_rating );
 	}
 
 	if( !empty($params['policy_text']) )
@@ -258,7 +259,7 @@ function validateCommentForm(form)
 
 	// Message field:
 	$note = '';
-	// $note = T_('Allowed XHTML tags').': '.htmlspecialchars(str_replace( '><',', ', $comment_allowed_tags));
+	// $note = T_('Allowed XHTML tags').': '.evo_htmlspecialchars(str_replace( '><',', ', $comment_allowed_tags));
 	$Form->textarea( $dummy_fields[ 'content' ], $comment_content, $params['textarea_lines'], $params['form_comment_text'], $note, 38, 'bComment' );
 
 	// set b2evoCanvas for plugins
@@ -339,15 +340,15 @@ function validateCommentForm(form)
 	$Plugins->trigger_event( 'DisplayCommentFormFieldset', array( 'Form' => & $Form, 'Item' => & $Item ) );
 
 	$Form->begin_fieldset();
-		echo '<div class="input">';
+		echo $Form->buttonsstart;
 
 		$preview_text = ( $Item->can_attach() ) ? T_('Preview/Add file') : T_('Preview');
-		$Form->button_input( array( 'name' => 'submit_comment_post_'.$Item->ID.'[save]', 'class' => 'submit', 'value' => $params['form_submit_text'], 'tabindex' => 10 ) );
+		$Form->button_input( array( 'name' => 'submit_comment_post_'.$Item->ID.'[save]', 'class' => 'submit SaveButton', 'value' => $params['form_submit_text'], 'tabindex' => 10 ) );
 		$Form->button_input( array( 'name' => 'submit_comment_post_'.$Item->ID.'[preview]', 'class' => 'preview', 'value' => $preview_text, 'tabindex' => 9 ) );
 
 		$Plugins->trigger_event( 'DisplayCommentFormButton', array( 'Form' => & $Form, 'Item' => & $Item ) );
 
-		echo '</div>';
+		echo $Form->buttonsend;
 	$Form->end_fieldset();
 	?>
 

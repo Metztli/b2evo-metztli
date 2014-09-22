@@ -354,9 +354,9 @@ function _wp_mw_get_item_struct( & $Item )
 		}
 	}
 
-	// Split item content on before and after <!--more-->
+	// Split item content on before and after [teaserbreak]
 	// No tag balancing, no pages, no rendering, just raw text
-	$content_parts = explode( '<!--more-->', $Item->content, 2 );
+	$content_parts = explode( '[teaserbreak]', $Item->content, 2 );
 	if( !isset($content_parts[1]) ) $content_parts[1] = '';
 
 	$parent_title = '';
@@ -1051,7 +1051,7 @@ function xmlrpcs_new_comment( $params = array(), & $commented_Item )
 		$User = NULL;
 
 		$author = trim($params['author']);
-		$email = trim($params['author_email']);
+		$email = evo_strtolower( trim($params['author_email']) );
 
 		if( $commented_Item->Blog->get_setting('allow_anon_url') )
 		{
@@ -1140,8 +1140,8 @@ function xmlrpcs_new_comment( $params = array(), & $commented_Item )
 	 */
 	$query = 'SELECT MAX(comment_date)
 				FROM T_comments
-				WHERE comment_author_IP = '.$DB->quote($Hit->IP).'
-				OR comment_author_email = '.$DB->quote($email);
+				WHERE comment_author_IP = '.$DB->quote( $Hit->IP ).'
+				OR comment_author_email = '.$DB->quote( $email );
 	$ok = 1;
 	if( $then = $DB->get_var( $query ) )
 	{

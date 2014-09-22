@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -32,7 +32,7 @@
  * @author jeffbearer: Jeff BEARER - {@link http://www.jeffbearer.com/}.
  * @author jupiterx: Jordan RUNNING.
  *
- * @version $Id: _user.funcs.php 4555 2013-08-26 09:40:35Z yura $
+ * @version $Id: _user.funcs.php 7189 2014-07-31 06:58:37Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -177,12 +177,14 @@ function get_user_colored_login( $login, $params = array() )
  * Get url to login
  *
  * @param string describe the source ina word or two, used for stats (search current calls to this function for examples)
- * @param string
- * @return string
+ * @param string URL to redirect
+ * @param boolean TRUE to use normal login form(ignore in-skin login form)
+ * @param integer blog ID for the requested blog. NULL for current $Blog
+ * @return string URL
  */
-function get_login_url( $source, $redirect_to = NULL )
+function get_login_url( $source, $redirect_to = NULL, $force_normal_login = false, $blog_ID = NULL )
 {
-	global $edited_Blog, $secure_htsrv_url;
+	global $secure_htsrv_url;
 
 	if( !empty( $redirect_to ) )
 	{
@@ -195,10 +197,14 @@ function get_login_url( $source, $redirect_to = NULL )
 
 	if( use_in_skin_login() )
 	{ // use in-skin login
-		global $blog;
+		if( empty( $blog_ID ) )
+		{ // Use current blog if it is not defined
+			global $blog;
+			$blog_ID = $blog;
+		}
 		$BlogCache = & get_BlogCache();
-		$Blog = $BlogCache->get_by_ID( $blog );
-		if( ! empty($redirect) )
+		$Blog = $BlogCache->get_by_ID( $blog_ID );
+		if( ! empty( $redirect ) )
 		{
 			$redirect = 'redirect_to='.rawurlencode( url_rel_to_same_host( $redirect, $Blog->get( 'loginurl' ) ) );
 		}
@@ -206,7 +212,7 @@ function get_login_url( $source, $redirect_to = NULL )
 	}
 	else
 	{ // Normal login
-		if( ! empty($redirect) )
+		if( ! empty( $redirect ) )
 		{
 			$redirect = '?redirect_to='.rawurlencode( url_rel_to_same_host( $redirect, $secure_htsrv_url ) );
 		}
@@ -298,6 +304,10 @@ function send_admin_notification( $subject, $template_name, $template_params )
 
 		case 'account_reported':
 			$check_setting = 'notify_reported_account';
+			break;
+
+		case 'account_changed':
+			$check_setting = 'notify_changed_account';
 			break;
 
 		case 'scheduled_task_error_report':
@@ -485,8 +495,10 @@ function get_user_register_link( $before = '', $after = '', $link_text = '', $li
  * @param string where this registration url will be displayed
  * @param boolean force to display even when a user is logged in
  * @param string delimiter to use for more url params
+ * @param integer blog ID for the requested blog. NULL for current $Blog
+ * @return string URL
  */
-function get_user_register_url( $redirect = NULL, $default_source_string = '', $disp_when_logged_in = false, $glue = '&amp;' )
+function get_user_register_url( $redirect_to = NULL, $default_source_string = '', $disp_when_logged_in = false, $glue = '&amp;', $blog_ID = NULL )
 {
 	global $Settings, $edited_Blog, $secure_htsrv_url;
 
@@ -495,17 +507,26 @@ function get_user_register_url( $redirect = NULL, $default_source_string = '', $
 		return false;
 	}
 
-	if( ! $Settings->get('newusers_canregister'))
+	if( ! $Settings->get( 'newusers_canregister' ) )
 	{ // We won't let him register
+		return false;
+	}
+
+	if( ( ! is_logged_in() ) && ( ! $Settings->get( 'registration_is_public' ) ) )
+	{ // Don't show registration link if it is not forced to display when a user is already logged in
 		return false;
 	}
 
 	if( use_in_skin_login() )
 	{
-		global $blog;
+		if( empty( $blog_ID ) )
+		{ // Use current blog if it is not defined
+			global $blog;
+			$blog_ID = $blog;
+		}
 
 		$BlogCache = & get_BlogCache();
-		$Blog = $BlogCache->get_by_ID( $blog );
+		$Blog = $BlogCache->get_by_ID( $blog_ID );
 
 		$register_url = url_add_param( $Blog->get( 'url' ), 'disp=register', $glue );
 	}
@@ -525,15 +546,14 @@ function get_user_register_url( $redirect = NULL, $default_source_string = '', $
 		$register_url = url_add_param( $register_url, 'source='.rawurlencode($source), $glue );
 	}
 
-	// Redirect_to=
-	if( ! isset($redirect) )
-	{
-		$redirect = regenerate_url( '', '', '', $glue );
+	if( ! isset( $redirect_to ) )
+	{ // Set where to redirect
+		$redirect_to = regenerate_url( '', '', '', $glue );
 	}
 
-	if( ! empty($redirect) )
+	if( ! empty( $redirect_to ) )
 	{
-		$register_url = url_add_param( $register_url, 'redirect_to='.rawurlencode( url_rel_to_same_host( $redirect, $secure_htsrv_url ) ), $glue );
+		$register_url = url_add_param( $register_url, 'redirect_to='.rawurlencode( url_rel_to_same_host( $redirect_to, $secure_htsrv_url ) ), $glue );
 	}
 
 	return $register_url;
@@ -583,11 +603,12 @@ function get_user_logout_link( $before = '', $after = '', $link_text = '', $link
 /**
  * Get the URL for the logout button
  *
+ * @param integer blog ID for the requested blog. NULL for current $Blog
  * @return string
  */
-function get_user_logout_url()
+function get_user_logout_url( $blog_ID = NULL )
 {
-	global $admin_url, $baseurl, $is_admin_page, $Blog, $secure_htsrv_url;
+	global $admin_url, $baseurl, $is_admin_page, $secure_htsrv_url;
 
 	if( ! is_logged_in() )
 	{
@@ -597,10 +618,21 @@ function get_user_logout_url()
 	$redirect_to = url_rel_to_same_host( regenerate_url( 'disp,action','','','&' ), $secure_htsrv_url );
 	if( require_login( $redirect_to, true ) )
 	{ // if redirect_to page is a login page, or also require login ( e.g. admin.php )
-		if( !empty( $Blog ) )
+		if( ! empty( $blog_ID ) )
+		{ // Try to use blog by defined ID
+			$BlogCache = & get_BlogCache();
+			$current_Blog = & $BlogCache->get_by_ID( $blog_ID, false, false );
+		}
+		if( empty( $current_Blog ) )
+		{ // Use current blog
+			global $Blog;
+			$current_Blog = & $Blog;
+		}
+
+		if( ! empty( $current_Blog ) )
 		{ // Blog is set
 			// set redirect_to to Blog url
-			$redirect_to = $Blog->gen_blogurl();
+			$redirect_to = $current_Blog->gen_blogurl();
 		}
 		else
 		{ // Blog is empty, set abort url to baseurl
@@ -765,19 +797,25 @@ function get_user_tab_link( $user_tab = 'user', $before = '', $after = '', $link
 
 /**
  * Get URL to edit user profile
+ *
+ * @param integer blog ID for the requested blog. NULL for current $Blog
+ * @return string URL
  */
-function get_user_profile_url()
+function get_user_profile_url( $blog_ID = NULL )
 {
-	return get_user_settings_url( 'profile' );
+	return get_user_settings_url( 'profile', NULL, $blog_ID );
 }
 
 
 /**
  * Get URL to edit user avatar
+ *
+ * @param integer blog ID for the requested blog. NULL for current $Blog
+ * @return string URL
  */
-function get_user_avatar_url()
+function get_user_avatar_url( $blog_ID = NULL )
 {
-	return get_user_settings_url( 'avatar' );
+	return get_user_settings_url( 'avatar', NULL, $blog_ID );
 }
 
 
@@ -908,22 +946,17 @@ function get_user_identity_url( $user_ID, $user_tab = 'profile' )
 
 	if( !is_logged_in() )
 	{ // user is not logged in
-		if( $Settings->get( 'allow_anonymous_user_profiles' ) && ( isset( $Blog ) ) )
-		{
-			return url_add_param( $Blog->gen_blogurl(), 'disp=user&amp;user_ID='.$user_ID );
-		}
-		// return NULL if user is not logged in and display is not allowed or Blog is not set
-		return NULL;
+		return $User->get_userpage_url();
 	}
 
-	if( !$current_User->check_status( 'can_view_user', $User->ID ) )
+	if( !$current_User->check_perm( 'user', 'view', false, $User ) )
 	{ // if the current user status restrict to view other user profile
 		return NULL;
 	}
 
-	if( isset($Blog) && !is_admin_page() )
-	{	// can't display the profile form, display the front office User form
-		return url_add_param( $Blog->gen_blogurl(), 'disp=user&amp;user_ID='.$user_ID );
+	if( !is_admin_page() )
+	{ // can't display the profile form, display the front office User form
+		return $User->get_userpage_url();
 	}
 
 	if( $current_User->check_status( 'can_access_admin' ) && ( ($current_User->ID == $user_ID ) || $current_User->check_perm( 'users', 'view' ) ) )
@@ -941,10 +974,12 @@ function get_user_identity_url( $user_ID, $user_tab = 'profile' )
  *
  * @param string user tab
  * @param integer user ID for the requested user. If isn't set then return $current_User settings url.
+ * @param integer blog ID for the requested blog. NULL for current $Blog
+ * @return string URL
  */
-function get_user_settings_url( $user_tab, $user_ID = NULL )
+function get_user_settings_url( $user_tab, $user_ID = NULL, $blog_ID = NULL )
 {
-	global $current_User, $Blog, $is_admin_page, $admin_url, $ReqURI;
+	global $current_User, $is_admin_page, $admin_url, $ReqURI;
 
 	if( !is_logged_in() )
 	{
@@ -970,7 +1005,18 @@ function get_user_settings_url( $user_tab, $user_ID = NULL )
 		$user_ID = $current_User->ID;
 	}
 
-	if( $is_admin_page || $is_admin_tab || empty( $Blog ) || $current_User->ID != $user_ID )
+	if( ! empty( $blog_ID ) )
+	{ // Try to use blog by defined ID
+		$BlogCache = & get_BlogCache();
+		$current_Blog = & $BlogCache->get_by_ID( $blog_ID, false, false );
+	}
+	if( empty( $current_Blog ) )
+	{ // Use current blog
+		global $Blog;
+		$current_Blog = & $Blog;
+	}
+
+	if( $is_admin_page || $is_admin_tab || empty( $current_Blog ) || $current_User->ID != $user_ID )
 	{
 		if( ( $current_User->ID != $user_ID ) && ( ! $current_User->check_perm( 'users', 'view' ) ) )
 		{
@@ -983,7 +1029,7 @@ function get_user_settings_url( $user_tab, $user_ID = NULL )
 		return $admin_url.'?ctrl=user&amp;user_tab='.$user_tab.'&amp;user_ID='.$user_ID;
 	}
 
-	return url_add_param( $Blog->gen_blogurl(), 'disp='.$user_tab );
+	return url_add_param( $current_Blog->gen_blogurl(), 'disp='.$user_tab );
 }
 
 
@@ -1440,10 +1486,10 @@ function get_user_avatar_styled( $user_ID, $params )
 /**
  * Get avatar <img> tag with default picture
  *
- * @param avatar size
- * @param style class of image
- * @param image align
- * @return <img> tag
+ * @param string Avatar size
+ * @param string Style class of image
+ * @param string Image align
+ * @return string <img> tag
  */
 function get_avatar_imgtag_default( $size = 'crop-top-15x15', $class = '', $align = '', $params = array() )
 {
@@ -1459,12 +1505,12 @@ function get_avatar_imgtag_default( $size = 'crop-top-15x15', $class = '', $alig
 			'email'    => '',
 			'username' => '',
 			'default'  => '',
+			'gender'   => '', // M - Men; F - Female/Women; Empty string - Unknown gender
 		), $params );
 
 	if( ! $Settings->get('use_gravatar') )
 	{ // Gravatars are not allowed, Use default avatars instead
-		global $default_avatar;
-		$img_url = $default_avatar;
+		$img_url = get_default_avatar_url( $params['gender'], $size );
 		$gravatar_width = isset( $thumbnail_sizes[$size] ) ? $thumbnail_sizes[$size][1] : '15';
 		$gravatar_height = isset( $thumbnail_sizes[$size] ) ? $thumbnail_sizes[$size][2] : '15';
 	}
@@ -1476,8 +1522,7 @@ function get_avatar_imgtag_default( $size = 'crop-top-15x15', $class = '', $alig
 		{ // Set default gravatar
 			if( $default_gravatar == 'b2evo' )
 			{ // Use gravatar from b2evo default avatar image
-				global $default_avatar;
-				$params['default'] = $default_avatar;
+				$params['default'] = get_default_avatar_url( $params['gender'] );
 			}
 			else
 			{ // Use a selected gravatar type
@@ -1535,6 +1580,51 @@ function get_avatar_imgtag_default( $size = 'crop-top-15x15', $class = '', $alig
 	}
 
 	return '<img'.get_field_attribs_as_string( $img_params ).' />';
+}
+
+
+/**
+ * Get a default avatar url depending on user gender
+ *
+ * @param string User gender: M - Men; F - Female/Women; Empty string - Unknown gender
+ * @param string|NULL Avatar thumbnail size or NULL to get real image
+ * @return string URL of avatar
+ */
+function get_default_avatar_url( $gender = '', $size = NULL )
+{
+	switch( $gender )
+	{
+		case 'M':
+			// Default avatar for men
+			$avatar_url = '/avatars/default_avatar_men.jpg';
+			break;
+
+		case 'F':
+			// Default avatar for women
+			$avatar_url = '/avatars/default_avatar_women.jpg';
+			break;
+
+		default:
+			// Default avatar for users without defined gender
+			$avatar_url = '/avatars/default_avatar_unknown.jpg';
+			break;
+	}
+
+	if( $size !== NULL )
+	{ // Get a thumbnail url
+		$FileCache = & get_FileCache();
+		if( $File = & $FileCache->get_by_root_and_path( 'shared', 0, $avatar_url ) )
+		{
+			if( $File->is_image() )
+			{ // Check if the default avatar files are real images and not broken by some reason
+				return $File->get_thumb_url( $size, '&' );
+			}
+		}
+	}
+
+	// We couldn't get a thumbnail url OR access the folder, Return the full size image URL without further ado:
+	global $media_url;
+	return $media_url.'shared/global'.$avatar_url;
 }
 
 
@@ -1680,6 +1770,7 @@ function load_blog_advanced_perms( & $blog_perms, $perm_target_blog, $perm_targe
 	{ // No rights set for this Blog - User/Group: remember this (in order not to have the same query next time)
 		$blog_perms = array(
 				'blog_ismember' => '0',
+				'blog_can_be_assignee' => '0',
 				'blog_post_statuses' => 0,
 				'blog_edit' => 'no',
 				'blog_del_post' => '0',
@@ -1704,6 +1795,7 @@ function load_blog_advanced_perms( & $blog_perms, $perm_target_blog, $perm_targe
 	else
 	{ // OK, rights found:
 		$blog_perms['blog_ismember'] = $row[$prefix.'_ismember'];
+		$blog_perms['blog_can_be_assignee'] = $row[$prefix.'_can_be_assignee'];
 
 		$blog_perms['blog_post_statuses'] = $row['perm_poststatuses_bin'];
 		$blog_perms['blog_cmt_statuses'] = $row['perm_cmtstatuses_bin'];
@@ -2122,12 +2214,11 @@ function get_usertab_header( $edited_User, $user_tab, $user_tab_title )
 
 /**
  * Check if user can receive new email today with the given email type or the limit was already exceeded
- * This function will update the corresponding UserSettings but won't save it until the email is not sent
  *
  * @param string the name of limit/day setting
  * @param string the name of the last email setting
  * @param integer the user ID
- * @return boolean true if new email is allowed, false otherwise
+ * @return integer/boolean Number of next email counter if new email is allowed, false otherwise
  */
 function check_allow_new_email( $limit_setting, $last_email_setting, $user_ID )
 {
@@ -2138,6 +2229,7 @@ function check_allow_new_email( $limit_setting, $last_email_setting, $user_ID )
 	{ // user doesn't allow this kind of emails at all
 		return false;
 	}
+
 	$email_count = 0;
 	$last_email = $UserSettings->get( $last_email_setting, $user_ID );
 	if( !empty( $last_email ) )
@@ -2154,11 +2246,35 @@ function check_allow_new_email( $limit_setting, $last_email_setting, $user_ID )
 			$email_count = $last_email_count;
 		}
 	}
-	// new email is allowed, set new email setting value, after the email will be sent
+
 	$email_count++;
+
+	return $email_count;
+}
+
+
+/**
+ * Update the counter of email sending of the user
+ *
+ * @param string the name of limit/day setting
+ * @param string the name of the last email setting
+ * @param integer the user ID
+ * @return boolean true if email counter is updated, false otherwise
+ */
+function update_user_email_counter( $limit_setting, $last_email_setting, $user_ID )
+{
+	global $UserSettings, $servertimenow;
+
+	$email_count = check_allow_new_email( $limit_setting, $last_email_setting, $user_ID );
+	if( empty( $email_count ) )
+	{
+		return false;
+	}
+
+	// new email is allowed, set new email setting value, right now
 	$last_email = $servertimenow.'_'.$email_count;
 	$UserSettings->set( $last_email_setting, $last_email, $user_ID );
-	return true;
+	return $UserSettings->dbupdate();
 }
 
 
@@ -2611,19 +2727,26 @@ function callback_filter_userlist( & $Form )
 		echo '<br />';
 	}
 
+	$location_filter_displayed = false;
 	if( user_country_visible() )
 	{	// Filter by country
 		load_class( 'regional/model/_country.class.php', 'Country' );
 		load_funcs( 'regional/model/_regional.funcs.php' );
-		$CountryCache = & get_CountryCache( T_('All') );
-		$Form->select_country( 'country', get_param('country'), $CountryCache, T_('Country'), array( 'allow_none' => true ) );
+		if( ! has_cross_country_restriction() )
+		{
+			$CountryCache = & get_CountryCache( T_('All') );
+			$Form->select_country( 'country', get_param('country'), $CountryCache, T_('Country'), array( 'allow_none' => true ) );
+			$location_filter_displayed = true;
+		}
 	}
 
 	if( user_region_visible() )
 	{	// Filter by region
-		echo '<span id="region_filter"'.( !regions_exist( get_param('country'), true ) ? ' style="display:none"' : '' ).'>';
+		$region_filter_disp_style = regions_exist( get_param('country'), true ) ? '' : ' style="display:none"';
+		echo '<span id="region_filter"'.$region_filter_disp_style.'>';
 		$Form->select_input_options( 'region', get_regions_option_list( get_param('country'), get_param('region') ), T_('Region') );
 		echo '</span>';
+		$location_filter_displayed = $location_filter_displayed || empty( $region_filter_disp_style );
 	}
 
 	if( user_subregion_visible() )
@@ -2640,7 +2763,10 @@ function callback_filter_userlist( & $Form )
 		echo '</span>';
 	}
 
-	echo '<br />';
+	if( $location_filter_displayed )
+	{
+		echo '<br />';
+	}
 
 	$Form->interval( 'age_min', get_param('age_min'), 'age_max', get_param('age_max'), 3, T_('Age group') );
 	echo '<br />';
@@ -2772,6 +2898,45 @@ function user_country_visible()
 	global $Settings;
 
 	return $Settings->get( 'location_country' ) != 'hidden' || user_region_visible();
+}
+
+
+/**
+ * Check if browse users from different countries is restricted for the current User
+ *
+ * @param string type of the restrciton to check: 'users', 'contact', 'any'
+ * @return boolean true if cross country users display is not restricted and countries filter select display is allowed, false otherwise
+ */
+function has_cross_country_restriction( $type = 'users' )
+{
+	global $current_User, $Settings;
+
+	if( !is_logged_in() )
+	{ // In case of anonymous users we can't check the country, so anonymous users can't have restriction because of this
+		return false;
+	}
+
+	if( $current_User->check_perm( 'users', 'edit' ) )
+	{ // current user has global 'edit users' permission, these users have no restriction
+		return false;
+	}
+
+	switch( $type )
+	{
+		case 'users': // Check retsriction on users
+			if( $Settings->get('allow_anonymous_user_list') || $Settings->get('allow_anonymous_user_profiles') )
+			{ // If anonymous users can browse users from different countries, then logged in users must be always allowed to browse
+				return false;
+			}
+			return ! $current_User->check_perm( 'cross_country_allow_profiles' );
+
+		case 'contact': // Check retsriction on contact
+			return ! $current_User->check_perm( 'cross_country_allow_contact' );
+
+		case 'any': // Check if there is any retsriction
+		default:
+			return !( $current_User->check_perm( 'cross_country_allow_profiles' ) && $current_User->check_perm( 'cross_country_allow_contact' ) );
+	}
 }
 
 
@@ -3084,8 +3249,8 @@ function get_user_quick_search_form( $params = array() )
 function display_voting_form( $params = array() )
 {
 	$params = array_merge( array(
-			'vote_type' => 'file',
-			'vote_ID'   => 0,
+			'vote_type'             => 'link',
+			'vote_ID'               => 0,
 			'display_like'          => true,
 			'display_noopinion'     => true,
 			'display_dontlike'      => true,
@@ -3132,13 +3297,13 @@ function display_voting_form( $params = array() )
 
 	switch( $params['vote_type'] )
 	{	// Get a voting results for current user
-		case 'file':
+		case 'link':
 			// Picture
 			$SQL = new SQL( 'Get file voting for current user' );
-			$SQL->SELECT( 'fvot_like AS result, fvot_inappropriate AS inappropriate, fvot_spam AS spam' );
-			$SQL->FROM( 'T_files__vote' );
-			$SQL->WHERE( 'fvot_file_ID = '.$DB->quote( $params['vote_ID'] ) );
-			$SQL->WHERE_and( 'fvot_user_ID = '.$DB->quote( $current_User->ID ) );
+			$SQL->SELECT( 'lvot_like AS result, lvot_inappropriate AS inappropriate, lvot_spam AS spam' );
+			$SQL->FROM( 'T_links__vote' );
+			$SQL->WHERE( 'lvot_link_ID = '.$DB->quote( $params['vote_ID'] ) );
+			$SQL->WHERE_and( 'lvot_user_ID = '.$DB->quote( $current_User->ID ) );
 			$vote = $DB->get_row( $SQL->get() );
 
 			$params_spam['class'] = 'cboxCheckbox';
@@ -3218,7 +3383,7 @@ function display_voting_form( $params = array() )
 		}
 	}
 
-	echo '<span>'.$params['title_text'].'</span>';
+	echo '<span class="vote_title">'.$params['title_text'].'</span>';
 
 	// Set this url for case when JavaScript is not enabled
 	$url = get_secure_htsrv_url().'anon_async.php?action=voting&vote_type='.$params['vote_type'].'&vote_ID='.$params['vote_ID'].'&'.url_crumb( 'voting' );
@@ -3314,7 +3479,7 @@ function find_users_with_same_email( $user_ID, $user_email, $message )
 	$email_users_SQL = new SQL();
 	$email_users_SQL->SELECT( 'user_ID, user_login' );
 	$email_users_SQL->FROM( 'T_users' );
-	$email_users_SQL->WHERE( 'user_email = '.$DB->quote( $user_email ) );
+	$email_users_SQL->WHERE( 'user_email = '.$DB->quote( evo_strtolower( $user_email ) ) );
 	$email_users_SQL->WHERE_and( 'user_ID != '.$DB->quote( $user_ID ) );
 	$email_users = $DB->get_assoc( $email_users_SQL->get() );
 	if( empty( $email_users ) )
@@ -3334,6 +3499,151 @@ function find_users_with_same_email( $user_ID, $user_email, $message )
 
 
 /**
+ * Display message depending on user email status
+ *
+ * @param integer User ID
+ */
+function display_user_email_status_message( $user_ID = 0 )
+{
+	global $Messages, $current_User, $Blog, $disp;
+
+	if( ! is_logged_in() || ( $user_ID != 0 && $user_ID != $current_User->ID ) )
+	{ // User must be logged in AND only for current User
+		return;
+	}
+
+	$email_status = $current_User->get_email_status();
+
+	if( empty( $email_status ) || ! in_array( $email_status, array( 'redemption', 'warning', 'suspicious1', 'suspicious2', 'suspicious3', 'prmerror' ) ) )
+	{ // No message for current email status
+		return;
+	}
+
+	$EmailAddressCache = & get_EmailAddressCache();
+	$EmailAddress = & $EmailAddressCache->get_by_name( $current_User->get( 'email' ), false, false );
+
+	$is_admin_page = is_admin_page() || empty( $Blog );
+	if( check_user_status( 'is_validated' ) )
+	{ // Url to user profile page
+		$url_change_email = get_user_settings_url( 'subs' );
+	}
+	else
+	{ // Url to activate email address
+		$url_change_email = ! $is_admin_page && $Blog->get_setting( 'in_skin_login' ) ?
+			url_add_param( $Blog->gen_blogurl(), 'disp=activateinfo' ) :
+			get_secure_htsrv_url().'login.php?action=req_validatemail';
+	}
+
+	// Url to change status
+	if( $is_admin_page )
+	{
+		global $admin_url;
+		$user_tab_param = get_param( 'user_tab' ) != '' ? '&amp;user_tab='.get_param( 'user_tab' ) : '';
+		$url_change_status = $admin_url.'?ctrl=user&amp;action=redemption&amp;user_ID='.$current_User->ID.$user_tab_param.'&amp;'.url_crumb( 'user' );
+	}
+	else
+	{
+		$user_tab_param = empty( $disp ) ? 'profile' : $disp;
+		$url_change_status = get_secure_htsrv_url().'profile_update.php?action=redemption&amp;user_tab='.$user_tab_param.'&amp;blog='.$Blog->ID.'&amp;'.url_crumb( 'user' );
+	}
+
+	// Display info about last error only when such data exists
+	$email_last_sent_ts = ( empty( $EmailAddress ) ? '' : $EmailAddress->get( 'last_sent_ts' ) );
+	$last_error_info = empty( $email_last_sent_ts ) ? '' :
+		sprintf( T_( ' (last error was detected on %s)' ), mysql2localedatetime_spans( $email_last_sent_ts, 'M-d' ) );
+
+	switch( $email_status )
+	{
+		case 'warning':
+		case 'suspicious1':
+		case 'suspicious2':
+		case 'suspicious3':
+			$Messages->add( sprintf( T_( 'We have detected some delivery problems to your email account %s%s. Please add our email: %s to your address book. If you still don\'t receive our emails, try using a different email address instead of %s for your account.<br /><a %s>Click here to use a different email address</a>.<br /><a %s>Click here to discard this message once you receive our emails again</a>.' ),
+					'<b>'.$current_User->get( 'email' ).'</b>',
+					$last_error_info,
+					'<b>'.user_get_notification_sender( $current_User->ID, 'email' ).'</b>',
+					'<b>'.$current_User->get( 'email' ).'</b>',
+					'href="'.$url_change_email.'"',
+					'href="'.$url_change_status.'"'
+				), 'error' );
+			break;
+
+		case 'prmerror':
+			$Messages->add( sprintf( T_( 'Your email address: %s does not seem to work or is refusing our emails%s. Please check your email address carefully. If it\'s incorrect, <a %s>change your email address</a>. If it\'s correct, please add our email: %s to your address book, then <a %s>click here to try again</a>!' ),
+					'<b>'.$current_User->get( 'email' ).'</b>',
+					$last_error_info,
+					'href="'.$url_change_email.'"',
+					'<b>'.user_get_notification_sender( $current_User->ID, 'email' ).'</b>',
+					'href="'.$url_change_status.'"'
+				), 'error' );
+			break;
+
+		case 'redemption':
+			$Messages->add( sprintf( T_( 'We are currently trying to send email to your address: %s again.' ),
+					'<b>'.$current_User->get( 'email' ).'</b>'
+				), 'note' );
+			break;
+	}
+}
+
+
+/**
+ * Initialize JavaScript for AJAX loading of popup window with user forms
+ */
+function echo_user_ajaxwindow_js()
+{
+	global $user_ajaxwindow_js_initialized;
+
+	if( $user_ajaxwindow_js_initialized )
+	{ // Don't initialize these js-functions twice
+		return;
+	}
+?>
+<script type="text/javascript">
+/*
+ * This is called when we get the response from the server:
+ */
+function userAjaxWindow( the_html, width )
+{
+	if( typeof width == 'undefined' )
+	{
+		width = '560px';
+	}
+	// add placeholder for antispam settings form:
+	jQuery( 'body' ).append( '<div id="screen_mask" onclick="closeUserAjaxWindow()"></div><div id="overlay_page" style="width:' + width + '"></div>' );
+	var evobar_height = jQuery( '#evo_toolbar' ).height();
+	jQuery( '#screen_mask' ).css({ top: evobar_height });
+	jQuery( '#screen_mask' ).fadeTo(1,0.5).fadeIn(200);
+	jQuery( '#overlay_page' ).html( the_html ).addClass( 'overlay_page_active_transparent' );
+	jQuery( '#close_button' ).bind( 'click', closeUserAjaxWindow );
+}
+
+// This is called to close the antispam ban overlay page
+function closeUserAjaxWindow()
+{
+	jQuery( '#overlay_page' ).hide();
+	jQuery( '.action_messages').remove();
+	jQuery( '#server_messages' ).insertBefore( '.first_payload_block' );
+	jQuery( '#overlay_page' ).remove();
+	jQuery( '#screen_mask' ).remove();
+	return false;
+}
+
+// Close ajax popup if Escape key is pressed:
+jQuery(document).keyup(function(e)
+{
+	if( e.keyCode == 27 )
+	{
+		closeUserAjaxWindow();
+	}
+} );
+</script>
+<?php
+	$user_ajaxwindow_js_initialized = true;
+}
+
+
+/**
  * Initialize JavaScript for AJAX loading of popup window to report user
  */
 function echo_user_report_js()
@@ -3341,9 +3651,14 @@ function echo_user_report_js()
 	global $rsc_url, $admin_url;
 ?>
 <script type="text/javascript">
+<?php
+// Initialize JavaScript to build and open window
+echo_modalwindow_js();
+?>
+
 function user_report( user_ID, user_tab_from )
 {
-	userReportForm( '<img src="<?php echo $rsc_url; ?>img/ajax-loader2.gif" alt="<?php echo T_('Loading...'); ?>" title="<?php echo T_('Loading...'); ?>" style="display:block;margin:auto;position:absolute;top:0;bottom:0;left:0;right:0;" />', '680px' );
+	userAjaxWindow( '<img src="<?php echo $rsc_url; ?>img/ajax-loader2.gif" alt="<?php echo T_('Loading...'); ?>" title="<?php echo T_('Loading...'); ?>" style="display:block;margin:auto;position:absolute;top:0;bottom:0;left:0;right:0;" />', '680px' );
 	jQuery.ajax(
 	{
 		type: 'POST',
@@ -3359,49 +3674,50 @@ function user_report( user_ID, user_tab_from )
 		},
 		success: function(result)
 		{
-			userReportForm( result, '680px' );
+			userAjaxWindow( result, '680px' );
 		}
 	} );
 	return false;
 }
-
-/*
- * This is called when we get the response from the server:
- */
-function userReportForm( the_html, width )
-{
-	if( typeof width == 'undefined' )
-	{
-		width = '560px';
-	}
-
-	// add placeholder for antispam settings form:
-	jQuery( 'body' ).append( '<div id="screen_mask" onclick="closeUserReportForm()"></div><div id="overlay_page" style="width:' + width + '"></div>' );
-	var evobar_height = jQuery( '#evo_toolbar' ).height();
-	jQuery( '#screen_mask' ).css({ top: evobar_height });
-	jQuery( '#screen_mask' ).fadeTo(1,0.5).fadeIn(200);
-	jQuery( '#overlay_page' ).html( the_html ).addClass( 'overlay_page_active_transparent' );
-	jQuery( '#close_button' ).bind( 'click', closeUserReportForm );
-
-	// Close antispam popup if Escape key is pressed:
-	var keycode_esc = 27;
-	jQuery(document).keyup(function(e)
-	{
-		if( e.keyCode == keycode_esc )
-		{
-			closeUserReportForm();
-		}
-	} );
+</script>
+<?php
 }
 
-// This is called to close the antispam ban overlay page
-function closeUserReportForm()
+
+/**
+ * Initialize JavaScript for AJAX loading of popup window to delete the posts, the comments and the messages of user
+ */
+function echo_user_deldata_js()
 {
-	jQuery( '#overlay_page' ).hide();
-	jQuery( '.action_messages').remove();
-	jQuery( '#server_messages' ).insertBefore( '.first_payload_block' );
-	jQuery( '#overlay_page' ).remove();
-	jQuery( '#screen_mask' ).remove();
+	global $rsc_url, $admin_url;
+?>
+<script type="text/javascript">
+<?php
+// Initialize JavaScript to build and open window
+echo_modalwindow_js();
+?>
+
+function user_deldata( user_ID, user_tab_from )
+{
+	userAjaxWindow( '<img src="<?php echo $rsc_url; ?>img/ajax-loader2.gif" alt="<?php echo T_('Loading...'); ?>" title="<?php echo T_('Loading...'); ?>" style="display:block;margin:auto;position:absolute;top:0;bottom:0;left:0;right:0;" />', '680px' );
+	jQuery.ajax(
+	{
+		type: 'POST',
+		url: '<?php echo $admin_url; ?>',
+		data:
+		{
+			'ctrl': 'user',
+			'user_tab': 'deldata',
+			'user_tab_from': user_tab_from,
+			'user_ID': user_ID,
+			'display_mode': 'js',
+			'crumb_user': '<?php echo get_crumb('user'); ?>',
+		},
+		success: function(result)
+		{
+			userAjaxWindow( result, '680px' );
+		}
+	} );
 	return false;
 }
 </script>
@@ -3444,7 +3760,7 @@ function user_report_form( $params = array() )
 
 	if( $current_report == NULL )
 	{ // currentUser didn't add any report from this user yet
-		$report_content = '<select id="report_user_status" name="report_user_status">';
+		$report_content = '<select id="report_user_status" name="report_user_status" class="form-control" style="width:auto">';
 		foreach( $report_options as $option => $option_label )
 		{ // add select option, none must be selected
 			$report_content .= '<option '.( ( $option == 'none' ) ? 'selected="selected" ' : '' ).'value="'.$option.'">'.$option_label.'</option>';
@@ -3452,7 +3768,7 @@ function user_report_form( $params = array() )
 		$report_content .= '</select><div id="report_info" style="width:100%;"></div>';
 
 		$info_content = '<div><span>'.T_('You can provide additional information below').':</span></div>';
-		$info_content .= '<table style="width:100%;"><td style="width:99%;background-color:inherit;"><textarea id="report_info_content" name="report_info_content" class="form_textarea_input" style="width:100%;" rows="2" maxlength="240"></textarea></td>';
+		$info_content .= '<table style="width:100%;"><td style="width:99%;background-color:inherit;"><textarea id="report_info_content" name="report_info_content" class="form_textarea_input form-control" style="width:100%;" rows="2" maxlength="240"></textarea></td>';
 		$info_content .= '<td style="vertical-align:top;background-color:inherit;"><input type="submit" class="SaveButton" style="color:red;margin-left:2px;" value="'.T_('Report this user now!').'" name="actionArray[report_user]" /></td></table>';
 		$report_content .= '<script type="text/javascript">
 			var info_content = \''.$info_content.'\';
@@ -3552,7 +3868,7 @@ function user_reports_results_block( $params = array() )
 		}
 	}
 
-	global $DB;
+	global $DB, $AdminUI;
 
 	param( 'user_tab', 'string', '', true );
 	param( 'user_ID', 'integer', 0, true );
@@ -3581,8 +3897,9 @@ function user_reports_results_block( $params = array() )
 		$reports_Results->init_params_by_skin( $params[ 'skin_type' ], $params[ 'skin_name' ] );
 	}
 
+	$results_params = $AdminUI->get_template( 'Results' );
 	$display_params = array(
-		'before' => '<div class="results" style="margin-top:25px" id="reports_result">'
+		'before' => str_replace( '>', ' style="margin-top:25px" id="reports_result">', $results_params['before'] ),
 	);
 	$reports_Results->display( $display_params );
 
@@ -3592,7 +3909,7 @@ function user_reports_results_block( $params = array() )
 	}
 
 	// Who should be able to delete other users reports???
-	/*if( $reports_Results->total_rows > 0 )
+	/*if( $reports_Results->get_total_rows() > 0 )
 	{	// Display button to delete all records if at least one record exists & current user can delete at least one item created by user
 		echo action_icon( sprintf( T_('Delete all reports from %s'), $edited_User->login ), 'delete', '?ctrl=user&amp;user_tab=activity&amp;action=delete_all_reports_from&amp;user_ID='.$edited_User->ID.'&amp;'.url_crumb('user'), ' '.T_('Delete all'), 3, 4 );
 	}*/

@@ -14,7 +14,7 @@
  * @package evoskins
  * @subpackage custom
  *
- * @version $Id: index.main.php 4275 2013-07-17 10:52:24Z yura $
+ * @version $Id: index.main.php 6462 2014-04-14 13:28:56Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -33,6 +33,12 @@ skin_include( '_html_header.inc.php' );
 // Note: You can customize the default HTML header by copying the generic
 // /skins/_html_header.inc.php file into the current skin folder.
 // -------------------------------- END OF HEADER --------------------------------
+
+
+// ---------------------------- SITE HEADER INCLUDED HERE ----------------------------
+// If site headers are enabled, they will be included here:
+siteskin_include( '_site_body_header.inc.php' );
+// ------------------------------- END OF SITE HEADER --------------------------------
 ?>
 
 
@@ -149,6 +155,8 @@ skin_include( '_html_header.inc.php' );
 	?>
 
 	<?php
+	if( $disp != 'front' && $disp != 'download' )
+	{
 		// -------------------- PREV/NEXT PAGE LINKS (POST LIST MODE) --------------------
 		mainlist_page_links( array(
 				'block_start' => '<p class="center">'.T_('Pages:').' <strong>',
@@ -188,10 +196,11 @@ skin_include( '_html_header.inc.php' );
 		mainlist_page_links( array(
 				'block_start' => '<p class="center"><strong>',
 				'block_end' => '</strong></p>',
-   			'prev_text' => '&lt;&lt;',
-   			'next_text' => '&gt;&gt;',
+				'prev_text' => '&lt;&lt;',
+				'next_text' => '&gt;&gt;',
 			) );
 		// ------------------------- END OF PREV/NEXT PAGE LINKS -------------------------
+	}
 	?>
 
 
@@ -296,8 +305,8 @@ skin_include( '_html_header.inc.php' );
 
 		<?php
 			// Display additional credits:
- 			// If you can add your own credits without removing the defaults, you'll be very cool :))
-		 	// Please leave this at the bottom of the page to make sure your blog gets listed on b2evolution.net
+			// If you can add your own credits without removing the defaults, you'll be very cool :))
+			// Please leave this at the bottom of the page to make sure your blog gets listed on b2evolution.net
 			credits( array(
 					'list_start'  => '&bull;',
 					'list_end'    => ' ',
@@ -312,6 +321,12 @@ skin_include( '_html_header.inc.php' );
 
 
 <?php
+// ---------------------------- SITE FOOTER INCLUDED HERE ----------------------------
+// If site footers are enabled, they will be included here:
+siteskin_include( '_site_body_footer.inc.php' );
+// ------------------------------- END OF SITE FOOTER --------------------------------
+
+
 // ------------------------- HTML FOOTER INCLUDED HERE --------------------------
 skin_include( '_html_footer.inc.php' );
 // Note: You can customize the default HTML footer by copying the

@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -27,7 +27,7 @@
  * @author fplanque: Francois PLANQUE
  * @author efy-asimo: Attila SIMO
  *
- * @version $Id: _user_advanced.form.php 4048 2013-06-25 11:18:25Z yura $
+ * @version $Id: _user_advanced.form.php 6411 2014-04-07 15:17:33Z yura $
  */
 
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -94,17 +94,7 @@ $this->disp_payload_begin();
 
 // ------------------- PREV/NEXT USER LINKS -------------------
 user_prevnext_links( array(
-		'block_start'  => '<table class="prevnext_user"><tr>',
-		'prev_start'   => '<td width="33%">',
-		'prev_end'     => '</td>',
-		'prev_no_user' => '<td width="33%">&nbsp;</td>',
-		'back_start'   => '<td width="33%" class="back_users_list">',
-		'back_end'     => '</td>',
-		'next_start'   => '<td width="33%" class="right">',
-		'next_end'     => '</td>',
-		'next_no_user' => '<td width="33%">&nbsp;</td>',
-		'block_end'    => '</tr></table>',
-		'user_tab'     => 'advanced'
+		'user_tab' => 'advanced'
 	) );
 // ------------- END OF PREV/NEXT USER LINKS -------------------
 
@@ -249,8 +239,7 @@ if( $action != 'view' )
 if( $action != 'view' )
 { // Edit buttons
 	$Form->buttons( array(
-		array( '', 'actionArray[update]', T_('Save !'), 'SaveButton' ),
-		array( 'reset', '', T_('Reset'), 'ResetButton' ),
+		array( '', 'actionArray[update]', T_('Save Changes!'), 'SaveButton' ),
 		// dh> TODO: Non-Javascript-confirm before trashing all settings with a misplaced click.
 		array( 'type' => 'submit', 'name' => 'actionArray[default_settings]', 'value' => T_('Restore defaults'), 'class' => 'ResetButton',
 			'onclick' => "return confirm('".TS_('This will reset all your user settings.').'\n'.TS_('This cannot be undone.').'\n'.TS_('Are you sure?')."');" ),

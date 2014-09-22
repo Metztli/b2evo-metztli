@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2008 by Daniel HAHLER - {@link http://daniel.hahler.de/}.
  *
  * {@internal License choice
@@ -23,7 +23,7 @@
  * @author blueyed: Daniel HAHLER
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _coll_category_list.widget.php 5691 2014-01-17 11:03:06Z yura $
+ * @version $Id: _coll_category_list.widget.php 6411 2014-04-07 15:17:33Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -177,6 +177,8 @@ class coll_category_list_Widget extends ComponentWidget
 		// Display title if requested
 		$this->disp_title();
 
+		echo $this->disp_params['block_body_start'];
+
 		if ( $this->disp_params['use_form'] )
 		{	// We want a complete form:
 			echo '<form method="get" action="'.$Blog->gen_blogurl().'">';
@@ -315,6 +317,8 @@ class coll_category_list_Widget extends ComponentWidget
 		</div>
 		<?php
 		}
+
+		echo $this->disp_params['block_body_end'];
 
 		echo $this->disp_params['block_end'];
 

@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -34,7 +34,7 @@
  * @author fplanque: Francois PLANQUE
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: _user_preferences.form.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _user_preferences.form.php 6487 2014-04-16 11:11:57Z yura $
  */
 
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -89,17 +89,7 @@ else
 
 // ------------------- PREV/NEXT USER LINKS -------------------
 user_prevnext_links( array(
-		'block_start'  => '<table class="prevnext_user"><tr>',
-		'prev_start'   => '<td width="33%">',
-		'prev_end'     => '</td>',
-		'prev_no_user' => '<td width="33%">&nbsp;</td>',
-		'back_start'   => '<td width="33%" class="back_users_list">',
-		'back_end'     => '</td>',
-		'next_start'   => '<td width="33%" class="right">',
-		'next_end'     => '</td>',
-		'next_no_user' => '<td width="33%">&nbsp;</td>',
-		'block_end'    => '</tr></table>',
-		'user_tab'     => 'userprefs'
+		'user_tab' => 'userprefs'
 	) );
 // ------------- END OF PREV/NEXT USER LINKS -------------------
 
@@ -239,9 +229,7 @@ $Form->end_fieldset();
 
 if( $action != 'view' )
 { // Edit buttons
-	$action_buttons = array(
-		array( '', 'actionArray[update]', T_('Save !'), 'SaveButton' ),
-		array( 'reset', '', T_('Reset'), 'ResetButton' ) );
+	$action_buttons = array( array( '', 'actionArray[update]', T_('Save Changes!'), 'SaveButton' ) );
 	if( $is_admin )
 	{
 		// dh> TODO: Non-Javascript-confirm before trashing all settings with a misplaced click.
@@ -251,8 +239,10 @@ if( $action != 'view' )
 	$Form->buttons( $action_buttons );
 }
 
-if( ( $current_User->ID == $edited_User->ID ) && isset( $Blog ) )
-{
+if( $Settings->get( 'account_close_enabled' ) && isset( $Blog ) &&
+    ( $current_User->ID == $edited_User->ID ) && ! $current_User->check_perm( 'users', 'edit', false ) )
+{ // Display a linkt to close account
+  // Admins cannot close own accounts from front office
 	$Form->info( '', '<a href="'.url_add_param( $Blog->gen_blogurl(), 'disp=closeaccount' ).'">'.T_( 'I want to close my account...' ).'</a>' );
 }
 

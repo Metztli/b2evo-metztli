@@ -10,7 +10,7 @@
  * @package evoskins
  * @subpackage nifty_corners
  *
- * @version $Id: index.main.php 4275 2013-07-17 10:52:24Z yura $
+ * @version $Id: index.main.php 6473 2014-04-15 11:33:37Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -24,14 +24,16 @@ if( version_compare( $app_version, '3.0' ) < 0 )
 skin_init( $disp );
 
 // -------------------------- HTML HEADER INCLUDED HERE --------------------------
-// Initializations:
-add_headline( '<!--[if IE]><link rel="stylesheet" type="text/css" href="ie.css" /><![endif]-->' );
-
-// Include the HTML HEAD:
 skin_include( '_html_header.inc.php' );
 // Note: You can customize the default HTML header by copying the
 // _html_header.inc.php file into the current skin folder.
 // -------------------------------- END OF HEADER --------------------------------
+
+
+// ---------------------------- SITE HEADER INCLUDED HERE ----------------------------
+// If site headers are enabled, they will be included here:
+siteskin_include( '_site_body_header.inc.php' );
+// ------------------------------- END OF SITE HEADER --------------------------------
 ?>
 
 
@@ -155,6 +157,8 @@ if( $Item = & get_featured_Item() )
 ?>
 
 <?php
+if( $disp != 'front' && $disp != 'download' )
+{
 	// ------------------------------------ START OF POSTS ----------------------------------------
 	// Display message if no post:
 	display_if_empty();
@@ -189,10 +193,11 @@ if( $Item = & get_featured_Item() )
 				'block_start' => '<p class="center"><strong>',
 				'block_end' => '</strong></p>',
 				'links_format' => '$prev$ :: $next$',
-   			'prev_text' => '&lt;&lt; '.T_('Previous'),
-   			'next_text' => T_('Next').' &gt;&gt;',
+				'prev_text' => '&lt;&lt; '.T_('Previous'),
+				'next_text' => T_('Next').' &gt;&gt;',
 			) );
 		// ------------------------- END OF PREV/NEXT PAGE LINKS -------------------------
+}
 	?>
 
 
@@ -273,6 +278,12 @@ skin_include( '_body_footer.inc.php' );
 </div>
 
 <?php
+// ---------------------------- SITE FOOTER INCLUDED HERE ----------------------------
+// If site footers are enabled, they will be included here:
+siteskin_include( '_site_body_footer.inc.php' );
+// ------------------------------- END OF SITE FOOTER --------------------------------
+
+
 // ------------------------- HTML FOOTER INCLUDED HERE --------------------------
 skin_include( '_html_footer.inc.php' );
 // Note: You can customize the default HTML footer by copying the

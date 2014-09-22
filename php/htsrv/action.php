@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -21,7 +21,7 @@
  *
  * @package evocore
  *
- * @version $Id: action.php 4096 2013-06-28 10:39:15Z attila $
+ * @version $Id: action.php 6135 2014-03-08 07:54:05Z manuel $
  */
 
 /**

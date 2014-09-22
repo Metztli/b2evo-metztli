@@ -8,7 +8,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -40,6 +40,9 @@ require_once dirname(__FILE__).'/../conf/_config.php';
 
 require_once $inc_path.'_main.inc.php';
 
+// Stop a request from the blocked IP addresses or Domains
+antispam_block_request();
+
 global $Session, $Settings, $admin_url, $baseurl, $dummy_fields;
 
 header( 'Content-Type: text/html; charset='.$io_charset );
@@ -69,7 +72,7 @@ activate_blog_locale( $blog );
 
 // Note: we use funky field names in order to defeat the most basic guestbook spam bots:
 $sender_name = param( $dummy_fields[ 'name' ], 'string', '' );
-$sender_address = param( $dummy_fields[ 'email' ], 'string', '' );
+$sender_address = evo_strtolower( param( $dummy_fields[ 'email' ], 'string', '' ) );
 $subject = param( $dummy_fields[ 'subject' ], 'string', '' );
 $message = param( $dummy_fields[ 'content' ], 'html', '' );	// We accept html but we will NEVER display it
 // save the message original content
@@ -220,8 +223,15 @@ if( $success_message )
 	// restore the locale to the blog visitor language, before we would display an error message
 	locale_restore_previous();
 
-	if( !$success_message )
-	{ // could not send email
+	if( $success_message )
+	{ // Email has been sent successfully
+		if( ! is_logged_in() )
+		{ // We should save a counter (only for anonymous users)
+			antispam_increase_counter( 'contact_email' );
+		}
+	}
+	else
+	{ // Could not send email
 		if( $demo_mode )
 		{
 			$Messages->add( 'Sorry, could not send email. Sending email in demo mode is disabled.', 'error' );
@@ -272,7 +282,7 @@ $unsaved_message_params[ 'subject' ] = $subject;
 $unsaved_message_params[ 'message' ] = $original_content;
 save_message_params_to_session( $unsaved_message_params );
 
-if( empty( $redirect_to ) )
+if( param_errors_detected() || empty( $redirect_to ) )
 {
 	$redirect_to = url_add_param( $Blog->gen_blogurl(), 'disp=msgform&recipient_id='.$recipient_id );
 }

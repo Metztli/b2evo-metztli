@@ -7,13 +7,13 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
  *
  * @package evoskins
  *
- * @version $Id: _edit.disp.php 5918 2014-02-07 06:20:23Z yura $
+ * @version $Id: _edit.disp.php 7043 2014-07-02 08:35:45Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -208,8 +208,6 @@ $Form->begin_form( 'inskin', '', $form_params );
 	// CALL PLUGINS NOW:
 	$Plugins->trigger_event( 'DisplayEditorButton', array( 'target_type' => 'Item', 'edit_layout' => 'inskin' ) );
 
-$Form->end_fieldset();
-
 	global $display_item_settings_is_defined;
 	$display_item_settings_is_defined = false;
 	modules_call_method( 'display_item_settings', array( 'Form' => & $Form, 'Blog' => & $Blog, 'edited_Item' => & $edited_Item ) );
@@ -264,11 +262,11 @@ $Form->end_fieldset();
 	}
 
 	$Form->switch_layout( 'none' );
-	echo '<table cellspacing="0" width="100%">';
+	echo '<table cellspacing="0" width="100%" class="item_tags">';
 	echo '<tr><td class="label shrinkwrap"><label for="item_tags"><strong>'.T_('Tags').':</strong></label></td>';
 	echo '<td class="input">';
 	$Form->text_input( 'item_tags', $item_tags, 40, '', '', array('maxlength'=>255, 'style'=>'width: 100%;') );
-	echo '</td><td width="1"><!-- for IE7 --></td></tr>';
+	echo '</td></tr>';
 	echo '</table>';
 	$Form->switch_layout( NULL );
 ?>

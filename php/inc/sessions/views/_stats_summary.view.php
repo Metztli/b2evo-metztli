@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -21,7 +21,7 @@
  *
  * @package admin
  *
- * @version $Id: _stats_summary.view.php 5364 2013-12-05 07:55:40Z yura $
+ * @version $Id: _stats_summary.view.php 6479 2014-04-16 07:18:54Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -40,7 +40,7 @@ $sql = '
 		FROM T_hitlog';
 if( $blog > 0 )
 {
-	$sql .= ' WHERE hit_blog_ID = '.$blog;
+	$sql .= ' WHERE hit_coll_ID = '.$blog;
 }
 $sql .= ' GROUP BY year, month, day, hit_agent_type, hit_type
 					ORDER BY year DESC, month DESC, day DESC, hit_agent_type, hit_type';
@@ -173,7 +173,7 @@ if( count($res_hits) )
 	$last_date = 0;
 
 
-	echo '<table class="grouped" cellspacing="0">';
+	echo '<table class="grouped table table-striped table-bordered table-hover table-condensed" cellspacing="0">';
 	echo '<tr>';
 	echo '<th class="firstcol">'.T_('Date').'</th>';
 	echo '<th style="background-color: #'.$hit_type_color['rss'].'"><a href="?ctrl=stats&amp;tab=hits&amp;hit_type=rss&amp;blog='.$blog.'">'.T_('RSS/Atom').'</a></th>';
@@ -295,7 +295,6 @@ if( count($res_hits) )
 
 	</table>
 
-	<!--[if IE]><?php echo get_icon( 'pixel' ); ?><![endif]-->
 	<?php
 }
 ?>

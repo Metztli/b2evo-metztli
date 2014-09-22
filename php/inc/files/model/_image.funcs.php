@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -24,7 +24,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _image.funcs.php 5034 2013-10-23 12:04:11Z yura $
+ * @version $Id: _image.funcs.php 6444 2014-04-10 13:01:00Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -32,7 +32,7 @@ if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.'
 /**
  * Get available thumbnail sizes
  *
- * @param string The text that used for the "None" option 
+ * @param string The text that used for the "None" option
  * @return array 'key'=>'name'
  */
 function get_available_thumb_sizes( $allow_none_text = NULL )
@@ -244,6 +244,10 @@ function save_image( $imh, $path, $mimetype, $quality = 90, $chmod = NULL )
 	switch( $mimetype )
 	{
 		case 'image/jpeg':
+			if( imagesx( $imh ) > 32 || imagesy( $imh ) > 32 )
+			{ // Enable interlacing
+				imageinterlace( $imh, 1 );
+			}
 			$r = @imagejpeg( $imh, $path, $quality );
 			break;
 
@@ -255,7 +259,7 @@ function save_image( $imh, $path, $mimetype, $quality = 90, $chmod = NULL )
 			$r = @imagepng( $imh, $path );
 			break;
 
- 		default:
+		default:
 			// Unrecognized mime type
 			$err = '!Unsupported format '.$mimetype.' (save_image)';
 			break;
@@ -307,6 +311,10 @@ function output_image( $imh, $mimetype )
 	{
 		case 'image/jpeg':
 			header('Content-type: '.$mimetype );
+			if( imagesx( $imh ) > 32 || imagesy( $imh ) > 32 )
+			{ // Enable interlacing
+				imageinterlace( $imh, 1 );
+			}
 			imagejpeg( $imh );
 			break;
 
@@ -315,7 +323,7 @@ function output_image( $imh, $mimetype )
 			imagegif( $imh );
 			break;
 
- 		default:
+		default:
 			// Unrecognized mime type
 			$err = 'Emime';	// Sort error code
 			break;
@@ -323,8 +331,6 @@ function output_image( $imh, $mimetype )
 
 	return $err;
 }
-
-
 
 
 /**
@@ -335,15 +341,23 @@ function output_image( $imh, $mimetype )
  * @param int Thumbnail width
  * @param int Thumbnail height
  * @param int Thumbnail percent of blur effect (0 - No blur, 1% - Max blur effect, 99% - Min blur effect)
+ * @param integer Ratio size, can be 1, 2 and etc.
  * @return array short error code + dest image handler
  */
-function generate_thumb( $src_imh, $thumb_type, $thumb_width, $thumb_height, $thumb_percent_blur = 0 )
+function generate_thumb( $src_imh, $thumb_type, $thumb_width, $thumb_height, $thumb_percent_blur = 0, $size_x = 1 )
 {
-	$src_width = imagesx( $src_imh ) ;
+	$src_width = imagesx( $src_imh );
 	$src_height = imagesy( $src_imh );
 
+	$size_x = intval( $size_x );
+	if( $size_x > 1 )
+	{ // Use the expanded size
+		$thumb_width = $thumb_width * $size_x;
+		$thumb_height = $thumb_height * $size_x;
+	}
+
 	if( $src_width <= $thumb_width && $src_height <= $thumb_height )
-	{	// There is no need to resample, use original!
+	{ // There is no need to resample, use original!
 		return array( NULL, $src_imh );
 	}
 

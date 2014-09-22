@@ -314,7 +314,7 @@ function verify_overwrite( $src, $dest, $action = '', $overwrite = true, & $read
 
 	if( $dir === false )
 	{ // $dir is not a valid directory or it can not be opened due to permission restrictions
-		echo '<div class="red">The &laquo;'.htmlspecialchars( $src ).'&raquo; is not a valid direcotry or the directory can not be opened due to permission restrictions or filesystem errors.</div>';
+		echo '<div class="red">The &laquo;'.evo_htmlspecialchars( $src ).'&raquo; is not a valid direcotry or the directory can not be opened due to permission restrictions or filesystem errors.</div>';
 		return false;
 	}
 
@@ -349,9 +349,11 @@ function verify_overwrite( $src, $dest, $action = '', $overwrite = true, & $read
 
 	if( ! empty( $action ) && $action == 'Copying' )
 	{ // Display errors about config file or the unknown and incorrect commands from config file
+		$config_has_errors = false;
 		if( is_string( $config_ignore_files ) )
 		{ // Config file has some errors, but the upgrade should not fail because of that
 			echo '<div class="red">'.$config_ignore_files.'</div>';
+			$config_has_errors = true;
 		}
 		else
 		{
@@ -364,6 +366,7 @@ function verify_overwrite( $src, $dest, $action = '', $overwrite = true, & $read
 				{
 					echo '<div class="red">'.sprintf( T_('Unknown policy command: %s'), $config_unknown_command ).'</div>';
 				}
+				$config_has_errors = true;
 			}
 
 			if( ! empty( $config_incorrect_commands ) && is_array( $config_incorrect_commands ) )
@@ -372,7 +375,14 @@ function verify_overwrite( $src, $dest, $action = '', $overwrite = true, & $read
 				{
 					echo '<div class="red">'.sprintf( T_('Incorrect policy command: %s'), $config_incorrect_command ).'</div>';
 				}
+				$config_has_errors = true;
 			}
+		}
+
+		if( $config_has_errors )
+		{ // The upgrade config file contains the errors, Stop the upgrading process
+			echo '<div class="red">'.sprintf( T_('To continue the upgrade process please fix the issues of the file %s or delete it.'), '&laquo;<b>upgrade_policy.conf</b>&raquo;' ).'</div>';
+			return false;
 		}
 	}
 
@@ -557,7 +567,7 @@ function get_upgrade_config( $action )
 {
 	global $conf_path, $upgrade_policy_config;
 
-	if( !isset( $upgrade_policy_config ) )
+	if( ! isset( $upgrade_policy_config ) )
 	{ // Init global array first time
 		$upgrade_policy_config = array();
 	}
@@ -571,9 +581,10 @@ function get_upgrade_config( $action )
 		return $upgrade_policy_config[ $action ];
 	}
 
-	if( !check_upgrade_config() )
-	{ // No config file
-		$upgrade_policy_config = sprintf( T_('%s was not found.'), '&laquo;<b>upgrade_policy.conf</b>&raquo;' );
+	if( ! check_upgrade_config() )
+	{ // The upgrade config file is NOT mandatory
+		// Return just an empty array without error text
+		// Error message is displayed on top page by $Messages object
 		return $upgrade_policy_config;
 	}
 

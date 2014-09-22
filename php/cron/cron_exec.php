@@ -6,7 +6,7 @@
  * >c:\php4\php cron_exec.php
  * >c:\php4\php-cli cron_exec.php
  *
- * @version $Id: cron_exec.php 5874 2014-02-03 13:37:01Z attila $
+ * @version $Id: cron_exec.php 5875 2014-02-03 13:38:59Z attila $
  */
 
 

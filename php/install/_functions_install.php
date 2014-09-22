@@ -4,7 +4,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package install
  */
@@ -204,6 +204,7 @@ function install_newdb()
 		create_demo_contents();
 	}
 
+	track_step( 'install-success' );
 	echo '<h2>'.T_('Installation successful!').'</h2>';
 
 	echo '<p><strong>';
@@ -372,64 +373,9 @@ function install_validate_requirements()
  */
 function create_default_locales()
 {
-	global $DB, $current_locale, $locales, $test_install_all_features;
-
-	$activate_locales = array();
-
-	if( $test_install_all_features )
-	{ // Activate also additional locales
-		$activate_locales[] = 'en-US';
-		$activate_locales[] = 'de-DE';
-		$activate_locales[] = 'fr-FR';
-		$activate_locales[] = 'ru-RU';
-	}
-
-	if( ! empty( $current_locale ) )
-	{ // Make sure the user sees his new system localized.
-		$activate_locales[] = $current_locale;
-	}
-
-	$activate_locales = array_unique( $activate_locales );
-
-	if( ! empty( $activate_locales ) )
-	{ // Insert locales into DB
-		task_begin( 'Activating default locales... ' );
-
-		$insert_data = array();
-		foreach( $activate_locales as $a_locale )
-		{
-			if( !isset( $locales[ $a_locale ] ) )
-			{ // Skip an incorrect locale
-				continue;
-			}
-
-			// Make sure default transliteration_map is set
-			$transliteration_map = '';
-			if( isset( $locales[ $a_locale ]['transliteration_map'] ) && is_array( $locales[ $a_locale ]['transliteration_map'] ) )
-			{
-				$transliteration_map = base64_encode( serialize( $locales[ $a_locale ]['transliteration_map'] ) );
-			}
-
-			$insert_data[] = '( '.$DB->quote( $a_locale ).', '
-				.$DB->quote( $locales[ $a_locale ]['charset'] ).', '
-				.$DB->quote( $locales[ $a_locale ]['datefmt'] ).', '
-				.$DB->quote( $locales[ $a_locale ]['timefmt'] ).', '
-				.$DB->quote( $locales[ $a_locale ]['startofweek'] ).', '
-				.$DB->quote( $locales[ $a_locale ]['name'] ).', '
-				.$DB->quote( $locales[ $a_locale ]['messages'] ).', '
-				.$DB->quote( $locales[ $a_locale ]['priority'] ).', '
-				.$DB->quote( $transliteration_map ).', '
-				.'1 )';
-		}
-
-		$DB->query( 'INSERT INTO T_locales '
-					 .'( loc_locale, loc_charset, loc_datefmt, loc_timefmt, '
-					 .'loc_startofweek, loc_name, loc_messages, loc_priority, '
-					 .'loc_transliteration_map, loc_enabled ) '
-					 .'VALUES '.implode( ', ', $insert_data ) );
-
-		task_end();
-	}
+	task_begin( 'Activating default locales... ' );
+	locale_insert_default();
+	task_end();
 }
 
 
@@ -446,7 +392,7 @@ function create_default_settings( $override = array() )
 {
 	global $DB, $new_db_version, $default_locale;
 	global $Group_Admins, $Group_Privileged, $Group_Bloggers, $Group_Users, $Group_Suspect, $Group_Spam;
-	global $test_install_all_features, $local_installation;
+	global $test_install_all_features, $create_sample_contents, $local_installation;
 
 	$defaults = array(
 		'db_version' => $new_db_version,
@@ -465,6 +411,10 @@ function create_default_settings( $override = array() )
 		$defaults['location_region'] = 'required';
 		$defaults['location_subregion'] = 'required';
 		$defaults['location_city'] = 'required';
+	}
+	if( $create_sample_contents )
+	{
+		$defaults['info_blog_ID'] = '3';
 	}
 	if( !empty( $Group_Suspect ) )
 	{ // Set default antispam suspicious group
@@ -539,22 +489,25 @@ function install_basic_skins( $install_mobile_skins = true )
 	// Note: Skin #3 will we used by Linkblog
 	skin_install( 'miami_blue' );
 
-	// Note: Skin #4 will we used by Photoblog
-	skin_install( 'photoblog' );
+	// Note: Skin #4 will we used by Photos
+	skin_install( 'photoalbums' );
 
 	// Note: Skin #5 will we used by Forums
-	skin_install( 'forums' );
+	skin_install( 'pureforums' );
 
 	// Note: Skin #6 will we used by Manual
 	skin_install( 'manual' );
 
 	skin_install( 'asevo' );
+	skin_install( 'bootstrap' );
 	skin_install( 'custom' );
 	skin_install( 'dating_mood' );
+	skin_install( 'forums' );
 	skin_install( 'glossyblue' );
 	skin_install( 'intense' );
 	skin_install( 'natural_pink' );
 	skin_install( 'nifty_corners' );
+	skin_install( 'photoblog' );
 	skin_install( 'pixelgreen' );
 	skin_install( 'pluralism' );
 	skin_install( 'terrafirma' );
@@ -602,6 +555,7 @@ function install_basic_plugins( $old_db_version = 0 )
 	{
 		// Toolbars:
 		install_plugin( 'quicktags_plugin' );
+		install_plugin( 'shortcodes_plugin' );
 		// Renderers:
 		install_plugin( 'auto_p_plugin' );
 		install_plugin( 'autolinks_plugin' );
@@ -651,20 +605,26 @@ function install_basic_plugins( $old_db_version = 0 )
 
 	if( $old_db_version < 11100 )
 	{ // Upgrade to 5.0.1-alpha-5
-		if( $test_install_all_features )
-		{
-			install_plugin( 'bbcode_plugin' );
-			install_plugin( 'star_plugin' );
-			install_plugin( 'code_highlight_plugin' );
-		}
+		install_plugin( 'escapecode_plugin' );
+		install_plugin( 'bbcode_plugin', $test_install_all_features );
+		install_plugin( 'star_plugin', $test_install_all_features );
+		install_plugin( 'prism_plugin', $test_install_all_features );
+		install_plugin( 'code_highlight_plugin', $test_install_all_features );
+		install_plugin( 'markdown_plugin' );
+		install_plugin( 'infodots_plugin', $test_install_all_features );
+		install_plugin( 'widescroll_plugin' );
 	}
 }
 
 
 /**
+ * Install plugin
+ *
+ * @param string Plugin name
+ * @param boolean TRUE - to activate plugin
  * @return true on success
  */
-function install_plugin( $plugin )
+function install_plugin( $plugin, $activate = true )
 {
 	/**
 	 * @var Plugins_admin
@@ -682,16 +642,22 @@ function install_plugin( $plugin )
 	load_funcs('plugins/_plugin.funcs.php');
 	install_plugin_db_schema_action( $edit_Plugin, true );
 
-	// Try to enable plugin:
-	$enable_return = $edit_Plugin->BeforeEnable();
-	if( $enable_return !== true )
-	{
-		$Plugins_admin->set_Plugin_status( $edit_Plugin, 'disabled' ); // does not unregister it
-		echo $enable_return."<br />\n";
-		return false;
-	}
+	if( $activate )
+	{	// Try to enable plugin:
+		$enable_return = $edit_Plugin->BeforeEnable();
+		if( $enable_return !== true )
+		{
+			$Plugins_admin->set_Plugin_status( $edit_Plugin, 'disabled' ); // does not unregister it
+			echo $enable_return."<br />\n";
+			return false;
+		}
 
-	$Plugins_admin->set_Plugin_status( $edit_Plugin, 'enabled' );
+		$Plugins_admin->set_Plugin_status( $edit_Plugin, 'enabled' );
+	}
+	else
+	{	// Set plugin status as disable
+		$Plugins_admin->set_Plugin_status( $edit_Plugin, 'disabled' );
+	}
 
 	task_end();
 	return true;
@@ -780,8 +746,8 @@ function create_relations()
 											on update restrict' );
 
 	$DB->query( 'alter table T_comments
-								add constraint FK_comment_post_ID
-											foreign key (comment_post_ID)
+								add constraint FK_comment_item_ID
+											foreign key (comment_item_ID)
 											references T_items__item (post_ID)
 											on delete restrict
 											on update restrict' );
@@ -845,12 +811,6 @@ function create_relations()
 								add constraint FK_link_lastedit_user_ID
 											foreign key (link_lastedit_user_ID)
 											references T_users (user_ID)
-											on delete restrict
-											on update restrict' );
-	$DB->query( 'alter table T_links
-								add constraint FK_link_dest_itm_ID
-											foreign key (link_dest_itm_ID)
-											references T_items__item (post_ID)
 											on delete restrict
 											on update restrict' );
 	$DB->query( 'alter table T_links
@@ -1024,8 +984,8 @@ function do_install_htaccess( $upgrade = false )
 			{	// The .htaccess file has content that different from a sample file
 				$error_message = '<p class="red">'.T_('There is already a file called .htaccess at the blog root. If you don\'t specifically need this file, it is recommended that you delete it or rename it to old.htaccess before you continue. This will allow b2evolution to create a new .htaccess file that is optimized for best results.').'</p>';
 				$error_message .= T_('Here are the contents of the current .htaccess file:');
-				$error_message .= '<div style="overflow:auto"><pre>'.htmlspecialchars( $content_htaccess ).'</pre></div><br />';
-				$error_message .= sprintf( T_('Again, we recommend you remove this file before continuing. If you chose to keep it, b2evolution will probably still work, but for optimization you should follow <a %s>these instructions</a>.'), 'href="http://b2evolution.net/man/htaccess-file" target="_blank"');
+				$error_message .= '<div style="overflow:auto"><pre>'.evo_htmlspecialchars( $content_htaccess ).'</pre></div><br />';
+				$error_message .= sprintf( T_('Again, we recommend you remove this file before continuing. If you chose to keep it, b2evolution will probably still work, but for optimization you should follow <a %s>these instructions</a>.'), 'href="'.get_manual_url( 'htaccess-file' ).'" target="_blank"' );
 				return $error_message;
 			}
 			else
@@ -1085,5 +1045,16 @@ function get_antispam_query()
 	// pre_dump($r);
 	return $r;
 }
+
+/**
+ * We use the following tracking to determine the installer reliability (% of failed vs successful installs).
+ */
+function track_step( $current_step )
+{
+	// echo 'Tracking '.$current_step;
+	echo '<img src="http://b2evolution.net/htsrv/track.php?key='.$current_step.'" alt="" />';
+}
+
+
 
 ?>

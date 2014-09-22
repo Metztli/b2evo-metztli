@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -88,17 +88,7 @@ else
 
 // ------------------- PREV/NEXT USER LINKS -------------------
 user_prevnext_links( array(
-		'block_start'  => '<table class="prevnext_user"><tr>',
-		'prev_start'   => '<td width="33%">',
-		'prev_end'     => '</td>',
-		'prev_no_user' => '<td width="33%">&nbsp;</td>',
-		'back_start'   => '<td width="33%" class="back_users_list">',
-		'back_end'     => '</td>',
-		'next_start'   => '<td width="33%" class="right">',
-		'next_end'     => '</td>',
-		'next_no_user' => '<td width="33%">&nbsp;</td>',
-		'block_end'    => '</tr></table>',
-		'user_tab'     => 'subs'
+		'user_tab' => 'subs'
 	) );
 // ------------- END OF PREV/NEXT USER LINKS -------------------
 
@@ -153,7 +143,7 @@ $has_messaging_perm = $edited_User->check_perm( 'perm_messaging', 'reply', false
 
 $Form->begin_fieldset( T_('Email') );
 
-	$email_fieldnote = '<a href="mailto:'.$edited_User->get('email').'" class="roundbutton">'.get_icon( 'email', 'imgtag', array('title'=>T_('Send an email')) ).'</a>';
+	$email_fieldnote = '<a href="mailto:'.$edited_User->get('email').'" class="'.button_class().'">'.get_icon( 'email', 'imgtag', array('title'=>T_('Send an email')) ).'</a>';
 
 	if( $action != 'view' )
 	{ // We can edit the values:
@@ -230,9 +220,10 @@ $Form->begin_fieldset( T_('Notifications') );
 	if( $edited_User->check_perm( 'users', 'edit' ) )
 	{ // edited user has permission to edit all users, save notification preferences
 		$notify_options[] = array( 'edited_user_notify_new_user_registration', 1, T_( 'a new user has registered.' ), $UserSettings->get( 'notify_new_user_registration', $edited_User->ID ), $disabled );
-		$notify_options[] = array( 'edited_user_notify_activated_account', 1, T_( 'an account was activated.' ), $UserSettings->get( 'notify_activated_account',  $edited_User->ID ), $disabled );
-		$notify_options[] = array( 'edited_user_notify_closed_account', 1, T_( 'an account was closed.' ), $UserSettings->get( 'notify_closed_account',  $edited_User->ID ), $disabled );
-		$notify_options[] = array( 'edited_user_notify_reported_account', 1, T_( 'an account was reported.' ), $UserSettings->get( 'notify_reported_account',  $edited_User->ID ), $disabled );
+		$notify_options[] = array( 'edited_user_notify_activated_account', 1, T_( 'an account was activated.' ), $UserSettings->get( 'notify_activated_account', $edited_User->ID ), $disabled );
+		$notify_options[] = array( 'edited_user_notify_closed_account', 1, T_( 'an account was closed.' ), $UserSettings->get( 'notify_closed_account', $edited_User->ID ), $disabled );
+		$notify_options[] = array( 'edited_user_notify_reported_account', 1, T_( 'an account was reported.' ), $UserSettings->get( 'notify_reported_account', $edited_User->ID ), $disabled );
+		$notify_options[] = array( 'edited_user_notify_changed_account', 1, T_( 'an account was changed.' ), $UserSettings->get( 'notify_changed_account', $edited_User->ID ), $disabled );
 	}
 	if( $edited_User->check_perm( 'options', 'edit' ) )
 	{ // edited user has permission to edit options, save notification preferences
@@ -439,9 +430,7 @@ $Form->end_fieldset();
 
 if( $action != 'view' )
 {	// Edit buttons
-	$Form->buttons( array(
-		array( '', 'actionArray[update]', T_('Save !'), 'SaveButton' ),
-		array( 'reset', '', T_('Reset'), 'ResetButton' ) ) );
+	$Form->buttons( array( array( '', 'actionArray[update]', T_('Save Changes!'), 'SaveButton' ) ) );
 }
 
 $Form->end_form();

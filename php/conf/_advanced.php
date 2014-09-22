@@ -7,7 +7,7 @@
  *
  * @package conf
  *
- * @version $Id: _advanced.php 5209 2013-11-18 06:02:00Z yura $
+ * @version $Id: _advanced.php 7141 2014-07-17 08:15:03Z yura $
  */
 if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page directly.' );
 
@@ -36,9 +36,8 @@ $debug_jslog = 'pwd';
  */
 $debug_pwd = '';
 
-
 // Most of the time you'll want to see all errors, including notices:
-// b2evo should run notice free! (plugins too!)
+// b2evo should run without any notices! (plugins too!)
 if( version_compare( phpversion(), '5.3', '>=' ) )
 {	// sam2kb> Disable E_STRICT messages on PHP > 5.3, there are numerous E_STRICT warnings displayed throughout the app
 	error_reporting( E_ALL & ~E_STRICT );
@@ -47,7 +46,6 @@ else
 {
 	error_reporting( E_ALL );
 }
-
 /**
  * Do we want to display errors, even when not in debug mode?
  *
@@ -94,11 +92,18 @@ $thumbnail_sizes = array(
 			'fit-520x390' => array( 'fit', 520, 390, 90 ),
 			'fit-400x320' => array( 'fit', 400, 320, 85 ),
 			'fit-320x320' => array( 'fit', 320, 320, 85 ),
+			'fit-256x256' => array( 'fit', 256, 256, 85 ),
+			'fit-192x192' => array( 'fit', 192, 192, 85 ),
 			'fit-160x160' => array( 'fit', 160, 160, 80 ),
 			'fit-160x160-blur-13' => array( 'fit', 160, 160, 80, 13 ),
 			'fit-160x160-blur-18' => array( 'fit', 160, 160, 80, 18 ),
 			'fit-160x120' => array( 'fit', 160, 120, 80 ),
+			'fit-128x128' => array( 'fit', 128, 128, 80 ),
 			'fit-80x80' => array( 'fit', 80, 80, 80 ),
+			'crop-480x320' => array( 'crop', 480, 320, 90 ),
+			'crop-256x256' => array( 'crop', 256, 256, 85 ),
+			'crop-192x192' => array( 'crop', 192, 192, 85 ),
+			'crop-128x128' => array( 'crop', 128, 128, 85 ),
 			'crop-80x80' => array( 'crop', 80, 80, 85 ),
 			'crop-64x64' => array( 'crop', 64, 64, 85 ),
 			'crop-48x48' => array( 'crop', 48, 48, 85 ),
@@ -481,20 +486,26 @@ $skins_path = $basepath.$skins_subdir;   // You should not need to change this
 $skins_url = $baseurl.$skins_subdir;     // You should not need to change this
 
 /**
+ * Location of the site skins folder.
+ * @global string $siteskins_subdir
+ */
+$siteskins_subdir = 'skins_site/';       		    // Subdirectory relative to base
+$siteskins_path = $basepath.$siteskins_subdir;  // You should not need to change this
+$siteskins_url = $baseurl.$siteskins_subdir;    // You should not need to change this
+
+/**
  * Location of the email skins folder.
  * @global string $emailskins_subdir
  */
-$emailskins_subdir = 'skins_email/';                // Subdirectory relative to base
+$emailskins_subdir = 'skins_email/';               // Subdirectory relative to base
 $emailskins_path = $basepath.$emailskins_subdir;   // You should not need to change this
 $emailskins_url = $baseurl.$emailskins_subdir;     // You should not need to change this
-
 
 /**
  * Location of the admin interface dispatcher
  */
 $dispatcher = 'admin.php'; // DEPRECATED
 $admin_url = $baseurl.$dispatcher;
-
 
 /**
  * Location of the admin skins folder.
@@ -596,13 +607,6 @@ $upgrade_subdir = '_upgrade/';              // Subdirectory relative to base
 $upgrade_path = $basepath.$upgrade_subdir;  // You should not need to change this
 
 
-// Define default avatar image URL
-// fp> TODO: do not use a setting for this.
-// fp> put the file into the shared files directory with the other sample "admin" avatars. That way it is very easy to replace with another default.
-// fp> PS: I like the ? image ;)
-$default_avatar = $rsc_url.'img/default_avatar.jpg';
-
-
 /**
  * Do you want to allow public access to the media dir?
  *
@@ -650,9 +654,11 @@ $filename_max_length = 64;
 
 /**
  * The maximum length of a file absolute path. Creating folders/files with longer path then this value is not allowed.
- * Note: 247 is the max length what php file operations functions can handle on windows
+ * Note: 247 is the max length of an absolute path what the php file operation functions can handle on windows.
+ * On unix systems the file path length is not an issue, so there we can allow a higher value.
+ * The OS independent max length is 767, because that is what b2evolution can handle correctly.
  */
-$dirpath_max_length = 247 - $filename_max_length - 35 /* the maximum additional path length because of the _evocache folder */;
+$dirpath_max_length = ( ( ( strtoupper( substr( PHP_OS, 0, 3 ) ) ) === 'WIN' ) ? ( 247 - 35 /* the maximum additional path length because of the _evocache folder */ ) : 767 ) - $filename_max_length;
 
 
 /**
@@ -773,6 +779,16 @@ $use_hacks = false;
 
 
 /**
+ * Allow redirects to different domain. Usually it should not be allowed to redirect to an external URL.
+ * Possible values:
+ *  - 'always' : Always allow redirect to a different domain
+ *  - 'only_redirected_posts' ( Default ): Allow redirects to a different domain only in case of posts with redirected status
+ *  - 'never' : Force redirects to the same domain in all of the cases, and never allow redirect to a different domain
+ */
+$allow_redirects_to_different_domain = 'only_redirected_posts';
+
+
+/**
  * Additional params you may want to pass to sendmail when sending emails
  * For setting the return-path, some Linux servers will require -r, others will require -f.
  * Allowed placeholders: $from-address$ , $return-address$
@@ -782,6 +798,54 @@ $use_hacks = false;
 $sendmail_additional_params = '-r $return-address$';
 
 
+/**
+ * Which CDN do you want to use for loading common libraries?
+ *
+ * If you don't want to use a CDN and want to use the local version, comment out the line.
+ * Each line starts with the js or css alias.
+ * The first string is the production (minified URL), the second is the development URL (optional).
+ */
+$library_cdn_urls = array(
+		'#jquery#' => array( '//code.jquery.com/jquery-1.11.1.min.js', '//code.jquery.com/jquery-1.11.1.js' ),
+		//'#jqueryUI#' => array( '//code.jquery.com/ui/1.10.4/jquery-ui.min.js', '//code.jquery.com/ui/1.10.4/jquery-ui.js' ),
+		//'#jqueryUI_css#' => array( '//code.jquery.com/ui/1.10.4/themes/smoothness/jquery-ui.min.css', '//code.jquery.com/ui/1.10.4/themes/smoothness/jquery-ui.css' ),
+		'#bootstrap#' => array( '//netdna.bootstrapcdn.com/bootstrap/3.0.0/js/bootstrap.min.js', '//netdna.bootstrapcdn.com/bootstrap/3.0.0/js/bootstrap.js' ),
+		'#bootstrap_css#' => array( '//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css', '//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.css' ),
+		'#bootstrap_theme_css#' => array( '//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-theme.min.css', '//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-theme.css' ),
+		// The following are other possible public shared CDNs we are aware of
+		// but it is not clear whether or not they are:
+		// - Future proof (will they continue to serve old versions of the library in the future?)
+		// - Secure (who guarantees the code is genuine?)
+		//'#bootstrap_typeahead#' => array( '//cdnjs.cloudflare.com/ajax/libs/typeahead.js/0.10.1/typeahead.bundle.min.js', '//cdnjs.cloudflare.com/ajax/libs/typeahead.js/0.10.1/typeahead.bundle.js' ),
+		//'#scrollto#' => array( '//cdnjs.cloudflare.com/ajax/libs/jquery-scrollTo/1.4.2/jquery.scrollTo.min.js' ),
+		//'#touchswipe#' => array( '//cdn.jsdelivr.net/jquery.touchswipe/1.6.5/jquery.touchSwipe.min.js', '//cdn.jsdelivr.net/jquery.touchswipe/1.6.5/jquery.touchSwipe.js' ),
+		//'#mediaelement#' => array( '//cdnjs.cloudflare.com/ajax/libs/mediaelement/2.13.2/js/mediaelement-and-player.min.js', '//cdnjs.cloudflare.com/ajax/libs/mediaelement/2.13.2/js/mediaelement-and-player.js' ),
+		//'#mediaelement_css#' => array( '//cdnjs.cloudflare.com/ajax/libs/mediaelement/2.13.2/css/mediaelementplayer.min.css', '//cdnjs.cloudflare.com/ajax/libs/mediaelement/2.13.2/css/mediaelementplayer.css' ),
+	);
+
+/**
+ * The aliases for all local JS and CSS files that are used when CDN url is not defined in $library_cdn_urls
+ *
+ * Each line starts with the js or css alias.
+ * The first string is the production (minified URL), the second is the development URL (optional).
+ */
+$library_local_urls = array(
+		'#jquery#' => array( 'jquery.min.js', 'jquery.js' ),
+		'#jqueryUI#' => array( 'jquery/jquery.ui.b2evo.min.js', 'jquery/jquery.ui.b2evo.js' ),
+		'#jqueryUI_css#' => array( 'jquery/smoothness/jquery-ui.b2evo.min.css', 'jquery/smoothness/jquery-ui.b2evo.css' ),
+# Uncomment the following lines if your plugins need more jQueryUI features than the ones loaded by b2evo:
+#		'#jqueryUI#' => array( 'jquery/jquery.ui.all.min.js', 'jquery/jquery.ui.all.js' ),
+#		'#jqueryUI_css#' => array( 'jquery/smoothness/jquery-ui.css' ),
+		'#bootstrap#' => array( 'bootstrap/bootstrap.min.js', 'bootstrap/bootstrap.js' ),
+		'#bootstrap_css#' => array( 'bootstrap/bootstrap.min.css', 'bootstrap/bootstrap.css' ),
+		'#bootstrap_theme_css#' => array( 'bootstrap/bootstrap-theme.min.css', 'bootstrap/bootstrap-theme.css' ),
+		'#bootstrap_typeahead#' => array( 'bootstrap/typeahead.bundle.min.js', 'bootstrap/typeahead.bundle.js' ),
+		'#scrollto#' => array( 'jquery/jquery.scrollto.min.js', 'jquery/jquery.scrollto.js' ),
+		'#touchswipe#' => array( 'jquery/jquery.touchswipe.min.js', 'jquery/jquery.touchswipe.js' ),
+		'#mediaelement#' => array( 'mediaelement/mediaelement-and-player.min.js', 'mediaelement/mediaelement-and-player.js' ),
+		'#mediaelement_css#' => array( 'mediaelement/mediaelementplayer.min.css', 'mediaelement/mediaelementplayer.css' ),
+	);
+
 // ----- CHANGE THE FOLLOWING SETTINGS ONLY IF YOU KNOW WHAT YOU'RE DOING! -----
 $evonetsrv_host = 'rpc.b2evo.net';
 $evonetsrv_port = 80;
@@ -790,4 +854,7 @@ $evonetsrv_uri = '/evonetsrv/xmlrpc.php';
 $antispamsrv_host = 'antispam.b2evo.net';
 $antispamsrv_port = 80;
 $antispamsrv_uri = '/evonetsrv/xmlrpc.php';
+
+// This is for plugins to add CS files to the TinyMCE editor window:
+$tinymce_content_css = array();
 ?>

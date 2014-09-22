@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -21,7 +21,7 @@
  *
  * @package admin
  *
- * @version $Id: _stats_browserhits.view.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _stats_browserhits.view.php 6479 2014-04-16 07:18:54Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -48,7 +48,7 @@ $sql = '
 
 if( $blog > 0 )
 {
-	$sql .= ' AND hit_blog_ID = '.$blog;
+	$sql .= ' AND hit_coll_ID = '.$blog;
 }
 $sql .= ' GROUP BY year, month, day, referer_type, hit_type
 					ORDER BY year DESC, month DESC, day DESC, referer_type, hit_type';
@@ -173,7 +173,7 @@ if( count($res_hits) )
 
 	?>
 
-	<table class="grouped" cellspacing="0">
+	<table class="grouped table table-striped table-bordered table-hover table-condensed" cellspacing="0">
 		<tr>
 			<th class="firstcol"><?php echo T_('Date') ?></th>
 			<th style="background-color: #<?php echo $referer_type_color['search'] ?>"><?php echo T_('Refering searches') ?></th>
@@ -302,7 +302,6 @@ if( count($res_hits) )
 
 	</table>
 
-	<!--[if IE]><?php echo get_icon( 'pixel' ); ?><![endif]-->
 	<?php
 }
 

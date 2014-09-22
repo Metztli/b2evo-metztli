@@ -10,7 +10,7 @@
  * @package evoskins
  * @subpackage asevo
  *
- * @version $Id: index.main.php 4275 2013-07-17 10:52:24Z yura $
+ * @version $Id: index.main.php 6462 2014-04-14 13:28:56Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -29,28 +29,13 @@ skin_include( '_html_header.inc.php' );
 // Note: You can customize the default HTML header by copying the
 // _html_header.inc.php file into the current skin folder.
 // -------------------------------- END OF HEADER --------------------------------
-?>
 
-<div class="head_zone">
-<div class="inner_wrapper">
-<div class="PageTop">
-	<?php
-		// Display container and contents:
-		skin_container( NT_('Page Top'), array(
-				// The following params will be used as defaults for widgets included in this container:
-				'block_start' => '<div class="$wi_class$">',
-				'block_end' => '</div>',
-				'block_display_title' => false,
-				'list_start' => '<ul>',
-				'list_end' => '</ul>',
-				'item_start' => '<li>',
-				'item_end' => '</li>',
-			) );
-	?>
-	&nbsp;
-</div>
-</div>
-</div>
+
+// ---------------------------- SITE HEADER INCLUDED HERE ----------------------------
+// If site headers are enabled, they will be included here:
+siteskin_include( '_site_body_header.inc.php' );
+// ------------------------------- END OF SITE HEADER --------------------------------
+?>
 
 
 <div class="nav_zone">
@@ -150,6 +135,8 @@ skin_include( '_html_header.inc.php' );
 			// ----------------------------END ITEM BLOCK  ----------------------------
 		}
 
+	if( $disp != 'front' && $disp != 'download' )
+	{
 		// Display message if no post:
 		display_if_empty();
 
@@ -170,10 +157,11 @@ skin_include( '_html_header.inc.php' );
 				'block_start' => '<p class="center"><strong>',
 				'block_end' => '</strong></p>',
 				'links_format' => '$prev$ :: $next$',
-   			'prev_text' => '&lt;&lt; '.T_('Previous'),
-   			'next_text' => T_('Next').' &gt;&gt;',
+				'prev_text' => '&lt;&lt; '.T_('Previous'),
+				'next_text' => T_('Next').' &gt;&gt;',
 			) );
 		// ------------------------- END OF PREV/NEXT PAGE LINKS -------------------------
+	}
 	?>
 
 	<?php
@@ -241,9 +229,14 @@ skin_include( '_body_footer.inc.php' );
 // Note: You can customize the default BODY footer by copying the
 // _body_footer.inc.php file into the current skin folder.
 // ------------------------------- END OF FOOTER --------------------------------
-?>
 
-<?php
+
+// ---------------------------- SITE FOOTER INCLUDED HERE ----------------------------
+// If site footers are enabled, they will be included here:
+siteskin_include( '_site_body_footer.inc.php' );
+// ------------------------------- END OF SITE FOOTER --------------------------------
+
+
 // ------------------------- HTML FOOTER INCLUDED HERE --------------------------
 skin_include( '_html_footer.inc.php' );
 // Note: You can customize the default HTML footer by copying the

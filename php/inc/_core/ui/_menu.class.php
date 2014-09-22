@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -25,7 +25,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE
  *
- * @version $Id: _menu.class.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _menu.class.php 6411 2014-04-07 15:17:33Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -240,9 +240,11 @@ class Menu extends Widget
 	 *
 	 * @param NULL|string|array The path. See {@link get_node_by_path()}.
 	 * @param string Template name, see {@link get_template()}.
+	 * @param integer Level
+	 * @param boolean TRUE - to get template for empty menu, used to hide menus
 	 * @return string The HTML for the menu.
 	 */
-	function get_html_menu( $path = NULL, $template = 'main', $level = 0 )
+	function get_html_menu( $path = NULL, $template = 'main', $level = 0, $force_empty = false )
 	{
 		global $current_User;
 
@@ -259,7 +261,7 @@ class Menu extends Widget
 
 		$templateForLevel = $this->get_template( $template, $level );
 
-		if( !( $menuEntries = $this->get_menu_entries($path) ) )
+		if( $force_empty || !( $menuEntries = $this->get_menu_entries($path) ) )
 		{	// No menu entries at this level
 			if( isset($templateForLevel['empty']) )
 			{
@@ -355,9 +357,14 @@ class Menu extends Widget
 						$r .= isset($templateForLevel['beforeEachSelWithSub']) ? $templateForLevel['beforeEachSelWithSub'] : $templateForLevel['beforeEachSel'];
 						$r .= $anchor;
 
-						if( $recurse != 'no' )
+						if( $templateForLevel['_props']['recurse'] != 'no' )
 						{ // Recurse:
-							$r .= $this->get_html_menu( $recursePath, $template, $level+1 );
+							if( ! isset( $templateForLevel['_props']['recurse_level'] ) ||
+							    ( isset( $templateForLevel['_props']['recurse_level'] ) &&
+							      $templateForLevel['_props']['recurse_level'] > $level + 1 ) )
+							{ // Display submenus if this level is not limited by param 'recurse_level'
+								$r .= $this->get_html_menu( $recursePath, $template, $level+1 );
+							}
 						}
 
 						$r .= isset($templateForLevel['afterEachSelWithSub']) ? $templateForLevel['afterEachSelWithSub'] : $templateForLevel['afterEachSel'];
@@ -441,6 +448,20 @@ class Menu extends Widget
 	function has_entires()
 	{
 		return !empty( $this->_menus );
+	}
+
+
+	/**
+	 * Clear menu entries of the given path.
+	 *
+	 * @param NULL|string The path to clear the entries from. See {@link get_node_by_path()}.
+	 */
+	function clear_menu_entries( $path )
+	{
+		// Get a reference to the node in the menu list.
+		$node = & $this->get_node_by_path( $path, true );
+
+		$node['entries'] = array();
 	}
 }
 

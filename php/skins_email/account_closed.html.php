@@ -6,9 +6,9 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
- * @version $Id: account_closed.html.php 3183 2013-03-10 21:59:41Z fplanque $
+ * @version $Id: account_closed.html.php 7043 2014-07-02 08:35:45Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -41,6 +41,26 @@ echo "</p>\n";
 echo '<p>'.T_('Login').": ".get_user_colored_login( $params['login'] )."</p>\n";
 echo '<p>'.T_('Email').": ".$params['email']."</p>\n";
 echo '<p>'.T_('Account close reason').": ".nl2br( $params['reason'] )."</p>\n";
+
+// User's pictures:
+echo '<p>'.T_('The current profile pictures for this account are:').'</p>'."\n";
+$user_pictures = '';
+$UserCache = & get_UserCache();
+if( $User = $UserCache->get_by_ID( $params['user_ID'], false, false ) )
+{
+	$user_avatars = $User->get_avatar_Links( false );
+	foreach( $user_avatars as $user_Link )
+	{
+		$user_pictures .= $user_Link->get_tag( array(
+				'before_image'        => '',
+				'before_image_legend' => '',
+				'after_image_legend'  => '',
+				'after_image'         => ' ',
+				'image_size'          => 'crop-top-80x80',
+			) );
+	}
+}
+echo empty( $user_pictures ) ? '<p><b>'.T_('No pictures.').'</b></p>' : $user_pictures;
 
 // Buttons:
 echo '<div class="buttons">'."\n";

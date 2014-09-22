@@ -7,6 +7,11 @@ body {
 	color: #000;
 	font: 84% Arial, Helvetica, sans-serif;
 }
+
+div#skin_wrapper div.sitewide_header {
+	margin-bottom: 0;
+}
+
 textarea, input, select, option, optgroup, ul.ui-autocomplete, li.token-input-token-facebook, div.token-input-dropdown-facebook {
 	font: 13.43px Arial, Helvetica, sans-serif;
 }
@@ -23,8 +28,7 @@ a:hover {
 	text-decoration: underline;
 }
 
-div.pageHeader h1 a,
-div.pageHeader h1 a:visited {  /* IE6 */
+div.pageHeader h1 a {
 	color: #fff;
 	text-decoration: none;
 }

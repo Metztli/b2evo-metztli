@@ -4,7 +4,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  *
@@ -48,6 +48,15 @@ elseif( !empty( $comment_id ) )
 			param( 'recipient_name', 'string', $Comment->get_author_name() );
 		}
 	}
+}
+else
+{ // Recipient was not defined, try set the blog owner as recipient
+	global $Blog;
+	if( empty( $Blog ) )
+	{ // Blog is not set, this is an invalid request
+		debug_die( 'Invalid send message request!');
+	}
+	$recipient_User = $Blog->get_owner_User();
 }
 
 if( $recipient_User )
@@ -150,7 +159,7 @@ if( $allow_msgform == 'PM' || $allow_msgform == 'email' )
 				SELECT post_title
 				  FROM T_items__item, T_comments
 				 WHERE comment_ID = '.$DB->quote($comment_id).'
-				   AND post_ID = comment_post_ID' );
+				   AND post_ID = comment_item_ID' );
 
 			if( $row )
 			{

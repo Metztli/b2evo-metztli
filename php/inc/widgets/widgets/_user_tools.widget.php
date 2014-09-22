@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -21,7 +21,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _user_tools.widget.php 5852 2014-01-30 09:37:55Z attila $
+ * @version $Id: _user_tools.widget.php 6411 2014-04-07 15:17:33Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -216,10 +216,7 @@ class user_tools_Widget extends ComponentWidget
 		{ // Set default blockcache to false and disable this setting because caching is never allowed for this widget
 			$r['allow_blockcache']['defaultvalue'] = false;
 			$r['allow_blockcache']['disabled'] = 'disabled';
-			if( ! empty( $this->params ) && ( ! isset( $params['infinite_loop'] ) ) )
-			{ // Force allow_blockache to false! It is never allowed to be on, no matter what was set in the database.
-				$this->set( 'allow_blockcache', false );
-			}
+			$r['allow_blockcache']['note'] = T_('This widget cannot be cached in the block cache.');
 		}
 
 		return $r;
@@ -330,6 +327,8 @@ class user_tools_Widget extends ComponentWidget
 			echo $this->disp_params['block_title_end'];
 		}
 
+		echo $this->disp_params['block_body_start'];
+
 		echo $this->disp_params['list_start'];
 
 		echo $tools_links;
@@ -343,6 +342,8 @@ class user_tools_Widget extends ComponentWidget
 		}
 
 		echo $this->disp_params['list_end'];
+
+		echo $this->disp_params['block_body_end'];
 
 		echo $this->disp_params['block_end'];
 	}
@@ -360,7 +361,7 @@ class user_tools_Widget extends ComponentWidget
 		return array(
 				'wi_ID'   => $this->ID,					// Have the widget settings changed ?
 				'set_coll_ID' => $Blog->ID,			// Have the settings of the blog changed ? (ex: new owner, new skin)
-				'loggedin' => (is_logged_in() ? 1 : 0),
+				'loggedin' => (is_logged_in() ? 1 : 0),  // Is a user logged in at the time this widget is cached/displayed
 				// fp> note: if things get tough in the future, use a per User caching scheme:
 				// 'user_ID' => (is_logged_in() ? $current_User->ID : 0), // Has the current User changed?
 			);

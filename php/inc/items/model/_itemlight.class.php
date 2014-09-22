@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -28,7 +28,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _itemlight.class.php 6041 2014-02-26 10:40:51Z attila $
+ * @version $Id: _itemlight.class.php 7111 2014-07-14 05:23:46Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -134,14 +134,13 @@ class ItemLight extends DataObject
 												$creator_field, $lasteditor_field );
 
 		$this->delete_restrictions = array(
-				array( 'table'=>'T_links', 'fk'=>'link_dest_itm_ID', 'msg'=>T_('%d links to source items') ),
 				array( 'table'=>'T_items__item', 'fk'=>'post_parent_ID', 'msg'=>T_('%d links to child items') ),
 			);
 
 		$this->delete_cascades = array(
 				array( 'table'=>'T_links', 'fk'=>'link_itm_ID', 'msg'=>T_('%d links to destination items') ),
 				array( 'table'=>'T_postcats', 'fk'=>'postcat_post_ID', 'msg'=>T_('%d links to extra categories') ),
-				array( 'table'=>'T_comments', 'fk'=>'comment_post_ID', 'msg'=>T_('%d comments') ),
+				array( 'table'=>'T_comments', 'fk'=>'comment_item_ID', 'msg'=>T_('%d comments') ),
 				array( 'table'=>'T_items__version', 'fk'=>'iver_itm_ID', 'msg'=>T_('%d versions') ),
 				array( 'table'=>'T_slug', 'fk'=>'slug_itm_ID', 'msg'=>T_('%d slugs') ),
 				array( 'table'=>'T_items__itemtag', 'fk'=>'itag_itm_ID', 'msg'=>T_('%d links to tags') ),
@@ -195,7 +194,7 @@ class ItemLight extends DataObject
 	 */
 	function is_intro()
 	{
-		return ($this->ptyp_ID >= 1500 && $this->ptyp_ID <= 1600);
+		return ($this->ptyp_ID >= 1400 && $this->ptyp_ID <= 1600);
 	}
 
 
@@ -349,13 +348,19 @@ class ItemLight extends DataObject
 	{
 		global $DB, $cacheweekly, $Settings, $posttypes_specialtypes, $posttypes_nopermanentURL, $posttypes_catpermanentURL;
 
-		if( in_array( $this->ptyp_ID, $posttypes_specialtypes ) ) // page, intros, sidebar
+		$this->get_Blog();
+		if( $this->Blog->get_setting( 'front_disp' ) == 'page' &&
+		    $this->Blog->get_setting( 'front_post_ID' ) == $this->ID )
+		{ // This item is used as front specific page on the blog's home
+			$permalink_type = 'none';
+		}
+		elseif( in_array( $this->ptyp_ID, $posttypes_specialtypes ) ) // page, intros, sidebar
 		{	// This is not an "in stream" post:
 			if( in_array( $this->ptyp_ID, $posttypes_nopermanentURL ) )
 			{	// This type of post is not allowed to have a permalink:
 				$permalink_type = 'none';
 			}
-			if( in_array( $this->ptyp_ID, $posttypes_catpermanentURL ) )
+			elseif( in_array( $this->ptyp_ID, $posttypes_catpermanentURL ) )
 			{	// This post has a permanent URL as url to main chapter:
 				$permalink_type = 'cat';
 			}
@@ -368,7 +373,6 @@ class ItemLight extends DataObject
 		elseif( empty( $permalink_type ) )
 		{	// Normal "in stream" post:
 			// Use default from collection settings (may be an "in stream" URL):
-			$this->get_Blog();
 			$permalink_type = $this->Blog->get_setting( 'permalinks' );
 		}
 
@@ -383,7 +387,6 @@ class ItemLight extends DataObject
 			case 'none':
 				// This is a silent fallback when we try to permalink to an Item that cannot be addressed directly:
 				// Link to blog home:
-				$this->get_Blog();
 				return $this->Blog->gen_blogurl();
 
 			case 'cat':
@@ -440,7 +443,7 @@ class ItemLight extends DataObject
 			if( $params['link_categories'] )
 			{ // we want to display links
 				$lBlog = & $Chapter->get_Blog();
-				$cat_name = '<a href="'.$Chapter->get_permanent_url().'" title="'.htmlspecialchars($params['link_title']).'">'.$cat_name.'</a>';
+				$cat_name = '<a href="'.$Chapter->get_permanent_url().'" title="'.evo_htmlspecialchars($params['link_title']).'">'.$cat_name.'</a>';
 			}
 
 			if( $Chapter->ID == $this->main_cat_ID )
@@ -697,7 +700,7 @@ class ItemLight extends DataObject
 					}
 				}
 
-				$message = sprintf( 'Item with ID <a %s>%s</a> has an invalid main category ID %s.',
+				$message = sprintf( 'Item with ID <a %s>%s</a> has an invalid main category ID %s.', /* Do NOT translate debug messages! */
 						'href="'.$url_to_edit_post.'"',
 						$this->ID,
 						$this->main_cat_ID
@@ -713,8 +716,16 @@ class ItemLight extends DataObject
 				}
 				else
 				{	// Main chapter is defined, we can show the page
-					global $Messages;
-					$Messages->add( $message );
+					global $Messages, $current_User;
+					if( is_logged_in() && $current_User->check_perm( 'blogs', 'editall' ) )
+					{ // User has permission to all blogs posts and comments, display a message as note in order to allow update it
+						$message_type = 'note';
+					}
+					else
+					{ // No permission, display this message as error. Such users cannot update this post.
+						$message_type = 'error';
+					}
+					$Messages->add( $message, $message_type );
 				}
 			}
 		}
@@ -1004,11 +1015,11 @@ class ItemLight extends DataObject
 		switch( $text )
 		{
 			case '#':
-				$text = get_icon( 'permalink', 'imgtag', array('class'=>'icon') ).T_('Permalink');
+				$text = get_icon( 'permalink' ).T_('Permalink');
 				break;
 
 			case '#icon#':
-				$text = get_icon( 'permalink', 'imgtag', array('class'=>'icon') );
+				$text = get_icon( 'permalink' );
 				break;
 
 			case '#text#':
@@ -1103,6 +1114,8 @@ class ItemLight extends DataObject
 		$params = array_merge( array(
 				'before'          => '',
 				'after'           => '',
+				'before_title'    => '',
+				'after_title'     => '',
 				'format'          => 'htmlbody',
 				'link_type'       => '#',
 				'link_class'      => '#',
@@ -1189,6 +1202,7 @@ class ItemLight extends DataObject
 		}
 
 		$r = $params['before'];
+		$title = $params['before_title'].$title.$params['after_title'];
 		if( !empty($url) )
 		{
 			$r .= '<a href="'.$url.'"'.$link_class.'>'.$title.'</a>';
@@ -1345,6 +1359,51 @@ class ItemLight extends DataObject
 		}
 	}
 
+
+	/**
+	 * Get a link to history of Item
+	 *
+	 * @return string A link to history
+	 */
+	function get_history_link( $params = array() )
+	{
+		$params = array_merge( array(
+				'before'    => '',
+				'after'     => '',
+				'link_text' => '$icon$' // Use a mask $icon$ or some other text
+			), $params );
+
+		if( ( $history_url = $this->get_history_url() ) === false )
+		{ // No url available for current user, Don't display a link
+			return;
+		}
+
+		// Replace all masks with values
+		$link_text = str_replace( '$icon$', $this->history_info_icon(), $params['link_text'] );
+
+		return $params['before']
+			.'<a href="'.$history_url.'">'.$link_text.'</a>'
+			.$params['after'];
+	}
+
+
+	/**
+	 * Get URL to history of Item
+	 *
+	 * @param string Glue between url params
+	 * @return string|boolean URL to history OR False when user cannot see a history
+	 */
+	function get_history_url( $glue = '&amp;' )
+	{
+		global $current_User, $admin_url;
+
+		if( ! is_logged_in() || ! $current_User->check_perm( 'item_post!CURSTATUS', 'edit', false, $this ) )
+		{ // Current user cannot see a history
+			return false;
+		}
+
+		return $admin_url.'?ctrl=items'.$glue.'action=history'.$glue.'p='.$this->ID;
+	}
 }
 
 ?>

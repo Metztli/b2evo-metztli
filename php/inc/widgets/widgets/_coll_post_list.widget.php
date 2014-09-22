@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -21,7 +21,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _coll_post_list.widget.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _coll_post_list.widget.php 6426 2014-04-08 16:26:27Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -57,7 +57,7 @@ class coll_post_list_Widget extends coll_item_list_Widget
 		// This is derived from coll_post_list_Widget, so we DO NOT ADD ANY param here!
 		$r = parent::get_param_definitions( $params );
 		// We only change the defaults and hide some params.
-		$r['title']['defaultvalue'] = T_('Contents');
+		$r['title']['defaultvalue'] = T_('Recent Posts');
 		$r['title_link']['no_edit'] = true;
 		$r['item_type']['no_edit'] = true;
 		$r['follow_mainlist']['no_edit'] = true;

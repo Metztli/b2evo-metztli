@@ -6,9 +6,9 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
- * @version $Id: post_new.html.php 5963 2014-02-12 13:43:04Z yura $
+ * @version $Id: post_new.html.php 7043 2014-07-02 08:35:45Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -52,6 +52,26 @@ if( $params['notify_full'] )
 	echo '<p>'.nl2br( $Item->get('content') ).'</p>';
 	echo "</div>\n";
 
+	// Attachments:
+	$LinkCache = & get_LinkCache();
+	$item_links = $LinkCache->get_by_item_ID( $Item->ID );
+	if( !empty( $item_links ) )
+	{
+		echo '<p>'.T_('Attachments').':<ul>'."\n";
+		foreach( $item_links as $Link )
+		{
+			if( $File = $Link->get_File() )
+			{
+				echo '<li><a href="'.$File->get_url().'">';
+				if( $File->is_image() )
+				{ // Display an image
+					echo $File->get_thumb_imgtag( 'fit-80x80', '', 'middle' ).' ';
+				}
+				echo $File->get_name().'</a></li>'."\n";
+			}
+		}
+		echo "</ul></p>\n";
+	}
 }
 else
 { /* Short notification */

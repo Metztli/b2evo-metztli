@@ -6,9 +6,9 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
- * @version $Id: comment_new.html.php 5299 2013-11-28 09:20:44Z attila $
+ * @version $Id: comment_new.html.php 7043 2014-07-02 08:35:45Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -20,39 +20,44 @@ global $htsrv_url, $admin_url;
 
 // Default params:
 $params = array_merge( array(
-		'notify_full' => false,
-		'Comment'     => NULL,
-		'Blog'        => NULL,
-		'Item'        => NULL,
-		'author_ID'   => NULL,
-		'author_name' => '',
-		'notify_type' => '',
+		'notify_full'    => false,
+		'Comment'        => NULL,
+		'Blog'           => NULL,
+		'Item'           => NULL,
+		'author_ID'      => NULL,
+		'author_name'    => '',
+		'notify_type'    => '',
+		'recipient_User' => NULL,
 	), $params );
 
 
 $Comment = $params['Comment'];
 $Blog = $params['Blog'];
 $Item = $params['Item'];
+$recipient_User = & $params['recipient_User'];
 
 $author_name = empty( $params['author_ID'] ) ? $params['author_name'] : get_user_colored_login( $params['author_name'] );
 $notify_message = '<p>'.sprintf( T_( '%s posted a new comment on %s in %s.' ), '<b>'.$author_name.'</b>', '<b>'.get_link_tag( $Item->get_permanent_url(), $Item->get('title') ).'</b>', '<b>'.$Blog->get('shortname').'</b>' ).'</p>';
 
 if( $params['notify_full'] )
-{	// Long format notification:
-
+{ // Long format notification:
+	$ip_list = implode( ', ', get_linked_ip_list( array( $Comment->author_IP ), $recipient_User ) );
+	$user_domain = gethostbyaddr( $Comment->author_IP );
+	if( $user_domain != $Comment->author_IP )
+	{ // Add host name after author IP address
+		$ip_list .= ', '.$user_domain;
+	}
 	switch( $Comment->type )
 	{
 		case 'trackback':
-			$user_domain = gethostbyaddr($Comment->author_IP);
-			$notify_message .= '<p>'.T_('Trackback IP').': '.$Comment->author_IP.', '.$user_domain."</p>\n";
+			$notify_message .= '<p>'.T_('Trackback IP').': '.$ip_list."</p>\n";
 			$notify_message .= '<p>'.T_('Url').': '.get_link_tag( $Comment->author_url )."</p>\n";
 			break;
 
 		default:
 			if( ! $Comment->get_author_User() )
 			{ // Comment from visitor:
-				$user_domain = gethostbyaddr($Comment->author_IP);
-				$notify_message .= '<p>'.T_('Commenter IP').': '.$Comment->author_IP.', '.$user_domain."</p>\n";
+				$notify_message .= '<p>'.T_('Commenter IP').': '.$ip_list."</p>\n";
 				$notify_message .= '<p>'.T_('Email').': '.$Comment->author_email."</p>\n";
 				$notify_message .= '<p>'.T_('Url').': '.get_link_tag( $Comment->author_url )."</p>\n";
 			}
@@ -60,7 +65,7 @@ if( $params['notify_full'] )
 
 	if( !empty( $Comment->rating ) )
 	{
-		$notify_message .= '<p>'.T_('Rating').': '.$Comment->rating."</p>\n";
+		$notify_message .= '<p>'.T_('Rating').': '.$Comment->rating.'/5'."</p>\n";
 	}
 
 	if( $params['notify_type'] == 'moderator' )
@@ -72,6 +77,27 @@ if( $params['notify_full'] )
 	$notify_message .= '<div class="email_ugc">'."\n";
 	$notify_message .= '<p>'.nl2br( $Comment->get('content') ).'</p>';
 	$notify_message .= "</div>\n";
+
+	// Attachments:
+	$LinkCache = & get_LinkCache();
+	$comment_links = $LinkCache->get_by_comment_ID( $Comment->ID );
+	if( !empty( $comment_links ) )
+	{
+		$notify_message .= '<p>'.T_('Attachments').':<ul>'."\n";
+		foreach( $comment_links as $Link )
+		{
+			if( $File = $Link->get_File() )
+			{
+				$notify_message .= '<li><a href="'.$File->get_url().'">';
+				if( $File->is_image() )
+				{ // Display an image
+					$notify_message .= $File->get_thumb_imgtag( 'fit-80x80', '', 'middle' ).' ';
+				}
+				$notify_message .= $File->get_name().'</a></li>'."\n";
+			}
+		}
+		$notify_message .= "</ul></p>\n";
+	}
 }
 else
 {	// Short format notification:

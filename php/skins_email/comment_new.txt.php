@@ -6,9 +6,9 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
- * @version $Id: comment_new.txt.php 5299 2013-11-28 09:20:44Z attila $
+ * @version $Id: comment_new.txt.php 7043 2014-07-02 08:35:45Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -45,11 +45,16 @@ if( $params['notify_full'] )
 		// Mail bloat: .' ( '.str_replace('&amp;', '&', $Item->get_permanent_url())." )\n";
 		// TODO: fp> We MAY want to force short URL and avoid it to wrap on a new line in the mail which may prevent people from clicking
 
+	$ip_list = $Comment->author_IP;
+	$user_domain = gethostbyaddr( $Comment->author_IP );
+	if( $user_domain != $Comment->author_IP )
+	{ // Add host name after author IP address
+		$ip_list .= ', '.$user_domain;
+	}
 	switch( $Comment->type )
 	{
 		case 'trackback':
-			$user_domain = gethostbyaddr($Comment->author_IP);
-			$notify_message .= T_('Website').": $Comment->author (IP: $Comment->author_IP, $user_domain)\n";
+			$notify_message .= T_('Website').": $Comment->author (IP: $ip_list)\n";
 			$notify_message .= T_('Url').": $Comment->author_url\n";
 			break;
 
@@ -60,8 +65,7 @@ if( $params['notify_full'] )
 			}
 			else
 			{ // Comment from visitor:
-				$user_domain = gethostbyaddr($Comment->author_IP);
-				$notify_message .= T_('Author').": $Comment->author (IP: $Comment->author_IP, $user_domain)\n";
+				$notify_message .= T_('Author').": $Comment->author (IP: $ip_list)\n";
 				$notify_message .= T_('Email').": $Comment->author_email\n";
 				$notify_message .= T_('Url').": $Comment->author_url\n";
 			}
@@ -69,7 +73,7 @@ if( $params['notify_full'] )
 
 	if( !empty( $Comment->rating ) )
 	{
-		$notify_message .= T_('Rating').": $Comment->rating\n";
+		$notify_message .= T_('Rating').': '.$Comment->rating.'/5'."\n";
 	}
 
 	if( $params['notify_type'] == 'moderator' )
@@ -77,7 +81,24 @@ if( $params['notify_full'] )
 		$notify_message .= T_('Status').': '.$Comment->get( 't_status' )."\n";
 	}
 
+	// Content:
 	$notify_message .= $Comment->get('content')."\n";
+
+	// Attachments:
+	$LinkCache = & get_LinkCache();
+	$comment_links = $LinkCache->get_by_comment_ID( $Comment->ID );
+	if( !empty( $comment_links ) )
+	{
+		$notify_message .= "\n".T_('Attachments').":\n";
+		foreach( $comment_links as $Link )
+		{
+			if( $File = $Link->get_File() )
+			{
+				$notify_message .= ' - '.$File->get_name().': '.$File->get_url()."\n";
+			}
+		}
+		$notify_message .= "\n";
+	}
 }
 else
 {	// Shot format notification:

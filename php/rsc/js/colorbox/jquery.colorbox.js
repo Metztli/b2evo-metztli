@@ -29,7 +29,6 @@
 		href: false,
 		title: false,
 		rel: false,
-		opacity: 0.9,
 		preloading: true,
 		current: "image {current} of {total}",
 		previous: "previous",
@@ -74,21 +73,15 @@
 	event_cleanup = prefix + '_cleanup',
 	event_closed = prefix + '_closed',
 	event_purge = prefix + '_purge',
-	
+
 	// Special Handling for IE
-	isIE = $.browser.msie && !$.support.opacity, // Detects IE6,7,8.  IE9 supports opacity.  Feature detection alone gave a false positive on at least one phone browser and on some development versions of Chrome, hence the user-agent test.
-	isIE6 = isIE && $.browser.version < 7,
-	event_ie6 = prefix + '_IE6',
+	isIE = !$.support.opacity, // Detects IE6,7,8.  IE9 supports opacity.  Feature detection alone gave a false positive on at least one phone browser and on some development versions of Chrome, hence the user-agent test.
 
 	// Cached jQuery Object Variables
 	$overlay,
 	$box,
 	$wrap,
 	$content,
-	$topBorder,
-	$leftBorder,
-	$rightBorder,
-	$bottomBorder,
 	$related,
 	$window,
 	$loaded,
@@ -260,20 +253,13 @@
 						// do nothing
 					}
 				}
-				
-				// +settings.opacity avoids a problem in IE when using non-zero-prefixed-string-values, like '.5'
-				$overlay.css({"opacity": +settings.opacity, "cursor": settings.overlayClose ? "pointer" : "auto"}).show();
-				
+
+				$overlay.css({"cursor": settings.overlayClose ? "pointer" : "auto"}).show();
+
 				// Opens inital empty ColorBox prior to content being loaded.
 				settings.w = setSize(settings.initialWidth, 'x');
 				settings.h = setSize(settings.initialHeight, 'y');
 				publicMethod.position();
-				
-				if (isIE6) {
-					$window.bind('resize.' + event_ie6 + ' scroll.' + event_ie6, function () {
-						$overlay.css({width: $window.width(), height: $window.height(), top: $window.scrollTop(), left: $window.scrollLeft()});
-					}).trigger('resize.' + event_ie6);
-				}
 
 				trigger(event_open, settings.onOpen);
 
@@ -328,8 +314,8 @@
 	publicMethod.init = function () {
 		// Create & Append jQuery Objects
 		$window = $(window);
-		$box = $div().attr({id: colorbox, 'class': isIE ? prefix + (isIE6 ? 'IE6' : 'IE') : ''});
-		$overlay = $div("Overlay", isIE6 ? 'position:absolute' : '').hide();
+		$box = $div().attr({id: colorbox, 'class': isIE ? prefix + 'IE' : ''});
+		$overlay = $div("Overlay").hide();
 		
 		$wrap = $div("Wrapper");
 		$content = $div("Content").append(
@@ -344,23 +330,7 @@
 			$close = $div("Close"),
 			$open = $div("Open")
 		);
-		$wrap.append( // The 3x3 Grid that makes up ColorBox
-			$div().append(
-				$div("TopLeft"),
-				$topBorder = $div("TopCenter"),
-				$div("TopRight")
-			),
-			$div(false, 'clear:left').append(
-				$leftBorder = $div("MiddleLeft"),
-				$content,
-				$rightBorder = $div("MiddleRight")
-			),
-			$div(false, 'clear:left').append(
-				$div("BottomLeft"),
-				$bottomBorder = $div("BottomCenter"),
-				$div("BottomRight")
-			)
-		).children().children().css({'float': 'left'});
+		$wrap.append( $content );
 
 		$loadingBay = $div(false, 'position:absolute; width:9999px; visibility:hidden; display:none');
 
@@ -377,8 +347,8 @@
 		}).addClass('hover');
 
 		// Cache values needed for size calculations
-		interfaceHeight = $topBorder.height() + $bottomBorder.height() + $content.outerHeight(true) - $content.height();//Subtraction needed for IE6
-		interfaceWidth = $leftBorder.width() + $rightBorder.width() + $content.outerWidth(true) - $content.width();
+		interfaceHeight = $content.outerHeight(true) - $content.height();//Subtraction needed for IE6
+		interfaceWidth = $content.outerWidth(true) - $content.width();
 		loadedHeight = $loaded.outerHeight(true);
 		loadedWidth = $loaded.outerWidth(true);
 		
@@ -444,7 +414,7 @@
 		// remove the modal so that it doesn't influence the document width/height		
 		$box.hide();
 		
-		if (settings.fixed && !isIE6) {
+		if (settings.fixed) {
 			$box.css({position: 'fixed'});
 		} else {
 			top = $window.scrollTop();
@@ -481,8 +451,8 @@
 		
 		function modalDimensions(that) {
 			// loading overlay height has to be explicitly set for IE6.
-			$topBorder[0].style.width = $bottomBorder[0].style.width = $content[0].style.width = that.style.width;
-			$loadingOverlay[0].style.height = $loadingOverlay[1].style.height = $content[0].style.height = $leftBorder[0].style.height = $rightBorder[0].style.height = that.style.height;
+			$content[0].style.width = that.style.width;
+			$loadingOverlay[0].style.height = $loadingOverlay[1].style.height = $content[0].style.height = that.style.height;
 		}
 		
 		$box.dequeue().animate({width: settings.w + loadedWidth, height: settings.h + loadedHeight, top: top, left: left}, {
@@ -579,18 +549,9 @@
 		
 		// floating the IMG removes the bottom line-height and fixed a problem where IE miscalculates the width of the parent element as 100% of the document width.
 		//$(photo).css({'float': 'none', marginLeft: 'auto', marginRight: 'auto'});
-		
+
 		$(photo).css({'float': 'none'});
-		
-		// Hides SELECT elements in IE6 because they would otherwise sit on top of the overlay.
-		if (isIE6) {
-			$('select').not($box.find('select')).filter(function () {
-				return this.style.visibility !== 'hidden';
-			}).css({'visibility': 'hidden'}).one(event_cleanup, function () {
-				this.style.visibility = 'inherit';
-			});
-		}
-		
+
 		callback = function () {
 			var prev, prevSrc, next, nextSrc, total = $related.length, iframe, complete;
 			
@@ -824,11 +785,57 @@
 					photo.style.marginTop = Math.max(settings.h - photo.height, 0) / 2 + 'px';
 				}
 				
-				if ($related[1] && (index < $related.length - 1 || settings.loop)) {
-					photo.style.cursor = 'pointer';
-					photo.onclick = function () {
-						publicMethod.next();
+				if ($related[1] && (index < $related.length - 1 || settings.loop))
+				{
+					// Clear classes from previous image
+					jQuery( photo ).removeClass( 'zoomin zoomout' );
+
+					var photo_is_zoomed = false;
+					var photo_width = 0;
+					var photo_height = 0;
+					var photo_is_big = photo.naturalWidth > photo.width * 1.1 || photo.naturalHeight > photo.height * 1.1;
+					if( photo_is_big )
+					{ // If photo is big - make a specific cursor over photo
+						photo.className = photo.className + ' zoomin';
+					}
+					photo.onclick = function( e )
+					{
+						if( ! photo_is_big )
+						{ // Photo is small - Use a click event to display next photo
+							publicMethod.next();
+						}
 					};
+					if( photo_is_big )
+					{ // Photo is big - Use a click event to zoom a photo
+						jQuery( photo ).bind( 'click dblclick', function( e )
+						{
+							if( photo_is_zoomed )
+							{ // Zoom out a photo to window size
+								photo.className = photo.className.replace( /zoomout/, '' );
+								photo.width = photo_width;
+								photo.height = photo_height;
+							}
+							else
+							{ // Zoom in a photo to real size
+								var this_offset = jQuery( this ).offset();
+								var pecentX = ( e.pageX - this_offset.left ) / jQuery( this ).width();
+								var pecentY = ( e.pageY - this_offset.top ) / jQuery( this ).height();
+
+								photo.className = photo.className + ' zoomout';
+								photo_width = photo.width;
+								photo_height = photo.height;
+								photo.removeAttribute( 'width' );
+								photo.removeAttribute( 'height' );
+
+								// Scroll image to mouse pointer
+								var this_parent = jQuery( this ).parent()[0];
+								jQuery( this ).parent()
+									.scrollLeft( pecentX * ( this_parent.scrollWidth - this_parent.clientWidth ) )
+									.scrollTop( pecentY * ( this_parent.scrollHeight - this_parent.clientHeight ) );
+							}
+							photo_is_zoomed = photo_is_zoomed ? false : true;
+						} );
+					}
 				}
 				
 				if (isIE) {
@@ -877,7 +884,7 @@
 			
 			trigger(event_cleanup, settings.onCleanup);
 			
-			$window.unbind('.' + prefix + ' .' + event_ie6);
+			$window.unbind('.' + prefix);
 			
 			$overlay.fadeTo(200, 0);
 			
@@ -924,3 +931,38 @@
 	$(publicMethod.init);
 
 }(jQuery, document, this));
+
+// Rewrite double click event for double tap event on touch devices (in order to zoom big images)
+jQuery.event.special.dblclick = {
+	setup: function( data, namespaces )
+	{
+		var elem = this,
+			$elem = jQuery( elem );
+		$elem.bind( 'touchend.dblclick', jQuery.event.special.dblclick.handler );
+	},
+
+	teardown: function( namespaces )
+	{
+		var elem = this,
+			$elem = jQuery( elem );
+		$elem.unbind( 'touchend.dblclick' );
+	},
+
+	handler: function( event )
+	{
+		var elem = event.target,
+			$elem = jQuery( elem ),
+			lastTouch = $elem.data( 'lastTouch' ) || 0,
+			now = new Date().getTime();
+
+		var delta = now - lastTouch;
+		if( delta > 20 && delta < 500 )
+		{
+			$elem.data( 'lastTouch', 0 );
+			$elem.trigger( 'dblclick' );
+		} else
+		{
+			$elem.data( 'lastTouch', now );
+		}
+	}
+};

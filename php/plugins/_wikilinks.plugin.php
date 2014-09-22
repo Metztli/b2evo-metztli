@@ -6,7 +6,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package plugins
  * @ignore
@@ -26,7 +26,7 @@ class wikilinks_plugin extends Plugin
 	var $group = 'rendering';
 	var $short_desc;
 	var $long_desc;
-	var $help_url = 'http://b2evolution.net/man/technical-reference/renderer-plugins/wiki-links-plugin';
+	var $help_topic = 'wiki-links-plugin';
 	var $number_of_installs = 1;
 
 	/**
@@ -104,7 +104,7 @@ class wikilinks_plugin extends Plugin
 	 * Render content of Item, Comment, Message
 	 *
 	 * @todo get rid of global $blog
-	 * 
+	 *
 	 * @param string Content
 	 * @param object Blog
 	 * @param boolean Allow empty Blog

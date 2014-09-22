@@ -7,13 +7,13 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
  *
  * @package evoskins
  *
- * @version $Id: _edit_comment.disp.php 3032 2013-02-20 09:33:39Z attila $
+ * @version $Id: _edit_comment.disp.php 7043 2014-07-02 08:35:45Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -71,6 +71,12 @@ $Form->begin_form( 'inskin', '', $display_params );
 	$Form->hidden( 'redirect_to', url_add_tail( $comment_Item->get_permanent_url(), '#c'.$edited_Comment->ID ) );
 
 	$Form->info( T_('In response to'), $comment_Item->get_title() );
+
+	if( $Blog->get_setting( 'threaded_comments' ) )
+	{ // Display a reply comment ID only when this feature is enabled in blog settings
+		$Form->text_input( 'in_reply_to_cmt_ID', $edited_Comment->in_reply_to_cmt_ID, 10, T_('In reply to comment ID'), T_('(leave blank for normal comments)') );
+	}
+
 	if( $edited_Comment->get_author_User() )
 	{
 		$Form->info( T_('Author'), $edited_Comment->get_author() );
@@ -171,7 +177,7 @@ $Form->begin_form( 'inskin', '', $display_params );
 	}
 
 	$Form->begin_fieldset();
-	$Form->submit( array( 'actionArray[update]', T_('Save changes'), 'SaveButton submit' ) );
+	$Form->submit( array( 'actionArray[update]', T_('Save Changes!'), 'SaveButton submit' ) );
 	$Form->end_fieldset();
 $Form->end_form();
 

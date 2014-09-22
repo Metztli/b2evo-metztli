@@ -8,6 +8,11 @@ body{
 	background:#333 url(rsc/img/bodybg.png) repeat-x fixed top center;
 	font:11px Verdana,Arial,Helvetica,sans-serif;
 }
+
+div#skin_wrapper div.sitewide_header {
+	margin-bottom: 0;
+}
+
 #rap{
 	width:700px;
 	margin:auto;

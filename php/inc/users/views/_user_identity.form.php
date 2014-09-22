@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -29,7 +29,7 @@
  *
  * @package admin
  *
- * @version $Id: _user_identity.form.php 4241 2013-07-16 12:42:26Z yura $
+ * @version $Id: _user_identity.form.php 7036 2014-07-01 18:05:24Z yura $
  */
 
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -91,17 +91,7 @@ else
 
 // ------------------- PREV/NEXT USER LINKS -------------------
 user_prevnext_links( array(
-		'block_start'  => '<table class="prevnext_user"><tr>',
-		'prev_start'   => '<td width="33%">',
-		'prev_end'     => '</td>',
-		'prev_no_user' => '<td width="33%">&nbsp;</td>',
-		'back_start'   => '<td width="33%" class="back_users_list">',
-		'back_end'     => '</td>',
-		'next_start'   => '<td width="33%" class="right">',
-		'next_end'     => '</td>',
-		'next_no_user' => '<td width="33%">&nbsp;</td>',
-		'block_end'    => '</tr></table>',
-		'user_tab'     => 'profile'
+		'user_tab' => 'profile'
 	) );
 // ------------- END OF PREV/NEXT USER LINKS -------------------
 
@@ -201,10 +191,18 @@ if( $action != 'view' )
 		$user_pictures = '<div class="avatartag">'.$edited_User->get_avatar_imgtag( 'crop-top-80x80', 'avatar', 'top', true, '', 'user' ).'</div>';
 
 		// Get other pictures:
-		$user_avatars = $edited_User->get_avatar_Files();
-		foreach( $user_avatars as $uFile )
+		$user_avatars = $edited_User->get_avatar_Links();
+		foreach( $user_avatars as $user_Link )
 		{
-			$user_pictures .= $uFile->get_tag( '<div class="avatartag">', '', '', '</div>', 'crop-top-80x80', 'original', $edited_User->login, 'lightbox[user]' );
+			$user_pictures .= $user_Link->get_tag( array(
+					'before_image'        => '<div class="avatartag">',
+					'before_image_legend' => '',
+					'after_image_legend'  => '',
+					'after_image'         => '</div>',
+					'image_size'          => 'crop-top-80x80',
+					'image_link_title'    => $edited_User->login,
+					'image_link_rel'      => 'lightbox[user]',
+				) );
 		}
 
 		if( $edited_User->has_avatar() )
@@ -481,11 +479,9 @@ $Plugins->trigger_event( 'DisplayProfileFormFieldset', array(
 
 if( $action != 'view' )
 { // Edit buttons
-	$action_buttons = array(
-		array( '', 'actionArray[update]', T_( $is_admin ? 'Save !' : 'Save changes' ), 'SaveButton' ) );
+	$action_buttons = array( array( '', 'actionArray[update]', T_('Save Changes!'), 'SaveButton' ) );
 	if( $is_admin )
 	{
-		$action_buttons[] = array( 'reset', '', T_('Reset'), 'ResetButton' );
 		// dh> TODO: Non-Javascript-confirm before trashing all settings with a misplaced click.
 		$action_buttons[] = array( 'type' => 'submit', 'name' => 'actionArray[default_settings]', 'value' => T_('Restore defaults'), 'class' => 'ResetButton',
 			'onclick' => "return confirm('".TS_('This will reset all your user settings.').'\n'.TS_('This cannot be undone.').'\n'.TS_('Are you sure?')."');" );
@@ -502,6 +498,7 @@ $Form->end_form();
 	{
 		return result.replace( '#fieldstart#', '<?php echo format_to_js( str_ireplace( '$id$', '', $Form->fieldstart ) ); ?>' )
 			.replace( '#fieldend#', '<?php echo format_to_js( $Form->fieldend ); ?>' )
+			.replace( '#labelclass#', '<?php echo format_to_js( $Form->labelclass ); ?>' )
 			.replace( '#labelstart#', '<?php echo format_to_js( $Form->labelstart ); ?>' )
 			.replace( '#labelend#', '<?php echo format_to_js( $Form->labelend ); ?>' )
 			.replace( '#inputstart#', '<?php echo format_to_js( $Form->inputstart ); ?>' )
@@ -524,10 +521,15 @@ $Form->end_form();
 		}
 
 		var this_obj = jQuery( this );
+		var params = '<?php
+			global $b2evo_icons_type;
+			echo empty( $b2evo_icons_type ) ? '' : '&b2evo_icons_type='.$b2evo_icons_type;
+		?>';
+
 		jQuery.ajax({
 		type: 'POST',
 		url: '<?php echo get_samedomain_htsrv_url(); ?>anon_async.php',
-		data: 'action=get_user_new_field&user_id=<?php echo $edited_User->ID; ?>&field_id=' + field_id,
+		data: 'action=get_user_new_field&user_id=<?php echo $edited_User->ID; ?>&field_id=' + field_id + params,
 		success: function(result)
 			{
 				result = ajax_debug_clear( result );
@@ -611,11 +613,15 @@ $Form->end_form();
 	{	// Click event for button 'Add(+)'
 		var this_obj = jQuery( this );
 		var field_id = this_obj.attr( 'rel' ).replace( /^add_ufdf_(\d+)$/, '$1' );
+		var params = '<?php
+			global $b2evo_icons_type;
+			echo empty( $b2evo_icons_type ) ? '' : '&b2evo_icons_type='.$b2evo_icons_type;
+		?>';
 
 		jQuery.ajax({
 		type: 'POST',
 		url: '<?php echo get_samedomain_htsrv_url(); ?>anon_async.php',
-		data: 'action=get_user_new_field&user_id=<?php echo $edited_User->ID; ?>&field_id=' + field_id,
+		data: 'action=get_user_new_field&user_id=<?php echo $edited_User->ID; ?>&field_id=' + field_id + params,
 		success: function( result )
 			{
 				result = ajax_debug_clear( result );
@@ -638,7 +644,7 @@ $Form->end_form();
 					// Print out new field on the form
 					cur_fieldset_obj.after( result.replace( /^\[\d+\](.*)/, '$1' ) )
 					// Show a button 'Add(+)' with new field
-													.next().find( 'span.icon' ).show();
+													.next().find( 'span[rel^=add_ufdf_]' ).show();
 
 					var new_field = cur_fieldset_obj.next().find( 'input[id^=uf_add_]' );
 					if( new_field.attr( 'autocomplete' ) == 'on' )
@@ -689,5 +695,4 @@ bind_autocomplete( jQuery( 'input[id^=uf_][autocomplete=on]' ) );
 <?php
 // Location
 echo_regional_js( 'edited_user', user_region_visible() );
-
 ?>

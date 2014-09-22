@@ -20,7 +20,7 @@
  * @author efy-maxim: Evo Factory / Maxim.
  * @author fplanque: Francois Planque.
  *
- * @version $Id: messages.ctrl.php 6136 2014-03-08 07:59:48Z manuel $
+ * @version $Id: messages.ctrl.php 6291 2014-03-21 11:03:32Z yura $
  */
 
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -111,6 +111,9 @@ if( $perm_abuse_management )
 switch( $action )
 {
 	case 'create': // Record new message
+		// Stop a request from the blocked IP addresses or Domains
+		antispam_block_request();
+
 		// Check that this action request is not a CSRF hacked request:
 		$Session->assert_received_crumb( 'messaging_messages' );
 
@@ -182,6 +185,9 @@ else
 	$AdminUI->set_path( 'messaging', 'threads' );
 }
 
+
+// Display messages depending on user email status
+display_user_email_status_message();
 
 // Display <html><head>...</head> section! (Note: should be done early if actions do not redirect)
 $AdminUI->disp_html_head();

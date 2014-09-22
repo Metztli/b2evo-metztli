@@ -29,7 +29,7 @@
  * @author fplanque: Francois PLANQUE
  * @author fsaya: Fabrice SAYA-GASNIER / PROGIDISTRI
  *
- * @version $Id: _results.class.php 6158 2014-03-12 08:35:37Z manuel $
+ * @version $Id: _results.class.php 7221 2014-08-06 09:05:46Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -61,6 +61,8 @@ class Results extends Table
 
 	/**
 	 * Total number of rows (if > {@link $limit}, it will result in multiple pages)
+	 *
+	 * Note: Do not use directly outside of the results class, use get_total_rows() function instead!
 	 */
 	var $total_rows;
 
@@ -388,6 +390,7 @@ class Results extends Table
 	function reset()
 	{
 		$this->rows = NULL;
+		$this->total_rows = NULL;
 	}
 
 
@@ -449,6 +452,11 @@ class Results extends Table
 
 		if( empty( $this->sql ) )
 		{ // the sql query is empty so we can't process it
+			return;
+		}
+
+		if( isset( $this->total_rows ) && intval( $this->total_rows ) === 0 )
+		{ // The number of total rows was counted and the sql query has no results
 			return;
 		}
 
@@ -830,6 +838,22 @@ class Results extends Table
 
 
 	/**
+	 * Get the number of total rows in the result
+	 *
+	 * @return integer
+	 */
+	function get_total_rows()
+	{
+		if( !isset( $this->total_rows ) )
+		{ // Count total rows to be able to display pages correctly
+			$this->count_total_rows( $this->count_sql );
+		}
+
+		return $this->total_rows;
+	}
+
+
+	/**
 	 * Note: this function might actually not be very useful.
 	 * If you define ->Cache before display, all rows will be instantiated on the fly.
 	 * No need to restart et go through the rows a second time here.
@@ -950,7 +974,7 @@ class Results extends Table
 	 * Initialize things in order to be ready for displaying.
 	 *
 	 * This is useful when manually displaying, i-e: not by using Results::display()
- 	*
+ 	 *
 	 * @param array ***please document***
 	 * @param array Fadeout settings array( 'key column' => array of values ) or 'session'
  	 */
@@ -960,7 +984,10 @@ class Results extends Table
 		parent::display_init( $display_params, $fadeout );
 
 		// Make sure query has executed and we're at the top of the resultset:
-		$this->restart();
+		if( ( ! isset( $this->total_rows ) ) || ( ( intval( $this->total_rows ) > 0 ) && ( ! isset( $this->rows ) ) ) )
+		{ // The result is not empty but the rows are not set yet, the query needs to be executed
+			$this->restart();
+		}
 	}
 
 
@@ -1571,7 +1598,7 @@ class Results extends Table
 		// Make variable substitution for URL STRINGS:
 		$content = preg_replace( '#\x{c2}\x{a3} (\w+) \x{c2}\x{a3}#ix', "'.format_to_output(\$row->$1, 'urlencoded').'", $content );
 		// Make variable substitution for escaped strings:
-		$content = preg_replace( '#\x{c2}\x{b2} (\w+) \x{c2}\x{b2}#ix', "'.htmlentities(\$row->$1).'", $content );
+		$content = preg_replace( '#\x{c2}\x{b2} (\w+) \x{c2}\x{b2}#ix', "'.evo_htmlentities(\$row->$1).'", $content );
 		// Make variable substitution for RAWS:
 		$content = preg_replace( '!\# (\w+) \#!ix', "\$row->$1", $content );
 		// Make variable substitution for full ROW:
@@ -1722,13 +1749,33 @@ class Results extends Table
 				{
 					return $this->params['no_prev_text'];
 				}
-				$r = '<a href="'
+				$r = '';
+				if( isset( $this->params['page_item_before'] ) )
+				{
+					$r .= $this->params['page_item_before'];
+				}
+				$r .= '<a href="'
 						.regenerate_url( $this->page_param, (($this->page > 2) ? $this->page_param.'='.($this->page-1) : ''), $this->params['page_url'] ).'"';
+				$attr_rel = array();
 				if( $this->nofollow_pagenav )
-				{	// We want to NOFOLLOW page navigation
-					$r .= ' rel="nofollow"';
+				{ // We want to NOFOLLOW page navigation
+					$attr_rel[] = 'nofollow';
+				}
+				// Add attribute rel="prev" for previous page
+				$attr_rel[] = 'prev';
+				if( ! empty( $attr_rel ) )
+				{
+					$r .= ' rel="'.implode( ' ', $attr_rel ).'"';
+				}
+				if( ! empty( $this->params['prev_class'] ) )
+				{ // Add "class" for prev link
+					$r .= ' class="'.$this->params['prev_class'].'"';
 				}
 				$r .= '>'.$this->params['prev_text'].'</a>';
+				if( isset( $this->params['page_item_after'] ) )
+				{
+					$r .= $this->params['page_item_after'];
+				}
 				return $r;
 
 			case 'next' :
@@ -1737,13 +1784,33 @@ class Results extends Table
 				{
 					return $this->params['no_next_text'];
 				}
-				$r = '<a href="'
+				$r = '';
+				if( isset( $this->params['page_item_before'] ) )
+				{
+					$r .= $this->params['page_item_before'];
+				}
+				$r .= '<a href="'
 						.regenerate_url( $this->page_param, $this->page_param.'='.($this->page+1), $this->params['page_url'] ).'"';
+				$attr_rel = array();
 				if( $this->nofollow_pagenav )
-				{	// We want to NOFOLLOW page navigation
-					$r .= ' rel="nofollow"';
+				{ // We want to NOFOLLOW page navigation
+					$attr_rel[] = 'nofollow';
+				}
+				// Add attribute rel="next" for next page
+				$attr_rel[] = 'next';
+				if( ! empty( $attr_rel ) )
+				{
+					$r .= ' rel="'.implode( ' ', $attr_rel ).'"';
+				}
+				if( ! empty( $this->params['next_class'] ) )
+				{ // Add "class" for prev link
+					$r .= ' class="'.$this->params['next_class'].'"';
 				}
 				$r .= '>'.$this->params['next_text'].'</a>';
+				if( isset( $this->params['page_item_after'] ) )
+				{
+					$r .= $this->params['page_item_after'];
+				}
 				return $r;
 
 			case 'list' :
@@ -1827,7 +1894,20 @@ class Results extends Table
 	{
 		if( $this->first() > 1 )
 		{ //the list doesn't contain the first page
-			return '<a href="'.regenerate_url( $this->page_param, '', $page_url ).'">1</a>';
+			$r = '';
+			if( isset( $this->params['page_item_before'] ) )
+			{
+				$r .= $this->params['page_item_before'];
+			}
+
+			$r .= '<a href="'.regenerate_url( $this->page_param, '', $page_url ).'">1</a>';
+
+			if( isset( $this->params['page_item_after'] ) )
+			{
+				$r .= $this->params['page_item_after'];
+			}
+
+			return $r;
 		}
 		else
 		{ //the list already contains the first page
@@ -1843,7 +1923,20 @@ class Results extends Table
 	{
 		if( $this->last() < $this->total_pages )
 		{ //the list doesn't contain the last page
-			return '<a href="'.regenerate_url( $this->page_param, $this->page_param.'='.$this->total_pages, $page_url ).'">'.$this->total_pages.'</a>';
+			$r = '';
+			if( isset( $this->params['page_item_before'] ) )
+			{
+				$r .= $this->params['page_item_before'];
+			}
+
+			$r .= '<a href="'.regenerate_url( $this->page_param, $this->page_param.'='.$this->total_pages, $page_url ).'">'.$this->total_pages.'</a>';
+
+			if( isset( $this->params['page_item_after'] ) )
+			{
+				$r .= $this->params['page_item_after'];
+			}
+
+			return $r;
 		}
 		else
 		{ //the list already contains the last page
@@ -1860,8 +1953,22 @@ class Results extends Table
 		if( $this->first() > 2 )
 		{ //the list has to be displayed
 			$page_no = ceil($this->first()/2);
-			return '<a href="'.regenerate_url( $this->page_param, $this->page_param.'='.$page_no, $page_url ).'">'
+
+			$r = '';
+			if( isset( $this->params['page_item_before'] ) )
+			{
+				$r .= $this->params['page_item_before'];
+			}
+
+			$r .= '<a href="'.regenerate_url( $this->page_param, $this->page_param.'='.$page_no, $page_url ).'">'
 								.$this->params['list_prev_text'].'</a>';
+
+			if( isset( $this->params['page_item_after'] ) )
+			{
+				$r .= $this->params['page_item_after'];
+			}
+
+			return $r;
 		}
 
 	}
@@ -1875,8 +1982,22 @@ class Results extends Table
 		if( $this->last() < $this->total_pages-1 )
 		{ //the list has to be displayed
 			$page_no = $this->last() + floor(($this->total_pages-$this->last())/2);
-			return '<a href="'.regenerate_url( $this->page_param,$this->page_param.'='.$page_no, $page_url ).'">'
+
+			$r = '';
+			if( isset( $this->params['page_item_before'] ) )
+			{
+				$r .= $this->params['page_item_before'];
+			}
+
+			$r .= '<a href="'.regenerate_url( $this->page_param,$this->page_param.'='.$page_no, $page_url ).'">'
 								.$this->params['list_next_text'].'</a>';
+
+			if( isset( $this->params['page_item_after'] ) )
+			{
+				$r .= $this->params['page_item_after'];
+			}
+
+			return $r;
 		}
 	}
 
@@ -1917,7 +2038,7 @@ class Results extends Table
 		$html = '<small>';
 		$html .= T_('Lines per page:');
 
-		$html .= ' <select name="'.$this->limit_param.'" onchange="location.href=\''.regenerate_url( $this->page_param.','.$this->limit_param, $this->limit_param, $page_url ).'=\'+this.value">';
+		$html .= ' <select name="'.$this->limit_param.'" onchange="location.href=\''.regenerate_url( $this->page_param.','.$this->limit_param, $this->limit_param, $page_url ).'=\'+this.value" class="form-control">';
 		foreach( $page_size_options as $value => $name )
 		{
 			$selected = '';
@@ -1943,21 +2064,62 @@ class Results extends Table
 		$i = 0;
 		$list = '';
 
+		$page_prev_i = $this->page - 1;
+		$page_next_i = $this->page + 1;
 		for( $i=$min; $i<=$max; $i++)
 		{
+			if( isset( $this->params['page_item_before'] ) )
+			{
+				$list .= $this->params['page_item_before'];
+			}
+
 			if( $i == $this->page )
 			{ //no link for the current page
-				$list .= '<strong class="current_page">'.$i.'</strong> ';
+				if( ! isset( $this->params['page_current_template'] ) )
+				{
+					$this->params['page_current_template'] = '<strong class="current_page">$page_num$</strong>';
+				}
+				$list .= str_replace( '$page_num$', $i, $this->params['page_current_template'] );
 			}
 			else
 			{ //a link for non-current pages
 				$list .= '<a href="'
 					.regenerate_url( $this->page_param, ( $i>1 ? $this->page_param.'='.$i : '' ), $page_url ).'"';
+				$attr_rel = array();
 				if( $this->nofollow_pagenav )
-				{	// We want to NOFOLLOW page navigation
-					$list .=  ' rel="nofollow"';
+				{ // We want to NOFOLLOW page navigation
+					$attr_rel[] = 'nofollow';
 				}
-				$list .= '>'.$i.'</a> ';
+				if( $page_prev_i == $i )
+				{ // Add attribute rel="prev" for previous page
+					$attr_rel[] = 'prev';
+				}
+				elseif( $page_next_i == $i )
+				{ // Add attribute rel="next" for next page
+					$attr_rel[] = 'next';
+				}
+				if( ! empty( $attr_rel ) )
+				{
+					$list .= ' rel="'.implode( ' ', $attr_rel ).'"';
+				}
+				$list .= '>'.$i.'</a>';
+			}
+
+			if( isset( $this->params['page_item_after'] ) )
+			{
+				$list .= $this->params['page_item_after'];
+			}
+
+			if( $i != $max )
+			{ // Separator between page numbers
+				if( isset( $this->params['page_list_separator'] ) )
+				{ // Use the customized separator from skin
+					$list .= $this->params['page_list_separator'];
+				}
+				else
+				{ // Use a space as default separator
+					$list .= ' ';
+				}
 			}
 		}
 		return $list;

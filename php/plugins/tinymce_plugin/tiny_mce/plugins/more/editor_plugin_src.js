@@ -1,5 +1,5 @@
 /**
- * $Id: editor_plugin_src.js 9 2011-10-24 22:32:00Z fplanque $
+ * $Id: editor_plugin_src.js 6650 2014-05-09 09:22:38Z yura $
  *
  * @author Moxiecode
  * @author Francois Planque
@@ -22,7 +22,7 @@
 		{
 			var pb = '<img src="' + url + '/img/trans.gif" class="mceMore mceItemNoResize" />',
 			cls = 'mceMore',
-			sep = ed.getParam('More_separator', '<!--more-->'),
+			sep = ed.getParam('more_separator', '<!--more-->'),
 			pbRE;
 
 			pbRE = new RegExp(sep.replace(/[\?\.\*\[\]\(\)\{\}\+\^\$\:]/g, function(a) {return '\\' + a;}), 'g');

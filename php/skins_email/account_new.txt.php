@@ -6,9 +6,9 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
- * @version $Id: account_new.txt.php 3152 2013-03-04 22:01:46Z fplanque $
+ * @version $Id: account_new.txt.php 7043 2014-07-02 08:35:45Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -78,7 +78,7 @@ if( !empty( $params['trigger_url'] ) )
 
 if( !empty ( $params['initial_hit'] ) )
 { // Hit info
-	echo T_('Initial page').": ".T_('Blog')." ".$params['initial_hit']->hit_blog_ID." - ".$params['initial_hit']->hit_uri."\n";
+	echo T_('Initial page').": ".T_('Blog')." ".$params['initial_hit']->hit_coll_ID." - ".$params['initial_hit']->hit_uri."\n";
 	echo T_('Initial referer').": ".$params['initial_hit']->hit_referer."\n";
 }
 

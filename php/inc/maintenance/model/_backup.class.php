@@ -20,7 +20,7 @@
  * @author efy-maxim: Evo Factory / Maxim.
  * @author fplanque: Francois Planque.
  *
- * @version $Id: _backup.class.php 6202 2014-03-14 11:40:48Z yura $
+ * @version $Id: _backup.class.php 6203 2014-03-14 11:42:13Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 

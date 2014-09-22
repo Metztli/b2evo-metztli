@@ -169,20 +169,24 @@ div#evo_toolbar {
 	font-family: "Microsoft sans serif", sans-serif, Arial, Helvetica;
 
 	position: fixed;
-	z-index: 10000;
+	z-index: 11000;
 	left: 0px;
 	top: 0px;
 	height: 21px;
-	width:100%;		/* Safari Windows */
+	width:100%; /* Safari Windows */
 	-webkit-text-size-adjust: none; /* iPhone */
 }
-
-
+/* Devices with max width <= 1024px (iPhone,iPad):
+   Don't fix a position of the evo toolbar */
+@media only screen and (max-device-width: 1024px) {
+	div#evo_toolbar {
+		position: absolute;
+	}
+}
 div.skin_wrapper_loggedin {
 	margin-top: 22px;
 	padding-top: 1px;
 }
-
 div#evo_toolbar .actions_left {
 	padding: 1px 4px;
 }
@@ -190,8 +194,6 @@ div#evo_toolbar .actions_right {
 	padding: 1px 4px;
 	float: right;
 }
-
-
 div#evo_toolbar img {
 	position: relative;
 	top: -2px;
@@ -202,70 +204,53 @@ div#evo_toolbar img {
 
 /*** ESSENTIAL STYLES ***/
 .sf-menu, .sf-menu * {
-	margin:			0;
-	padding:		0;
-	list-style:		none;
+	margin: 0;
+	padding: 0;
+	list-style: none;
 }
 .sf-menu {
-	line-height:	1.0;
+	line-height: 1.0;
 }
 .sf-menu ul {
-	position:		absolute;
-	top:			-999em;
-	width:			25ex; /* left offset of submenus need to match (see below) */
+	position: absolute;
+	top: -999em;
+	width: 25ex; /* left offset of submenus need to match (see below) */
 }
 .sf-menu ul li {
-	width:			100%;
-}
-.sf-menu li:hover {
-	visibility:		inherit; /* fixes IE7 'sticky bug' */
+	width: 100%;
 }
 .sf-menu li {
-	float:			left;
-	position:		relative;
+	float: left;
+	position: relative;
 }
 .sf-menu a {
-	display:		block;
-	position:		relative;
+	display: block;
+	position: relative;
 }
 .sf-menu li:hover ul,
 .sf-menu li.sfHover ul {
-	left:			0;
-	top:			19px; /* 2em / match top ul list item height including padding below */
-	z-index:		99;
+	left: 0;
+	top: 19px; /* 2em / match top ul list item height including padding below */
+	z-index: 99;
 }
 ul.sf-menu li:hover li ul,
 ul.sf-menu li.sfHover li ul {
-	top:			-999em;
+	top: -999em;
 }
 ul.sf-menu li li:hover ul,
 ul.sf-menu li li.sfHover ul {
-	left:			25ex; /* match ul width */
-	top:			0;
+	left: 25ex; /* match ul width */
+	top: 0;
 }
 ul.sf-menu li li:hover li ul,
 ul.sf-menu li li.sfHover li ul {
-	top:			-999em;
+	top: -999em;
 }
 ul.sf-menu li li li:hover ul,
 ul.sf-menu li li li.sfHover ul {
-	left:			25ex; /* match ul width */
-	top:			0;
-}/*
-.sf-menu a.icon{
-	background: url(../../../../rsc/icons/icons_sprite.png) no-repeat right -80px;
-	padding-right: 18px;
-	height: 13px;
+	left: 25ex; /* match ul width */
+	top: 0;
 }
-.sf-menu a.logout:hover{
-	background-position: right -96px;
-}
-.sf-menu a.icon.switch-to-blog{
-	background-position: right -128px;
-}
-.sf-menu a.icon.switch-to-admin{
-	background-position: right -112px;
-}*/
 
 /*** DEMO SKIN ***/
 .sf-menu {
@@ -274,23 +259,19 @@ ul.sf-menu li li li.sfHover ul {
 .sf-menu a {
 	border: 1px solid ThreeDFace;
 	background-color: ThreeDFace;
-	padding: 		3px 1ex;  /* .5em need to macth global height above */
+	padding: 3px 1ex;  /* .5em need to macth global height above */
 	text-decoration:none;
 	color: ButtonText;
 }
 .sf-menu-right a {
-	padding: 		3px 1ex 0px;  /* .5em need to macth global height above */
+	padding: 3px 1ex 0px;  /* .5em need to macth global height above */
 }
-.sf-menu a, .sf-menu a:link, .sf-menu a:visited  { /* visited pseudo selector so IE6 applies text colour*/
-	color:			ButtonText;
-}
-.sf-menu li {
-	/* background:		#0ff; */
-}
-.sf-menu li ul {
+/* Set one color for each link status to don't rewrite from skins */
+.sf-menu a, .sf-menu a:link, .sf-menu a:visited {
+	color: ButtonText;
 }
 .sf-menu li li {
-	background:		ThreeDFace; /* IE6 */
+	background: ThreeDFace;
 }
 .sf-menu li li a, .sf-menu li li.separator div {
 	border: none;
@@ -349,7 +330,7 @@ ul.sf-menu li li li.sfHover ul {
 .sf-menu li:hover, .sf-menu li.sfHover,
 .sf-menu a:focus, .sf-menu a:hover, .sf-menu a:active {
 	text-decoration: none;
-	outline:		0;
+	outline: 0;
 	border-top-color: ThreeDHighlight;
 	border-left-color: ThreeDHighlight;
 	border-bottom-color: ThreeDShadow;
@@ -383,16 +364,12 @@ ul.sf-menu li li li.sfHover ul {
 	position:		absolute;
 	display:		block;
 	right:			.75em;
-	top:			6px; /* IE6 only */
+	top:			4px;
 	width:			10px;
 	height:			10px;
 	text-indent: 	-999em;
 	overflow:		hidden;
-	background:		url('../img/superfish-arrows.png') no-repeat -10px -100px; /* 8-bit indexed alpha png. IE6 gets solid image only */
-}
-a > .sf-sub-indicator {  /* give all except IE6 the correct values */
-	top:			4px;
-	background-position: 0 -100px; /* use translucent arrow for modern browsers*/
+	background:		url('../img/superfish-arrows.png') no-repeat 0 -100px;
 }
 li li a > .sf-sub-indicator {  /* give all except IE6 the correct values */
 	top:			6px;
@@ -421,7 +398,7 @@ li.sfHover > a > .sf-sub-indicator {
 /*** shadows for all but IE6 ***/
 .sf-shadow ul {
 	background:	url('../img/superfish-shadow.png') no-repeat bottom right;
-	padding: 0 8px 9px 0;
+	padding: 0;
 	-moz-border-radius-bottomleft: 17px;
 	-moz-border-radius-topright: 17px;
 	-webkit-border-top-right-radius: 17px;
@@ -509,10 +486,9 @@ span.checkbox_surround_init {
 
 
 input.large,
-textarea.large {
+textarea.form_textarea_input {
 	width: 97%;
-	margin-left: 0;
-	margin-right: 0;
+	margin: 0;
 	display: block;
 }
 
@@ -606,10 +582,6 @@ legend {
 	margin-left: 5px;
 	line-height: 24px;
 }
-* html .fform div.input {
-	height:1%; /* so IE6 gains layout (hasLayout) and does not cause 3px bug for lines below div.label (if div.input is heigher than div.label) */
-	margin:0; /* fix the margin after the above fix */
-}
 
 .fform fieldset.input{
 	margin: 0;
@@ -649,10 +621,13 @@ div.action_messages ol {
 }
 div.log_container div,
 div.action_messages div {
-	border:1px solid #6287c2;
-	background:#ddd;
 	margin:1ex auto;
 	padding:1ex;
+}
+div.log_container div.log_note,
+div.action_messages div.log_note {
+	border:1px solid #6287c2;
+	background:#ddd;
 }
 div.log_container div.log_success,
 div.action_messages div.log_success,
@@ -734,6 +709,9 @@ table.widget_grid .note {
 	line-height: normal;
 	display:block;
 }
+#sidebar table.widget_grid .note {
+	margin: 0;
+}
 
 div.debug_container {
 	border: 1px solid #f00;
@@ -783,7 +761,9 @@ div.widget_not_in_cache div.debug_widget_name {
 }
 
 
-
+a.evo_messages_link {
+	padding: 3px 1ex;
+}
 .badge {
 	position: relative;
 	top: -1px;
@@ -924,7 +904,6 @@ div.debug td {
 div.debug td.odd {
 	background-color: #eee;
 }
-
 /*
  * AJAX Debug output formatting:
  */
@@ -1022,4 +1001,8 @@ ul.jslog_error {
 }
 .item_custom_fields th {
 	text-align: left;
+}
+
+.form-login-links {
+	padding: 0 1em;
 }

@@ -90,8 +90,7 @@ $Form->end_fieldset();
 
 if( $current_User->check_perm( 'users', 'edit' ) )
 {
-	$Form->buttons( array( array( 'submit', 'submit', T_('Save !'), 'SaveButton' ),
-													array( 'reset', '', T_('Reset'), 'ResetButton' ) ) );
+	$Form->buttons( array( array( 'submit', 'submit', T_('Save Changes!'), 'SaveButton' ) ) );
 }
 
 $Form->end_form();

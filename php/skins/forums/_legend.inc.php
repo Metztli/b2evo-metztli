@@ -6,7 +6,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  */
@@ -16,7 +16,7 @@ global $disp, $MainList, $legend_statuses;
 
 $legends = array();
 
-if( $disp == 'catdir' )
+if( $disp == 'front' || $disp == 'posts' )
 {	// If forums list is displayed
 	$legends[] = array(
 			array(
@@ -30,7 +30,7 @@ if( $disp == 'catdir' )
 		);
 }
 
-if( $disp != 'single' && isset( $MainList ) && $MainList->result_num_rows > 0 )
+if( $disp != 'front' && $disp != 'single' && isset( $MainList ) && $MainList->result_num_rows > 0 )
 {	// If some topics are displayed on the current page
 	$legends[] = array(
 			array(
@@ -98,7 +98,7 @@ if( !empty( $legend_statuses ) && is_logged_in() )
 		{	// Only statuses that exist on the page
 		?>
 			<li>
-				<a href="http://b2evolution.net/man/visibility-statuses"><span class="note status_<?php echo $status; ?>"><span><?php echo $statuses[ $status ]; ?></span></span></a>
+				<a href="<?php echo get_manual_url( 'visibility-statuses' ); ?>" target="_blank"><span class="note status_<?php echo $status; ?>"><span><?php echo $statuses[ $status ]; ?></span></span></a>
 				<span><?php echo $title; ?></span>
 			</li>
 		<?php
@@ -106,7 +106,4 @@ if( !empty( $legend_statuses ) && is_logged_in() )
 	}
 	?>
 </ul>
-<?php
-}
-
-?>
+<?php } ?>

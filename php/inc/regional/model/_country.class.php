@@ -27,7 +27,7 @@
  * @author efy-maxim: Evo Factory / Maxim.
  * @author fplanque: Francois Planque.
  *
- * @version $Id: _country.class.php 6136 2014-03-08 07:59:48Z manuel $
+ * @version $Id: _country.class.php 6264 2014-03-19 12:23:26Z yura $
  */
 
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -44,6 +44,8 @@ class Country extends DataObject
 	var $curr_ID = '';
 	var $enabled = 1;
 	var $preferred = 0;
+	var $status = '';
+	var $block_count = 0;
 
 	/**
 	 * Constructor
@@ -65,12 +67,14 @@ class Country extends DataObject
 
 		if( $db_row )
 		{
-			$this->ID            = $db_row->ctry_ID;
-			$this->code          = $db_row->ctry_code;
-			$this->name          = $db_row->ctry_name;
-			$this->curr_ID       = $db_row->ctry_curr_ID;
-			$this->enabled       = $db_row->ctry_enabled;
-			$this->preferred     = $db_row->ctry_preferred;
+			$this->ID          = $db_row->ctry_ID;
+			$this->code        = $db_row->ctry_code;
+			$this->name        = $db_row->ctry_name;
+			$this->curr_ID     = $db_row->ctry_curr_ID;
+			$this->enabled     = $db_row->ctry_enabled;
+			$this->preferred   = $db_row->ctry_preferred;
+			$this->status      = $db_row->ctry_status;
+			$this->block_count = $db_row->ctry_block_count;
 		}
 	}
 

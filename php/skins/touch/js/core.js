@@ -19,41 +19,38 @@ $wpt.fn.wptouchFadeToggle = function( speed, easing, callback ) {
 	return this.animate( {opacity: 'toggle'}, speed, easing, callback ); 
 };
 
-function wptouch_switch_confirmation( e ) {
-	if ( document.cookie && document.cookie.indexOf( 'wptouch_switch_toggle' ) > -1 ) {
-	// just switch
+function wptouch_switch_confirmation( e )
+{
+	if( document.cookie && document.cookie.indexOf( 'wptouch_switch_toggle' ) > -1 )
+	{ // just switch
 		$wpt( '#switch span' ).removeClass( 'active' );
 		$wpt( '.off' ).addClass( 'active' );
-		//setTimeout('switch_delayer()', 500 ); 
-	} else {
-	// ask first
-	    if ( confirm( "Switch to regular view? \n \n You can switch back again in the footer." ) ) {
-		$wpt( '#switch span' ).removeClass( 'active' );
-		$wpt( '.off' ).addClass( 'active' );
-			//setTimeout( 'switch_delayer()', 500 );
-			
-		} else {
-	        e.preventDefault();
-	        e.stopImmediatePropagation();
+	}
+	else
+	{ // ask first
+		if ( confirm( touch_skin_switch_confirm_text ) )
+		{
+			$wpt( '#switch span' ).removeClass( 'active' );
+			$wpt( '.off' ).addClass( 'active' );
+		}
+		else
+		{
+			e.preventDefault();
+			e.stopImmediatePropagation();
+			return false;
 		}
 	}
-}
-
-if ( $wpt( '#prowl-success' ).length ) {
-	setTimeout( function() { $wpt( '#prowl-success' ).fadeOut( 350 ); }, 5250 );
-}
-if ( $wpt( '#prowl-fail' ).length ) {
-	setTimeout( function() { $wpt( '#prowl-fail' ).fadeOut( 350 ); }, 5250 );
+	return true;
 }
 
 $wpt(function() {
-    var tabContainers = $wpt( '#menu-head > ul' );   
-    $wpt( '#tabnav a' ).bind(touchStartOrClick, function () {
-        tabContainers.hide().filter( this.hash ).show();
-    $wpt( '#tabnav a' ).removeClass( 'selected' );
-    $wpt( this ).addClass( 'selected' );
-        return false;
-    }).filter( ':first' ).trigger( touchStartOrClick );
+		var tabContainers = $wpt( '#menu-head > ul' );
+		$wpt( '#tabnav a' ).bind(touchStartOrClick, function () {
+				tabContainers.hide().filter( this.hash ).show();
+		$wpt( '#tabnav a' ).removeClass( 'selected' );
+		$wpt( this ).addClass( 'selected' );
+				return false;
+		}).filter( ':first' ).trigger( touchStartOrClick );
 });
 
 function bnc_showhide_coms_toggle() {
@@ -64,46 +61,28 @@ function bnc_showhide_coms_toggle() {
 	
 function doWPtouchReady() {
 
-	$wpt( '#headerbar-menu a' ).bind( touchStartOrClick, function( e ){
-		$wpt( '#wptouch-menu' ).wptouchFadeToggle( 350 );
-		$wpt( '#headerbar-menu a' ).toggleClass( 'open' );
+	$wpt( '#headerbar-menu div' ).bind( touchStartOrClick, function( e ){
+		var type = $wpt( this ).attr( 'rel' );
+		var active_type = $wpt( '#wptouch-menu .wptouch-menu-inner:visible' ).length > 0 ? $wpt( '#wptouch-menu .wptouch-menu-inner:visible' ).attr( 'rel' ) : '';
+		console.log( type, active_type );
+		$wpt( '#wptouch-menu .wptouch-menu-inner' ).hide();
+		$wpt( '#wptouch-menu .wptouch-menu-inner[rel=' + type +']' ).show();
+		if( active_type == type || active_type == '' )
+		{
+			$wpt( '#wptouch-menu' ).wptouchFadeToggle( 350 );
+		}
+		$wpt( '#headerbar-menu div' ).removeClass( 'open' );
+		if( active_type != type )
+		{
+			$wpt( this ).addClass( 'open' );
+		}
 	});
 
-	$wpt( 'a#searchopen, #wptouch-search-inner a' ).click( function(){	
+	$wpt( 'a#searchopen, #wptouch-search-inner a' ).click( function(){
 		$wpt( '#wptouch-search' ).wptouchFadeToggle( 350 );
 		$wpt( '#s' ).focus();		
 	});
-	
-	$wpt( 'a#prowlopen' ).bind( touchStartOrClick, function( e ){	
-		$wpt( '#prowl-message' ).wptouchFadeToggle( 350 );
-	});
-	
-	$wpt( 'a#wordtwitopen' ).bind( touchStartOrClick, function( e ){	
-		$wpt( '#wptouch-wordtwit' ).wptouchFadeToggle( 350 );
-	});
 
-	$wpt( 'a#gigpressopen' ).bind( touchStartOrClick, function( e ){	
-		$wpt( '#wptouch-gigpress' ).wptouchFadeToggle( 350 );
-	});
-
-	$wpt( 'a#loginopen, #wptouch-login-inner a' ).bind( touchStartOrClick, function( e ){	
-		$wpt( '#wptouch-login' ).wptouchFadeToggle(350);
-	});
-	
-	$wpt( 'a#obook' ).bind( touchStartOrClick, function() {
-		$wpt( '#bookmark-box' ).wptouchFadeToggle(350);
-	});
-	
-	$wpt( '.singlentry img, .singlentry .wp-caption' ).each( function() {
-		if ( $wpt( this ).width() <= 250 ) {
-			$wpt( this ).addClass( 'aligncenter' );
-		}
-	});
-	
-	if ( $wpt( '#FollowMeTabLeftSm' ).length ) {
-		$wpt( '#FollowMeTabLeftSm' ).remove();
-	}
-	
 	/* add dynamic automatic video resizing via fitVids */
 
 	var videoSelectors = [
@@ -122,16 +101,16 @@ function doWPtouchReady() {
 	});
 
 	$wpt( '.post' ).fitVids();
-	
+
 	$wpt( document ).on( touchStartOrClick, '.post-arrow', function( e ){
 		$wpt( this ).toggleClass( 'post-arrow-down' );
 		$wpt( this ).parents( '.post' ).find( '.mainentry' ).wptouchFadeToggle(500);
 	});
 
-	$wpt( 'span.off' ).bind( 'click', function(){
-		wptouch_switch_confirmation();
+	$wpt( '#switch a.off' ).click( function( e )
+	{
+		return wptouch_switch_confirmation( e );
 	});
-	
 }
 
 $wpt( document ).ready( function() { doWPtouchReady(); } );
@@ -150,67 +129,62 @@ $wpt( document ).ready( function() { doWPtouchReady(); } );
 * Modified by BraveNewCode for WPtouch Pro
 */
 
-(function( $ ){
+(function( $ ) {
+$.fn.fitVids = function( options ) {
+	var settings = { customSelector: null }
 
-  $.fn.fitVids = function( options ) {
-    var settings = {
-      customSelector: null
-    }
-    
-    var div = document.createElement('div'),
-        ref = document.getElementsByTagName('base')[0] || document.getElementsByTagName('script')[0];
-        
-  	div.className = 'fit-vids-style';
-    div.innerHTML = '&shy;<style>         \
-      .fluid-width-video-wrapper {        \
-         width: 100%;                     \
-         position: relative;              \
-         padding: 0;                      \
-      }                                   \
-                                          \
-      .fluid-width-video-wrapper *{  \
-         position: absolute;              \
-         top: 0;                          \
-         left: 0;                         \
-         width: 100%;                     \
-         height: 100%;                    \
-      }                                   \
-    </style>';
-                      
-    ref.parentNode.insertBefore(div,ref);
-    
-    if ( options ) { 
-      $.extend( settings, options );
-    }
-    
-    return this.each(function(){
-      var selectors = [
-        "iframe[src^='http://player.vimeo']", 
-        "iframe[src^='http://www.youtube']", 
-        "iframe[src^='http://www.kickstarter']",
-//     "iframe[src^='http://maps.google']",
-        "object", 
-        "embed",
-        "video"
-      ];
-      
-      if (settings.customSelector) {
-        selectors.push(settings.customSelector);
-      }
-      
-      var $allVideos = $(this).find(selectors.join(','));
+	var div = document.createElement('div'),
+			ref = document.getElementsByTagName('base')[0] || document.getElementsByTagName('script')[0];
 
-      $allVideos.each(function(){
-        var $this = $(this);
+	div.className = 'fit-vids-style';
+	div.innerHTML = '&shy;<style>\
+		.fluid-width-video-wrapper {\
+			 width: 100%;\
+			 position: relative;\
+			 padding: 0;\
+		}\
+		\
+		.fluid-width-video-wrapper *{\
+			 position: absolute;\
+			 top: 0;\
+			 left: 0;\
+			 width: 100%;\
+			 height: 100%;\
+		}\
+	</style>';
 
-        if (this.tagName.toLowerCase() == 'embed' && $this.parent('object').length || $this.parent('.fluid-width-video-wrapper').length) { return; } 
-		var height = $this.height(), aspectRatio = height / $this.width();
-//		var height = this.tagName.toLowerCase() == 'object' ? $this.attr('height') : $this.height(),
+	ref.parentNode.insertBefore(div,ref);
 
-        $this.wrap('<div class="fluid-width-video-wrapper"></div>').parent('.fluid-width-video-wrapper').css('padding-top', (aspectRatio * 100)+"%");
-        $this.removeAttr('height').removeAttr('width');
-      });
-    });
-  
-  }
+	if ( options ) {
+		$.extend( settings, options );
+	}
+	
+	return this.each(function(){
+		var selectors = [
+			"iframe[src^='http://player.vimeo']", 
+			"iframe[src^='http://www.youtube']", 
+			"iframe[src^='http://www.kickstarter']",
+			"object", 
+			"embed",
+			"video"
+		];
+
+		if (settings.customSelector) {
+			selectors.push(settings.customSelector);
+		}
+
+		var $allVideos = $(this).find(selectors.join(','));
+
+		$allVideos.each(function()
+		{
+			var $this = $(this);
+
+			if (this.tagName.toLowerCase() == 'embed' && $this.parent('object').length || $this.parent('.fluid-width-video-wrapper').length) { return; }
+			var height = $this.height(), aspectRatio = height / $this.width();
+
+			$this.wrap('<div class="fluid-width-video-wrapper"></div>').parent('.fluid-width-video-wrapper').css('padding-top', (aspectRatio * 100)+"%");
+			$this.removeAttr('height').removeAttr('width');
+		});
+	});
+}
 })( jQuery );

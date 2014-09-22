@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -21,7 +21,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _coll_search_form.widget.php 4559 2013-08-27 04:20:01Z yura $
+ * @version $Id: _coll_search_form.widget.php 7224 2014-08-06 10:02:17Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -106,6 +106,13 @@ class coll_search_form_Widget extends ComponentWidget
 					'type' => 'checkbox',
 					'defaultvalue' => true,
 				),
+				'blog_ID' => array(
+					'label' => T_('Collection ID'),
+					'note' => T_('Leave empty for current collection.'),
+					'type' => 'text',
+					'size' => 5,
+					'defaultvalue' => '',
+				),
 			), parent::get_param_definitions( $params )	);
 
 		return $r;
@@ -119,16 +126,28 @@ class coll_search_form_Widget extends ComponentWidget
 	 */
 	function display( $params )
 	{
-		global $Blog;
-
 		$this->init_display( $params );
+
+		$blog_ID = intval( $this->disp_params['blog_ID'] );
+		if( $blog_ID > 0 )
+		{ // Get Blog for widget setting
+			$BlogCache = & get_BlogCache();
+			$widget_Blog = & $BlogCache->get_by_ID( $blog_ID, false, false );
+		}
+		if( empty( $widget_Blog ) )
+		{ // Use current blog
+			global $Blog;
+			$widget_Blog = & $Blog;
+		}
 
 		// Collection search form:
 		echo $this->disp_params['block_start'];
 
 		$this->disp_title();
 
-		form_formstart( $Blog->gen_blogurl(), 'search', 'SearchForm' );
+		echo $this->disp_params['block_body_start'];
+
+		form_formstart( $widget_Blog->gen_blogurl(), 'search', 'SearchForm' );
 		if( $this->disp_params[ 'disp_search_options' ] )
 		{
 			echo '<div class="extended_search_form">';
@@ -149,15 +168,17 @@ class coll_search_form_Widget extends ComponentWidget
 		}
 
 		$s = get_param( 's' );
-		echo '<input type="text" name="s" size="25" value="'.htmlspecialchars($s).'" class="search_field SearchField" title="'.format_to_output( T_('Enter text to search for'), 'htmlattr' ).'" />';
+		echo '<input type="text" name="s" size="25" value="'.evo_htmlspecialchars($s).'" class="search_field SearchField form-control" title="'.format_to_output( T_('Enter text to search for'), 'htmlattr' ).'" />';
 
 		if( $this->disp_params[ 'use_search_disp' ] )
 		{
 			echo '<input type="hidden" name="disp" value="search" />';
 		}
-		echo '<input type="submit" name="submit" class="search_submit submit" value="'.format_to_output( $this->disp_params['button'], 'htmlattr' ).'" />';
+		echo '<input type="submit" name="submit" class="search_submit submit btn btn-primary" value="'.format_to_output( $this->disp_params['button'], 'htmlattr' ).'" />';
 		echo '</div>';
 		echo '</form>';
+
+		echo $this->disp_params['block_body_end'];
 
 		echo $this->disp_params['block_end'];
 

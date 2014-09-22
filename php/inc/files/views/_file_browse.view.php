@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -29,7 +29,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _file_browse.view.php 5526 2013-12-23 11:05:20Z yura $
+ * @version $Id: _file_browse.view.php 6411 2014-04-07 15:17:33Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -58,7 +58,7 @@ global $UserSettings;
 
 global $fm_hide_dirtree, $create_name, $ads_list_path, $rsc_url;
 
-global $fm_FileRoot, $path;
+global $fm_FileRoot, $path, $ajax_request;
 
 /**
  * @var Link Owner
@@ -81,16 +81,15 @@ if( isset( $edited_User ) )
 <?php
 	$Widget = new Widget( 'file_browser' );
 
-	if( $current_User->check_perm( 'files', 'add', false, $fm_FileRoot ) )
+	if( ! $ajax_request && $current_User->check_perm( 'files', 'add', false, $fm_FileRoot ) )
 	{
-		$Widget->global_icon( /* TRANS: verb */ T_('Upload...'), '', regenerate_url( 'ctrl', 'ctrl=upload' ), /* TRANS: verb */ T_('Upload ').' &raquo;', 1, 5 );
+		$Widget->global_icon( /* TRANS: verb */ T_('Advanced Upload...'), '', regenerate_url( 'ctrl', 'ctrl=upload' ), /* TRANS: verb */ T_('Advanced Upload').' &raquo;', 1, 5 );
 	}
 
 	if( ! empty( $LinkOwner ) )
 	{ // Display a link to close file browser and return to post editing:
 		$close_link_params = array();
-		global $mode;
-		if( $mode == 'upload' )
+		if( $ajax_request )
 		{ // Initialize JavaScript function to close popup window
 			echo '<script type="text/javascript">
 			function close_popup_window()
@@ -108,7 +107,7 @@ if( isset( $edited_User ) )
 	$Widget->disp_template_replaced( 'block_start' );
 ?>
 
-<table id="fm_browser" cellspacing="0" cellpadding="0">
+<table id="fm_browser" cellspacing="0" cellpadding="0" class="table table-striped table-bordered table-hover table-condensed">
 	<thead>
 		<tr>
 			<td colspan="2" id="fm_bar">
@@ -129,7 +128,7 @@ if( isset( $edited_User ) )
 					<label for="fm_filter" class="tooltitle"><?php echo T_('Filter') ?>:</label>
 					<input type="text" name="fm_filter" id="fm_filter"
 						value="<?php echo format_to_output( $fm_Filelist->get_filter( false ), 'formvalue' ) ?>"
-						size="7" accesskey="f" />
+						size="7" accesskey="f" class="form-control input-sm" />
 
 					<?php
 						if( $UserSettings->get( 'fm_allowfiltering' ) == 'regexp' )
@@ -142,7 +141,7 @@ if( isset( $edited_User ) )
 						}
 					?>
 
-					<input type="submit" name="actionArray[filter]" class="SmallButton"
+					<input type="submit" name="actionArray[filter]" class="SmallButton btn btn-default btn-sm"
 						value="<?php echo format_to_output( T_('Apply'), 'formvalue' ) ?>" />
 
 					<?php
@@ -315,10 +314,12 @@ if( isset( $edited_User ) )
 
 				echo '<td id="fm_files">';
 
-				// ______________________________ Toolbar ______________________________
-				// Start capturing toolbar panel
-				@ob_start();
 
+				// ______________________________ Files ______________________________
+				require dirname(__FILE__).'/_file_list.inc.php';
+
+
+				// ______________________________ Toolbar ______________________________
 				echo '<div class="fileman_toolbars_bottom">';
 
 				/*
@@ -349,7 +350,7 @@ if( isset( $edited_User ) )
 						else
 						{	// We can create both files and directories:
 							echo T_('New').': ';
-							echo '<select name="create_type">';
+							echo '<select name="create_type" class="form-control input-sm">';
 							echo '<option value="dir"';
 							if( isset($create_type) &&  $create_type == 'dir' )
 							{
@@ -370,8 +371,8 @@ if( isset( $edited_User ) )
 						if( isset( $create_name ) )
 						{
 							echo $create_name;
-						} ?>" size="15" />
-					<input class="ActionButton" type="submit" value="<?php echo format_to_output( T_('Create!'), 'formvalue' ) ?>" />
+						} ?>" size="15" class="form-control input-sm" />
+					<input class="ActionButton btn btn-default" type="submit" value="<?php echo format_to_output( T_('Create!'), 'formvalue' ) ?>" />
 					<?php
 					$Form->end_form();
 					echo '</div>';
@@ -390,39 +391,31 @@ if( isset( $edited_User ) )
 						$Form->add_crumb( 'file' );
 						$Form->hidden( 'ctrl', 'upload' );
 						$Form->hidden( 'upload_quickmode', 1 );
-						$Form->hidden( 'tab3_onsubmit', 'standard' );
 						// The following is mainly a hint to the browser.
 						$Form->hidden( 'MAX_FILE_SIZE', $Settings->get( 'upload_maxkb' )*1024 );
 						$Form->hiddens_by_key( get_memorized('ctrl') );
 						echo '<div>';
 						echo '<input name="uploadfile[]" type="file" size="10" />';
-						echo '<input class="ActionButton" type="submit" value="&gt; '.T_('Quick upload!').'" />';
+						echo '<input class="ActionButton btn btn-primary" type="submit" value="&gt; '.T_('Quick upload!').'" />';
 						echo '</div>';
 					$Form->end_form();
 					echo '</div>';
 				}
 
-				echo '</div>';
 				echo '<div class="clear"></div>';
-
-				// Get captured toolbar panel
-				$toobar_panel = @ob_get_clean();
-
-				// Display the toolbar
-				echo $toobar_panel;
-
-				// ______________________________ Files ______________________________
-				require dirname(__FILE__).'/_file_list.inc.php';
-
-				// Display the toolbar
-				echo $toobar_panel;
+				echo '</div>';
 
 				echo '</td>'
 			?>
 		</tr>
 	</tbody>
 </table>
-
+<script type="text/javascript">
+if( typeof file_uploader_note_text != 'undefined' )
+{
+	document.write( '<p class="note center">' + file_uploader_note_text + '</p>' );
+}
+</script>
 <?php
 	$Widget->disp_template_raw( 'block_end' );
 ?>

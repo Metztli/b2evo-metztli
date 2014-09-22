@@ -5,7 +5,7 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
  *
@@ -14,7 +14,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE
  *
- * @version $Id: _comment.form.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _comment.form.php 7281 2014-09-05 12:22:20Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -68,7 +68,9 @@ $Form->hidden( 'comment_ID', $edited_Comment->ID );
 
 <div class="clear"></div>
 
-<div class="left_col">
+<div class="row">
+
+<div class="left_col col-md-9">
 
 
 	<?php
@@ -100,6 +102,20 @@ $Form->hidden( 'comment_ID', $edited_Comment->ID );
 	}
 
 	echo '</tr></table>';
+
+	if( $Blog->get_setting( 'threaded_comments' ) )
+	{ // Display a reply comment ID only when this feature is enabled in blog settings
+		echo '<table cellspacing="0" class="compose_layout">';
+		echo '<tr><td width="1%"><strong>'.T_('In reply to comment ID').':</strong></td>';
+		echo '<td class="input">';
+		$Form->switch_layout( 'none' );
+		$Form->text_input( 'in_reply_to_cmt_ID', $edited_Comment->in_reply_to_cmt_ID, 10, '' );
+		$Form->switch_layout( NULL );
+		echo '&nbsp;<span class="note">'.T_('(leave blank for normal comments)').'</span>';
+		echo '</td>';
+		echo '</tr></table>';
+	}
+
 	echo '<table cellspacing="0" class="compose_layout">';
 
 	if( ! $edited_Comment->get_author_User() )
@@ -231,7 +247,7 @@ $Form->hidden( 'comment_ID', $edited_Comment->ID );
 
 </div>
 
-<div class="right_col">
+<div class="right_col col-md-3 form-inline">
 
 <?php
 	if( $comment_Item->can_rate()
@@ -302,6 +318,8 @@ $Form->hidden( 'comment_ID', $edited_Comment->ID );
 </div>
 
 <div class="clear"></div>
+
+</div>
 
 <?php
 $Form->end_form();

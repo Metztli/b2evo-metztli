@@ -4,11 +4,11 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  *
- * @version $Id: $
+ * @version $Id: activateinfo.main.php 7043 2014-07-02 08:35:45Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -43,7 +43,8 @@ if( !$current_User->check_status( 'can_be_validated' ) )
 	}
 	if( empty( $redirect_to ) || preg_match( '#disp=activateinfo#', $redirect_to ) )
 	{ // redirect_to is pointing to the activate info display or is empty
-		$redirect_to = regenerate_url( 'disp' );
+	  // redirect to referer page
+		$redirect_to = '';
 	}
 
 	if( $current_User->check_status( 'is_validated' ) )

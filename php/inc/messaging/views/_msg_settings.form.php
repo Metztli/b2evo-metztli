@@ -19,7 +19,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author efy-asimo: Attila Simo.
  *
- * @version $Id: _msg_settings.form.php 6136 2014-03-08 07:59:48Z manuel $
+ * @version $Id: _msg_settings.form.php 6135 2014-03-08 07:54:05Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -66,7 +66,7 @@ $Form->begin_fieldset( T_( 'Welcome message after account activation' ) );
 
 $Form->end_fieldset();
 
-$Form->buttons( array( array( 'submit', 'submit', T_('Save !'), 'SaveButton' ) ) );
+$Form->buttons( array( array( 'submit', 'submit', T_('Save Changes!'), 'SaveButton' ) ) );
 
 $Form->end_form();
 

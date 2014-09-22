@@ -19,7 +19,7 @@
  *
  * @todo dh> use OAuth instead of username/password: http://apiwiki.twitter.com/Authentication
  *
- * @version $Id: _twitter.plugin.php 6136 2014-03-08 07:59:48Z manuel $
+ * @version $Id: _twitter.plugin.php 6225 2014-03-16 10:01:05Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -566,7 +566,7 @@ class twitter_plugin extends Plugin
 		// Replace the title and exerpt, but before replacing decode the html entities
 		$msg = str_replace(
 				array( '$title$', '$excerpt$' ),
-				array( html_entity_decode( $content['title'] ), html_entity_decode( $content['excerpt'] ) ),
+				array( evo_html_entity_decode( $content['title'] ), evo_html_entity_decode( $content['excerpt'] ) ),
 				$oauth['msg_format']
 			);
 
@@ -609,7 +609,7 @@ class twitter_plugin extends Plugin
 
 		if( empty($result) )
 		{
-			$xmlrpcresp = 'Unknown error while posting "'.htmlspecialchars( $msg ).'" to account @'.$oauth['contact'];
+			$xmlrpcresp = 'Unknown error while posting "'.evo_htmlspecialchars( $msg ).'" to account @'.$oauth['contact'];
 			return false;
 		}
 		elseif( !empty($result->error) )

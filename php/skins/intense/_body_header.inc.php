@@ -12,6 +12,11 @@
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
+
+// ---------------------------- SITE HEADER INCLUDED HERE ----------------------------
+// If site headers are enabled, they will be included here:
+siteskin_include( '_site_body_header.inc.php' );
+// ------------------------------- END OF SITE HEADER --------------------------------
 ?>
 
 <div id="rap">
@@ -66,4 +71,3 @@ if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.'
 					</ul>
 				</div>
 			</div>
-			<!--[if IE]><div class="rounded_ie_corners_bottom"></div><![endif]-->

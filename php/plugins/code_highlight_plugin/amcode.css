@@ -1,10 +1,7 @@
 /* AstonishMe code plugin styles */
 
-.codespan {
-	background-color: #F2F1F0;
-	border: 1px solid #CCCCCC;
-	border-radius: 2px 2px 2px 2px;
-	padding: 0 .5ex;
+.amc0,.amc1,.amc2,.amc3,.amc4,.amc5,.amc6,.amc7,.amc8,.amc9 {
+	background:url(img/numbers.gif) no-repeat;
 }
 
 .codeblock.amc_long {
@@ -63,3 +60,27 @@ td.amc_line div { padding-right:9px; height:10px; }
 .codeblock a:visited { color:#00f; }
 .codeblock a:hover{ color:#88f; }
 
+kbd {
+	display: inline-block;
+	padding: .1em .6em;
+	margin: 0 .1em;
+	border: 1px solid #ccc;
+	border-radius: 3px;
+	background: #f7f7f7;
+	color: #333;
+	font: 11px 'Helvetica Neue',Helvetica,Arial,sans-serif;
+	-moz-box-shadow: 0 1px 0 rgba(0,0,0,0.2),0 0 0 2px #fff inset;
+	-webkit-box-shadow: 0 1px 0 rgba(0,0,0,0.2),0 0 0 2px #fff inset;
+	box-shadow: 0 1px 0 rgba(0,0,0,0.2),0 0 0 2px #fff inset;
+	text-shadow: 0 1px 0 #fff;
+	line-height: 1.4;
+	white-space: nowrap;
+	position: relative;	
+	top: -.1em;
+}
+
+var {
+	font: 12px monospace,Helvetica,Arial,sans-serif;
+	font-weight: bold;
+	font-style: normal;
+}

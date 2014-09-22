@@ -131,6 +131,12 @@ switch( $type )
 		$UserSettings->dbupdate();
 		break;
 
+	case 'account_changed':
+		// unsubscribe from account changed notifications
+		$UserSettings->set( 'notify_changed_account', '0', $edited_User->ID );
+		$UserSettings->dbupdate();
+		break;
+
 	case 'msgform':
 		// turn off allow emails through b2evo message forms
 		$UserSettings->set( 'enable_email', '0', $edited_User->ID );

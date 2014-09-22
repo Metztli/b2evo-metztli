@@ -27,7 +27,7 @@
  * @author efy-bogdan: Evo Factory / Bogdan.
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _registration.form.php 6136 2014-03-08 07:59:48Z manuel $
+ * @version $Id: _registration.form.php 6405 2014-04-07 03:01:41Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -61,6 +61,8 @@ $Form->begin_form( 'fform', '',
 $Form->begin_fieldset( T_('Default user permissions').get_manual_link('default-user-permissions') );
 
 	$Form->checkbox( 'newusers_canregister', $Settings->get('newusers_canregister'), T_('New users can register'), T_('Check to allow new users to register themselves.' ) );
+
+	$Form->checkbox( 'registration_is_public', $Settings->get('registration_is_public'), T_('Registration links'), T_('Check to show self-registration links to the public.' ), '', 1, ! $Settings->get('newusers_canregister') );
 
 	$GroupCache = & get_GroupCache();
 	$Form->select_object( 'newusers_grp_ID', $Settings->get('newusers_grp_ID'), $GroupCache, T_('Group for new users'), T_('Groups determine user roles and permissions.') );
@@ -130,7 +132,7 @@ $Form->begin_fieldset( T_('Account activation').get_manual_link('account-activat
 	$Form->radio( 'after_email_validation', $after_email_validation, array(
 					array( 'return_to_original', T_( 'Return to original page' ) ),
 					array( 'specific_url', T_( 'Go to specific URL' ).':', '',
-						'<input type="text" id="specific_after_validation_url" class="form_text_input" name="specific_after_validation_url" size="50" maxlength="120" value="'
+						'<input type="text" id="specific_after_validation_url" class="form_text_input form-control" name="specific_after_validation_url" size="50" maxlength="120" value="'
 						.format_to_output( $after_validation_url, 'formvalue' ).'"
 						onfocus="document.getElementsByName(\'after_email_validation\')[1].checked=true;" />' )
 				), T_( 'After email activation' ), true );
@@ -181,7 +183,7 @@ $Form->begin_fieldset( T_('Other options').get_manual_link('other-registration-s
 	$Form->radio( 'after_registration', $after_registration, array(
 					array( 'return_to_original', T_( 'Return to original page' ) ),
 					array( 'specific_url', T_( 'Go to specific URL' ).':', '',
-						'<input type="text" id="specific_after_registration_url" class="form_text_input" name="specific_after_registration_url" size="50" maxlength="120" value="'
+						'<input type="text" id="specific_after_registration_url" class="form_text_input form-control" name="specific_after_registration_url" size="50" maxlength="120" value="'
 						.format_to_output( $after_registration_url, 'formvalue' ).'"
 						onfocus="document.getElementsByName(\'after_registration\')[1].checked=true;" />' )
 				), T_( 'After registration' ), true );
@@ -191,8 +193,20 @@ $Form->end_fieldset();
 
 if( $current_User->check_perm( 'users', 'edit' ) )
 {
-	$Form->end_form( array( array( 'submit', 'submit', T_('Save !'), 'SaveButton' ),
-													array( 'reset', '', T_('Reset'), 'ResetButton' ) ) );
+	$Form->end_form( array( array( 'submit', 'submit', T_('Save Changes!'), 'SaveButton' ) ) );
 }
 
 ?>
+<script type="text/javascript">
+jQuery( '#newusers_canregister' ).click( function()
+{
+	if( jQuery( this ).is( ':checked' ) )
+	{
+		jQuery( '#registration_is_public' ).removeAttr( 'disabled' );
+	}
+	else
+	{
+		jQuery( '#registration_is_public' ).attr( 'disabled', 'disabled' );
+	}
+} );
+</script>

@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
@@ -30,7 +30,7 @@
  *
  * @package evocore
  *
- * @version $Id: _misc.funcs.php 6044 2014-02-26 10:56:13Z attila $
+ * @version $Id: _misc.funcs.php 7258 2014-08-27 03:52:32Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -143,7 +143,6 @@ function shutdown()
 	global $Debuglog;
 
 	global $Timer;
-	global $shutdown_count_item_views;
 
 	// Try forking a background process and let the parent return as fast as possbile.
 	if( is_callable('pcntl_fork') && function_exists('posix_kill') && defined('STDIN') )
@@ -188,20 +187,6 @@ function shutdown()
 	// connection_aborted()
 	// connection_status()
 
-	if( ! empty($shutdown_count_item_views) )
-	{ // Increment view counts for Items:
-		$ItemCache = & get_ItemCache();
-		foreach( $shutdown_count_item_views as $item_ID )
-		{
-			// asimo> Inserted the $item_ID != 0 check, because another way comes unexpected error on preview page
-			if( !empty($item_ID) && ( $Item = $ItemCache->get_by_ID($item_ID, false) ) ) {
-				$Item->count_view( array(
-					'allow_multiple_counts_per_page' => false,
-				) );
-			}
-		}
-	}
-
 	// Save the current HIT:
 	$Hit->log();
 
@@ -237,7 +222,6 @@ function shutdown()
  * Format a string/content for being output
  *
  * @author fplanque
- * @todo htmlspecialchars() takes a charset argument, which we could provide ($evo_charset?)
  * @param string raw text
  * @param string format, can be one of the following
  * - raw: do nothing
@@ -253,7 +237,7 @@ function shutdown()
  */
 function format_to_output( $content, $format = 'htmlbody' )
 {
-	global $Plugins;
+	global $Plugins, $evo_charset;
 
 	switch( $format )
 	{
@@ -274,7 +258,7 @@ function format_to_output( $content, $format = 'htmlbody' )
 		case 'entityencoded':
 			// Special mode for RSS 0.92: apply renders and allow full HTML but escape it
 			$content = convert_chars($content, 'html');
-			$content = htmlspecialchars( $content, ENT_QUOTES );
+			$content = evo_htmlspecialchars( $content, ENT_QUOTES );
 			break;
 
 		case 'htmlfeed':
@@ -301,7 +285,7 @@ function format_to_output( $content, $format = 'htmlbody' )
 		case 'htmlspecialchars':
 		case 'formvalue':
 			// use as a form value: escapes &, quotes and < > but leaves code alone
-			$content = htmlspecialchars( $content, ENT_QUOTES );  // Handles &, ", ', < and >
+			$content = evo_htmlspecialchars( $content, ENT_QUOTES );  // Handles &, ", ', < and >
 			break;
 
 		case 'xml':
@@ -452,7 +436,7 @@ function strmaxlen( $str, $maxlen = 50, $tail = NULL, $format = 'raw', $cut_at_w
 		// Replace all HTML entities by a single char. html_entity_decode for example
 		// would not handle &hellip;.
 		$tail_for_length = preg_replace('~&\w+?;~', '.', $tail);
-		$tail_length = evo_strlen( html_entity_decode($tail_for_length) );
+		$tail_length = evo_strlen( evo_html_entity_decode($tail_for_length) );
 		$len = $maxlen-$tail_length;
 		if( $len < 1 )
 		{ // special case; $tail length is >= $maxlen
@@ -773,6 +757,71 @@ function evo_substr( $string, $start = 0, $length = '#' )
 
 
 /**
+ * Wrapper function for htmlspecialchars to use the $evo_charset as default charset
+ *
+ * @param string the string being converted
+ * @param int the quote style constant
+ * @param string defines character set used in conversion.
+ * @param boolean turn on/off double encode
+ * @return string the converted string
+ */
+function evo_htmlspecialchars( $string, $quote_style = ENT_COMPAT, $charset = NULL, $double_encode = true )
+{
+	global $evo_charset;
+
+	if( $charset === NULL )
+	{ // Use $evo_charset by default
+		$charset = $evo_charset;
+	}
+
+	return htmlspecialchars( $string, $quote_style, $charset, $double_encode );
+}
+
+
+/**
+ * Wrapper function for htmlentites to use the $evo_charset as default charset
+ *
+ * @param string the string being converted
+ * @param int the quote style constant
+ * @param string defines character set used in conversion.
+ * @param boolean turn on/off double encode
+ * @return string the converted string
+ */
+function evo_htmlentities( $string, $quote_style = ENT_COMPAT, $charset = NULL, $double_encode = true )
+{
+	global $evo_charset;
+
+	if( $charset === NULL )
+	{ // Use $evo_charset by default
+		$charset = $evo_charset;
+	}
+
+	return htmlentities( $string, $quote_style, $charset, $double_encode );
+}
+
+
+/**
+ * Wrapper function for htmlentites to use the $evo_charset as default charset
+ *
+ * @param string the string being converted
+ * @param int the quote style constant
+ * @param string defines character set used in conversion.
+ * @return string the converted string
+ */
+function evo_html_entity_decode( $string, $quote_style = ENT_COMPAT, $charset = NULL )
+{
+	global $evo_charset;
+
+	if( $charset === NULL )
+	{ // Use $evo_charset by default
+		$charset = $evo_charset;
+	}
+
+	return html_entity_decode( $string, $quote_style, $charset );
+}
+
+
+/**
  * Split $text into blocks by using $pattern and call $callback on the non-matching blocks.
  *
  * The non-matching block's text is the first param to $callback and additionally $params gets passed.
@@ -864,11 +913,19 @@ function replace_content_outcode( $search, $replace, $content, $replace_function
  * @param string Source content
  * @param array|string Search list
  * @param array|string Replace list
+ * @param string Type of function: 'preg' -> preg_replace(), 'str' -> str_replace()
  * @return string Replaced content
  */
-function replace_content( $content, $search, $replace )
+function replace_content( $content, $search, $replace, $type = 'preg' )
 {
-	return preg_replace( $search, $replace, $content );
+	if( $type == 'str' )
+	{
+		return str_replace( $search, $replace, $content );
+	}
+	else
+	{
+		return preg_replace( $search, $replace, $content );
+	}
 }
 
 
@@ -883,6 +940,87 @@ function replace_content( $content, $search, $replace )
 function replace_content_callback( $content, $search, $replace_callback )
 {
 	return preg_replace_callback( $search, $replace_callback, $content );
+}
+
+
+/**
+ * Split a content by separators outside <code> and <pre> blocks
+ *
+ * @param string|array Separators
+ * @param string Content
+ * @param boolean TRUE - parenthesized expression of separator will be captured and returned as well
+ * @return array The result of explode() function
+ */
+function split_outcode( $separators, $content, $capture_separator = false )
+{
+	// Check if the separators exists in content
+	if( ! is_array( $separators ) )
+	{ // Convert string to array with one element
+		$separators = array( $separators );
+	}
+	$separators_exists = false;
+	if( is_array( $separators ) )
+	{ // Find in array
+		foreach( $separators as $separator )
+		{
+			if( strpos( $content, $separator ) !== false )
+			{ // Separator is found
+				$separators_exists = true;
+				break;
+			}
+		}
+	}
+
+	if( $separators_exists )
+	{ // There are separators in content, Split the content:
+
+		// Initialize temp values for replace the separators
+		if( $capture_separator )
+		{
+			$rplc_separators = array();
+			foreach( $separators as $s => $separator )
+			{
+				$rplc_separators[] = '#separator'.$s.'='.md5( rand() ).'#';
+			}
+		}
+		else
+		{
+			$rplc_separators = '#separator='.md5( rand() ).'#';
+		}
+		// Replace the content separators with temp value
+		if( strpos( $content, '<code' ) !== false || strpos( $content, '<pre' ) !== false )
+		{ // Call replace_separators_callback() on everything outside code/pre:
+			$content = callback_on_non_matching_blocks( $content,
+				'~<(code|pre)[^>]*>.*?</\1>~is',
+				'replace_content', array( $separators, $rplc_separators, 'str' ) );
+		}
+		else
+		{ // No code/pre blocks, replace on the whole thing
+			$content = str_replace( $separators, $rplc_separators, $content );
+		}
+
+		if( $capture_separator )
+		{ // Save the separators
+			$split_regexp = '~('.implode( '|', $rplc_separators ).')~s';
+			$content_parts = preg_split( $split_regexp, $content, -1, PREG_SPLIT_DELIM_CAPTURE );
+			foreach( $content_parts as $c => $content_part )
+			{
+				if( ( $s = array_search( $content_part, $rplc_separators ) ) !== false )
+				{ // Replace original separator back
+					$content_parts[ $c ] = $separators[ $s ];
+				}
+			}
+			return $content_parts;
+		}
+		else
+		{ // Return only splitted content(without separators)
+			return explode( $rplc_separators, $content );
+		}
+	}
+	else
+	{ // No separators in content, Return whole content as one element of array
+		return array( $content );
+	}
 }
 
 
@@ -1820,6 +1958,18 @@ function is_valid_login( $login, $force_strict_logins = false )
 
 
 /**
+ * Checks if the color is valid
+ *
+ * @param string color to check
+ * @return boolean true if OK
+ */
+function is_color( $color )
+{
+	return preg_match( '~^(#([a-f0-9]{3}){1,2})?$~i', $color );
+}
+
+
+/**
  * Check if the login is valid (user exists)
  *
  * @param string login
@@ -2166,7 +2316,7 @@ function pre_dump( $var__var__var__var__ )
 			var_dump($lvar); // includes "\n"; do not use var_export() because it does not detect recursion by design
 			$buffer = ob_get_contents();
 			ob_end_clean();
-			echo htmlspecialchars($buffer);
+			echo evo_htmlspecialchars($buffer);
 
 			$count++;
 			if( $count < $func_num_args )
@@ -2309,7 +2459,7 @@ function debug_get_backtrace( $limit_to_last = NULL, $ignore_from = array( 'func
 							$args[] = 'Object('.get_class($l_arg).')';
 							break;
 						case 'resource':
-							$args[] = htmlspecialchars((string)$l_arg);
+							$args[] = evo_htmlspecialchars((string)$l_arg);
 							break;
 						case 'boolean':
 							$args[] = $l_arg ? 'true' : 'false';
@@ -2323,13 +2473,13 @@ function debug_get_backtrace( $limit_to_last = NULL, $ignore_from = array( 'func
 			$call = "<strong>\n";
 			if( isset($l_trace['class']) )
 			{
-				$call .= htmlspecialchars($l_trace['class']);
+				$call .= evo_htmlspecialchars($l_trace['class']);
 			}
 			if( isset($l_trace['type']) )
 			{
-				$call .= htmlspecialchars($l_trace['type']);
+				$call .= evo_htmlspecialchars($l_trace['type']);
 			}
-			$call .= htmlspecialchars($l_trace['function'])."( </strong>\n";
+			$call .= evo_htmlspecialchars($l_trace['function'])."( </strong>\n";
 			if( $args )
 			{
 				$call .= ' '.implode( ', ', $args ).' ';
@@ -2394,6 +2544,7 @@ function debug_get_backtrace( $limit_to_last = NULL, $ignore_from = array( 'func
  * @param string Message to output
  * @param array Additional params
  *        - "status" (Default: '500 Internal Server Error')
+ *        - "debug_info" - Use this info instead of $additional_info when debug is ON
  */
 function debug_die( $additional_info = '', $params = array() )
 {
@@ -2401,8 +2552,14 @@ function debug_die( $additional_info = '', $params = array() )
 	global $log_app_errors, $app_name, $is_cli, $display_errors_on_production;
 
 	$params = array_merge( array(
-		'status' => '500 Internal Server Error',
+		'status'     => '500 Internal Server Error',
+		'debug_info' => '',
 		), $params );
+
+	if( $debug && ! empty( $params['debug_info'] ) )
+	{ // Display 'debug_info' when debug is ON
+		$additional_info = $params['debug_info'];
+	}
 
 	if( $is_cli )
 	{ // Command line interface, e.g. in cron_exec.php:
@@ -2629,12 +2786,12 @@ function debug_info( $force = false, $force_clean = false )
 	// ---- Print AJAX Log
 	if( empty( $debug_jslog_done ) && ( $debug || $debug_jslog ) && $content_type == 'text/html' )
 	{	// Display debug jslog once
-		global $rsc_url, $app_version;
+		global $rsc_url, $app_version_long;
 
-		echo '<script type="text/javascript" src="'.$rsc_url.'js/debug_jslog.js"></script>';
-		echo '<script type="text/javascript" src="'.$rsc_url.'js/jquery/jquery.cookie.min.js"></script>';
-		$jquery_ui_css_url = url_add_param( $rsc_url.'css/jquery/smoothness/jquery-ui.css', 'v='.$app_version );
-		echo '<link href="'.$jquery_ui_css_url.'" type="text/css" rel="stylesheet" />';
+		require_js( '#jqueryUI#', 'rsc_url', false, true );
+		require_css( '#jqueryUI_css#', 'rsc_url', NULL, NULL, '#', true );
+		require_js( 'debug_jslog.js', 'rsc_url', false, true );
+		require_js( 'jquery/jquery.cookie.min.js', 'rsc_url', false, true );
 
 		$jslog_style_cookies = param_cookie( 'jslog_style', 'string' );
 		$jslog_styles = array();
@@ -2679,32 +2836,47 @@ function debug_info( $force = false, $force_clean = false )
 	}
 	// ----
 
-	if( !$force )
+	// clean output:
+	$clean = $is_cli || $force_clean;
+
+	if( ! $force )
 	{
-		if( !empty($debug_done))
+		if( ! empty( $debug_done ) )
 		{ // Already displayed!
 			return;
 		}
 
-		if( empty($debug) )
-		{ // No debug output desired:
-			return;
-		}
-
-		// Do not display, if no content-type header has been sent or it's != "text/html" (debug > 1 skips this)
-		if( $debug < 2 )
+		if( empty( $debug ) || // No debug output desired:
+		    ( $debug < 2 && $content_type != 'text/html' ) ) // Do not display, if no content-type header has been sent or it's != "text/html" (debug > 1 skips this)
 		{
-			if( $content_type != 'text/html' )
-			{
-				return;
+			global $evo_last_handled_error;
+			if( ! empty( $evo_last_handled_error ) )
+			{ // If script has been stoppped by some error
+				// Display a message when debug is OFF and error has occured
+				$debug_off_title = 'An unexpected error has occured!';
+				$debug_off_msg1 = 'We apologize for the inconvenience.';
+				$debug_off_msg2 = 'This error has been automatically reported and we will work to resolve it as fast as possible.';
+				if( $clean )
+				{ // CLI mode
+					echo '*** '.$debug_off_title.' ***'."\n\n"
+						.$debug_off_msg1."\n"
+						.$debug_off_msg2;
+				}
+				else
+				{ // View from browser
+					echo '<div style="margin:1em auto;padding:10px;background:#FEFFFF;border:2px solid #F00;border-radius:6px;text-align:center;">'
+							.'<h2 style="margin:0;color:#F00;">'.$debug_off_title.'</h2>'
+							.'<p>'.$debug_off_msg1.'</p>'
+							.'<p style="margin-bottom:0">'.$debug_off_msg2.'</p>'
+						.'</div>';
+				}
 			}
+			return;
 		}
 	}
 	//Make sure debug output only happens once:
 	$debug_done = true;
 
-	// clean output:
-	$clean = $is_cli || $force_clean;
 	$printf_format = '| %-45s | %-5s | %-7s | %-5s |';
 	$table_headerlen = 73;
 	/* This calculates the number of dashes to print e. g. on the top and
@@ -2853,9 +3025,8 @@ function debug_info( $force = false, $force_clean = false )
 			echo "\n</tbody></table>";
 
 			// add jquery.tablesorter to the "Debug info" table.
-			global $rsc_uri;
+			require_js( 'jquery/jquery.tablesorter.min.js', 'rsc_url', true, true );
 			echo '
-			<script type="text/javascript" src="'.$rsc_uri.'js/jquery/jquery.tablesorter.min.js"></script>
 			<script type="text/javascript">
 			(function($){
 				var clicked_once;
@@ -3217,8 +3388,8 @@ function send_mail( $to, $to_name, $subject, $message, $from = NULL, $from_name 
 {
 	global $servertimenow;
 
-	// Stop a request from the blocked IP addresses
-	antispam_block_ip();
+	// Stop a request from the blocked IP addresses or Domains
+	antispam_block_request();
 
 	global $debug, $app_name, $app_version, $current_locale, $current_charset, $evo_charset, $locales, $Debuglog, $Settings, $demo_mode, $sendmail_additional_params;
 
@@ -3276,7 +3447,7 @@ function send_mail( $to, $to_name, $subject, $message, $from = NULL, $from_name 
 		$headers['Return-Path'] = $return_path;
 	}
 
-	// echo 'sending email to: ['.htmlspecialchars($to).'] from ['.htmlspecialchars($from).']';
+	// echo 'sending email to: ['.evo_htmlspecialchars($to).'] from ['.evo_htmlspecialchars($from).']';
 
 	$clear_subject = $subject;
 	$subject = mail_encode_header_string($subject);
@@ -3326,7 +3497,7 @@ function send_mail( $to, $to_name, $subject, $message, $from = NULL, $from_name 
 
 	if( mail_is_blocked( $to_email_address ) )
 	{ // Check if the email address is blocked
-		$Debuglog->add( 'Sending mail to &laquo;'.htmlspecialchars( $to_email_address ).'&raquo; FAILED, because this email marked with spam or permanent errors.', 'error' );
+		$Debuglog->add( 'Sending mail to &laquo;'.evo_htmlspecialchars( $to_email_address ).'&raquo; FAILED, because this email marked with spam or permanent errors.', 'error' );
 
 		mail_log( $user_ID, $to_email_address, $clear_subject, $message_log, $headerstring, 'blocked' );
 
@@ -3340,14 +3511,14 @@ function send_mail( $to, $to_name, $subject, $message, $from = NULL, $from_name 
 		{
 			mail_log( $user_ID, $to_email_address, $clear_subject, $message_log, $headerstring, 'error' );
 
-			debug_die( 'Sending mail from &laquo;'.htmlspecialchars($from).'&raquo; to &laquo;'.htmlspecialchars($to).'&raquo;, Subject &laquo;'.htmlspecialchars($subject).'&raquo; FAILED.' );
+			debug_die( 'Sending mail from &laquo;'.evo_htmlspecialchars($from).'&raquo; to &laquo;'.evo_htmlspecialchars($to).'&raquo;, Subject &laquo;'.evo_htmlspecialchars($subject).'&raquo; FAILED.' );
 		}
 	}
 	else
 	{	// Soft debugging only....
 		if( ! @mail( $to, $subject, $message, $headerstring, $additional_parameters ) )
 		{
-			$Debuglog->add( 'Sending mail from &laquo;'.htmlspecialchars($from).'&raquo; to &laquo;'.htmlspecialchars($to).'&raquo;, Subject &laquo;'.htmlspecialchars($subject).'&raquo; FAILED.', 'error' );
+			$Debuglog->add( 'Sending mail from &laquo;'.evo_htmlspecialchars($from).'&raquo; to &laquo;'.evo_htmlspecialchars($to).'&raquo;, Subject &laquo;'.evo_htmlspecialchars($subject).'&raquo; FAILED.', 'error' );
 
 			mail_log( $user_ID, $to_email_address, $clear_subject, $message_log, $headerstring, 'error' );
 
@@ -3355,7 +3526,7 @@ function send_mail( $to, $to_name, $subject, $message, $from = NULL, $from_name 
 		}
 	}
 
-	$Debuglog->add( 'Sent mail from &laquo;'.htmlspecialchars($from).'&raquo; to &laquo;'.htmlspecialchars($to).'&raquo;, Subject &laquo;'.htmlspecialchars($subject).'&raquo;.' );
+	$Debuglog->add( 'Sent mail from &laquo;'.evo_htmlspecialchars($from).'&raquo; to &laquo;'.evo_htmlspecialchars($to).'&raquo;, Subject &laquo;'.evo_htmlspecialchars($subject).'&raquo;.' );
 
 	mail_log( $user_ID, $to_email_address, $clear_subject, $message_log, $headerstring, 'ok' );
 
@@ -3373,9 +3544,10 @@ function send_mail( $to, $to_name, $subject, $message, $from = NULL, $from_name 
  * @param boolean Force to send this email even if the user is not activated. By default not activated user won't get emails.
  *                Pasword reset, and account activation emails must be always forced.
  * @param array Additional headers ( headername => value ). Take care of injection!
+ * @param string Use this param if you want use different email address instead of $User->email
  * @return boolean True if mail could be sent (not necessarily delivered!), false if not - (return value of {@link mail()})
  */
-function send_mail_to_User( $user_ID, $subject, $template_name, $template_params = array(), $force_on_non_activated = false, $headers = array() )
+function send_mail_to_User( $user_ID, $subject, $template_name, $template_params = array(), $force_on_non_activated = false, $headers = array(), $force_email_address = '' )
 {
 	global $UserSettings, $Settings, $current_charset;
 
@@ -3392,8 +3564,6 @@ function send_mail_to_User( $user_ID, $subject, $template_name, $template_params
 			return false;
 		}
 
-		// UserSettings update is not required yet
-		$update_settings = false;
 		// Check if a new email to User with the corrensponding email type is allowed
 		switch( $template_name )
 		{
@@ -3409,20 +3579,27 @@ function send_mail_to_User( $user_ID, $subject, $template_name, $template_params
 			case 'account_activated':
 			case 'account_closed':
 			case 'account_reported':
+			case 'account_changed':
 				// this is a notificaiton email
-				if( !check_allow_new_email( 'notification_email_limit', 'last_notification_email', $User->ID ) )
+				$email_limit_setting = 'notification_email_limit';
+				$email_counter_setting = 'last_notification_email';
+				if( !check_allow_new_email( $email_limit_setting, $email_counter_setting, $User->ID ) )
 				{ // more notification email is not allowed today
 					return false;
 				}
-				$update_settings = true;
 				break;
 			case 'newsletter':
 				// this is a newsletter email
-				if( !check_allow_new_email( 'newsletter_limit', 'last_newsletter', $User->ID ) )
+				$email_limit_setting = 'newsletter_limit';
+				$email_counter_setting = 'last_newsletter';
+				if( !check_allow_new_email( $email_limit_setting, $email_counter_setting, $User->ID ) )
 				{ // more newsletter email is not allowed today
 					return false;
 				}
-				$update_settings = true;
+				break;
+			case 'newsletter_test':
+				// this is a newsletter email, used to send test email by current admin
+				$template_name = 'newsletter';
 				break;
 		}
 
@@ -3450,11 +3627,13 @@ function send_mail_to_User( $user_ID, $subject, $template_name, $template_params
 		$subject = mail_autoinsert_user_data( $subject, $User );
 		$message = mail_autoinsert_user_data( $message, $User );
 
-		if( send_mail( $User->email, NULL, $subject, $message, NULL, NULL, $headers, $user_ID ) )
+		$to_email = !empty( $force_email_address ) ? $force_email_address : $User->email;
+
+		if( send_mail( $to_email, NULL, $subject, $message, NULL, NULL, $headers, $user_ID ) )
 		{ // email was sent, update last email settings;
-			if( $update_settings )
-			{ // User Settings need to be updated
-				$UserSettings->dbupdate();
+			if( isset( $email_limit_setting, $email_counter_setting ) )
+			{ // User Settings(email counters) need to be updated
+				update_user_email_counter( $email_limit_setting, $email_counter_setting, $user_ID );
 			}
 			return true;
 		}
@@ -3848,7 +4027,13 @@ function get_icon( $iconKey, $what = 'imgtag', $params = NULL, $include_in_legen
 	{
 		case 'rollover':
 			if( isset( $icon['rollover'] ) )
-			{	// Image has rollover available
+			{ // Image has rollover available
+				global $b2evo_icons_type;
+
+				if( isset( $b2evo_icons_type ) && ( ! empty( $icon['glyph'] ) || ! empty( $icon['fa'] ) ) )
+				{ // Glyph and font-awesome icons don't have rollover effect
+					return false;
+				}
 				return $icon['rollover'];
 			}
 			return false;
@@ -3953,7 +4138,63 @@ function get_icon( $iconKey, $what = 'imgtag', $params = NULL, $include_in_legen
 
 
 		case 'imgtag':
-			if( ! isset( $icon['file'] ) )
+			global $b2evo_icons_type;
+
+			if( isset( $b2evo_icons_type ) )
+			{ // Specific icons type is defined
+				switch( $b2evo_icons_type )
+				{
+					case 'glyphicons':
+						// Use glyph icons of bootstrap
+						$icon_class_prefix = 'glyphicon glyphicon-';
+						$icon_param_name = 'glyph';
+						$icon_content = '&nbsp;';
+						break;
+
+					case 'fontawesome':
+						// Use the icons from http://fortawesome.github.io/Font-Awesome/icons/
+						$icon_class_prefix = 'fa fa-';
+						$icon_param_name = 'fa';
+						$icon_content = '';
+						break;
+				}
+			}
+
+			if( isset( $icon_class_prefix ) && ! empty( $icon[ $icon_param_name ] ) )
+			{ // Use glyph icon if it is defined in icons config
+				if( isset( $params['class'] ) )
+				{ // Get class from params
+					$params['class'] = $icon_class_prefix.$icon[ $icon_param_name ].' '.$params['class'];
+				}
+				else
+				{ // Set default class
+					$params['class'] = $icon_class_prefix.$icon[ $icon_param_name ];
+				}
+
+				if( isset( $icon['color'] ) )
+				{ // Set a color for icon
+					$params['style'] = 'color:'.$icon['color'];
+				}
+
+				if( ! isset( $params['title'] ) )
+				{ // Use 'alt' for 'title'
+					if( isset( $params['alt'] ) )
+					{
+						$params['title'] = $params['alt'];
+						unset( $params['alt'] );
+					}
+					else if( ! isset( $params['alt'] ) && isset( $icon['alt'] ) )
+					{
+						$params['title'] = $icon['alt'];
+					}
+				}
+
+				// Add all the attributes:
+				$params = get_field_attribs_as_string( $params, false );
+
+				$r = '<span'.$params.'>'.$icon_content.'</span>';
+			}
+			elseif( ! isset( $icon['file'] ) )
 			{ // Use span tag with sprite instead of img
 				$styles = array();
 
@@ -4147,42 +4388,94 @@ function form_date( $date, $time = '' )
  * in this order. '' is used when no IP could be found.
  *
  * @param boolean True, to get only the first IP (probably REMOTE_ADDR)
+ * @param boolean True, to convert IPv6 to IPv4 format
  * @return array|string Depends on first param.
  */
-function get_ip_list( $firstOnly = false )
+function get_ip_list( $firstOnly = false, $convert_to_ipv4 = false )
 {
 	$r = array();
 
-	if( !empty( $_SERVER['REMOTE_ADDR'] ) )
+	if( ! empty( $_SERVER['REMOTE_ADDR'] ) )
 	{
 		foreach( explode( ',', $_SERVER['REMOTE_ADDR'] ) as $l_ip )
 		{
-			$l_ip = trim($l_ip);
-			if( !empty($l_ip) )
+			$l_ip = trim( $l_ip );
+			if( ! empty( $l_ip ) )
 			{
+				if( $convert_to_ipv4 )
+				{ // Convert IP address to IPv4 format(if it is in IPv6 format)
+					$l_ip = int2ip( ip2int( $l_ip ) );
+				}
 				$r[] = $l_ip;
 			}
 		}
 	}
 
-	if( !empty($_SERVER['HTTP_X_FORWARDED_FOR']) )
+	if( ! empty( $_SERVER['HTTP_X_FORWARDED_FOR'] ) )
 	{ // IP(s) behind Proxy - this can be easily forged!
 		foreach( explode( ',', $_SERVER['HTTP_X_FORWARDED_FOR'] ) as $l_ip )
 		{
-			$l_ip = trim($l_ip);
-			if( !empty($l_ip) && $l_ip != 'unknown' )
+			$l_ip = trim( $l_ip );
+			if( ! empty( $l_ip ) && $l_ip != 'unknown' )
 			{
+				if( $convert_to_ipv4 )
+				{ // Convert IP address to IPv4 format(if it is in IPv6 format)
+					$l_ip = int2ip( ip2int( $l_ip ) );
+				}
 				$r[] = $l_ip;
 			}
 		}
 	}
 
-	if( !isset( $r[0] ) )
+	if( ! isset( $r[0] ) )
 	{ // No IP found.
 		$r[] = '';
 	}
 
+	// Remove the duplicates
+	$r = array_unique( $r );
+
 	return $firstOnly ? $r[0] : $r;
+}
+
+
+/**
+ * Get list of IP addresses with link to back-office page if User has an access
+ *
+ * @param object|NULL User
+ * @param array|NULL List of IP addresses
+ * @param string Text of link, Use '#' to display IP address
+ * @return array List of IP addresses
+ */
+function get_linked_ip_list( $ip_list = NULL, $User = NULL, $link_text = '#' )
+{
+	if( $User === NULL )
+	{ // Get current User by default
+		global $current_User;
+		$User = & $current_User;
+	}
+
+	if( $ip_list === NULL )
+	{ // Get IP addresses by function get_ip_list()
+		$ip_list = get_ip_list( false, true );
+	}
+
+	if( ! empty( $User ) &&
+	    $User->check_perm( 'admin', 'restricted' ) &&
+	    $User->check_perm( 'spamblacklist', 'view' ) )
+	{ // User has an access to backoffice, Display a link for each IP address
+		global $admin_url;
+		foreach( $ip_list as $i => $ip_address )
+		{
+			if( $link_text == '#' )
+			{ // Use IP address aslink text
+				$link_text = $ip_address;
+			}
+			$ip_list[ $i ] = '<a href="'.$admin_url.'?ctrl=antispam&amp;tab3=ipranges&amp;ip_address='.$ip_address.'">'.$link_text.'</a>';
+		}
+	}
+
+	return $ip_list;
 }
 
 
@@ -4302,42 +4595,6 @@ function is_create_action( $action )
 
 
 /**
- * Generate a link that toggles display of an element on clicking.
- *
- * @todo Provide functionality to make those links accessible without JS (using GET parameter)
- * @uses toggle_display_by_id() (JS)
- * @param string ID (html) of the link
- * @param string ID (html) of the target to toggle displaying
- * @return string
- */
-function get_link_showhide( $link_id, $target_id, $text_when_displayed, $text_when_hidden, $display_hidden = true )
-{
-	$html = "<a id='$link_id' href='#' onclick='return toggle_display_by_id(\"$link_id\", \"$target_id\", \""
-		.jsspecialchars( $text_when_displayed ).'", "'.jsspecialchars( $text_when_hidden ).'")\'>'
-		.( $display_hidden ? $text_when_hidden : $text_when_displayed )
-		.'</a>';
-
-	return $html;
-}
-
-
-/**
- * Escape a string to be used in Javascript.
- *
- * @param string
- * @return string
- */
-function jsspecialchars($s)
-{
-	$r = str_replace(
-		array(  '\\', '"', "'" ),
-		array( '\\\\', '\"', "\'" ),
-		$s );
-	return htmlspecialchars($r, ENT_QUOTES);
-}
-
-
-/**
  * Compact a date in a number keeping only integer value of the string
  *
  * @param string date
@@ -4431,6 +4688,19 @@ function format_french_phone( $phone )
 
 
 /**
+ * Get the manual url for the given topic
+ *
+ * @param string topic
+ * @return string url to the manual
+ */
+function get_manual_url( $topic )
+{
+	// fp> TODO: this below is a temmporary hack while we work on the new manual:
+	return 'http://b2evolution.net/man/'.str_replace( '_', '-', strtolower( $topic ) );
+}
+
+
+/**
  * Generate a link to a online help resource.
  * testing the concept of online help (aka webhelp).
  * this function should be relocated somewhere better if it is taken onboard by the project
@@ -4442,21 +4712,25 @@ function format_french_phone( $phone )
  * @param string Topic
  *        The topic should be in a format like [\w]+(/[\w]+)*, e.g features/online_help.
  * @param string link text, leave it NULL to get link with manual icon
+ * @param string a word to be displayed after the manual icon (if no icon gets displayed, $title will be used instead!)
+ * @param integer 1-5: weight of the word. The word will be displayed only if its weight is >= than the user setting threshold. (Default: 1)
  * @return string
  */
-function get_manual_link( $topic, $link_text = NULL )
+function get_manual_link( $topic, $link_text = NULL, $action_word = NULL, $word_weight = 1 )
 {
 	global $Settings, $current_locale, $app_shortname, $app_version;
 
 	if( $Settings->get('webhelp_enabled') )
 	{
-		// $manual_url = 'http://manual.b2evolution.net/redirect/'.str_replace(' ','_',strtolower($topic)).'?lang='.$current_locale.'&amp;app='.$app_shortname.'&amp;version='.$app_version;
-		// fp> TODO: this below is a temmporary hack while we work on the new manual:
-		$manual_url = 'http://b2evolution.net/man/'.str_replace('_','-',strtolower($topic));
+		$manual_url = get_manual_url( $topic );
 
 		if( $link_text == NULL )
 		{
-			$webhelp_link = action_icon( T_('Open relevant page in online manual'), 'manual', $manual_url, T_('Manual'), 5, 1, array( 'target' => '_blank', 'style' => 'vertical-align:top' ) );
+			if( $action_word == NULL )
+			{
+				$action_word = T_('Manual');
+			}
+			$webhelp_link = action_icon( T_('Open relevant page in online manual'), 'manual', $manual_url, $action_word, 5, $word_weight, array( 'target' => '_blank', 'style' => 'vertical-align:top' ) );
 		}
 		else
 		{
@@ -4494,7 +4768,7 @@ function get_field_attribs_as_string( $field_attribs, $format_to_output = true )
 
 		if( $format_to_output )
 		{
-			$r .= ' '.$l_attr.'="'.htmlspecialchars($l_value).'"';
+			$r .= ' '.$l_attr.'="'.evo_htmlspecialchars($l_value).'"';
 		}
 		else
 		{
@@ -4516,6 +4790,19 @@ function is_admin_page()
 	global $is_admin_page;
 
 	return isset($is_admin_page) && $is_admin_page === true; // check for type also, because of register_globals!
+}
+
+
+/**
+ * Is the current page a default 'Front' page of a blog?
+ *
+ * @return boolean
+ */
+function is_front_page()
+{
+	global $is_front;
+
+	return isset($is_front) && $is_front === true;
 }
 
 
@@ -4934,7 +5221,6 @@ function get_available_sort_options()
 		'last_touched_ts' => T_('Date last touched'),
 		'urltitle'        => T_('URL "filename"'),
 		'priority'        => T_('Priority'),
-		'views'           => T_('Views'),
 		'RAND'            => T_('Random order!'),
 	);
 }
@@ -4948,7 +5234,8 @@ function get_available_sort_options()
 function get_coll_sort_options()
 {
 	return array(
-		'ID'           => T_('Blog ID (Default)'),
+		'order'        => T_('Order (Default)'),
+		'ID'           => T_('Blog ID'),
 		'name'         => T_('Name'),
 		'shortname'    => T_('Short name'),
 		'tagline'      => T_('Tagline'),
@@ -5089,23 +5376,39 @@ function unset_from_mem_cache($key)
 /**
  * Generate order by clause
  *
- * @return string
+ * @param string The order values are separated by space or comma
+ * @param string An order direction: ASC, DESC
+ * @param string DB prefix
+ * @param string ID field name with prefix
+ * @param array Names of DB fields(without prefix) that are available
+ * @return string The order fields are separated by comma
  */
-function gen_order_clause( $order_by, $order_dir, $dbprefix, $dbIDname_disambiguation )
+function gen_order_clause( $order_by, $order_dir, $dbprefix, $dbIDname_disambiguation, $available_fields = NULL )
 {
 	$orderby = str_replace( ' ', ',', $order_by );
 	$orderby_array = explode( ',', $orderby );
 
+	if( is_array( $available_fields ) )
+	{ // Exclude the incorrect fields from order clause
+		foreach( $orderby_array as $i => $orderby_field )
+		{
+			if( ! in_array( $orderby_field, $available_fields ) )
+			{
+				unset( $orderby_array[ $i ] );
+			}
+		}
+	}
+
 	// Format each order param with default column names:
 	$orderby_array = preg_replace( '#^(.+)$#', $dbprefix.'$1 '.$order_dir, $orderby_array );
+
+	// Add an ID parameter to make sure there is no ambiguity in ordering on similar items:
+	$orderby_array[] = $dbIDname_disambiguation.' '.$order_dir;
 
 	$order_by = implode( ', ', $orderby_array );
 
 	// Special case for RAND:
 	$order_by = str_replace( $dbprefix.'RAND ', 'RAND() ', $order_by );
-
-	// Add an ID parameter to make sure there is no ambiguity in ordering on similar items:
-	$order_by = $order_by.', '.$dbIDname_disambiguation.' '.$order_dir;
 
 	return $order_by;
 }
@@ -5346,10 +5649,16 @@ function get_samedomain_htsrv_url( $secure = false )
 	$htsrv_domain = $hsrv_url_parts['host'];
 	$samedomain_htsrv_url = substr_replace( $req_htsrv_url, $req_domain, strpos( $req_htsrv_url, $htsrv_domain ), strlen( $htsrv_domain ) );
 
+	// fp> The following check would apply well if we always had 301 redirects.
+	// But it's possible to turn them off in SEO settings for some page and not others (we don't know which here)
+  // And some kinds of pages do not have 301 redirections implemented yet, e-g: disp=users
+  /*
 	if( ( !is_admin_page() ) && ( !empty( $Blog ) ) && ( $samedomain_htsrv_url != $Blog->get_local_htsrv_url() ) )
 	{
 		debug_die( 'Inconsistent state!' );
 	}
+	*/
+
 	return $samedomain_htsrv_url;
 }
 
@@ -5544,18 +5853,23 @@ if( !function_exists( 'property_exists' ) )
 // fp>vitaliy: move to a file that is not included everywhere!
 /**
  * Update global $http_response_code and call function header()
+ *
+ * NOTICE: When you start to use new code please add it to the hits filter "HTTP resp"
+ *         in the file "/inc/sessions/views/_stats_view.funcs.php",
+ *         function filter_hits(), array $resp_codes
+ *
  * @param string Header
  * @param integer Header response code
  */
-function header_http_response($string, $code = NULL)
+function header_http_response( $string, $code = NULL )
 {
 	global $http_response_code;
 
 	$string = 'HTTP/1.1 '. $string;
 
-	if (is_null($code))
+	if( is_null( $code ) )
 	{
-		if (preg_match("/(\d{3})/", $string, $matches))
+		if( preg_match( '/(\d{3})/', $string, $matches ) )
 		{
 			$http_response_code = (int)$matches[0];
 		}
@@ -5564,7 +5878,8 @@ function header_http_response($string, $code = NULL)
 	{
 		$http_response_code = $code;
 	}
-	header($string);
+
+	header( $string );
 }
 
 
@@ -6019,6 +6334,320 @@ function apm_log_custom_metric( $name, $value )
 	if(extension_loaded('newrelic'))
 	{	// New Relic is installed on the server for monitoring.
 		newrelic_custom_metric( 'Custom/'.$name, $value );
+	}
+}
+
+/**
+ * Log a custom param
+ *
+ * @param mixed $name name of the custom param
+ * @param mixed $value of the custom param
+ */
+function apm_log_custom_param( $name, $value )
+{
+	if(extension_loaded('newrelic'))
+	{	// New Relic is installed on the server for monitoring.
+		newrelic_add_custom_parameter( $name, $value );
+	}
+}
+
+/**
+ * Send a cookie (@see setcookie() for more details)
+ *
+ * @param string The name of the cookie
+ * @param string The value of the cookie
+ * @param integer The time the cookie expires
+ * @param string The path on the server in which the cookie will be available on
+ * @param string The domain that the cookie is available
+ * @param boolean Indicates that the cookie should only be transmitted over a secure HTTPS connection from the client
+ * @param boolean (Added in PHP 5.2.0) When TRUE the cookie will be made accessible only through the HTTP protocol
+ * @return boolean TRUE if setcookie() successfully runs
+ */
+function evo_setcookie( $name, $value = '', $expire = 0, $path = '', $domain = '', $secure = false, $httponly = false )
+{
+	if( version_compare( phpversion(), '5.2', '>=' ) )
+	{ // Use HTTP-only setting since PHP 5.2.0
+		return setcookie( $name, $value, $expire, $path, $domain, $secure, $httponly );
+	}
+	else
+	{ // PHP < 5.2 doesn't support HTTP-only
+		return setcookie( $name, $value, $expire, $path, $domain, $secure );
+	}
+}
+
+
+/**
+ * Get a button class name depending on template
+ *
+ * @param string Type: 'button', 'button_text', 'button_group'
+ * @param string TRUE - to get class value for jQuery selector
+ * @return string Class name
+ */
+function button_class( $type = 'button', $jQuery_selector = false )
+{
+	// Default class names
+	$classes = array(
+			'button'       => 'roundbutton', // Simple button with icon
+			'button_red'   => 'roundbutton_red', // Button with red background
+			'button_green' => 'roundbutton_green', // Button with green background
+			'text'         => 'roundbutton_text', // Button with text
+			'group'        => 'roundbutton_group', // Group of the buttons
+		);
+
+	if( is_admin_page() )
+	{ // Some admin skins may have special class names
+		global $AdminUI;
+		if( ! empty( $AdminUI ) )
+		{
+			$template_classes = $AdminUI->get_template( 'button_classes' );
+		}
+	}
+	else
+	{ // Some front end skins may have special class names
+		global $Skin;
+		if( ! empty( $Skin ) )
+		{
+			$template_classes = $Skin->get_template( 'button_classes' );
+		}
+	}
+	if( !empty( $template_classes ) )
+	{ // Get class names from admin template
+		$classes = array_merge( $classes, $template_classes );
+	}
+
+	$class_name = isset( $classes[ $type ] ) ? $classes[ $type ] : '';
+
+	if( $jQuery_selector && ! empty( $class_name ) )
+	{ // Convert class name to jQuery selector
+		$class_name = '.'.str_replace( ' ', '.', $class_name );
+	}
+
+	return $class_name;
+}
+
+
+/**
+ * Initialize JavaScript to build and open window
+ */
+function echo_modalwindow_js()
+{
+	global $modalwindow_js_initialized;
+
+	if( $modalwindow_js_initialized )
+	{ // Don't initialize these js-functions twice
+		return;
+	}
+
+	global $AdminUI;
+
+	if( isset( $AdminUI ) && $AdminUI->get_template( 'modal_window_js' ) !== false )
+	{ // Use the functions from admin skin
+		echo $AdminUI->get_template( 'modal_window_js' );
+		$modalwindow_js_initialized = true;
+		return;
+	}
+
+	echo <<< JS_CODE
+/*
+ * Build and open modal window
+ *
+ * @param string HTML content
+ * @param string Width value in css format
+ * @param boolean TRUE - to use transparent template
+ * @param string Title of modal window (Used in bootstrap)
+ * @param string|boolean Button to submit a form (Used in bootstrap), FALSE - to hide bottom panel with buttons
+ */
+function openModalWindow( body_html, width, height, transparent, title, button )
+{
+	var overlay_class = 'overlay_page_active';
+	if( typeof transparent != 'undefined' && transparent == true )
+	{
+		overlay_class = 'overlay_page_active_transparent';
+	}
+
+	if( typeof width == 'undefined' )
+	{
+		width = '560px';
+	}
+	var style_height = '';
+	if( typeof height != 'undefined' && ( height > 0 || height != '' ) )
+	{
+		style_height = ';height:' + height;
+	}
+	if( jQuery( '#overlay_page' ).length > 0 )
+	{ // placeholder already exist
+		jQuery( '#overlay_page' ).html( body_html );
+		return;
+	}
+	// add placeholder for form:
+	jQuery( 'body' ).append( '<div id="screen_mask" onclick="closeModalWindow()"></div><div id="overlay_page" style="width:' + width + style_height + '"></div>' );
+	var evobar_height = jQuery( '#evo_toolbar' ).height();
+	jQuery( '#screen_mask' ).css({ top: evobar_height });
+	jQuery( '#screen_mask' ).fadeTo(1,0.5).fadeIn(200);
+	jQuery( '#overlay_page' ).html( body_html ).addClass( overlay_class );
+	jQuery( document ).on( 'click', '#close_button', function()
+		{
+			closeModalWindow();
+			return false;
+		} );
+}
+
+/**
+ * Close modal window
+ */
+function closeModalWindow( document_obj )
+{
+	if( typeof( document_obj ) == 'undefined' )
+	{
+		document_obj = window.document;
+	}
+
+	jQuery( '#overlay_page', document_obj ).hide();
+	jQuery( '.action_messages', document_obj).remove();
+	jQuery( '#server_messages', document_obj ).insertBefore( '.first_payload_block' );
+	jQuery( '#overlay_page', document_obj ).remove();
+	jQuery( '#screen_mask', document_obj ).remove();
+	return false;
+}
+
+// Close ajax popup if Escape key is pressed:
+jQuery(document).keyup(function(e)
+{
+	if( e.keyCode == 27 )
+	{
+		closeModalWindow();
+	}
+} );
+JS_CODE;
+
+	$modalwindow_js_initialized = true;
+}
+
+
+/**
+ * Echo JavaScript to edit values of column in the table list
+ *
+ * @param array Params
+ */
+function echo_editable_column_js( $params = array() )
+{
+	$params = array_merge( array(
+			'column_selector' => '', // jQuery selector of cell
+			'ajax_url'        => '', // AJAX url to update a column value
+			'options'         => array(), // Key = Value of option, Value = Title of option
+			'new_field_name'  => '', // Name of _POST variable that will be send to ajax request with new value
+			'ID_value'        => '', // jQuery to get value of ID
+			'ID_name'         => '', // ID of field in DB
+			'tooltip'         => TS_('Click to edit'),
+			'colored_cells'   => false, // Use TRUE when colors are used for background of cell
+			'print_init_tags' => true, // Use FALSE to don't print <script> tags if it is already used inside js
+			'field_type'      => 'select', // Type of the editable field: 'select', 'text'
+			'field_class'     => '', // Class of the editable field
+			'null_text'       => '', // Null text of an input field, Use TS_() to translate it
+		), $params );
+
+	// Set onblur action to 'submit' when type is 'text' in order to don't miss the selected user login from autocomplete list
+	$onblur_action = $params['field_type'] == 'text' ? 'submit' : 'cancel';
+
+	if( $params['field_type'] == 'select' )
+	{
+		$options = '';
+		foreach( $params['options'] as $option_value => $option_title )
+		{
+			$options .= '\''.$option_value.'\':\''.$option_title.'\','."\n";
+		}
+	}
+
+	if( $params['print_init_tags'] )
+	{
+?>
+<script type="text/javascript">
+jQuery( document ).ready( function()
+{
+<?php
+	}
+?>
+	jQuery( '<?php echo $params['column_selector']; ?>' ).editable( '<?php echo $params['ajax_url']; ?>',
+	{
+		data: function( value, settings )
+		{
+			value = ajax_debug_clear( value );
+			<?php if( $params['field_type'] == 'select' ) { ?>
+			var result = value.match( /rel="([^"]*)"/ );
+			return { <?php echo $options; ?>'selected' : result[1] }
+			<?php } else { ?>
+			var result = value.match( />\s*([^<]+)\s*</ );
+			return result[1] == '<?php echo $params['null_text'] ?>' ? '' : result[1];
+			<?php } ?>
+		},
+		type       : '<?php echo $params['field_type']; ?>',
+		class_name : '<?php echo $params['field_class']; ?>',
+		name       : '<?php echo $params['new_field_name']; ?>',
+		tooltip    : '<?php echo $params['tooltip']; ?>',
+		event      : 'click',
+		onblur     : '<?php echo $onblur_action; ?>',
+		callback   : function ( settings, original )
+		{
+			<?php
+			if( $params['colored_cells'] )
+			{ // Use different color for each value
+			?>
+			jQuery( this ).html( ajax_debug_clear( settings ) );
+			var link = jQuery( this ).find( 'a' );
+			jQuery( this ).css( 'background-color', link.attr( 'color' ) == 'none' ? 'transparent' : link.attr( 'color' ) );
+			link.removeAttr( 'color' );
+			<?php
+			}
+			else
+			{ // Use simple fade effect
+			?>
+			evoFadeSuccess( this );
+			<?php } ?>
+		},
+		onsubmit: function( settings, original ) {},
+		submitdata : function( value, settings )
+		{
+			return { <?php echo $params['ID_name']; ?>: <?php echo $params['ID_value']; ?> }
+		},
+		onerror : function( settings, original, xhr )
+		{
+			evoFadeFailure( original );
+			var input = jQuery( original ).find( 'input' );
+			if( input.length > 0 )
+			{
+				jQuery( original ).find( 'span.field_error' ).remove();
+				input.addClass( 'field_error' );
+				if( typeof( xhr.responseText ) != 'undefined' )
+				{
+					input.after( '<span class="note field_error">' + xhr.responseText + '</span>' );
+				}
+			}
+		}
+	} );
+<?php
+	if( $params['print_init_tags'] )
+	{
+?>
+} );
+</script>
+<?php
+	}
+}
+
+
+/**
+ * Handle fatal error in order to display info message when debug is OFF
+ */
+function evo_error_handler()
+{
+	global $evo_last_handled_error;
+
+	// Get last error
+	$error = error_get_last();
+
+	if( ! empty( $error ) && $error['type'] === E_ERROR )
+	{ // Save only last fatal error
+		$evo_last_handled_error = $error;
 	}
 }
 ?>

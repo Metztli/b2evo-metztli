@@ -11,7 +11,7 @@
  * @package evoskins
  * @subpackage pixelgreen
  *
- * @version $Id: index.main.php 4275 2013-07-17 10:52:24Z yura $
+ * @version $Id: index.main.php 6462 2014-04-14 13:28:56Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -30,6 +30,12 @@ skin_include( '_html_header.inc.php' );
 // Note: You can customize the default HTML header by copying the generic
 // /skins/_html_header.inc.php file into the current skin folder.
 // -------------------------------- END OF HEADER --------------------------------
+
+
+// ---------------------------- SITE HEADER INCLUDED HERE ----------------------------
+// If site headers are enabled, they will be included here:
+siteskin_include( '_site_body_header.inc.php' );
+// ------------------------------- END OF SITE HEADER --------------------------------
 ?>
 
 <div id="header">
@@ -119,8 +125,8 @@ skin_include( '_html_header.inc.php' );
 		<?php
 		// ------------------------- SIDEBAR INCLUDED HERE --------------------------
 		skin_include( '_sidebar.inc.php' );
-		// Note: You can customize the default BODY footer by copying the
-		// _body_footer.inc.php file into the current skin folder.
+		// Note: You can customize the sidebar by copying the
+		// _sidebar.inc.php file into the current skin folder.
 		// ----------------------------- END OF SIDEBAR -----------------------------
 		?>
 
@@ -142,6 +148,8 @@ skin_include( '_html_header.inc.php' );
 			?>
 
 			<?php
+			if( $disp != 'front' && $disp != 'download' )
+			{
 				// --------------------------------- START OF POSTS -------------------------------------
 				// Display message if no post:
 				display_if_empty();
@@ -164,10 +172,11 @@ skin_include( '_html_header.inc.php' );
 				mainlist_page_links( array(
 						'block_start' => '<p class="center"><strong>',
 						'block_end' => '</strong></p>',
-		   			'prev_text' => '&lt;&lt;',
-		   			'next_text' => '&gt;&gt;',
+						'prev_text' => '&lt;&lt;',
+						'next_text' => '&gt;&gt;',
 					) );
 				// ------------------------- END OF PREV/NEXT PAGE LINKS -------------------------
+			}
 			?>
 
 			<?php
@@ -260,6 +269,12 @@ skin_include( '_html_header.inc.php' );
 ?>
 <!-- wrap ends here -->
 </div>
+<?php
+// ---------------------------- SITE FOOTER INCLUDED HERE ----------------------------
+// If site footers are enabled, they will be included here:
+siteskin_include( '_site_body_footer.inc.php' );
+// ------------------------------- END OF SITE FOOTER --------------------------------
+?>
 
 </body>
 </html>

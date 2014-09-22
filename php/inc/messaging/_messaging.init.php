@@ -20,7 +20,7 @@
  * @author efy-maxim: Evo Factory / Maxim.
  * @author fplanque: Francois Planque.
  *
- * @version $Id: _messaging.init.php 6136 2014-03-08 07:59:48Z manuel $
+ * @version $Id: _messaging.init.php 6411 2014-04-07 15:17:33Z yura $
  */
 if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page directly.' );
 
@@ -147,16 +147,21 @@ class messaging_Module extends Module
 				break;
 			case 2: // Moderators group equals 2
 			case 3: // Trusted users group ID equals 3
-				$perm_messaging = 'write';
-				$max_new_threads = '10';
+				$perm_messaging = 'write'; // Messaging permissions
+				$max_new_threads = '10'; // Maximum number of new threads per day
 				break;
 			case 4: // Normal users group ID equals 4
 				$perm_messaging = 'write';
-				$max_new_threads = '3';
+				$max_new_threads = '5';
 				break;
+			case 5:		// Misbehaving/Suspect users (group ID 5) have permission by default:
+				$perm_messaging = 'write';
+				$max_new_threads = '1';
+				break;
+			case 6:  // Spammers/restricted Users
 			default: // Other groups
 				$perm_messaging = 'reply';
-				$max_new_threads = '5';
+				$max_new_threads = '1';
 				break;
 		}
 
@@ -318,7 +323,7 @@ class messaging_Module extends Module
 			$right_entries['messaging'] = array(
 				'text' => T_('Messages'),
 				'href' => get_dispctrl_url( 'threads' ),
-				'style' => 'padding: 3px 1ex;',
+				'class' => 'evo_messages_link',
 			);
 
 			// Count unread messages for current user
@@ -433,6 +438,9 @@ class messaging_Module extends Module
 				switch( $action )
 				{
 					case 'create': // create thread
+						// Stop a request from the blocked IP addresses or Domains
+						antispam_block_request();
+
 						// check if create new thread is allowed
 						if( check_create_thread_limit() )
 						{ // max new threads limit reached, don't allow to create new thread
@@ -518,6 +526,9 @@ class messaging_Module extends Module
 
 			// messages action
 			case 'messages':
+				// Stop a request from the blocked IP addresses or Domains
+				antispam_block_request();
+
 				if( $action == 'create' )
 				{ // create new message
 					create_new_message( $thrd_ID );

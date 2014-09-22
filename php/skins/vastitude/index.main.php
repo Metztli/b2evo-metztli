@@ -15,7 +15,7 @@
  * @package evoskins
  * @subpackage smoothe
  *
- * @version $Id: index.main.php 4275 2013-07-17 10:52:24Z yura $
+ * @version $Id: index.main.php 6462 2014-04-14 13:28:56Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -34,29 +34,15 @@ skin_include( '_html_header.inc.php' );
 // Note: You can customize the default HTML header by copying the generic
 // /skins/_html_header.inc.php file into the current skin folder.
 // -------------------------------- END OF HEADER --------------------------------
+
+
+// ---------------------------- SITE HEADER INCLUDED HERE ----------------------------
+// If site headers are enabled, they will be included here:
+siteskin_include( '_site_body_header.inc.php' );
+// ------------------------------- END OF SITE HEADER --------------------------------
 ?>
 
 
-<div id="prewrap">
-	<?php
-		// ------------------------- "Page Top" CONTAINER EMBEDDED HERE --------------------------
-		// Display container and contents:
-		skin_container( NT_('Page Top'), array(
-				// The following params will be used as defaults for widgets included in this container:
-				'block_start'         => '<div class="$wi_class$">',
-				'block_end'           => '</div>',
-				'block_display_title'	=>	false,
-				'list_start'		=>	'<ul>',
-				'list_end'		=>	'</ul>',
-				'item_start'		=>	'<li>',
-				'item_end'		=>	' &nbsp; / &nbsp; </li>',
-				'item_selected_start'	=>	'<li class="selected">',
-				'item_selected_end'	=>	' &nbsp; / &nbsp; </li>',
-				'link_selected_class'	=>	'selected',
-			) );
-		// ----------------------------- END OF "Page Top" CONTAINER -----------------------------
-	?>
-</div>
 <div id="wrap">
 <div id="bannertop">
 <div class="topicons"></div>
@@ -115,6 +101,8 @@ skin_include( '_html_header.inc.php' );
 	?>
 <div class="text">
 	<?php
+	if( $disp != 'single' )
+	{
 		// ------------------------ TITLE FOR THE CURRENT REQUEST ------------------------
 		request_title( array(
 				'title_before'=> '<h2>',
@@ -125,6 +113,7 @@ skin_include( '_html_header.inc.php' );
 				'format'      => 'htmlbody',
 			) );
 		// ----------------------------- END OF REQUEST TITLE ----------------------------
+	}
 	?>
 
 	<?php
@@ -144,6 +133,8 @@ skin_include( '_html_header.inc.php' );
 	?>
 
 	<?php
+	if( $disp != 'front' && $disp != 'download' )
+	{
 		// --------------------------------- START OF POSTS -------------------------------------
 		// Display message if no post:
 		display_if_empty();
@@ -164,12 +155,13 @@ skin_include( '_html_header.inc.php' );
 	<?php
 		// -------------------- PREV/NEXT PAGE LINKS (POST LIST MODE) --------------------
 		mainlist_page_links( array(
-		'block_start'		=>	'<p class="center">',
-		'block_end'		=>	'</p>',
-   		'prev_text'		=>	'&lt;&lt;',
-   		'next_text'		=>	'&gt;&gt;',
-		) );
+				'block_start'		=>	'<p class="center">',
+				'block_end'		=>	'</p>',
+				'prev_text'		=>	'&lt;&lt;',
+				'next_text'		=>	'&gt;&gt;',
+			) );
 		// ------------------------- END OF PREV/NEXT PAGE LINKS -------------------------
+	}
 	?>
 
 
@@ -302,6 +294,12 @@ skin_include( '_html_header.inc.php' );
 
 
 <?php
+// ---------------------------- SITE FOOTER INCLUDED HERE ----------------------------
+// If site footers are enabled, they will be included here:
+siteskin_include( '_site_body_footer.inc.php' );
+// ------------------------------- END OF SITE FOOTER --------------------------------
+
+
 // ------------------------- HTML FOOTER INCLUDED HERE --------------------------
 skin_include( '_html_footer.inc.php' );
 // Note: You can customize the default HTML footer by copying the

@@ -9,7 +9,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  */
@@ -70,6 +70,7 @@ while( mainlist_get_item() )
 			'content_mode'         => 'auto', // 'auto' will auto select depending on $disp-detail
 			'image_size'           => 'fit-400x320',
 			'display_column_forum' => true,
+			'item_link_type'       => 'permalink', // Use 'permalink' to display title of all posts as links (used especially for intro-cat posts)
 		) );
 	// ----------------------------END ITEM BLOCK  ----------------------------
 

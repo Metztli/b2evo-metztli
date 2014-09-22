@@ -20,7 +20,7 @@
  * @author efy-maxim: Evo Factory / Maxim.
  * @author fplanque: Francois Planque.
  *
- * @version $Id: _thread.form.php 6136 2014-03-08 07:59:48Z manuel $
+ * @version $Id: _thread.form.php 6479 2014-04-16 07:18:54Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -97,7 +97,10 @@ else
 
 $Form->text_input( 'thrd_title', $edited_Thread->title, $params['cols'], T_('Subject'), '', array( 'maxlength'=> 255, 'required'=>true, 'class'=>'wide_input' ) );
 
-$Form->textarea_input( 'msg_text', isset( $edited_Thread->text ) ? $edited_Thread->text : $edited_Message->text, 10, T_('Message'), array( 'cols'=>$params['cols'], 'class'=>'wide_textarea', 'required'=>true ) );
+$Form->textarea_input( 'msg_text', isset( $edited_Thread->text ) ? $edited_Thread->text : $edited_Message->text, 10, T_('Message'), array(
+		'cols' => $params['cols'],
+		'required' => true
+	) );
 
 global $thrd_recipients_array, $recipients_selected;
 if( !empty( $thrd_recipients_array ) )

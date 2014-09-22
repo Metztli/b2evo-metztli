@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
  * {@internal License choice
@@ -22,7 +22,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _skin.class.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _skin.class.php 7178 2014-07-23 08:11:33Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -97,9 +97,6 @@ class Skin extends DataObject
 	 */
 	function install()
 	{
-		// Look for containers in skin file:
-		$this->discover_containers();
-
 		// INSERT NEW SKIN INTO DB:
 		$this->dbinsert();
 	}
@@ -192,13 +189,15 @@ class Skin extends DataObject
 		 */
 		global $Blog;
 		global $admin_url, $rsc_url;
-		global $Timer;
+		global $Timer, $Session;
 
 		$timer_name = 'skin_container('.$sco_name.')';
 		$Timer->start($timer_name);
 
-		if( false )
-		{	// DEBUG:
+		$show_debug_containers = $Session->get( 'debug_containers_'.$Blog->ID ) == 1;
+
+		if( $show_debug_containers )
+		{ // DEBUG:
 			echo '<div class="debug_container">';
 			echo '<div class="debug_container_name"><span class="debug_container_action"><a href="'
 						.$admin_url.'?ctrl=widgets&amp;blog='.$Blog->ID.'">Edit</a></span>'.$sco_name.'</div>';
@@ -223,8 +222,8 @@ class Skin extends DataObject
 			}
 		}
 
-		if( false )
-		{	// DEBUG:
+		if( $show_debug_containers )
+		{ // DEBUG:
 			echo get_icon( 'pixel', 'imgtag', array( 'class' => 'clear' ) );
 			echo '</div>';
 		}
@@ -234,24 +233,34 @@ class Skin extends DataObject
 
 
 	/**
-	 * Discover containers included in skin files
+	 * Discover containers included in skin files only in the given folder
+	 *
+	 * @param string Folder name
+	 * @param array Exclude the files
+	 * @return array Files that were prepared
 	 */
-	function discover_containers()
+	function discover_containers_by_folder( $folder, $exclude_files = array() )
 	{
 		global $skins_path, $Messages;
 
-		$this->container_list = array();
-
-		if( ! $dir = @opendir($skins_path.$this->folder) )
-		{	// Skin directory not found!
-			$Messages->add( 'Cannot open skin directory.', 'error' ); // No trans
+		if( ! $dir = @opendir( $skins_path.$folder ) )
+		{ // Skin directory not found!
+			$Messages->add( T_('Cannot open skin directory.'), 'error' ); // No trans
 			return false;
 		}
 
+		// Store the file names to return
+		$files = array();
+
 		// Go through all files in the skin directory:
-		while( ( $file = readdir($dir) ) !== false )
+		while( ( $file = readdir( $dir ) ) !== false )
 		{
-			$rf_main_subpath = $this->folder.'/'.$file;
+			if( in_array( $file, $exclude_files ) )
+			{ // Skip this file
+				continue;
+			}
+
+			$rf_main_subpath = trim( $folder.'/'.$file, '/' );
 			$af_main_path = $skins_path.$rf_main_subpath;
 
 			if( !is_file( $af_main_path ) || ! preg_match( '~\.php$~', $file ) )
@@ -259,23 +268,25 @@ class Skin extends DataObject
 				continue;
 			}
 
-			if( ! is_readable($af_main_path) )
-			{	// Cannot open PHP file:
+			if( ! is_readable( $af_main_path ) )
+			{ // Cannot open PHP file:
 				$Messages->add( sprintf( T_('Cannot read skin file &laquo;%s&raquo;!'), $rf_main_subpath ), 'error' );
 				continue;
 			}
 
 			$file_contents = @file_get_contents( $af_main_path );
-			if( ! is_string($file_contents) )
-			{	// Cannot get contents:
+			if( ! is_string( $file_contents ) )
+			{ // Cannot get contents:
 				$Messages->add( sprintf( T_('Cannot read skin file &laquo;%s&raquo;!'), $rf_main_subpath ), 'error' );
 				continue;
 			}
 
+			$files[] = $files;
+
 			// DETECT if the file contains containers:
 			// if( ! preg_match_all( '~ \$Skin->container\( .*? (\' (.+?) \' )|(" (.+?) ") ~xmi', $file_contents, $matches ) )
 			if( ! preg_match_all( '~ (\$Skin->|skin_)container\( .*? ((\' (.+?) \')|(" (.+?) ")) ~xmi', $file_contents, $matches ) )
-			{	// No containers in this file, go to next:
+			{ // No containers in this file, go to next:
 				continue;
 			}
 
@@ -285,8 +296,8 @@ class Skin extends DataObject
 			$c = 0;
 			foreach( $container_list as $container )
 			{
-				if( empty($container) )
-				{	// regexp empty match -- NOT a container:
+				if( empty( $container ) )
+				{ // regexp empty match -- NOT a container:
 					continue;
 				}
 
@@ -294,7 +305,7 @@ class Skin extends DataObject
 				$c++;
 
 				if( in_array( $container, $this->container_list ) )
-				{	// we already have that one
+				{ // we already have that one
 					continue;
 				}
 
@@ -307,9 +318,26 @@ class Skin extends DataObject
 			}
 		}
 
-		// pre_dump( $this->container_list );
+		return $files;
+	}
 
-		if( empty($this->container_list) )
+
+	/**
+	 * Discover containers included in skin files
+	 */
+	function discover_containers()
+	{
+		global $Messages;
+
+		$this->container_list = array();
+
+		// Find the containers in the current skin folder
+		$skin_files = $this->discover_containers_by_folder( $this->folder );
+
+		// Find the containers in the root skins folder with excluding the files that are contained in the skin folder
+		$this->discover_containers_by_folder( '', $skin_files );
+
+		if( empty( $this->container_list ) )
 		{
 			$Messages->add( T_('No containers found in this skin!'), 'error' );
 			return false;
@@ -445,8 +473,9 @@ class Skin extends DataObject
 		global $skins_path, $skins_url;
 
 		$disp_params = array_merge( array(
-				'selected'       => false,
-				'skinshot_class' => 'skinshot',
+				'selected'        => false,
+				'skinshot_class'  => 'skinshot',
+				'skin_compatible' => true,
 			), $disp_params );
 
 		if( isset( $disp_params[ 'select_url' ] ) )
@@ -503,11 +532,22 @@ class Skin extends DataObject
 			switch( $disp_params[ 'function' ] )
 			{
 				case 'install':
-					echo '<a href="'.$disp_params[ 'function_url' ].'" title="'.T_('Install NOW!').'">';
-					echo T_('Install NOW!').'</a>';
+					// Display a link to install the skin
+					if( $disp_params[ 'skin_compatible' ] )
+					{ // If skin is compatible for current selected type
+						echo '<a href="'.$disp_params[ 'function_url' ].'" title="'.T_('Install NOW!').'">';
+						echo T_('Install NOW!').'</a>';
+					}
+					else
+					{ // Inform about skin type is wrong for current case
+						echo '<a href="'.$disp_params[ 'function_url' ].'" title="'.T_('Install NOW!').'" class="red">';
+						echo T_('Wrong Type!').'</a> ';
+						echo get_icon( 'help', 'imgtag', array( 'title' => T_('This skin does not fit the blog type you are trying to create.') ) );
+					}
 					break;
 
 				case 'select':
+					// Display a link to preview the skin
 					echo '<a href="'.$disp_params[ 'function_url' ].'" target="_blank" title="'.T_('Preview blog with this skin in a new window').'">';
 					echo T_('Preview').'</a>';
 					break;
@@ -648,10 +688,24 @@ class Skin extends DataObject
 	 */
 	function display_init()
 	{
-		// Make sure standard CSS is called ahead of custom CSS generated below:
-		// require_css( 'style.css', true );
+		// Add CSS:
+		// require_css( 'basic_styles.css', 'blog' ); // the REAL basic styles
+		// require_css( 'basic.css', 'blog' ); // Basic styles
+		// require_css( 'blog_base.css', 'blog' ); // Default styles for the blog navigation
+		// require_css( 'item_base.css', 'blog' ); // Default styles for the post CONTENT
+		// require_css( 'b2evo_base.bundle.css', 'blog' ); // Concatenation of the above
+		require_css( 'b2evo_base.bmin.css', 'blog' ); // Concatenation + Minifaction of the above
 
-		// override in specific skins...
+		// Make sure standard CSS is called ahead of custom CSS generated below:
+		require_css( 'style.css', true );
+
+		// Colorbox (a lightweight Lightbox alternative) allows to zoom on images and do slideshows with groups of images:
+		if( $this->get_setting( 'colorbox' ) )
+		{	// This can be enabled by a setting in skins where it may be relevant
+			require_js_helper( 'colorbox', 'blog' );
+		}
+
+		// override this in specific skins...
 	}
 
 
@@ -811,6 +865,7 @@ class Skin extends DataObject
 															.'<legend $title_attribs$>$fieldset_title$</legend>'."\n",
 					'fieldset_end' => '</fieldset>'."\n",
 					'fieldstart' => '<span class="block" $ID$>',
+					'labelclass' => '',
 					'labelstart' => '',
 					'labelend' => "\n",
 					'labelempty' => '',
@@ -822,6 +877,7 @@ class Skin extends DataObject
 					'buttonsend' => "\n",
 					'customstart' => '',
 					'customend' => "\n",
+					'note_format' => ' <span class="notes">%s</span>',
 					'formend' => '',
 				);
 		}

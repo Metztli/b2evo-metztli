@@ -40,6 +40,8 @@ function wpxml_import()
 
 	// The import type ( replace | append )
 	$import_type = param( 'import_type', 'string', 'replace' );
+	// Should we delete files on 'replace' mode?
+	$delete_files = param( 'delete_files', 'integer', 0 );
 
 	$XML_file_path = get_param( 'wp_file' );
 	$XML_file_name = basename( $XML_file_path );
@@ -107,7 +109,7 @@ function wpxml_import()
 	$DB->begin();
 
 	if( $import_type == 'replace' )
-	{	// Remove data from selected blog
+	{ // Remove data from selected blog
 
 		// Get existing categories
 		$SQL = new SQL();
@@ -116,7 +118,7 @@ function wpxml_import()
 		$SQL->WHERE( 'cat_blog_ID = '.$DB->quote( $wp_blog_ID ) );
 		$old_categories = $DB->get_col( $SQL->get() );
 		if( !empty( $old_categories ) )
-		{	// Get existing posts
+		{ // Get existing posts
 			$SQL = new SQL();
 			$SQL->SELECT( 'post_ID' );
 			$SQL->FROM( 'T_items__item' );
@@ -131,9 +133,9 @@ function wpxml_import()
 			$SQL = new SQL();
 			$SQL->SELECT( 'comment_ID' );
 			$SQL->FROM( 'T_comments' );
-			$SQL->WHERE( 'comment_post_ID IN ( '.implode( ', ', $old_posts ).' )' );
+			$SQL->WHERE( 'comment_item_ID IN ( '.implode( ', ', $old_posts ).' )' );
 			$old_comments = $DB->get_col( $SQL->get() );
-			$DB->query( 'DELETE FROM T_comments WHERE comment_post_ID IN ( '.implode( ', ', $old_posts ).' )' );
+			$DB->query( 'DELETE FROM T_comments WHERE comment_item_ID IN ( '.implode( ', ', $old_posts ).' )' );
 			if( !empty( $old_comments ) )
 			{
 				$DB->query( 'DELETE FROM T_comments__votes WHERE cmvt_cmt_ID IN ( '.implode( ', ', $old_comments ).' )' );
@@ -148,14 +150,24 @@ function wpxml_import()
 		{
 			$DB->query( 'DELETE FROM T_items__item WHERE post_main_cat_ID IN ( '.implode( ', ', $old_categories ).' )' );
 			if( !empty( $old_posts ) )
-			{	// Remove the post's data from related tables
+			{ // Remove the post's data from related tables
+				if( $delete_files )
+				{ // Get the file IDs that should be deleted from hard drive
+					$SQL = new SQL();
+					$SQL->SELECT( 'DISTINCT link_file_ID' );
+					$SQL->FROM( 'T_links' );
+					$SQL->WHERE( 'link_itm_ID IN ( '.implode( ', ', $old_posts ).' )' );
+					$deleted_file_IDs = $DB->get_col( $SQL->get() );
+				}
 				$DB->query( 'DELETE FROM T_items__item_settings WHERE iset_item_ID IN ( '.implode( ', ', $old_posts ).' )' );
 				$DB->query( 'DELETE FROM T_items__prerendering WHERE itpr_itm_ID IN ( '.implode( ', ', $old_posts ).' )' );
 				$DB->query( 'DELETE FROM T_items__subscriptions WHERE isub_item_ID IN ( '.implode( ', ', $old_posts ).' )' );
 				$DB->query( 'DELETE FROM T_items__version WHERE iver_itm_ID IN ( '.implode( ', ', $old_posts ).' )' );
 				$DB->query( 'DELETE FROM T_postcats WHERE postcat_post_ID IN ( '.implode( ', ', $old_posts ).' )' );
 				$DB->query( 'DELETE FROM T_slug WHERE slug_itm_ID IN ( '.implode( ', ', $old_posts ).' )' );
-				$DB->query( 'DELETE FROM T_links WHERE link_itm_ID IN ( '.implode( ', ', $old_posts ).' )' );
+				$DB->query( 'DELETE l, lv FROM T_links AS l
+											 LEFT JOIN T_links__vote AS lv ON lv.lvot_link_ID = l.link_ID
+											WHERE l.link_itm_ID IN ( '.implode( ', ', $old_posts ).' )' );
 			}
 		}
 		echo T_('OK').'<br />';
@@ -168,7 +180,7 @@ function wpxml_import()
 		echo T_('Removing the tags that are no longer used... ');
 		evo_flush();
 		if( !empty( $old_posts ) )
-		{	// Remove the tags
+		{ // Remove the tags
 
 			// Get tags from selected blog
 			$SQL = new SQL();
@@ -196,7 +208,49 @@ function wpxml_import()
 			// Remove the links of tags with posts
 			$DB->query( 'DELETE FROM T_items__itemtag WHERE itag_itm_ID IN ( '.implode( ', ', $old_posts ).' )' );
 		}
-		echo T_('OK').'<br /><br />';
+		echo T_('OK').'<br />';
+
+		if( $delete_files )
+		{ // Delete the files
+			echo T_('Removing the files... ');
+
+			if( ! empty( $deleted_file_IDs ) )
+			{
+				// Commit the DB changes before files deleting
+				$DB->commit();
+
+				// Get the deleted file IDs that are linked to other objects
+				$SQL = new SQL();
+				$SQL->SELECT( 'DISTINCT link_file_ID' );
+				$SQL->FROM( 'T_links' );
+				$SQL->WHERE( 'link_file_ID IN ( '.implode( ', ', $deleted_file_IDs ).' )' );
+				$linked_file_IDs = $DB->get_col( $SQL->get() );
+				// We can delete only the files that are NOT linked to other objects
+				$deleted_file_IDs = array_diff( $deleted_file_IDs, $linked_file_IDs );
+
+				$FileCache = & get_FileCache();
+				foreach( $deleted_file_IDs as $deleted_file_ID )
+				{
+					if( ! ( $deleted_File = & $FileCache->get_by_ID( $deleted_file_ID, false, false ) ) )
+					{ // Incorrect file ID
+						echo '<p class="red">'.sprintf( T_('No file #%s found in DB. It cannot be deleted.'), $deleted_file_ID ).'</p>';
+					}
+					if( ! $deleted_File->unlink() )
+					{ // No permission to delete file
+						echo '<p class="red">'.sprintf( T_('Could not delete the file &laquo;%s&raquo;.'), $deleted_File->get_full_path() ).'</p>';
+					}
+					// Clear cache to save memory
+					$FileCache->clear();
+				}
+
+				// Start new transaction for the data inserting
+				$DB->begin();
+			}
+
+			echo T_('OK').'<br />';
+		}
+
+		echo '<br />';
 	}
 
 
@@ -363,7 +417,8 @@ function wpxml_import()
 				}
 
 				// Get FileRoot by type and ID
-				$FileRoot = new FileRoot( $file['file_root_type'], $file_root_ID );
+				$FileRootCache = & get_FileRootCache();
+				$FileRoot = & $FileRootCache->get_by_type_and_ID( $file['file_root_type'], $file_root_ID );
 				if( is_dir( $attached_files_path.$subfolder_path.'/'.$file['zip_path'].$file['file_path'] ) )
 				{ // Folder
 					$file_destination_path = $FileRoot->ads_path;
@@ -414,6 +469,7 @@ function wpxml_import()
 
 	/* Import categories */
 	$category_default = 0;
+	load_class( 'chapters/model/_chapter.class.php', 'Chapter' );
 
 	// Get existing categories
 	$SQL = new SQL();
@@ -427,7 +483,6 @@ function wpxml_import()
 		echo T_('Importing the categories... ');
 		evo_flush();
 
-		load_class( 'chapters/model/_chapter.class.php', 'Chapter' );
 		load_funcs( 'locales/_charset.funcs.php' );
 
 		$categories_count = 0;
@@ -455,16 +510,25 @@ function wpxml_import()
 			}
 		}
 
-		if( empty( $category_default ) )
-		{	// Set first category as default
-			foreach( $categories as $category_name => $category_ID )
-			{
-				$category_default = $category_ID;
-				break;
-			}
-		}
-
 		echo sprintf( T_('%d records'), $categories_count ).'<br />';
+	}
+
+	if( empty( $category_default ) )
+	{ // No categories in XML file, Try to use first category(from DB) as default
+		foreach( $categories as $category_name => $category_ID )
+		{
+			$category_default = $category_ID;
+			break;
+		}
+	}
+
+	if( empty( $category_default ) )
+	{ // If category is still not defined then we should create default, because blog must has at least one category
+		$new_Chapter = new Chapter( NULL, $wp_blog_ID );
+		$new_Chapter->set( 'name', T_('Uncategorized') );
+		$new_Chapter->set( 'urlname', $wp_Blog->get( 'urlname' ).'-main' );
+		$new_Chapter->dbinsert();
+		$category_default = $new_Chapter->ID;
 	}
 
 	/* Import tags */
@@ -507,13 +571,19 @@ function wpxml_import()
 
 		// Set status's links between WP and b2evo names
 		$post_statuses = array(
+			// WP statuses => Their analogs in b2evolution
 			'publish'    => 'published',
-			'pending'    => 'deprecated',
+			'pending'    => 'review',
+			'draft'      => 'draft',
+			'trash'      => 'deprecated',
+			// These statuses don't exist in WP, but we handle them if they will appear once
+			'community'  => 'community',
 			'deprecated' => 'deprecated',
 			'protected'  => 'protected',
 			'private'    => 'private',
-			'redirected' => 'redirected',
-			'draft'      => 'draft',
+			'review'     => 'review',
+			'redirected' => 'redirected'
+			// All other unknown statuses will be converted to 'review'
 		);
 
 		// Get post types
@@ -531,10 +601,10 @@ function wpxml_import()
 			$last_edit_user_ID = isset( $authors[ (string) $post['post_lastedit_user'] ] ) ? $authors[ (string) $post['post_lastedit_user'] ] : $author_ID;
 
 			$post_main_cat_ID = $category_default;
-			$post_extra_cat_IDs = array( $post_main_cat_ID );
+			$post_extra_cat_IDs = array();
 			$post_tags = array();
 			if( !empty( $post['terms'] ) )
-			{	// Set categories and tags
+			{ // Set categories and tags
 				foreach( $post['terms'] as $term )
 				{
 					switch( $term['domain'] )
@@ -543,19 +613,17 @@ function wpxml_import()
 							if( isset( $categories[ (string) $term['slug'] ] ) )
 							{
 								if( $post_main_cat_ID == $category_default )
-								{	// Set main category
+								{ // Set main category
 									$post_main_cat_ID = $categories[ (string) $term['slug'] ];
 								}
-								else
-								{	// Set extra categories
-									$post_extra_cat_IDs[] = $categories[ (string) $term['slug'] ];
-								}
+								// Set extra categories
+								$post_extra_cat_IDs[] = $categories[ (string) $term['slug'] ];
 							}
 							break;
 
 						case 'post_tag':
 							if( isset( $tags[ (string) $term['slug'] ] ) )
-							{	// Set tag
+							{ // Set tag
 								$post_tags[] = $term['slug'];
 							}
 							break;
@@ -581,7 +649,7 @@ function wpxml_import()
 			$Item->set( 'datemodified', !empty( $post['post_datemodified'] ) ? $post['post_datemodified'] : $post['post_date'] );
 			$Item->set( 'urltitle', !empty( $post['post_urltitle'] ) ? $post['post_urltitle'] : $post['post_title'] );
 			$Item->set( 'url', $post['post_url'] );
-			$Item->set( 'status', isset( $post_statuses[ (string) $post['status'] ] ) ? $post_statuses[ (string) $post['status'] ] : 'draft' );
+			$Item->set( 'status', isset( $post_statuses[ (string) $post['status'] ] ) ? $post_statuses[ (string) $post['status'] ] : 'review' );
 			// If 'comment_status' has the unappropriate value set it to 'open'
 			$Item->set( 'comment_status', ( in_array( $post['comment_status'], array( 'open', 'closed', 'disabled' ) ) ? $post['comment_status'] : 'open' ) );
 			$Item->set( 'ptyp_ID', $post_type_ID );
@@ -601,7 +669,6 @@ function wpxml_import()
 			$Item->set( 'excerpt_autogenerated', $post['post_excerpt_autogenerated'] );
 			$Item->set( 'titletag', $post['post_titletag'] );
 			$Item->set( 'notifications_status', empty( $post['post_notifications_status'] ) ? 'noreq' : $post['post_notifications_status'] );
-			$Item->set( 'views', $post['post_views'] );
 			$Item->set( 'renderers', array( $post['post_renderers'] ) );
 			$Item->set( 'priority', $post['post_priority'] );
 			$Item->set( 'featured', $post['post_featured'] );
@@ -682,10 +749,10 @@ function wpxml_import()
 
 			foreach( $comments as $comment )
 			{
-				$comment_author_ID = 0;
+				$comment_author_user_ID = 0;
 				if( !empty( $comment['comment_user_id'] ) && isset( $authors_IDs[ (string) $comment['comment_user_id'] ] ) )
 				{	// Author ID
-					$comment_author_ID = $authors_IDs[ (string) $comment['comment_user_id'] ];
+					$comment_author_user_ID = $authors_IDs[ (string) $comment['comment_user_id'] ];
 				}
 
 				$comment_parent_ID = 0;
@@ -705,16 +772,15 @@ function wpxml_import()
 				}
 
 				$Comment = new Comment();
-				$Comment->item_ID = $post_ID;
-				$Comment->set( 'post_ID', $post_ID );
+				$Comment->set( 'item_ID', $post_ID );
 				if( !empty( $comment_parent_ID ) )
 				{
 					$Comment->set( 'in_reply_to_cmt_ID', $comment_parent_ID );
 				}
 				$Comment->set( 'date', $comment['comment_date'] );
-				if( !empty( $comment_author_ID ) )
+				if( !empty( $comment_author_user_ID ) )
 				{
-					$Comment->set( 'author_ID', $comment_author_ID );
+					$Comment->set( 'author_user_ID', $comment_author_user_ID );
 				}
 				$Comment->set( 'author', evo_substr( $comment['comment_author'], 0, 100 ) );
 				$Comment->set( 'author_IP', $comment['comment_author_IP'] );
@@ -753,6 +819,8 @@ function wpxml_import()
 		echo sprintf( T_('%d records'), $comments_count ).'<br />';
 	}
 
+	echo '<p>'.T_('Import complete.').'</p>';
+
 	$DB->commit();
 }
 
@@ -788,6 +856,19 @@ function wpxml_parser( $file )
 	$base_url = $xml->xpath( '/rss/channel/wp:base_site_url' );
 	$base_url = (string) trim( $base_url[0] );
 
+	// Check language
+	global $evo_charset, $xml_import_convert_to_latin;
+	$language = $xml->xpath( '/rss/channel/language' );
+	$language = (string) trim( $language[0] );
+	if( $evo_charset != 'utf-8' && ( strpos( $language, 'utf8' ) !== false ) )
+	{ // We should convert the text values from utf8 to latin1
+		$xml_import_convert_to_latin = true;
+	}
+	else
+	{ // Don't convert, it is correct encoding
+		$xml_import_convert_to_latin = false;
+	}
+
 	$namespaces = $xml->getDocNamespaces();
 	if( !isset( $namespaces['wp'] ) )
 	{
@@ -812,13 +893,13 @@ function wpxml_parser( $file )
 			'author_id'                   => (int) $a->author_id,
 			'author_login'                => $login,
 			'author_email'                => (string) $a->author_email,
-			'author_display_name'         => (string) $a->author_display_name,
-			'author_first_name'           => (string) $a->author_first_name,
-			'author_last_name'            => (string) $a->author_last_name,
+			'author_display_name'         => wpxml_convert_value( $a->author_display_name ),
+			'author_first_name'           => wpxml_convert_value( $a->author_first_name ),
+			'author_last_name'            => wpxml_convert_value( $a->author_last_name ),
 			'author_pass'                 => (string) $ae->author_pass,
 			'author_group'                => (string) $ae->author_group,
 			'author_status'               => (string) $ae->author_status,
-			'author_nickname'             => (string) $ae->author_nickname,
+			'author_nickname'             => wpxml_convert_value( $ae->author_nickname ),
 			'author_url'                  => (string) $ae->author_url,
 			'author_level'                => (int) $ae->author_level,
 			'author_locale'               => (string) $ae->author_locale,
@@ -847,9 +928,9 @@ function wpxml_parser( $file )
 			'file_root_type' => (string) $t->file_root_type,
 			'file_root_ID'   => (int) $t->file_root_ID,
 			'file_path'      => (string) $t->file_path,
-			'file_title'     => (string) $t->file_title,
-			'file_alt'       => (string) $t->file_alt,
-			'file_desc'      => (string) $t->file_desc,
+			'file_title'     => wpxml_convert_value( $t->file_title ),
+			'file_alt'       => wpxml_convert_value( $t->file_alt ),
+			'file_desc'      => wpxml_convert_value( $t->file_desc ),
 			'zip_path'       => (string) $t->zip_path,
 		);
 	}
@@ -860,10 +941,10 @@ function wpxml_parser( $file )
 		$t = $term_arr->children( $namespaces['wp'] );
 		$categories[] = array(
 			'term_id'              => (int) $t->term_id,
-			'category_nicename'    => (string) $t->category_nicename,
+			'category_nicename'    => wpxml_convert_value( $t->category_nicename ),
 			'category_parent'      => (string) $t->category_parent,
-			'cat_name'             => (string) $t->cat_name,
-			'category_description' => (string) $t->category_description
+			'cat_name'             => wpxml_convert_value( $t->cat_name ),
+			'category_description' => wpxml_convert_value( $t->category_description )
 		);
 	}
 
@@ -874,8 +955,8 @@ function wpxml_parser( $file )
 		$tags[] = array(
 			'term_id'         => (int) $t->term_id,
 			'tag_slug'        => (string) $t->tag_slug,
-			'tag_name'        => (string) $t->tag_name,
-			'tag_description' => (string) $t->tag_description
+			'tag_name'        => wpxml_convert_value( $t->tag_name ),
+			'tag_description' => wpxml_convert_value( $t->tag_description )
 		);
 	}
 
@@ -888,8 +969,8 @@ function wpxml_parser( $file )
 			'term_taxonomy'    => (string) $t->term_taxonomy,
 			'slug'             => (string) $t->term_slug,
 			'term_parent'      => (string) $t->term_parent,
-			'term_name'        => (string) $t->term_name,
-			'term_description' => (string) $t->term_description
+			'term_name'        => wpxml_convert_value( $t->term_name ),
+			'term_description' => wpxml_convert_value( $t->term_description )
 		);
 	}
 
@@ -897,7 +978,7 @@ function wpxml_parser( $file )
 	foreach( $xml->channel->item as $item )
 	{
 		$post = array(
-			'post_title' => (string) $item->title,
+			'post_title' => wpxml_convert_value( $item->title ),
 			'guid'       => (string) $item->guid,
 		);
 
@@ -906,8 +987,8 @@ function wpxml_parser( $file )
 
 		$content = $item->children( 'http://purl.org/rss/1.0/modules/content/' );
 		$excerpt = $item->children( $namespaces['excerpt'] );
-		$post['post_content'] = (string) $content->encoded;
-		$post['post_excerpt'] = (string) $excerpt->encoded;
+		$post['post_content'] = wpxml_convert_value( $content->encoded );
+		$post['post_excerpt'] = wpxml_convert_value( $excerpt->encoded );
 
 		$wp = $item->children( $namespaces['wp'] );
 		$evo = $item->children( $namespaces['evo'] );
@@ -936,7 +1017,6 @@ function wpxml_parser( $file )
 		$post['post_titletag']      = (string) $evo->post_titletag;
 		$post['post_url']           = (string) $evo->post_url;
 		$post['post_notifications_status'] = (string) $evo->post_notifications_status;
-		$post['post_views']         = (int) $evo->post_views;
 		$post['post_renderers']     = (string) $evo->post_renderers;
 		$post['post_priority']      = (int) $evo->post_priority;
 		$post['post_featured']      = (int) $evo->post_featured;
@@ -958,7 +1038,7 @@ function wpxml_parser( $file )
 			{
 				$post['terms'][] = array(
 					'name'   => (string) $c,
-					'slug'   => (string) $att['nicename'],
+					'slug'   => wpxml_convert_value( $att['nicename'] ),
 					'domain' => (string) $att['domain']
 				);
 			}
@@ -968,7 +1048,7 @@ function wpxml_parser( $file )
 		{
 			$post['postmeta'][] = array(
 				'key'   => (string) $meta->meta_key,
-				'value' => (string) $meta->meta_value
+				'value' => wpxml_convert_value( $meta->meta_value )
 			);
 		}
 
@@ -983,20 +1063,20 @@ function wpxml_parser( $file )
 				{
 					$meta[] = array(
 						'key'   => (string) $m->meta_key,
-						'value' => (string) $m->meta_value
+						'value' => wpxml_convert_value( $m->meta_value )
 					);
 				}
 			}
 
 			$post['comments'][] = array(
 				'comment_id'           => (int) $comment->comment_id,
-				'comment_author'       => (string) $comment->comment_author,
+				'comment_author'       => wpxml_convert_value( $comment->comment_author ),
 				'comment_author_email' => (string) $comment->comment_author_email,
 				'comment_author_IP'    => (string) $comment->comment_author_IP,
 				'comment_author_url'   => (string) $comment->comment_author_url,
 				'comment_date'         => (string) $comment->comment_date,
 				'comment_date_gmt'     => (string) $comment->comment_date_gmt,
-				'comment_content'      => (string) $comment->comment_content,
+				'comment_content'      => wpxml_convert_value( $comment->comment_content ),
 				'comment_approved'     => (string) $comment->comment_approved,
 				'comment_type'         => (string) $comment->comment_type,
 				'comment_parent'       => (string) $comment->comment_parent,
@@ -1242,6 +1322,12 @@ function wpxml_get_import_files()
 		) );
 
 	$import_files = array();
+
+	if( empty( $files ) )
+	{ // No access to the import folder OR it is empty
+		return $import_files;
+	}
+
 	foreach( $files as $file )
 	{
 		$file_paths = array();
@@ -1252,7 +1338,7 @@ function wpxml_get_import_files()
 			{
 				if( $key == 'b2evolution_export_files' && is_array( $sub_file ) )
 				{ // Probably it is folder with the attached files
-					$file_type = T_('attached files');
+					$file_type = T_('Complete export (text+attachments)');
 				}
 				elseif( is_string( $sub_file ) && preg_match( '/\.(xml|txt)$/i', $sub_file ) )
 				{ // Probably it is a file with import data
@@ -1271,7 +1357,7 @@ function wpxml_get_import_files()
 			{ // This file can be a file with import data
 				if( empty( $file_type ) )
 				{ // Set type from file extension
-					$file_type = $file_matches[1] == 'zip' ? T_('archive') : T_('single');
+					$file_type = $file_matches[1] == 'zip' ? T_('Compressed Archive') : T_('Basic export (text only)');
 				}
 				$import_files[] = array(
 						'path' => $file_path,
@@ -1282,6 +1368,34 @@ function wpxml_get_import_files()
 	}
 
 	return $import_files;
+}
+
+
+/**
+ * Convert string value to normal encoding
+ *
+ * @param string Value
+ * @return string A converted value
+ */
+function wpxml_convert_value( $value )
+{
+	global $xml_import_convert_to_latin;
+
+	$value = (string) $value;
+
+	if( $xml_import_convert_to_latin )
+	{ // We should convert a value from utf8 to latin1
+		if( function_exists( 'iconv' ) )
+		{ // Convert by iconv extenssion
+			$value = iconv( 'utf-8', 'iso-8859-1', $value );
+		}
+		elseif( function_exists( 'mb_convert_encoding' ) )
+		{ // Convert by mb extenssion
+			$value = mb_convert_encoding( $value, 'iso-8859-1', 'utf-8' );
+		}
+	}
+
+	return $value;
 }
 
 ?>

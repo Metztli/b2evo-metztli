@@ -5,7 +5,7 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
@@ -15,7 +15,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author evfy-asimo: Attila Simo.
  *
- * @version $Id: _slug_list.view.php 4829 2013-09-20 17:53:03Z manuel $
+ * @version $Id: _slug_list.view.php 6286 2014-03-21 08:37:59Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -52,7 +52,7 @@ if( $filter_item_ID = get_param( 'slug_item_ID' ) )
 // Create result set:
 $Results = new Results( $SQL->get(), 'slug_', 'A' );
 
-$Results->title = T_('Slugs').' ('.$Results->total_rows.')' . get_manual_link('slugs-list');
+$Results->title = T_('Slugs').' ('.$Results->get_total_rows().')' . get_manual_link('slugs-list');
 $Results->Cache = get_SlugCache();
 
 /**

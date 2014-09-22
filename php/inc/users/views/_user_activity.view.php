@@ -4,7 +4,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
  *
@@ -40,17 +40,7 @@ memorize_param( 'user_ID', 'integer', 0, $user_ID );
 
 // ------------------- PREV/NEXT USER LINKS -------------------
 user_prevnext_links( array(
-		'block_start'  => '<table class="prevnext_user"><tr>',
-		'prev_start'   => '<td width="33%">',
-		'prev_end'     => '</td>',
-		'prev_no_user' => '<td width="33%">&nbsp;</td>',
-		'back_start'   => '<td width="33%" class="back_users_list">',
-		'back_end'     => '</td>',
-		'next_start'   => '<td width="33%" class="right">',
-		'next_end'     => '</td>',
-		'next_no_user' => '<td width="33%">&nbsp;</td>',
-		'block_end'    => '</tr></table>',
-		'user_tab'     => 'activity'
+		'user_tab' => 'activity'
 	) );
 // ------------- END OF PREV/NEXT USER LINKS -------------------
 
@@ -73,7 +63,7 @@ user_reports_results_block( array(
 evo_flush();
 
 /**** Blogs owned by the user ****/
-blogs_results_block( array(
+blogs_user_results_block( array(
 		'edited_User'       => $edited_User,
 	) );
 evo_flush();

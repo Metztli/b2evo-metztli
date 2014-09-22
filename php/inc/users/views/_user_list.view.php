@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -24,7 +24,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE
  *
- * @version $Id: _user_list.view.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _user_list.view.php 6411 2014-04-07 15:17:33Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -462,10 +462,10 @@ $UserList->filter_area = array(
 $UserList->display( $display_params );
 
 
-if( $current_User->check_perm( 'users', 'edit' ) && $UserList->result_num_rows > 0 )
-{	// Newsletter button
+if( $current_User->check_perm( 'emails', 'edit' ) && $UserList->result_num_rows > 0 )
+{ // Newsletter button
 	echo '<p class="center">';
-	echo '<input type="button" value="'.T_('Send newsletter to the current selection').'" onclick="location.href=\''.$admin_url.'?ctrl=newsletter\'" />';
+	echo '<input type="button" value="'.T_('Send newsletter to the current selection').'" onclick="location.href=\''.$admin_url.'?ctrl=campaigns&amp;action=users&amp;'.url_crumb( 'campaign' ).'\'" class="btn btn-default" />';
 	echo '</p>';
 }
 

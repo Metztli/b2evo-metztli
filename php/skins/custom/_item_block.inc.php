@@ -7,7 +7,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  */
@@ -62,8 +62,6 @@ echo '<div id="styled_content_block">'; // Beginning of post display
 
 		$Item->wordcount();
 		echo ' '.T_('words');
-		// echo ', ';
-		// $Item->views();
 
 		$Item->locale_flag( array(
 				'before'    => ' &nbsp; ',

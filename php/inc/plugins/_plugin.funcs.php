@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -29,7 +29,7 @@
  * @author fplanque: Francois PLANQUE
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: _plugin.funcs.php 5167 2013-11-13 07:36:23Z attila $
+ * @version $Id: _plugin.funcs.php 6225 2014-03-16 10:01:05Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -153,7 +153,7 @@ function autoform_display_field( $parname, $parmeta, & $Form, $set_type, $Obj, $
 				if( ! isset($parmeta['value']) )
 				{
 					$parmeta['value'] = '<div class="error">HTML layout usage:<pre>'.
-							htmlentities("'layout' => 'html',\n'value' => '<em>My HTML code</em>',").'</pre></div>';
+							evo_htmlentities("'layout' => 'html',\n'value' => '<em>My HTML code</em>',").'</pre></div>';
 				}
 				echo $parmeta['value'];
 				break;

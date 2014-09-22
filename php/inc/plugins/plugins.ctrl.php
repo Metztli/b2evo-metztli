@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -29,7 +29,7 @@
  * @author fplanque: Francois PLANQUE.
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: plugins.ctrl.php 6041 2014-02-26 10:40:51Z attila $
+ * @version $Id: plugins.ctrl.php 6411 2014-04-07 15:17:33Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -841,7 +841,7 @@ $AdminUI->breadcrumbpath_add( T_('System'), '?ctrl=system',
 		T_('Global settings are shared between all blogs; see Blog settings for more granular settings.') );
 $AdminUI->breadcrumbpath_add( T_('Plugin configuration'), '?ctrl=plugins' );
 
-init_plugins_js();
+init_plugins_js( 'rsc_url', $AdminUI->get_template( 'tooltip_plugin' ) );
 
 // Display <html><head>...</head> section! (Note: should be done early if actions do not redirect)
 $AdminUI->disp_html_head();

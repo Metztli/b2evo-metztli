@@ -5,7 +5,7 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2004-2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
@@ -22,7 +22,7 @@
  * @author blueyed: Daniel HAHLER
  * @author fplanque: Francois PLANQUE
  *
- * @version $Id: _blog_main.inc.php 5479 2013-12-18 07:53:22Z attila $
+ * @version $Id: _blog_main.inc.php 6653 2014-05-12 05:51:57Z yura $
  */
 if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page directly.' );
 
@@ -64,14 +64,28 @@ $BlogCache = & get_BlogCache();
 $Blog = & $BlogCache->get_by_ID( $blog, false, false );
 if( empty( $Blog ) )
 {
-	require $skins_path.'_404_blog_not_found.main.php'; // error & exit
+	require $siteskins_path.'_404_blog_not_found.main.php'; // error & exit
 	// EXIT.
 }
 
 
+// Show/Hide the debug containers:
+$debug_containers = param( 'debug_containers', 'string' );
+if( $debug_containers == 'show' )
+{
+	$Session->set( 'debug_containers_'.$blog, 1 );
+}
+elseif( $debug_containers == 'hide' )
+{
+	$Session->delete( 'debug_containers_'.$blog );
+}
+
+
 // Init $disp
-param( 'disp', '/^[a-z0-9\-_]+$/', 'posts', true );
+$default_disp = '-'; // '-' means we have no explicit disp request yet... this may change with extraptah info or by detecting front page later
+param( 'disp', '/^[a-z0-9\-_]+$/', $default_disp, true );
 $disp_detail = '';
+$is_front = false;	// So far we have not detected that we are displaying the front page
 
 
 /*
@@ -91,16 +105,16 @@ locale_activate( $Blog->get('locale') );
 // Re-Init charset handling, in case current_charset has changed:
 if( init_charsets( $current_charset ) )
 {
-  // Reload Blog(s) (for encoding of name, tagline etc):
-  $BlogCache->clear();
+	// Reload Blog(s) (for encoding of name, tagline etc):
+	$BlogCache->clear();
 
-  $Blog = & $BlogCache->get_by_ID( $blog );
-  if( is_logged_in() )
-  { // We also need to reload the current User with the new final charset
-  	$UserCache = & get_UserCache();
-	$UserCache->clear();
-	$current_User = & $UserCache->get_by_ID( $current_User->ID );
-  }
+	$Blog = & $BlogCache->get_by_ID( $blog );
+	if( is_logged_in() )
+	{ // We also need to reload the current User with the new final charset
+		$UserCache = & get_UserCache();
+		$UserCache->clear();
+		$current_User = & $UserCache->get_by_ID( $current_User->ID );
+	}
 }
 
 
@@ -185,6 +199,7 @@ if( $resolve_extra_path )
 				{ // use blog default
 					$posts = $Blog->get_setting( 'posts_per_page' );
 				}
+				$disp = 'posts';
 			}
 			else
 			{
@@ -204,6 +219,7 @@ if( $resolve_extra_path )
 					{ // use blog default
 						$posts = $Blog->get_setting( 'posts_per_page' );
 					}
+					$disp = 'posts';
 				}
 				elseif( ( $tags_dash_fix && $last_char == '-' && $last_len == 40 ) || $last_char != '/' )
 				{	// NO ENDING SLASH or ends with a dash, is 40 chars long and $tags_dash_fix is true
@@ -265,6 +281,7 @@ if( $resolve_extra_path )
 								{ // We consider this a week number
 									$w = substr( $path_elements[$i], 1, 2 );
 								}
+								$disp = 'posts';
 							}
 							else
 							{	// We did not get a number/year...
@@ -324,11 +341,6 @@ param( 'preview', 'integer', 0, true );         // Is this preview ?
 param( 'stats', 'integer', 0 );									// Deprecated but might still be used by spambots
 
 
-
-// Front page detection & selection should probably occur here.
-
-
-
 /*
  * ____________________________ Get specific Item if requested ____________________________
  */
@@ -344,18 +356,30 @@ if( !empty($p) || !empty($title) )
 	else
 	{	// Get from post title:
 		$orig_title = $title;
+
+		// Remove .html or .htm extension:
+		$title = preg_replace( '/\.(html|htm)$/', '', $title );
+
 		// Convert all special chars to -
 		$title = preg_replace( '/[^A-Za-z0-9_]/', '-', $title );
+
+		// Search item by title:
 		$Item = & $ItemCache->get_by_urltitle( $title, false, false );
 
 		if( ( !empty( $Item ) ) && ( $Item !== false ) && (! $Item->is_part_of_blog( $blog ) ) )
 		{ // We have found an Item object, but it doesn't belong to the current blog!
+			// Check if we want to redirect moved posts:
+			if( $Settings->get( 'redirect_moved_posts' ) )
+			{ // Redirect to the item current permanent url
+				header_redirect( $Item->get_permanent_url(), 301 );
+				// already exited
+			}
 			unset($Item);
 		}
 
 		if( empty($Item) && substr($title, -1) == '-' )
-		{ // Try lookup by removing last invalid char, which might have been e.g. ">"
-			$Item = $ItemCache->get_by_urltitle(substr($title, 0, -1), false, false);
+		{ // Try lookup by removing last invalid chars, which might have been e.g. > | "> | , | ,. | ">?!
+			$Item = $ItemCache->get_by_urltitle( preg_replace( '/\-+$/', '', $title ), false, false );
 		}
 	}
 	if( empty( $Item ) )
@@ -412,27 +436,61 @@ if( !empty($p) || !empty($title) )
 			}
 		}
 
-/*	fp> The following is alternative code for filtering out index.php or blog1.php but this should not be needed
-				since I have re-enabled (a new version of) $pagenow removal earlier in this file.
-		if( ! $title_fallback && $orig_title == $pagenow )
-		{	// We are actually searching for something named after the PHP filename!
-			// Example: blog1.php
-			// Consider this as a request for the homepage:
-			// pre_dump( '', $title, $orig_title, $pagenow, $disp );
-			// Already set: $disp = 'posts';
-			$title_fallback = true;
-			$title = NULL;
-		}
-*/
-
 		if( ! $title_fallback )
 		{	// We were not able to fallback to anything meaningful:
 			$disp = '404';
 			$disp_detail = '404-post_not_found';
+			$requested_404_title = $title;
 		}
 	}
 }
 
+
+// Check if a forced skin has been requested (used by mobile skin switcher widget):
+param( 'force_skin', 'string', '' );
+if( ! empty( $force_skin ) )
+{ // Set the forced skin from request
+	if( $force_skin == 'auto' )
+	{ // Delete the forced skin from Session to use default skin
+		$Session->delete( 'force_skin' );
+	}
+	else
+	{ // Save the forced skin in Session
+		$Session->set( 'force_skin', $force_skin );
+	}
+}
+else
+{ // Try to get a skin from session
+	$force_skin = $Session->get( 'force_skin' );
+}
+if( ! empty( $force_skin ) )
+{ // The forced skin is defined in request or in Session
+	$skin = $Blog->get_skin_folder( $force_skin );
+}
+
+
+// Check if a temporary skin has been requested (used for RSS syndication for example):
+param( 'tempskin', 'string', '', true );
+if( !empty( $tempskin ) )
+{ // This will be handled like any other skin:
+	// TODO: maybe restrict that to authorized users
+	$skin = $tempskin;
+	if( empty( $disp ) || $disp == '-' )
+	{ // Set default disp for RSS skins
+		$disp = 'posts';
+	}
+}
+
+
+// Set $disp to 'posts' when filter by categories or tags
+param( 'catsel', 'array/integer', NULL );
+param( 'cat', 'string', NULL );
+param( 'tag', 'string', NULL );
+if( empty( $Item ) && ( ! is_null( $catsel ) || ( $disp != 'edit' && ! is_null( $cat ) ) || ! is_null( $tag ) ) )
+{
+	$disp = 'posts';
+}
+unset( $catsel );
 
 /*
  * ____________________________ "Clean up" the request ____________________________
@@ -442,10 +500,11 @@ if( !empty($p) || !empty($title) )
  * 2) URL is canonical if:
  *    - some content was requested in a weird/deprecated way
  *    - or if content identifiers have changed
+ * This will also detect that we are on the front page (if nothing has triggered a specific $disp)
  */
 if( $stats || $disp == 'stats' )
 {	// This used to be a spamfest...
-	require $skins_path.'_410_stats_gone.main.php'; // error & exit
+	require $siteskins_path.'_410_stats_gone.main.php'; // error & exit
 	// EXIT.
 }
 elseif( !empty($preview) )
@@ -454,10 +513,15 @@ elseif( !empty($preview) )
 	// Consider this as an admin hit!
 	$Hit->hit_type = 'admin';
 }
-elseif( $disp == 'posts' && !empty($Item) )
-{ // We are going to display a single post
+elseif( $disp == '-' && !empty($Item) )
+{ // We have not requested a specific disp but we have identified a specific post to be displayed
+	// We are going to display a single post
 	// if( in_array( $Item->ptyp_ID, $posttypes_specialtypes ) )
-	if( $Item->ptyp_ID == 1000 )
+	if( preg_match( '|[&?](download=\d+)|', $ReqURI ) )
+	{
+		$disp = 'download';
+	}
+	elseif( $Item->ptyp_ID == 1000 )
 	{
 		$disp = 'page';
 	}
@@ -465,10 +529,47 @@ elseif( $disp == 'posts' && !empty($Item) )
 	{
 		$disp = 'single';
 	}
+}
+elseif( $disp == '-' )
+{ // No specific request of any kind...
+	// We consider this to be the home page:
+	$disp = $Blog->get_setting('front_disp');
 
-	// fp> note: the redirecting code that was here moved to skin_init() with the other redirecting code.
-	// That feels more consistent and may also allow some skins to handle redirects differently (framing?)
-	// I hope I didn't screw that up... but it felt like the historical reasons for this to be here no longer applied.
+	$is_front = true; // we have detected that we are displaying the front page
+
+	// Do we need to handle the canoncial url?
+	if( ( $Blog->get_setting( 'canonical_homepage' ) && $redir == 'yes' )
+			|| $Blog->get_setting( 'relcanonical_homepage' ) )
+	{ // Check if the URL was canonical:
+		$canonical_url = $Blog->gen_blogurl();
+		if( ! is_same_url($ReqURL, $canonical_url) )
+		{	// We are not on the canocial blog url:
+			if( $Blog->get_setting( 'canonical_homepage' ) && $redir == 'yes' )
+			{	// REDIRECT TO THE CANONICAL URL:
+				header_redirect( $canonical_url, true );
+			}
+			else
+			{	// Use link rel="canoncial":
+				add_headline( '<link rel="canonical" href="'.$canonical_url.'" />' );
+			}
+		}
+	}
+
+	if( $disp == 'page' )
+	{ // Specific page is displayed on front page
+		set_param( 'p', $Blog->get_setting('front_post_ID') );
+		$c = 1; // Display comments
+
+		$ItemCache = & get_ItemCache();
+		$Item = & $ItemCache->get_by_ID( $p, false );
+
+		if( empty($Item) )
+		{
+			$Messages->add( sprintf( T_('Front page is set to display page ID=%d but it does not exist.'), $p ), 'error' );
+			$disp = '404';
+		}
+	}
+
 }
 elseif( ( ( $disp == 'page' ) || ( $disp == 'single' ) ) && empty( $Item ) )
 { // 'page' and 'single' are not valid display params if $Item is not set
@@ -481,14 +582,6 @@ elseif( ( ( $disp == 'page' ) || ( $disp == 'single' ) ) && empty( $Item ) )
 /*
  * ______________________ DETERMINE WHICH SKIN TO USE FOR DISPLAY _______________________
  */
-
-// Check if a temporary skin has been requested (used for RSS syndication for example):
-param( 'tempskin', 'string', '', true );
-if( !empty( $tempskin ) )
-{ // This will be handled like any other skin:
-	// TODO: maybe restrict that to authorized users
-	$skin = $tempskin;
-}
 
 if( isset( $skin ) )
 {	// A skin has been requested by folder_name (url or stub):
@@ -527,7 +620,7 @@ if( isset( $skin ) )
 	}
 	elseif( skin_exists( $skin ) && ! skin_installed( $skin ) )
 	{	// The requested skin is not a feed skin and exists in the file system, but isn't installed:
-		debug_die( sprintf( T_( 'The skin [%s] is not installed on this system.' ), htmlspecialchars( $skin ) ) );
+		debug_die( sprintf( T_( 'The skin [%s] is not installed on this system.' ), evo_htmlspecialchars( $skin ) ) );
 	}
 	elseif( ! empty( $tempskin ) )
 	{ // By definition, we want to see the temporary skin (if we don't use feedburner... )
@@ -547,7 +640,7 @@ if( !isset( $skin ) && !empty( $blog_skin_ID ) )	// Note: if $skin is set to '',
 if( !empty( $skin ) && !skin_exists( $skin ) )
 { // We want to use a skin, but it doesn't exist!
 	$err_msg = sprintf( T_('The skin [%s] set for blog [%s] does not exist. It must be properly set in the <a %s>blog properties</a> or properly overriden in a stub file.'),
-		htmlspecialchars($skin),
+		evo_htmlspecialchars($skin),
 		$Blog->dget('shortname'),
 		'href="'.$admin_url.'?ctrl=coll_settings&amp;tab=skin&amp;blog='.$Blog->ID.'"' );
 	debug_die( $err_msg );
@@ -609,6 +702,9 @@ if( !empty( $skin ) )
 	{	// Cache miss, we have to generate:
 		$Timer->pause( 'PageCache' );
 
+		// Init global vars which may be required for any skin
+		skin_init_global_vars();
+
 		if( $skin_provided_by_plugin = skin_provided_by_plugin($skin) )
 		{
 			$Plugins->call_method( $skin_provided_by_plugin, 'DisplaySkin', $tmp_params = array('skin'=>$skin) );
@@ -643,8 +739,10 @@ if( !empty( $skin ) )
 					'users'          => 'users.main.php',
 					'edit'           => 'edit.main.php',
 					'edit_comment'   => 'edit_comment.main.php',
+					'front'          => 'front.main.php',
 					'useritems'      => 'useritems.main.php',
 					'usercomments'   => 'usercomments.main.php',
+					'download'       => 'download.main.php',
 					// All others will default to index.main.php
 				);
 

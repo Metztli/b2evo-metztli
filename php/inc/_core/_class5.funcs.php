@@ -27,7 +27,7 @@
  *
  * @package evocore
  *
- * @version $Id: _class5.funcs.php 6136 2014-03-08 07:59:48Z manuel $
+ * @version $Id: _class5.funcs.php 6135 2014-03-08 07:54:05Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 

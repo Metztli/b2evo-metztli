@@ -63,22 +63,16 @@ class maintenance_Module extends Module
 		switch( $grp_ID )
 		{
 			case 1: // Administrators group ID equals 1
-				$permname = 'upgrade';
-				break;
-			case 2: // Privileged Bloggers group equals 2
-				$permname = 'none';
-				break;
-			case 3: // Bloggers group ID equals 3
-				$permname = 'none';
+				$perm_maintenance = 'upgrade'; // Maintenance permissions like backup or upgrade
 				break;
 			default: // Other groups
-				$permname = 'none';
+				$perm_maintenance = 'none';
 				break;
 		}
 
 		// We can return as many default permissions as we want:
 		// e.g. array ( permission_name => permission_value, ... , ... )
-		return $permissions = array( 'perm_maintenance' => $permname );
+		return $permissions = array( 'perm_maintenance' => $perm_maintenance );
 	}
 
 

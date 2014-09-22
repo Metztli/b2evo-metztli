@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * {@internal License choice
  * - If you have received this file as part of a package, please find the license.txt file in
@@ -120,6 +120,8 @@ class online_users_Widget extends ComponentWidget
 		// Display title if requested
 		$this->disp_title();
 
+		echo $this->disp_params['block_body_start'];
+
 		$r = '';
 
 		while( ( $iterator_User = & $UserCache->get_next() ) != NULL )
@@ -145,6 +147,8 @@ class online_users_Widget extends ComponentWidget
 			$r .= $params['list_end'];
 			echo $r;
 		}
+
+		echo $this->disp_params['block_body_end'];
 
 		echo $this->disp_params['block_end'];
 

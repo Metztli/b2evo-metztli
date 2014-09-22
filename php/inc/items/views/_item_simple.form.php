@@ -5,7 +5,7 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
  *
@@ -15,7 +15,7 @@
  * @author fplanque: Francois PLANQUE
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: _item_simple.form.php 5909 2014-02-06 10:27:22Z attila $
+ * @version $Id: _item_simple.form.php 6479 2014-04-16 07:18:54Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -149,7 +149,9 @@ $Form->begin_form( '', '', $params );
 
 ?>
 
-<div class="left_col">
+<div class="row">
+
+<div class="left_col col-md-9">
 
 	<?php
 	// ############################ POST CONTENTS #############################
@@ -166,7 +168,7 @@ $Form->begin_form( '', '', $params );
 		echo '<td class"label"><strong>'.T_('Title').':</strong></td>';
 		echo '<td class="input">';
 		$Form->text_input( 'post_title', $item_title, 20, '', '', array('maxlength'=>255, 'style'=>'width: 100%;', 'required'=>($require_title=='required')) );
-		echo '</td><td width="1"><!-- for IE7 --></td></tr></table>';
+		echo '</td></tr></table>';
 
 		$Form->switch_layout( NULL );
 	}
@@ -234,7 +236,7 @@ $Form->begin_form( '', '', $params );
 	echo '<tr><td class="label"><label for="item_tags">'.T_('Tags').':</strong></label></td>';
 	echo '<td class="input">';
 	$Form->text_input( 'item_tags', $item_tags, 40, '', '', array('maxlength'=>255, 'style'=>'width: 100%;') );
-	echo '</td><td width="1"><!-- for IE7 --></td></tr>';
+	echo '</td></tr>';
 	echo '</table>';
 
 	$Form->switch_layout( NULL );
@@ -249,7 +251,7 @@ $Form->begin_form( '', '', $params );
 
 </div>
 
-<div class="right_col">
+<div class="right_col col-md-3 form-inline">
 
 	<?php
 	// ################### MODULES SPECIFIC ITEM SETTINGS ###################
@@ -297,6 +299,8 @@ $Form->begin_form( '', '', $params );
 </div>
 
 <div class="clear"></div>
+
+</div>
 
 <?php
 // ================================== END OF EDIT FORM ==================================

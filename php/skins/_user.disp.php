@@ -8,7 +8,7 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
  *
@@ -17,7 +17,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _user.disp.php 3547 2013-04-26 04:10:19Z yura $
+ * @version $Id: _user.disp.php 7060 2014-07-03 12:39:43Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -51,18 +51,7 @@ $params = array_merge( array(
 
 
 // ------------------- PREV/NEXT USER LINKS (SINGLE USER MODE) -------------------
-user_prevnext_links( array(
-		'block_start'  => '<table class="prevnext_user"><tr>',
-		'prev_start'   => '<td width="33%">',
-		'prev_end'     => '</td>',
-		'prev_no_user' => '<td width="33%">&nbsp;</td>',
-		'back_start'   => '<td width="33%" class="back_users_list">',
-		'back_end'     => '</td>',
-		'next_start'   => '<td width="33%" class="right">',
-		'next_end'     => '</td>',
-		'next_no_user' => '<td width="33%">&nbsp;</td>',
-		'block_end'    => '</tr></table>',
-	) );
+user_prevnext_links();
 // ------------------------- END OF PREV/NEXT USER LINKS -------------------------
 
 
@@ -195,13 +184,21 @@ $ProfileForm->begin_fieldset( T_('Identity') );
 
 	if( $is_logged_in && $current_User->check_status( 'can_view_user', $user_ID ) )
 	{ // Display other pictures, but only for logged in and activated users:
-		$user_avatars = $User->get_avatar_Files();
+		$user_avatars = $User->get_avatar_Links();
 		if( count( $user_avatars ) > 0 )
 		{
 			$info_content = '';
-			foreach( $user_avatars as $uFile )
+			foreach( $user_avatars as $uLink )
 			{
-				$info_content .= $uFile->get_tag( '<div class="avatartag">', '', '', '</div>', 'crop-top-80x80', 'original', $User->login, 'lightbox[user]' );
+				$info_content .= $uLink->get_tag( array(
+					'before_image' => '<div class="avatartag">',
+					'before_image_legend' => NULL,
+					'after_image_legend'  => NULL,
+					'image_size'          => 'crop-top-80x80',
+					'image_link_to'       => 'original',
+					'image_link_title'    => $User->login,
+					'image_link_rel'      => 'lightbox[user]'
+				) );
 			}
 			$info_content .= '<div class="clear"></div>';
 			$ProfileForm->info( T_('Other pictures'), $info_content );
@@ -235,7 +232,7 @@ $ProfileForm->begin_fieldset( sprintf( T_('You and %s...'), $User->login ) );
 	if( !empty($msgform_url) )
 	{
 		$msgform_url = url_add_param( $msgform_url, 'msg_type=PM' );
-		$contacts[] = action_icon( T_('Send a message'), 'email', $msgform_url, T_('Send a message'), 3, 4, array(), array( 'style' => 'margin: 2px' ) );
+		$contacts[] = action_icon( T_('Send a message'), 'email', $msgform_url, T_('Send a message'), 3, 4, array(), array( 'style' => 'margin-right:2px' ) );
 	}
 	else
 	{ // No message form possibility to contact with User, get the reason why

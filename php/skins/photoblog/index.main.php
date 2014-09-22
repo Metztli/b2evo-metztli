@@ -10,7 +10,7 @@
  * @package evoskins
  * @subpackage photoblog
  *
- * @version $Id: index.main.php 4275 2013-07-17 10:52:24Z yura $
+ * @version $Id: index.main.php 6462 2014-04-14 13:28:56Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -29,13 +29,20 @@ require_js( 'functions.js', 'blog' );	// for opening popup window (comments)
 skin_include( '_html_header.inc.php', array(
 		'auto_pilot'      => 'seo_title',
 		'arcdir_text'     => T_('Index'),
-		'catdir_text'     => T_('Albums'),
-		'category_text'   => T_('Album').': ',
-		'categories_text' => T_('Albums').': ',
+		'catdir_text'     => T_('Galleries'),
+		'category_text'   => T_('Gallery').': ',
+		'categories_text' => T_('Galleries').': ',
 	) );
 // Note: You can customize the default HTML header by copying the
 // _html_header.inc.php file into the current skin folder.
 // -------------------------------- END OF HEADER --------------------------------
+
+
+
+// ---------------------------- SITE HEADER INCLUDED HERE ----------------------------
+// If site headers are enabled, they will be included here:
+siteskin_include( '_site_body_header.inc.php' );
+// ------------------------------- END OF SITE HEADER --------------------------------
 ?>
 
 <div class="PageTop">
@@ -67,14 +74,13 @@ skin_include( '_html_header.inc.php', array(
 					'block_display_title' => false,
 					'list_start' => '',
 					'list_end' => '',
-					'item_start' => ' ',
-					'item_end' => ' | ',
-					'item_selected_start' => '<b>',
-					'item_selected_end' => '</b> | ',
+					'item_start' => ' <span class="menu_link">',
+					'item_end' => '</span> ',
+					'item_selected_start' => ' <span class="menu_link">',
+					'item_selected_end' => '</span>',
 				) );
 			// ----------------------------- END OF "Menu" CONTAINER -----------------------------
 		?>
-		<a href="<?php $Blog->disp( 'mediaidxurl', 'raw' ) ?>"><?php echo T_('Index') ?></a>
 	</div>
 
 	<h1 id="pageTitle"><a href="<?php $Blog->disp( 'url', 'raw' ) ?>"><?php $Blog->disp( 'name', 'htmlbody' ) ?></a></h1>
@@ -135,9 +141,9 @@ skin_include( '_html_header.inc.php', array(
 				'title_single_disp' => false,
 				'format'      => 'htmlbody',
 				'arcdir_text' => T_('Index'),
-				'catdir_text' => T_('Albums'),
-				'category_text' => T_('Album').': ',
-				'categories_text' => T_('Albums').': ',
+				'catdir_text' => T_('Galleries'),
+				'category_text' => T_('Gallery').': ',
+				'categories_text' => T_('Galleries').': ',
 			) );
 		// ------------------------------ END OF REQUEST TITLE -----------------------------
 	?>
@@ -158,20 +164,23 @@ skin_include( '_html_header.inc.php', array(
 	?>
 
 	<?php
-	// ------------------------------------ START OF POSTS ----------------------------------------
-	// Display message if no post:
-	display_if_empty();
+	if( $disp != 'front' && $disp != 'download' )
+	{
+		// ------------------------------------ START OF POSTS ----------------------------------------
+		// Display message if no post:
+		display_if_empty();
 
-	echo '<div id="styled_content_block">'; // Beginning of posts display
-	while( $Item = & mainlist_get_item() )
-	{	// For each blog post:
-		// ---------------------- ITEM BLOCK INCLUDED HERE ------------------------
-		skin_include( '_item_block.inc.php', array(
-				'content_mode'  => 'full', // We want regular "full" content, even in category browsing: i-e no excerpt or thumbnail
-			) );
-		// ----------------------------END ITEM BLOCK  ----------------------------
-	} // ---------------------------------- END OF POSTS ------------------------------------
-	echo '</div>'; // End of posts display
+		echo '<div id="styled_content_block">'; // Beginning of posts display
+		while( $Item = & mainlist_get_item() )
+		{	// For each blog post:
+			// ---------------------- ITEM BLOCK INCLUDED HERE ------------------------
+			skin_include( '_item_block.inc.php', array(
+					'content_mode'  => 'full', // We want regular "full" content, even in category browsing: i-e no excerpt or thumbnail
+				) );
+			// ----------------------------END ITEM BLOCK  ----------------------------
+		} // ---------------------------------- END OF POSTS ------------------------------------
+		echo '</div>'; // End of posts display
+	}
 	?>
 
 
@@ -181,6 +190,7 @@ skin_include( '_html_header.inc.php', array(
 				'disp_posts'  => '',		// We already handled this case above
 				'disp_single' => '',		// We already handled this case above
 				'disp_page'   => '',		// We already handled this case above
+				'mediaidx_thumb_size' => $Skin->get_setting( 'mediaidx_thumb_size' ),
 				'author_link_text' => 'preferredname',
 			) );
 		// Note: you can customize any of the sub templates included here by
@@ -198,10 +208,14 @@ skin_include( '_body_footer.inc.php' );
 // Note: You can customize the default BODY footer by copying the
 // _body_footer.inc.php file into the current skin folder.
 // ------------------------------- END OF FOOTER --------------------------------
-?>
 
 
-<?php
+// ---------------------------- SITE FOOTER INCLUDED HERE ----------------------------
+// If site footers are enabled, they will be included here:
+siteskin_include( '_site_body_footer.inc.php' );
+// ------------------------------- END OF SITE FOOTER --------------------------------
+
+
 // ------------------------- HTML FOOTER INCLUDED HERE --------------------------
 skin_include( '_html_footer.inc.php' );
 // Note: You can customize the default HTML footer by copying the

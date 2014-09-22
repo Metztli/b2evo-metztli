@@ -623,6 +623,9 @@ $search_engine_params = array(
 	// El Mundo
 	'ariadna.elmundo.es'		=> array('El Mundo', 'q'),
 
+	// Mynet
+	'arama.mynet.com' => array('Mynet', 'query', 'result?query={k}'),
+
 	// MySpace
 	'searchservice.myspace.com'	=> array('MySpace', 'qry', 'index.cfm?fuseaction=sitesearch.results&type=Web&qry={k}'),
 

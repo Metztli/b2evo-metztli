@@ -12,7 +12,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  * @subpackage noskin
@@ -61,23 +61,29 @@ if( ! $PageCache->check() )
 {	// Cache miss, we have to generate:
 	// --------------------- PAGE LEVEL CACHING SUPPORT ---------------------
 
+if( $disp == 'front' )
+{ // Force $disp to 'posts' for all blogs on this template
+	$disp = 'posts';
+}
 
 // This is the main template; it may be used to display very different things.
 // Do inits depending on current $disp:
 skin_init( $disp );
 
 // Add CSS:
-require_css( 'basic_styles.css', 'rsc_url' ); // the REAL basic styles
-require_css( 'basic.css', 'rsc_url' ); // Basic styles
-require_css( 'blog_base.css', 'rsc_url' ); // Default styles for the blog navigation
-require_css( 'item_base.css', 'rsc_url' ); // Default styles for the post CONTENT
+// require_css( 'basic_styles.css', 'blog' ); // the REAL basic styles
+// require_css( 'basic.css', 'blog' ); // Basic styles
+// require_css( 'blog_base.css', 'blog' ); // Default styles for the blog navigation
+// require_css( 'item_base.css', 'blog' ); // Default styles for the post CONTENT
+// require_css( 'b2evo_base.bundle.css', 'blog' ); // Concatenation of the above
+require_css( 'b2evo_base.bmin.css', 'blog' ); // Concatenation + Minifaction of the above
+
 require_css( 'fp02.css', 'rsc_url' );
 
 add_js_for_toolbar();		// Registers all the javascripts needed by the toolbar menu
 
 // Functions to work with AJAX response data
 require_js( '#jquery#', 'rsc_url' );
-require_js( '#jqueryUI#', 'rsc_url' );
 require_js( 'ajax.js', 'rsc_url' );
 ?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -104,7 +110,7 @@ require_js( 'ajax.js', 'rsc_url' );
 	<?php include_headlines() /* Add javascript and css files included by plugins and skin */ ?>
 	<!-- InstanceEndEditable -->
 </head>
-<body>
+<body<?php skin_body_attrs(); ?>>
 <!-- InstanceBeginEditable name="ToolBar" -->
 <?php
 	// ---------------------------- TOOLBAR INCLUDED HERE ----------------------------
@@ -168,6 +174,8 @@ require_js( 'ajax.js', 'rsc_url' );
 	?>
 
 	<?php
+	if( $disp != 'front' )
+	{
 		// ------------------- PREV/NEXT POST LINKS (SINGLE POST MODE) -------------------
 		item_prevnext_links( array(
 				'block_start' => '<table class="prevnext_post"><tr>',
@@ -312,10 +320,11 @@ require_js( 'ajax.js', 'rsc_url' );
 		mainlist_page_links( array(
 				'block_start' => '<p class="center"><strong>',
 				'block_end' => '</strong></p>',
-   			'prev_text' => '&lt;&lt;',
-   			'next_text' => '&gt;&gt;',
+				'prev_text' => '&lt;&lt;',
+				'next_text' => '&gt;&gt;',
 			) );
 		// ------------------------- END OF PREV/NEXT PAGE LINKS -------------------------
+	}
 	?>
 
 

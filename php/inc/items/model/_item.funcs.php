@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * {@internal License choice
@@ -32,7 +32,7 @@
  * @author tswicegood: Travis SWICEGOOD.
  * @author vegarg: Vegar BERG GULDAL.
  *
- * @version $Id: _item.funcs.php 5686 2014-01-17 08:27:37Z attila $
+ * @version $Id: _item.funcs.php 6956 2014-06-24 06:13:28Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -59,9 +59,18 @@ function init_MainList( $items_nb_limit )
 		if( ! $preview )
 		{
 			if( $disp == 'page' )
-			{	// Get pages:
+			{ // Get pages:
 				$MainList->set_default_filters( array(
 						'types' => '1000',		// pages
+					) );
+			}
+			elseif( $disp == 'search' )
+			{ // Exclude 'sidebar' and reserved post types from search
+				global $posttypes_perms;
+				$filter_post_types = isset( $posttypes_perms['sidebar'] ) ? $posttypes_perms['sidebar'] : array();
+				$filter_post_types = array_merge( $filter_post_types, array( 5000 ) );
+				$MainList->set_default_filters( array(
+						'types' => '-'.implode( ',', $filter_post_types ),
 					) );
 			}
 
@@ -183,13 +192,11 @@ function init_inskin_editing()
 	// We never allow HTML in titles, so we always encode and decode special chars.
 	$item_title = htmlspecialchars_decode( $edited_Item->title );
 
-	if( $Blog->get_setting( 'allow_html_post' ) )
-	{	// HTML is allowed for this post, we have HTML in the DB and we can edit it:
-		$item_content = $edited_Item->content;
-	}
-	else
-	{	// HTML is disallowed for this post, content is encoded in DB and we need to decode it for editing:
-		$item_content = htmlspecialchars_decode( $edited_Item->content );
+	$item_content = prepare_item_content( $edited_Item->content );
+
+	if( ! $Blog->get_setting( 'allow_html_post' ) )
+	{ // HTML is disallowed for this post, content is encoded in DB and we need to decode it for editing:
+		$item_content = htmlspecialchars_decode( $item_content );
 	}
 
 	// Format content for editing, if we were not already in editing...
@@ -213,13 +220,13 @@ function init_inskin_editing()
  *
  * @return Item
  */
-function & get_featured_Item()
+function & get_featured_Item( $restrict_disp = 'posts' )
 {
 	global $Blog;
 	global $disp, $disp_detail, $MainList, $FeaturedList;
 	global $featured_displayed_item_IDs;
 
-	if( $disp != 'posts' || !isset($MainList) )
+	if( $disp != $restrict_disp || !isset($MainList) )
 	{	// If we're not currently displaying posts, no need to try & display a featured/intro post on top!
 		$Item = NULL;
 		return $Item;
@@ -236,9 +243,17 @@ function & get_featured_Item()
 
 		if( ! $MainList->is_filtered() )
 		{	// This is not a filtered page, so we are on the home page.
-			// The competing intro-* types are: 'main' and 'all':
-			// fplanque> IMPORTANT> nobody changes this without consulting the manual and talking to me first!
-			$restrict_to_types = '1500,1600';
+			if( $restrict_disp == 'front' )
+			{ // Special Front page:
+				// Use Intro-Front posts
+				$restrict_to_types = '1400';
+			}
+			else
+			{ // Default front page displaying posts:
+				// The competing intro-* types are: 'main' and 'all':
+				// fplanque> IMPORTANT> nobody changes this without consulting the manual and talking to me first!
+				$restrict_to_types = '1500,1600';
+			}
 		}
 		else
 		{	// We are on a filtered... it means a category page or sth like this...
@@ -272,7 +287,7 @@ function & get_featured_Item()
 		// Run the query:
 		$FeaturedList->query();
 
-		if( $FeaturedList->result_num_rows == 0 )
+		if( $FeaturedList->result_num_rows == 0 && $restrict_disp != 'front' )
 		{ // No Intro page was found, try to find a featured post instead:
 
 			$FeaturedList->reset();
@@ -310,6 +325,7 @@ function get_item_type_ID( $type_code )
 	$item_types = array(
 			1    => 'post',
 			1000 => 'page',
+			1400 => 'intro-front',
 			1500 => 'intro-main',
 			1520 => 'intro-cat',
 			1530 => 'intro-tag',
@@ -508,7 +524,7 @@ function get_postdata($postid)
 	// We have to load the post
 	$sql = 'SELECT post_ID, post_creator_user_ID, post_datestart, post_datemodified, post_status, post_content, post_title,
 											post_main_cat_ID, cat_blog_ID ';
-	$sql .= ', post_locale, post_url, post_wordcount, post_comment_status, post_views ';
+	$sql .= ', post_locale, post_url, post_wordcount, post_comment_status ';
 	$sql .= '	FROM T_items__item
 					 INNER JOIN T_categories ON post_main_cat_ID = cat_ID
 					 WHERE post_ID = '.$postid;
@@ -534,7 +550,6 @@ function get_postdata($postid)
 			'Locale' => $myrow->post_locale,
 			'Url' => $myrow->post_url,
 			'Wordcount' => $myrow->post_wordcount,
-			'views' => $myrow->post_views,
 			'comment_status' => $myrow->post_comment_status,
 			'Blog' => $myrow->cat_blog_ID,
 			);
@@ -615,7 +630,7 @@ function get_allowed_statuses_condition( $statuses, $dbprefix, $req_blog, $perm_
 	$allowed_statuses = array();
 
 	$is_logged_in = is_logged_in( false );
-	$creator_coll_name = ( $dbprefix == 'post_' ) ? $dbprefix.'creator_user_ID' : $dbprefix.'author_ID';
+	$creator_coll_name = ( $dbprefix == 'post_' ) ? $dbprefix.'creator_user_ID' : $dbprefix.'author_user_ID';
 	// Iterate through all statuses and set allowed to true only if the corresponding status is allowed in case of any post/comments
 	// If the status is not allowed to show, but exists further conditions which may allow it, then set the condition.
 	foreach( $statuses as $key => $status )
@@ -712,6 +727,9 @@ function statuses_where_clause( $show_statuses = NULL, $dbprefix = 'post_', $req
 {
 	global $current_User, $blog, $DB;
 
+	// This statuses where clause is required for a post query
+	$is_post_query = ( $perm_prefix == 'blog_post!' );
+
 	if( is_null( $req_blog ) )
 	{ // try to init request blog if it was not set
 		global $blog;
@@ -720,14 +738,14 @@ function statuses_where_clause( $show_statuses = NULL, $dbprefix = 'post_', $req
 
 	if( empty( $show_statuses ) )
 	{ // use in-skin statuses if show_statuses is empty
-		$show_statuses = get_inskin_statuses();
+		$show_statuses = get_inskin_statuses( $req_blog, $is_post_query ? 'post' : 'comment' );
 	}
 
 	// init where clauses array
 	$where = array();
 
 	// Check modules item statuses where condition but only in case of the items, and don't need to check in case of comments
-	if( $req_blog && ( $perm_prefix == 'blog_post!' ) )
+	if( $req_blog && $is_post_query )
 	{ // If requested blog is set, then set additional "where" clauses from modules method, before we would manipulate the $show_statuses array
 		$modules_condition = modules_call_method( 'get_item_statuses_where_clause', array( 'blog_ID' => $req_blog, 'statuses' => $show_statuses ) );
 		if( !empty( $modules_condition ) )
@@ -804,7 +822,7 @@ function statuses_where_clause( $show_statuses = NULL, $dbprefix = 'post_', $req
 		else
 		{ // Comment query condition
 			$from_table = 'FROM T_comments';
-			$reference_column ='comment_post_ID';
+			$reference_column ='comment_item_ID';
 		}
 		// Select each object ID which corresponds to the statuses condition.
 		// Note: This is a very slow query when there is many post/comments. This case should not be used frequently.
@@ -1065,7 +1083,7 @@ function cat_select( $Form, $form_fields = true, $show_title_links = true, $para
 
 	cat_load_cache(); // make sure the caches are loaded
 
-	$r .= '<table cellspacing="0" class="catselect">';
+	$r .= '<table cellspacing="0" class="catselect table table-striped table-bordered table-hover table-condensed">';
 	if( get_post_cat_setting($blog) == 3 )
 	{ // Main + Extra cats option is set, display header
 		$r .= cat_select_header( $params );
@@ -1116,8 +1134,8 @@ function cat_select( $Form, $form_fields = true, $show_title_links = true, $para
 
 	if( isset($blog) && get_allow_cross_posting() )
 	{
-		echo '<script type="text/javascript">jQuery.getScript("'.$rsc_url.'js/jquery/jquery.scrollto.js", function () {
-			jQuery("#itemform_categories").scrollTo( "#catselect_blog'.$blog.'" );
+		echo '<script type="text/javascript">jQuery.getScript("'.get_require_url( '#scrollto#' ).'", function () {
+			jQuery("[id$=itemform_categories]").scrollTo( "#catselect_blog'.$blog.'" );
 		});</script>';
 	}
 	$Form->end_fieldset();
@@ -1143,7 +1161,8 @@ function cat_select_header( $params = array() )
 	$r .= '<th class="selector catsel_extra" title="'.$params['category_extra_title'].'">'.T_('Extra').'</th>';
 
 	// category header
-	$r .= '<th class="catsel_name">'.$params['category_name'].'</th><!--[if IE 7]><th width="1"><!-- for IE7 --></th><![endif]--></tr></thead>';
+	$r .= '<th class="catsel_name">'.$params['category_name'].'</th>'
+		.'</tr></thead>';
 
 	return $r;
 }
@@ -1256,11 +1275,10 @@ function cat_select_before_each( $cat_ID, $level, $total_count )
 				.' style="padding-left:'.($level-1).'em;'.$additional_style.'">'
 				.$thisChapter->name.'</label>'
 				.$chapter_lock_status
-				.' <a href="'.htmlspecialchars($thisChapter->get_permanent_url()).'" title="'.htmlspecialchars(T_('View category in blog.')).'">'
+				.' <a href="'.evo_htmlspecialchars($thisChapter->get_permanent_url()).'" title="'.evo_htmlspecialchars(T_('View category in blog.')).'">'
 				.'&nbsp;&raquo;&nbsp;' // TODO: dh> provide an icon instead? // fp> maybe the A(dmin)/B(log) icon from the toolbar? And also use it for permalinks to posts?
 				.'</a></td>'
-				.'<!--[if IE 7]><td width="1"><!-- for IE7 --></td><![endif]--></tr>'
-				."\n";
+			.'</tr>'."\n";
 
 	return $r;
 }
@@ -1338,9 +1356,9 @@ function cat_select_new()
 	// INPUT TEXT for new category name
 	$r .= '<td class="catsel_name">'
 				.'<input maxlength="255" style="width: 100%;" value="'.$category_name.'" size="20" type="text" name="category_name" id="new_category_name" />'
-				."</td>";
-	$r .= '<!--[if IE 7]><td width="1">&nbsp</td><![endif]-->';
-	$r .= "</tr>";
+				.'</td>'
+			.'</tr>';
+
 	return $r;
 }
 
@@ -1361,11 +1379,19 @@ function attach_browse_tabs( $display_tabs3 = true )
 				),
 		);
 
+	if( $Blog->get_setting( 'use_workflow' ) )
+	{ // We want to use workflow properties for this blog:
+		$menu_entries[ 'tracker' ] = array(
+				'text' => T_('Workflow view'),
+				'href' => $dispatcher.'?ctrl=items&amp;tab=tracker&amp;filter=restore&amp;blog='.$Blog->ID,
+			);
+	}
+
 	if( $Blog->get( 'type' ) == 'manual' )
 	{ // Display this tab only for manual blogs
 		$menu_entries = array_merge( $menu_entries, array(
 				'manual' => array(
-					'text' => T_('Manual Pages'),
+					'text' => T_('Manual view'),
 					'href' => $dispatcher.'?ctrl=items&amp;tab=manual&amp;filter=restore&amp;blog='.$Blog->ID,
 					),
 			) );
@@ -1424,19 +1450,6 @@ function attach_browse_tabs( $display_tabs3 = true )
 			);
 		}
 	*/
-
-	if( $Blog->get_setting( 'use_workflow' ) )
-	{	// We want to use workflow properties for this blog:
-		$AdminUI->add_menu_entries(
-				'items',
-				array(
-						'tracker' => array(
-							'text' => T_('Tracker'),
-							'href' => $dispatcher.'?ctrl=items&amp;tab=tracker&amp;filter=restore&amp;blog='.$Blog->ID,
-							),
-					)
-			);
-	}
 
 	if( $current_User->check_perm( 'blog_comments', 'edit', false, $Blog->ID ) )
 	{ // User has permission to edit published, draft or deprecated comments (at least one kind)
@@ -1691,7 +1704,7 @@ function echo_publish_buttons( $Form, $creating, $edited_Item, $inskin = false, 
 	{ // Show Save & Edit only on admin mode
 		$Form->submit( array( 'actionArray['.$next_action.'_edit]', /* TRANS: This is the value of an input submit button */ T_('Save & edit'), 'SaveEditButton' ) );
 	}
-	$Form->submit( array( 'actionArray['.$next_action.']', /* TRANS: This is the value of an input submit button */ T_('Save'), 'SaveButton' ) );
+	$Form->submit( array( 'actionArray['.$next_action.']', /* TRANS: This is the value of an input submit button */ T_('Save Changes!'), 'SaveButton' ) );
 
 	list( $highest_publish_status, $publish_text ) = get_highest_publish_status( 'post', $Blog->ID );
 	if( !isset( $edited_Item->status ) )
@@ -1839,6 +1852,10 @@ function echo_autocomplete_tags( $tags = array() )
 					searchingText: '<?php echo TS_('Searching...') ?>'
 				}
 			);
+			<?php
+				// Don't submit a form by Enter when user is editing the tags
+				echo get_prevent_key_enter_js( '#token-input-item_tags' );
+			?>
 		});
 	})(jQuery);
 	</script>
@@ -2086,7 +2103,7 @@ function check_categories( & $post_category, & $post_extracats )
 			global $current_User, $admin_url;
 			if( $current_User->check_perm( 'options', 'view', false ) )
 			{
-				$cross_posting_text = '<a href="'.$admin_url.'?ctrl=features">'.T_('cross-posting is disabled').'</a>';
+				$cross_posting_text = '<a href="'.$admin_url.'?ctrl=collections&amp;tab=blog_settings">'.T_('cross-posting is disabled').'</a>';
 			}
 			else
 			{
@@ -2371,7 +2388,8 @@ function echo_comment( $comment_ID, $redirect_to = NULL, $save_context = false )
 	$expiry_delay = $Item->get_setting( 'post_expiry_delay' );
 	$is_expired = ( !empty( $expiry_delay ) && ( ( $localtimenow - mysql2timestamp( $Comment->get( 'date' ) ) ) > $expiry_delay ) );
 
-	echo '<div id="c'.$comment_ID.'" class="bComment bComment';
+	echo '<a name="c'.$comment_ID.'"></a>';
+	echo '<div id="comment_'.$comment_ID.'" class="bComment bComment';
 	// check if comment is expired
 	if( $is_expired )
 	{ // comment is expired
@@ -2441,12 +2459,12 @@ function echo_comment( $comment_ID, $redirect_to = NULL, $save_context = false )
 		echo '<div class="floatleft">';
 
 		// Display edit button if current user has the rights:
-		$Comment->edit_link( ' ', ' ', get_icon( 'edit' ), '#', 'roundbutton', '&amp;', $save_context, $redirect_to );
+		$Comment->edit_link( ' ', ' ', get_icon( 'edit' ), '#', button_class(), '&amp;', $save_context, $redirect_to );
 
-		echo '<span class="roundbutton_group">';
+		echo '<span class="'.button_class( 'group' ).'">';
 		// Display publish NOW button if current user has the rights:
 		$link_params = array(
-			'class'        => 'roundbutton_text',
+			'class'        => button_class( 'text' ),
 			'save_context' => $save_context,
 			'ajax_button'  => true,
 			'redirect_to'  => $redirect_to,
@@ -2459,11 +2477,11 @@ function echo_comment( $comment_ID, $redirect_to = NULL, $save_context = false )
 		$next_status_in_row = $Comment->get_next_status( false );
 		if( $next_status_in_row && $next_status_in_row[0] != 'deprecated' )
 		{ // Display deprecate button if current user has the rights:
-			$Comment->deprecate_link( '', '', get_icon( 'move_down_grey', 'imgtag', array( 'title' => '' ) ), '#', 'roundbutton', '&amp;', true, true );
+			$Comment->deprecate_link( '', '', get_icon( 'move_down_grey', 'imgtag', array( 'title' => '' ) ), '#', button_class(), '&amp;', true, true );
 		}
 
 		// Display delete button if current user has the rights:
-		$Comment->delete_link( '', '', '#', '#', 'roundbutton_text', false, '&amp;', $save_context, true, '#', $redirect_to );
+		$Comment->delete_link( '', '', '#', '#', button_class( 'text' ), false, '&amp;', $save_context, true, '#', $redirect_to );
 		echo '</span>';
 
 		echo '</div>';
@@ -2967,6 +2985,110 @@ function log_new_item_create( $created_through )
 
 
 /**
+ * Prepare item content
+ *
+ * @param string Content
+ * @return string Content
+ */
+function prepare_item_content( $content )
+{
+	// Convert the content separators to new format:
+	$old_separators = array(
+			'&lt;!--more--&gt;', '<!--more-->', '<p>[teaserbreak]</p>',
+			'&lt;!--nextpage--&gt;', '<!--nextpage-->', '<p>[pagebreak]</p>'
+		);
+	$new_separators = array(
+			'[teaserbreak]', '[teaserbreak]', '[teaserbreak]',
+			'[pagebreak]', '[pagebreak]', '[pagebreak]'
+		);
+	if( strpos( $content, '<code' ) !== false || strpos( $content, '<pre' ) !== false )
+	{ // Call prepare_item_content_callback() on everything outside code/pre:
+		$content = callback_on_non_matching_blocks( $content,
+			'~<(code|pre)[^>]*>.*?</\1>~is',
+			'replace_content', array( $old_separators, $new_separators, 'str' ) );
+	}
+	else
+	{ // No code/pre blocks, replace on the whole thing
+		$content = str_replace( $old_separators, $new_separators, $content );
+	}
+
+	return $content;
+}
+
+
+/**
+ * Get priority titles of an item
+ *
+ * @param boolean TRUE - to include null value
+ * @return array Priority titles
+ */
+function item_priority_titles( $include_null_value = true )
+{
+	$priorities = array();
+
+	if( $include_null_value )
+	{
+		$priorities[0] = /* TRANS: "None" select option */ T_('No priority');
+	}
+
+	$priorities += array(
+			1 => /* TRANS: Priority name */ T_('1 - Highest'),
+			2 => /* TRANS: Priority name */ T_('2 - High'),
+			3 => /* TRANS: Priority name */ T_('3 - Medium'),
+			4 => /* TRANS: Priority name */ T_('4 - Low'),
+			5 => /* TRANS: Priority name */ T_('5 - Lowest'),
+		);
+
+	return $priorities;
+}
+
+
+/**
+ * Get priority colors of an item
+ *
+ * @return array Priority values
+ */
+function item_priority_colors()
+{
+	return array(
+			1 => 'CB4D4D', // Highest
+			2 => 'E09952', // High
+			3 => 'DBDB57', // Medium
+			4 => '34B27D', // Low
+			5 => '4D77CB', // Lowest
+		);
+}
+
+
+/**
+ * Get priority title of an item by priority value
+ *
+ * @param integer Priority value
+ * @return string Priority title
+ */
+function item_priority_title( $priority )
+{
+	$titles = item_priority_titles();
+
+	return isset( $titles[ $priority ] ) ? $titles[ $priority ] : $priority;
+}
+
+
+/**
+ * Get priority color of an item by priority value
+ *
+ * @param string Priority value
+ * @return string Color value
+ */
+function item_priority_color( $priority )
+{
+	$colors = item_priority_colors();
+
+	return isset( $colors[ $priority ] ) ? '#'.$colors[ $priority ] : 'none';
+}
+
+
+/**
  * Display the manual pages results table
  *
  * @param array Params
@@ -2987,7 +3109,7 @@ function items_manual_results_block( $params = array() )
 
 	$result_fadeout = $Session->get( 'fadeout_array' );
 
-	$cat_ID = param( 'cat_ID', 'integer', 0 );
+	$cat_ID = param( 'cat_ID', 'integer', 0, true );
 
 	if( empty( $Blog ) )
 	{ // Init Blog
@@ -3019,7 +3141,7 @@ function items_manual_results_block( $params = array() )
 
 		if( $order_action == 'update' )
 		{ // Update an order to new value
-			$order_value = (int)param( 'order_value', 'string', 0 );
+			$new_value = (int)param( 'new_value', 'string', 0 );
 			$order_data = param( 'order_data', 'string' );
 			$order_data = explode( '-', $order_data );
 			$order_obj_ID = (int)$order_data[2];
@@ -3034,7 +3156,7 @@ function items_manual_results_block( $params = array() )
 						{
 							if( $current_User->check_perm( 'blog_cats', '', false, $updated_Chapter->blog_ID ) )
 							{ // Check permission to edit this Chapter
-								$updated_Chapter->set( 'order', $order_value );
+								$updated_Chapter->set( 'order', $new_value );
 								$updated_Chapter->dbupdate();
 								$ChapterCache->clear();
 							}
@@ -3048,7 +3170,7 @@ function items_manual_results_block( $params = array() )
 						{
 							if( $current_User->check_perm( 'item_post!CURSTATUS', 'edit', false, $updated_Item ) )
 							{ // Check permission to edit this Item
-								$updated_Item->set( 'order', $order_value );
+								$updated_Item->set( 'order', $new_value );
 								$updated_Item->dbupdate();
 							}
 						}
@@ -3062,7 +3184,7 @@ function items_manual_results_block( $params = array() )
 
 	$Table = new Table( NULL, $params['results_param_prefix'] );
 
-	$Table->title = T_('Manual Pages');
+	$Table->title = T_('Manual view');
 
 	// Redirect to manual pages after adding chapter
 	$redirect_page = '&amp;redirect_page=manual';
@@ -3162,7 +3284,7 @@ function items_created_results_block( $params = array() )
 		}
 	}
 
-	global $DB;
+	global $DB, $AdminUI;
 
 	param( 'user_tab', 'string', '', true );
 	param( 'user_ID', 'integer', 0, true );
@@ -3180,7 +3302,7 @@ function items_created_results_block( $params = array() )
 
 	// Get a count of the post which current user can delete
 	$deleted_posts_created_count = count( $edited_User->get_deleted_posts( 'created' ) );
-	if( $created_items_Results->total_rows > 0 && $deleted_posts_created_count > 0 )
+	if( ( $created_items_Results->get_total_rows() > 0 ) && ( $deleted_posts_created_count > 0 ) )
 	{	// Display action icon to delete all records if at least one record exists & current user can delete at least one item created by user
 		$created_items_Results->global_icon( sprintf( T_('Delete all post created by %s'), $edited_User->login ), 'delete', '?ctrl=user&amp;user_tab=activity&amp;action=delete_all_posts_created&amp;user_ID='.$edited_User->ID.'&amp;'.url_crumb('user'), ' '.T_('Delete all'), 3, 4 );
 	}
@@ -3192,8 +3314,9 @@ function items_created_results_block( $params = array() )
 			'display_history' => false,
 		) );
 
+	$results_params = $AdminUI->get_template( 'Results' );
 	$display_params = array(
-		'before' => '<div class="results" style="margin-top:25px" id="created_posts_result">'
+		'before' => str_replace( '>', ' style="margin-top:25px" id="created_posts_result">', $results_params['before'] ),
 	);
 
 	if( is_ajax_content() )
@@ -3255,7 +3378,7 @@ function items_edited_results_block( $params = array() )
 		}
 	}
 
-	global $DB;
+	global $DB, $AdminUI;
 
 	param( 'user_tab', 'string', '', true );
 	param( 'user_ID', 'integer', 0, true );
@@ -3279,7 +3402,7 @@ function items_edited_results_block( $params = array() )
 
 	// Get a count of the post which current user can delete
 	$deleted_posts_edited_count = count( $edited_User->get_deleted_posts( 'edited' ) );
-	if( $edited_items_Results->total_rows > 0 && $deleted_posts_edited_count > 0 )
+	if( ( $edited_items_Results->get_total_rows() > 0 ) && ( $deleted_posts_edited_count > 0 ) )
 	{	// Display actino icon to delete all records if at least one record exists & current user can delete at least one item created by user
 		$edited_items_Results->global_icon( sprintf( T_('Delete all post edited by %s'), $edited_User->login ), 'delete', '?ctrl=user&amp;user_tab=activity&amp;action=delete_all_posts_edited&amp;user_ID='.$edited_User->ID.'&amp;'.url_crumb('user'), ' '.T_('Delete all'), 3, 4 );
 	}
@@ -3300,8 +3423,9 @@ function items_edited_results_block( $params = array() )
 		$edited_items_Results->init_params_by_skin( $params[ 'skin_type' ], $params[ 'skin_name' ] );
 	}
 
+	$results_params = $AdminUI->get_template( 'Results' );
 	$display_params = array(
-		'before' => '<div class="results" style="margin-top:25px" id="edited_posts_result">'
+		'before' => str_replace( '>', ' style="margin-top:25px" id="edited_posts_result">', $results_params['before'] ),
 	);
 	$edited_items_Results->display( $display_params );
 
@@ -3464,7 +3588,7 @@ function items_results( & $items_Results, $params = array() )
 				'default_dir' => 'D',
 				'th_class' => 'shrinkwrap',
 				'td_class' => 'shrinkwrap',
-				'td' => '<a href="?ctrl=items&amp;p=$post_ID$&amp;action=history">@history_info_icon()@</a>',
+				'td' => '@get_history_link()@',
 			);
 	}
 
@@ -3758,8 +3882,9 @@ function manual_display_posts( $params = array(), $level = 0 )
 	$ItemList = new ItemList2( $Blog, $Blog->get_timestamp_min(), $Blog->get_timestamp_max(), $Blog->get_setting('posts_per_page') );
 	$ItemList->load_from_Request();
 	$ItemList->set_filters( array(
-			'cat_array' => array( $params['chapter_ID'] ), // Limit only by selected cat (exclude posts from child categories)
-			'unit'      => 'all', // Display all items of this category, Don't limit by page
+			'cat_array'    => array( $params['chapter_ID'] ), // Limit only by selected cat (exclude posts from child categories)
+			'cat_modifier' => NULL,
+			'unit'         => 'all', // Display all items of this category, Don't limit by page
 		) );
 	$ItemList->query();
 
@@ -3973,21 +4098,20 @@ function manual_display_chapter_row( $Chapter, $level, $is_opened = false )
 
 	$r = '<tr id="cat-'.$Chapter->ID.'" class="'.$line_class.( isset( $result_fadeout ) && in_array( $Chapter->ID, $result_fadeout ) ? ' fadeout-ffff00': '' ).'">';
 
+	$open_url = $admin_url.'?ctrl=items&amp;tab=manual&amp;blog='.$Chapter->blog_ID;
 	// Name
 	if( $is_opened )
 	{ // Chapter is expanded
 		$cat_icon = get_icon( 'filters_hide' );
-		$param_cat = '';
 		if( $parent_Chapter = & $Chapter->get_parent_Chapter() )
 		{
-			$param_cat = '&amp;cat_ID='.$parent_Chapter->ID;
+			$open_url .= '&amp;cat_ID='.$parent_Chapter->ID;
 		}
-		$open_url = $admin_url.'?ctrl=items&amp;tab=manual'.$param_cat;
 	}
 	else
 	{ // Chapter is collapsed
 		$cat_icon = get_icon( 'filters_show' );
-		$open_url = $admin_url.'?ctrl=items&amp;tab=manual&amp;cat_ID='.$Chapter->ID;
+		$open_url .= '&amp;cat_ID='.$Chapter->ID;
 	}
 	$r .= '<td class="firstcol">'
 					.'<strong style="padding-left: '.($level).'em;">'
@@ -4004,7 +4128,7 @@ function manual_display_chapter_row( $Chapter, $level, $is_opened = false )
 	$r .= '</strong></td>';
 
 	// URL "slug"
-	$r .= '<td><a href="'.htmlspecialchars($Chapter->get_permanent_url()).'">'.$Chapter->dget('urlname').'</a></td>';
+	$r .= '<td><a href="'.evo_htmlspecialchars($Chapter->get_permanent_url()).'">'.$Chapter->dget('urlname').'</a></td>';
 
 	// Order
 	$order_attrs = '';

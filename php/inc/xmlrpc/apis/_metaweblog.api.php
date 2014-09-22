@@ -4,7 +4,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * @author tor
  *
@@ -13,7 +13,7 @@
  *
  * @package xmlsrv
  *
- * @version $Id: _metaweblog.api.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _metaweblog.api.php 6650 2014-05-09 09:22:38Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -130,7 +130,7 @@ function mw_newpost($m, $item_type = 'post' )
 
 	if( !empty($content_struct['mt_text_more']) )
 	{	// Add content extension
-		$content .= '<!--more-->'.$content_struct['mt_text_more'];
+		$content .= '[teaserbreak]'.$content_struct['mt_text_more'];
 	}
 	//logIO( "Item content:\n".$content );
 
@@ -259,7 +259,7 @@ function mw_editpost( $m, $item_type = 'post' )
 
 	if( isset($content_struct['mt_text_more']) )
 	{	// Add content extension
-		$content .= '<!--more-->'.$content_struct['mt_text_more'];
+		$content .= '[teaserbreak]'.$content_struct['mt_text_more'];
 	}
 	//logIO( "Item content:\n".$content );
 

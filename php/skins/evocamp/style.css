@@ -7,6 +7,10 @@
 
 /* -------------------[ Main Page Elements ]------------------- */
 
+div#skin_wrapper div.sitewide_header {
+	margin-bottom: 0;
+}
+
 textarea, input, select, option, optgroup, ul.ui-autocomplete, li.token-input-token-facebook, div.token-input-dropdown-facebook {
 	font: 10.66px georgia,times,'times new roman', serif;
 }
@@ -439,7 +443,7 @@ background:#F2ECCE;
 border-bottom:1px solid #CCC9B8;
 }
 
-code {
+code, samp {
 font: 1.1em 'Courier New', Courier, Fixed;
 }
 

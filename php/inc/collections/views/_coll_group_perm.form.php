@@ -4,13 +4,13 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
  *
  * @todo move user rights queries to object (fplanque)
  *
- * @version $Id: _coll_group_perm.form.php 5538 2013-12-26 10:54:20Z yura $
+ * @version $Id: _coll_group_perm.form.php 6894 2014-06-13 09:56:09Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -33,8 +33,8 @@ $permission_to_change_admin = $current_User->check_perm( 'blog_admin', 'edit', f
 
 // Javascript:
 echo '
-<script type="text/javascript">var htsrv_url = "'.$htsrv_url.'";</script>
-<script type="text/javascript" src="'.$rsc_url.'js/collectionperms.js"></script>';
+<script type="text/javascript">var htsrv_url = "'.$htsrv_url.'";</script>';
+require_js( 'collectionperms.js', 'rsc_url', false, true );
 
 $Form = new Form( NULL, 'blogperm_checkchanges', 'post', 'fieldset' );
 
@@ -64,7 +64,7 @@ else
 
 
 $SQL = new SQL();
-$SQL->SELECT( 'grp_ID, grp_name, bloggroup_perm_poststatuses + 0 as perm_poststatuses, bloggroup_perm_edit, bloggroup_ismember,'
+$SQL->SELECT( 'grp_ID, grp_name, bloggroup_perm_poststatuses + 0 as perm_poststatuses, bloggroup_perm_edit, bloggroup_ismember, bloggroup_can_be_assignee,'
 	. 'bloggroup_perm_delcmts, bloggroup_perm_recycle_owncmts, bloggroup_perm_vote_spam_cmts, bloggroup_perm_cmtstatuses + 0 as perm_cmtstatuses, bloggroup_perm_edit_cmt,'
 	. 'bloggroup_perm_delpost, bloggroup_perm_edit_ts, bloggroup_perm_cats,'
 	. 'bloggroup_perm_properties, bloggroup_perm_admin, bloggroup_perm_media_upload,'
@@ -137,7 +137,8 @@ $Results->cols[] = array(
 $Results->cols[] = array(
 						'th' => /* TRANS: SHORT table header on TWO lines */ T_('Is<br />member'),
 						'th_class' => 'checkright',
-						'td' => '%coll_perm_checkbox( {row}, \'bloggroup_\', \'ismember\', \''.format_to_output( TS_('Permission to read members posts'), 'htmlattr' ).'\', \'checkallspan_state_$grp_ID$\' )%',
+						'td' => '%coll_perm_checkbox( {row}, \'bloggroup_\', \'ismember\', \''.format_to_output( TS_('Permission to read members posts'), 'htmlattr' ).'\', \'checkallspan_state_$grp_ID$\' )%'.
+						( $edited_Blog->get_setting( 'use_workflow' ) ? '%coll_perm_checkbox( {row}, \'bloggroup_\', \'can_be_assignee\', \''.format_to_output( TS_('Items can be assigned to members of this group'), 'htmlattr' ).'\', \'checkallspan_state_$grp_ID$\' )%' : '' ),
 						'td_class' => 'center',
 					);
 
@@ -292,7 +293,6 @@ foreach( $Results->rows as $row )
 }
 $Form->hidden( 'group_IDs', implode( ',', $grp_IDs) );
 
-$Form->end_form( array( array( 'submit', 'actionArray[update]', T_('Update'), 'SaveButton' ),
-												array( 'reset', '', T_('Reset'), 'ResetButton' ) ) );
+$Form->end_form( array( array( 'submit', 'actionArray[update]', T_('Save Changes!'), 'SaveButton' ) ) );
 
 ?>

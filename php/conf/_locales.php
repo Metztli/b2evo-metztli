@@ -49,11 +49,12 @@ $use_l10n = 1;
  * This should be supported by {@link mb_list_encodings()}.
  */
 $evo_charset = '';
-if( version_compare( phpversion(), '5.4', '>=' ) )
+// Removed forcing of UTF-8 in PHP 5.4 because it created more problems than it solved. PHP 5.4 does NOT support UTF-8 more than PHP 5.3.
+/*if( version_compare( phpversion(), '5.4', '>=' ) )
 {	// PHP 5.4 uses utf-8 internally, we must match it to avoid problems
 	// Note: this setting does not change website charset defined in locale!
 	$evo_charset = 'utf-8';
-}
+}*/
 
 
 /**

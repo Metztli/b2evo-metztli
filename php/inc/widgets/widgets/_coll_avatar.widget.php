@@ -5,7 +5,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2008 by Daniel HAHLER - {@link http://daniel.hahler.de/}.
  *
  * {@internal License choice
@@ -23,7 +23,7 @@
  * @author blueyed: Daniel HAHLER
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _coll_avatar.widget.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _coll_avatar.widget.php 6411 2014-04-07 15:17:33Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -111,11 +111,15 @@ class coll_avatar_Widget extends ComponentWidget
 		// Display title if requested
 		$this->disp_title();
 
+		echo $this->disp_params['block_body_start'];
+
 		echo $owner_User->get_link( array(
 				'link_to'		   => 'userpage',  // TODO: make configurable $this->disp_params['link_to']
 				'link_text'    => 'avatar',
 				'thumb_size'	 => $this->disp_params['thumb_size'],
 			) );
+
+		echo $this->disp_params['block_body_end'];
 
 		echo $this->disp_params['block_end'];
 

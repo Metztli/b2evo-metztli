@@ -6,7 +6,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package plugins
  * @ignore
@@ -26,7 +26,7 @@ class wacko_plugin extends Plugin
 	var $group = 'rendering';
 	var $short_desc;
 	var $long_desc;
-	var $help_url = 'http://b2evolution.net/man/technical-reference/renderer-plugins/wacko-plugin';
+	var $help_topic = 'wacko-plugin';
 	var $number_of_installs = 1;
 
 	/**
@@ -35,18 +35,12 @@ class wacko_plugin extends Plugin
 	 * @access private
 	 */
 	var $search = array(
-			'#( ^ | \s ) ====== (.+?) ====== #x',
-			'#( ^ | \s ) ===== (.+?) ===== #x',
-			'#( ^ | \s ) ==== (.+?) ==== #x',
-			'#( ^ | \s ) === (.+?) === #x',
-			'#( ^ | \s ) == (.+?) == #x',
+			'#( ^ | [\s\S] ) ====== (.+?) ====== #x',
+			'#( ^ | [\s\S] ) ===== (.+?) ===== #x',
+			'#( ^ | [\s\S] ) ==== (.+?) ==== #x',
+			'#( ^ | [\s\S] ) === (.+?) === #x',
+			'#( ^ | [\s\S] ) == (.+?) == #x',
 			'#^ \s* --- \s* $#xm',	// multiline start/stop checking
-			'/ %%%
-				( \s*? \n )? 				# Eat optional blank line after %%%
-				(.+?)
-				( \n \s*? )? 				# Eat optional blank line before %%%
-				%%%
-			/sxe'		// %%%escaped codeblock%%%
 		);
 
 	/**
@@ -61,9 +55,6 @@ class wacko_plugin extends Plugin
 			'$1<h3>$2</h3>',
 			'$1<h2>$2</h2>',
 			'<hr />',
-			'\'<div class="codeblock"><pre><code>\'.
-			htmlspecialchars(stripslashes(\'$2\'),ENT_NOQUOTES).
-			\'</code></pre></div>\''
 		);
 
 	/**
@@ -73,13 +64,13 @@ class wacko_plugin extends Plugin
 	{
 		$this->short_desc = T_('Wacko style formatting');
 		$this->long_desc = T_('Accepted formats:<br />
-			== h2 ==<br />
-			=== h3 ===<br />
-			==== h4 ====<br />
-			===== h5 =====<br />
-			====== h6 ======<br />
-			--- (horinzontal rule)<br />
-			%%%codeblock%%%<br />');
+== h2 ==<br />
+=== h3 ===<br />
+==== h4 ====<br />
+===== h5 =====<br />
+====== h6 ======<br />
+--- (horinzontal rule)<br />
+%%%codeblock%%%<br />');
 	}
 
 
@@ -134,6 +125,9 @@ class wacko_plugin extends Plugin
 	 */
 	function find_bullet_lists( $content )
 	{
+		// Find and parse the code blocks to html view
+		$content = $this->escape_codeblock( $content );
+
 		$lines = explode( "\n", $content );
 		$lines_count = count( $lines );
 		$lists = array();
@@ -209,6 +203,39 @@ class wacko_plugin extends Plugin
 		}
 
 		return $content;
+	}
+
+
+	/**
+	 * Parse code blocks to html view
+	 *
+	 * @param string Content
+	 * @param string
+	 */
+	function escape_codeblock( $content )
+	{
+		$search = '/ %%%
+			( \s*? \n )? 				# Eat optional blank line after %%%
+			(.+?)
+			( \n \s*? )? 				# Eat optional blank line before %%%
+			%%%
+		/sx'; // %%%escaped codeblock%%%
+
+		return preg_replace_callback( $search, array( $this, 'escape_codeblock_callback' ), $content );
+	}
+
+
+	/**
+	 * Callback function for code block parsing
+	 *
+	 * @param array Result of preg_replace function, @see $this->escape_codeblock()
+	 * @return string
+	 */
+	function escape_codeblock_callback( $match )
+	{
+		return '<div class="codeblock"><pre><code>'
+				.evo_htmlspecialchars( stripslashes( $match[2] ), ENT_NOQUOTES )
+			.'</code></pre></div>';
 	}
 }
 

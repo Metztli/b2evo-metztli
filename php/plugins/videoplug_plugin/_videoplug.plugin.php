@@ -4,7 +4,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package plugins
  */
@@ -31,11 +31,10 @@ class videoplug_plugin extends Plugin
 
 	/**
 	 * Init
-	 * Jose/Metztli IT: 12-29-2013 added support for videos from rutube.ru
 	 */
 	function PluginInit( & $params )
 	{
-		$this->short_desc = T_('Video plug for a few popular video sites.');
+		$this->short_desc = T_('Tinechitta [Yo te miro] plug for a few popular video sites.');
 		$this->long_desc = T_('This is a basic video plug pluigin. Use it by entering [video:rutube:123xyz], [video:youtube:123xyz] or [video:dailymotion:123xyz] into your post, where 123xyz is the ID of the video.');
 	}
 
@@ -53,7 +52,6 @@ class videoplug_plugin extends Plugin
 
 		// fp> removed some embeds to make it xhtml compliant, using only object. (Hari style ;)
 		// anyone, feel free to clean up the ones that have no object tag at all.
-	  	// Jose/Metztli IT: 12-29-2013 added support for videos from rutube.ru
 
 		$search_list = array(
 				'#\[video:rutube:(.+?)]#',      // Rutube
@@ -124,15 +122,18 @@ class videoplug_plugin extends Plugin
 
 		echo '<div class="edit_toolbar" id="video_toolbar">';
 		echo T_('Video').': ';
-		echo '<input type="button" id="video_rutube" title="'.T_('Insert Rutube video').'" class="quicktags" onclick="videotag(\'rutube\');" value="RuTube" />';
-		echo '<input type="button" id="video_youtube" title="'.T_('Insert Youtube video').'" class="quicktags" onclick="videotag(\'youtube\');" value="YouTube" />';
-		echo '<input type="button" id="video_google" title="'.T_('Insert Google video').'" class="quicktags" onclick="videotag(\'google\');" value="Google video" />';
-		echo '<input type="button" id="video_dailymotion" title="'.T_('Insert DailyMotion video').'" class="quicktags" onclick="videotag(\'dailymotion\');" value="DailyMotion" />';
-		echo '<input type="button" id="video_livevideo" title="'.T_('Insert LiveVideo video').'" class="quicktags" onclick="videotag(\'livevideo\');" value="LiveVideo" />';
-		echo '<input type="button" id="video_ifilm" title="'.T_('Insert iFilm video').'" class="quicktags" onclick="videotag(\'ifilm\');" value="iFilm" />';
-		echo '<input type="button" id="video_vimeo" title="'.T_('Insert vimeo video').'" class="quicktags" onclick="videotag(\'vimeo\');" value="vimeo" />';
+		echo '<input type="button" id="video_rutube" title="'.T_('Insert Rutube video').'" class="quicktags" data-func="videotag|rutube" value="RuTube" />';
+		echo '<input type="button" id="video_youtube" title="'.T_('Insert Youtube video').'" class="quicktags" data-func="videotag|youtube" value="YouTube" />';
+		echo '<input type="button" id="video_google" title="'.T_('Insert Google video').'" class="quicktags" data-func="videotag|google" value="Google video" />';
+		echo '<input type="button" id="video_dailymotion" title="'.T_('Insert DailyMotion video').'" class="quicktags" data-func="videotag|dailymotion" value="DailyMotion" />';
+		echo '<input type="button" id="video_livevideo" title="'.T_('Insert LiveVideo video').'" class="quicktags" data-func="videotag|livevideo" value="LiveVideo" />';
+		echo '<input type="button" id="video_ifilm" title="'.T_('Insert iFilm video').'" class="quicktags" data-func="videotag|ifilm" value="iFilm" />';
+		echo '<input type="button" id="video_vimeo" title="'.T_('Insert vimeo video').'" class="quicktags" data-func="videotag|vimeo" value="vimeo" />';
 
 		echo '</div>';
+
+		// Load js to work with textarea
+		require_js( 'functions.js', 'blog', true, true );
 
 		?>
 		<script type="text/javascript">
@@ -151,7 +152,6 @@ class videoplug_plugin extends Plugin
 
 					// Validate Video ID:
 					// TODO: verify validation / add for others..
-					// Jose/Metztli IT: 12-29-2013 added support for videos from rutube.ru
 					switch( tag )
 					{
 						case 'google':

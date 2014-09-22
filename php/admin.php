@@ -9,7 +9,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
@@ -34,7 +34,7 @@
  *
  * @package main
  *
- * @version $Id: admin.php 5899 2014-02-05 09:19:35Z attila $
+ * @version $Id: admin.php 6135 2014-03-08 07:54:05Z manuel $
  */
 
 

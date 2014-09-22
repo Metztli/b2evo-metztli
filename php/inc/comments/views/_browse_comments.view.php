@@ -5,7 +5,7 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
@@ -15,7 +15,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _browse_comments.view.php 4786 2013-09-17 14:04:53Z yura $
+ * @version $Id: _browse_comments.view.php 6411 2014-04-07 15:17:33Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -76,22 +76,13 @@ $block_item_Widget->disp_template_replaced( 'block_start' );
 // Display filters title
 echo $CommentList->get_filter_title( '<h3>', '</h3>', '<br />', NULL, 'htmlbody' );
 
+global $AdminUI;
+$admin_template = $AdminUI->get_template( 'Results' );
+
 $display_params = array(
-				'header_start' => '<div class="NavBar center">',
-					'header_text' => '<strong>'.T_('Pages').'</strong>: $prev$ $first$ $list_prev$ $list$ $list_next$ $last$ $next$',
-					'header_text_single' => T_('1 page'),
-				'header_end' => '</div>',
-				'footer_start' => '',
-					'footer_text' => '<div class="NavBar center"><strong>'.T_('Pages').'</strong>: $prev$ $first$ $list_prev$ $list$ $list_next$ $last$ $next$<br />$page_size$</div>',
-					'footer_text_single' => '<div class="NavBar center">$page_size$</div>',
-						'prev_text' => T_('Previous'),
-						'next_text' => T_('Next'),
-						'list_prev_text' => T_('...'),
-						'list_next_text' => T_('...'),
-						'list_span' => 11,
-						'scroll_list_range' => 5,
-				'footer_end' => ''
-			);
+		'header_start' => str_replace( 'class="', 'class="NavBar center ', $admin_template['header_start'] ),
+		'footer_start' => str_replace( 'class="', 'class="NavBar center ', $admin_template['footer_start'] ),
+	);
 
 $CommentList->display_if_empty();
 

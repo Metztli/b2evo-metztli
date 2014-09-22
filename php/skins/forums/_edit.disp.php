@@ -7,13 +7,13 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
  *
  * @package evoskins
  *
- * @version $Id: _edit.disp.php 3755 2013-05-21 08:52:51Z yura $
+ * @version $Id: _edit.disp.php 7043 2014-07-02 08:35:45Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -382,5 +382,4 @@ echo_publishnowbutton_js();
 // New category input box:
 echo_onchange_newcat();
 echo_autocomplete_tags( $edited_Item->get_tags() );
-
 ?>

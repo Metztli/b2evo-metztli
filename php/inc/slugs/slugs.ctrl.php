@@ -5,14 +5,14 @@
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
  *
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author evfy-asimo: Attila Simo.
  *
- * @version $Id: slugs.ctrl.php 3943 2013-06-06 09:46:34Z yura $
+ * @version $Id: slugs.ctrl.php 6135 2014-03-08 07:54:05Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 

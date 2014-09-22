@@ -8,7 +8,7 @@
  * This file is part of the evoCore framework - {@link http://evocore.net/}
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
@@ -33,7 +33,7 @@
  *
  * @package evocore
  *
- * @version $Id: _init_session.inc.php 4096 2013-06-28 10:39:15Z attila $
+ * @version $Id: _init_session.inc.php 6239 2014-03-17 15:51:10Z yura $
  */
 if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page directly.' );
 
@@ -70,6 +70,11 @@ $Session = new Session(); // If this can't pull a session from the DB it will al
  * Handle saving the HIT and updating the SESSION at the end of the page
  */
 register_shutdown_function( 'shutdown' );
+
+/**
+ * Handle fatal error in order to display info message when debug is OFF
+ */
+set_error_handler( 'evo_error_handler' );
 
 
 // NOTE: it might be faster (though more bandwidth intensive) to spit cached pages (CachePageContent event) than to look into blocking the request (SessionLoaded event).

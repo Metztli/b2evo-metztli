@@ -36,6 +36,7 @@ elseif( file_exists(dirname(__FILE__).'/umaintenance.html') )
 	}
 }
 
+
 /**
  * This makes sure the config does not get loaded twice in Windows
  * (when the /conf file is in a path containing uppercase letters as in /Blog/conf).
@@ -83,11 +84,25 @@ if( $debug == 'pwd' )
 			if( $_GET['debug'] == $debug_pwd )
 			{	// Password matches
 				$debug = 1;
-				setcookie( 'debug', $debug_pwd, 0, $cookie_path, $cookie_domain );
+				if( version_compare( phpversion(), '5.2', '>=' ) )
+				{ // Use HTTP-only setting since PHP 5.2.0
+					setcookie( 'debug', $debug_pwd, 0, $cookie_path, $cookie_domain, false, true );
+				}
+				else
+				{ // PHP < 5.2 doesn't support HTTP-only
+					setcookie( 'debug', $debug_pwd, 0, $cookie_path, $cookie_domain );
+				}
 			}
 			else
 			{	// Password doesn't match: turn off debug mode:
-				setcookie( 'debug', '', $cookie_expired, $cookie_path, $cookie_domain );
+				if( version_compare( phpversion(), '5.2', '>=' ) )
+				{ // Use HTTP-only setting since PHP 5.2.0
+					setcookie( 'debug', '', $cookie_expired, $cookie_path, $cookie_domain, false, true );
+				}
+				else
+				{ // PHP < 5.2 doesn't support HTTP-only
+					setcookie( 'debug', '', $cookie_expired, $cookie_path, $cookie_domain );
+				}
 			}
 		}
 		elseif( !empty( $_COOKIE['debug'] ) && $_COOKIE['debug'] == $debug_pwd )
@@ -133,6 +148,17 @@ if( $debug_jslog == 'pwd' )
 			}
 		}
 	}
+}
+
+
+// To help debugging severe errors, you'll probably want PHP to display the errors on screen.
+if( $debug > 0 || $display_errors_on_production )
+{ // We are debugging or w want to display errors on screen production anyways:
+	ini_set( 'display_errors', 'On' );
+}
+else
+{ // Do not display errors on screen:
+	ini_set( 'display_errors', 'Off' );
 }
 
 // Check compatibility. Server PHP version can't be lower then the application required PHP version.

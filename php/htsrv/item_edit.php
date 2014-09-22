@@ -8,6 +8,9 @@ require_once dirname(__FILE__).'/../conf/_config.php';
 
 require_once $inc_path.'_main.inc.php';
 
+// Stop a request from the blocked IP addresses or Domains
+antispam_block_request();
+
 if( empty( $Blog ) )
 {
 	param( 'blog', 'integer', 0 );
@@ -309,7 +312,7 @@ switch( $action )
 
 		$Messages->add( T_('Post has been updated.'), 'success' );
 
-		$inskin_statuses = get_inskin_statuses();
+		$inskin_statuses = get_inskin_statuses( $edited_Item->get_blog_ID(), 'post' );
 		if( ! in_array( $post_status, $inskin_statuses ) )
 		{ // If post is not published we show it in the Back-office
 			$edited_Item->load_Blog();
@@ -341,8 +344,6 @@ switch( $action )
 		break;
 }
 
-// Require datapicker.css
-require_css( 'ui.datepicker.css' );
 // Require results.css to display attachments as a result table
 require_css( 'results.css' );
 

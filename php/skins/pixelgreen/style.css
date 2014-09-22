@@ -14,6 +14,10 @@
 /* top elements */
 * { padding: 0; margin: 0; }
 
+div#skin_wrapper div.sitewide_header {
+	margin-bottom: 0;
+}
+
 #wrap {
 	margin: 0;
 	padding: 0 5px 5px;
@@ -454,4 +458,8 @@ form#login_form {
 	border: none;
 	background: none;
 	margin: 0;
+}
+
+.bImages .flowplayer_block, .bImages .videojs_block, .bImages .mediajs_block {
+	padding: 0 10px;
 }

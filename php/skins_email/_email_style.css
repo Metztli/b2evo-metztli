@@ -55,9 +55,25 @@ p.sitename{
 	font-size: 24px;
 	margin: 0;
 }
+table.email_table.bordered {
+	border-top: 1px solid #999;
+	border-left: 1px solid #999;
+}
+table.email_table.bordered th, table.email_table.bordered td {
+	border-right: 1px solid #999;
+	border-bottom: 1px solid #999;
+	padding: 1px 5px;
+}
 table.email_table th{
 	text-align: right;
 	padding-right: 10px;
+}
+table.email_table thead th{
+	background: #CCC;
+	text-align: center;
+}
+table.email_table tr.row_red td {
+	background: #F00;
 }
 /* User Genders: */
 span.user, span.user.anonymous{
@@ -114,4 +130,19 @@ a.button_gray {
 	background: linear-gradient(#f9f9f9, #ebebeb);
 	background: -webkit-linear-gradient(#f9f9f9, #ebebeb);
 	background: -moz-linear-gradient(#f9f9f9, #ebebeb);
+}
+
+@media (max-width: 640px) {
+	div.email_header, div.email_payload {
+		margin-left: 4px;
+		margin-right: 4px;
+	}
+	div.email_ugc, div.email_footer {
+		margin-left: 0;
+		margin-right: 0;
+	}
+}
+
+@-ms-viewport {
+	width: device-width;
 }

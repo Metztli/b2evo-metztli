@@ -93,7 +93,7 @@ skin_include( '_body_header.inc.php' );
 					<small>
 						<?php
 							$Item->author( array(
-									'link_text'    => 'only_avatar',
+									'link_text'    => 'avatar',
 									'link_rel'     => 'nofollow',
 									'thumb_size'   => 'crop-top-32x32',
 									'thumb_class'  => 'leftmargin',
@@ -111,7 +111,7 @@ skin_include( '_body_header.inc.php' );
 									) );
 								$Item->author( array(
 										'before'    => T_('by '),
-										'link_text' => 'preferredname',
+										'link_text' => 'login',
 									) );
 							}
 							else

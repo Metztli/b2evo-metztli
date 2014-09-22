@@ -5,13 +5,13 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
  *
  * @package admin
  *
- * @version $Id: _widget_list_available.view.php 3328 2013-03-26 11:44:11Z yura $
+ * @version $Id: _widget_list_available.view.php 6426 2014-04-08 16:26:27Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -35,6 +35,7 @@ $core_componentwidget_defs = array(
 			'linkblog',	        	// Simple List
 			'coll_media_index',
 			'coll_comment_list',
+			'coll_featured_intro',
 		'*'.T_('Blog navigation'),
 			'coll_tag_cloud',
 			'coll_category_list',

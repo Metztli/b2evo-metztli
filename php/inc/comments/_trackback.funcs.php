@@ -5,7 +5,7 @@
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
  * See also {@link http://sourceforge.net/projects/evocms/}.
  *
- * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2004-2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
@@ -26,7 +26,7 @@
  * @author sakichan: Nobuo SAKIYAMA.
  * @author vegarg: Vegar BERG GULDAL.
  *
- * @version $Id: _trackback.funcs.php 3508 2013-04-19 06:58:02Z yura $
+ * @version $Id: _trackback.funcs.php 6225 2014-03-16 10:01:05Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -71,7 +71,7 @@ function trackback(
 {
 	global $app_name, $app_version, $Blog, $Messages;
 
-	$trackback_message = T_('Sending trackback to:').' '.htmlspecialchars($trackback_url).' ';
+	$trackback_message = T_('Sending trackback to:').' '.evo_htmlspecialchars($trackback_url).' ';
 
 	$title = rawurlencode($title);
 	$excerpt = rawurlencode($excerpt);

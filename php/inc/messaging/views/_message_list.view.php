@@ -20,7 +20,7 @@
  * @author efy-maxim: Evo Factory / Maxim.
  * @author fplanque: Francois Planque.
  *
- * @version $Id: _message_list.view.php 6136 2014-03-08 07:59:48Z manuel $
+ * @version $Id: _message_list.view.php 6479 2014-04-16 07:18:54Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -211,14 +211,14 @@ $Results->cols[] = array(
 function format_msg_text( $msg_text, $thread_title )
 {
 	global $evo_charset;
-	
+
 	if( empty( $msg_text ) )
 	{
 		return format_to_output( $thread_title, 'htmlspecialchars' );
 	}
 
 	// WARNING: the messages may contain MALICIOUS HTML and javascript snippets. They must ALWAYS be ESCAPED prior to display!
-	$msg_text = htmlentities( $msg_text, ENT_COMPAT, $evo_charset );
+	$msg_text = evo_htmlentities( $msg_text, ENT_COMPAT, $evo_charset );
 
 	$msg_text = make_clickable( $msg_text );
 	$msg_text = preg_replace( '#<a #i', '<a rel="nofollow" target="_blank"', $msg_text );
@@ -342,7 +342,7 @@ function delete_action( $thrd_ID, $msg_ID )
 	}
 }
 
-if( $current_User->check_perm( 'perm_messaging', 'delete' ) && $Results->total_rows > 1 )
+if( $current_User->check_perm( 'perm_messaging', 'delete' ) && ( $Results->get_total_rows() > 1 ) )
 {	// We have permission to modify and there are more than 1 message (otherwise it's better to delete the whole thread):
 	$Results->cols[] = array(
 							'th' => T_('Del'),
@@ -396,7 +396,10 @@ if( $is_recipient )
 				$Form->info_field( '', T_( 'The other users involved in this conversation have closed their account.' ) );
 			}
 
-			$Form->textarea('msg_text', '', 10, T_('Message'), '', $params[ 'cols' ], '', true);
+			$Form->textarea_input( 'msg_text', !empty( $edited_Message ) ? $edited_Message->original_text : '', 10, T_('Message'), array(
+					'cols' => $params['cols'],
+					'required' => true
+				) );
 
 		$Form->end_form( array( array( 'submit', 'actionArray[create]', T_('Send message'), 'SaveButton' ) ) );
 	}

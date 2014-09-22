@@ -3,7 +3,7 @@
  * These are included in basic.css but also in item_base.css so they are available in WYSIWYG editors
  */
 
-code {
+code, samp {
 	font-family: Menlo, Monaco, "Courier New", Courier, monospace;
 	/* font-size: 107%; */
 }
@@ -45,6 +45,9 @@ code {
 .hidden {
 	display: none;
 }
+.indented {
+	margin-left: 3em;
+}
 
 .border {
 	border: 1px solid #000;
@@ -81,6 +84,9 @@ code {
 }
 .black {
 	color: #000;
+}
+.disabled {
+	color: #999;
 }
 acronym,
 abbr {
@@ -241,6 +247,7 @@ a.roundbutton.middle {
 a.roundbutton:hover, a.roundbutton_text:hover {
 	cursor: default;
 	text-decoration: none;
+	color: inherit;
 	background: #d2d2d2;
 	/* Safari 4-5, Chrome 1-9 */
 	background: -webkit-gradient(linear, 0% 0%, 0% 100%, from(#d2d2d2), to(#a0a0a0));
@@ -374,6 +381,45 @@ a.roundbutton_text_noicon {
 a.roundbutton_text span, a.roundbutton_text_noicon span {
 	left: 5px;
 	right: auto;
+}
+
+.roundbutton.rbtn_black, .roundbutton_group .roundbutton.rbtn_black {
+	border-color: #1a1a1a;
+	background-color: #3a3a3a;
+	background-size : 30px 30px;
+	background-repeat:repeat-x;
+	background-position :0;
+	background-image : -moz-linear-gradient(
+		90deg,
+		rgba(0,0,0,0.01) 0%,
+		rgba(0,0,0,0.01) 50%,
+		rgba(255,255,255,0.1) 50%,
+		rgba(255,255,255,0.3) 100%
+		);
+	background-image : -o-linear-gradient(
+		90deg,
+		rgba(0,0,0,0.01) 0%,
+		rgba(0,0,0,0.01) 50%,
+		rgba(255,255,255,0.1) 50%,
+		rgba(255,255,255,0.3) 100%
+		);
+	background-image : -webkit-linear-gradient(
+		90deg,
+		rgba(0,0,0,0.01) 0%,
+		rgba(0,0,0,0.01) 50%,
+		rgba(255,255,255,0.1) 50%,
+		rgba(255,255,255,0.3) 100%
+		);
+}
+.roundbutton.rbtn_black:before, .roundbutton_group .roundbutton.rbtn_black:before {
+	border-color: #1a1a1a;
+}
+.roundbutton.rbtn_black:hover, .roundbutton_group .roundbutton.rbtn_black:hover {
+	background-color: #252525;
+}
+span.roundbutton.rbtn_black, .roundbutton_group span.roundbutton.rbtn_black,
+span.roundbutton.rbtn_black:hover, .roundbutton_group span.roundbutton.rbtn_black:hover {
+	background-color: #666;
 }
 
 .notes a.roundbutton {
