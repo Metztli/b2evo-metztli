@@ -28,7 +28,8 @@ rhc app create -a b2evo -t php-5.4
 
 (since as of January 2014, OpenShift added PHP 5.4.)
 
-A new directory named as your application (i.e. b2evo in this case) will be created at your current location. You may examine its content.
+A new directory named as your application (i.e. b2evo in this case) will be created at your current location. You may examine its content
+for instance: ls -a b2evo/
 
 Add mysql support to your application
     
@@ -44,9 +45,7 @@ Make a note of the username, password, and host name (for reference purposes sin
 
 Add this upstream b2evolution quickstart repo:
 
-cd b2evo/php
-
-rm -rf *
+cd b2evo/.
 
 git remote add upstream -m master git://github.com/Metztli/b2evo-metztli.git
 
