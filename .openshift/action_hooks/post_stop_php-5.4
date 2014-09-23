@@ -1,0 +1,27 @@
+#!/bin/bash
+
+# The pre_start_cartridge and pre_stop_cartridge hooks are *SOURCED*
+# immediately before (re)starting or stopping the specified cartridge.
+# They are able to make any desired environment variable changes as
+# well as other adjustments to the application environment.
+
+# The post_start_cartridge and post_stop_cartridge hooks are executed
+# immediately after (re)starting or stopping the specified cartridge.
+
+# Exercise caution when adding commands to these hooks.  They can
+# prevent your application from stopping cleanly or starting at all.
+# Application start and stop is subject to different timeouts
+# throughout the system.
+#
+# 09-22-2014: Jose R Rodriguez/Metztli IT http://www.metztli-it.com
+# Due diligence has been exercised but no guarantees are conveyed in either
+# explicit or implicit manner or form.
+#
+# b2evolution install directory should be removed for added security. I accomplish this upon the first stop of the php cartridge.
+#
+if [ -d $OPENSHIFT_REPO_DIR/php/install ]
+then
+rm -rf $OPENSHIFT_REPO_DIR/php/install
+else
+exit
+fi
