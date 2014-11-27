@@ -1,0 +1,163 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>B2evo-metztli by Metztli</title>
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+    <script src="javascripts/main.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+
+  </head>
+  <body>
+
+      <header>
+        <h1>B2evo-metztli</h1>
+        <p>b2evolution is a powerful free blog/CMS engine you can install on the OpenShift online platform as a service (PaaS)</p>
+      </header>
+
+      <div id="banner">
+        <span id="logo"></span>
+
+        <a href="https://github.com/Metztli/b2evo-metztli" class="button fork"><strong>View On GitHub</strong></a>
+        <div class="downloads">
+          <span>Downloads:</span>
+          <ul>
+            <li><a href="https://github.com/Metztli/b2evo-metztli/zipball/master" class="button">ZIP</a></li>
+            <li><a href="https://github.com/Metztli/b2evo-metztli/tarball/master" class="button">TAR</a></li>
+          </ul>
+        </div>
+      </div><!-- end banner -->
+
+    <div class="wrapper">
+      <nav>
+        <ul></ul>
+      </nav>
+      <section>
+        <h1>
+<a id="b2evolution-on-openshift" class="anchor" href="#b2evolution-on-openshift" aria-hidden="true"><span class="octicon octicon-link"></span></a>b2evolution on OpenShift</h1>
+
+<p>b2evolution is a downloadable, open source (GPL licensed) powerful free blog/CMS engine you can install on Red Hat OpenShift online
+platform as a service (PaaS).</p>
+
+<p>b2evolution is an open source security-conscious -- full-featured -- alternative to WordPress.</p>
+
+<p>More information can be found on the official <a href="http://b2evolution.net">b2evolution website</a></p>
+
+<h2>
+<a id="running-on-openshift" class="anchor" href="#running-on-openshift" aria-hidden="true"><span class="octicon octicon-link"></span></a>Running on OpenShift</h2>
+
+<p>Create an account at <a href="https://www.openshift.com/">OpenShift by Red Hat</a></p>
+
+<p>I assume that you have installed the rhc command line tools for your operating system, as guided in <a href="https://developers.openshift.com/en/getting-started-overview.html">Getting Started With OpenShift</a></p>
+
+<p>Create a PHP application. Evidently and to make your task ahead easier, create a working directory and change to that location.
+All the rhc commands below are relative to your working directory location.</p>
+
+<p>Below, please note that I will name the application b2evo, but you can select any (allowed) name desired.</p>
+
+<p><code>rhc app create -a b2evo -t php-5.3</code></p>
+
+<p>OR, alternatively,</p>
+
+<p><code>rhc app create -a b2evo -t php-5.4</code></p>
+
+<p>(since as of January 2014, OpenShift added PHP 5.4.)</p>
+
+<p>A new directory named as your application (i.e. b2evo in this case) will be created at your current location. You may examine its content
+for instance: ls -a b2evo/</p>
+
+<p>Add mysql support to your application</p>
+
+<p><code>rhc cartridge add -c mysql-5.1 -a b2evo</code></p>
+
+<p>OR, alternatively,</p>
+
+<p><code>rhc cartridge add -c mysql-5.5 -a b2evo</code></p>
+
+<p>(since as of January 2014, OpenShift added MySQL 5.5.)</p>
+
+<p>Make a note of the username, password, and host name (for reference purposes since your b2evolution instance will be provided with relevant values).</p>
+
+<p>Add this upstream b2evolution quickstart repo:</p>
+
+<p><code>cd b2evo/.</code></p>
+
+<p><code>rm -v index.php</code></p>
+
+<p>or</p>
+
+<p><code>rm -v ./*</code></p>
+
+<p>(please not the leading dot <em>before</em> the frontslash)</p>
+
+<p><code>git remote add upstream -m master git://github.com/Metztli/b2evo-metztli.git</code></p>
+
+<p><code>git pull -s recursive -X theirs upstream master</code></p>
+
+<p>Then push the repo upstream to OpenShift</p>
+
+<p><code>git push</code></p>
+
+<p>That's it, you can now instantiate your b2evolution application at:</p>
+
+<p><a href="http://b2evo-yourNameSpace.rhcloud.com">http://b2evo-yourNameSpace.rhcloud.com</a></p>
+
+<p>Please disregard if you get a message similar to:</p>
+
+<p>"<em>You cannot use the application before you finish configuration and installation.</em></p>
+
+<p><em>MySQL error:</em>
+<em>Table 'yourAppNameDB.evo_settings' doesn't exist(Errno=1146)</em>"</p>
+
+<p>It only means that the values where taken directly from your OpenShift environment.</p>
+
+<p>Proceed to click either of the '<em>here</em>' links to finish the b2evolution install.</p>
+
+<p>Select your language from the upper left cascading menu.</p>
+
+<p>If you are not familiar with blogging in b2evolution, allow the preselected defaults to install three(3) sample blogs.</p>
+
+<p>Then press the '<strong>GO!</strong>'-labeled button at your lower left. Wait a couple of seconds and you will be provided with your</p>
+
+<p>default login username: <em>admin</em></p>
+
+<p><strong><em>please make a note of your random password and use it for your initial login procedure</em></strong> --you can change it upon logging in.</p>
+
+<p>For security change your default login username and your email address.</p>
+
+<hr>
+
+<p>Huelmati [enjoy]!</p>
+
+<p>Note: of course, if you used CNAME to point your (sub)domain name to your OpenShift application, then setup your b2evolution
+application by accessing your (sub)domain URL.</p>
+
+<p>Accordingly, if you have and want to point a domain name (or subdomain) to your b2evo application (recently created), then use form of command below:</p>
+
+<p>rhc alias add b2evo b2evolution.yourDomainName.xyz</p>
+
+<p>Don't forget that you must first modify the CNAME at your domain DNS service provider and it usually takes at least 12hours for it to propagate.</p>
+
+<p>Thus, as an example to guide you in your CNAME settings:</p>
+
+<p>b2evolution.yourDomainName.xyz       should point to        b2evo-yourNameSpace.rhcloud.com</p>
+
+<hr>
+
+<p><img src="https://www.metztli-it.com/sites/default/files/images/Atemoztli.png" alt="Tlalocatecuhtli"></p>
+      </section>
+      <footer>
+        <p>Project maintained by <a href="https://github.com/Metztli">Metztli</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://twitter.com/michigangraham">mattgraham</a></small></p>
+      </footer>
+    </div>
+    <!--[if !IE]><script>fixScale(document);</script><![endif]-->
+    
+  </body>
+</html>
