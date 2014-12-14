@@ -79,7 +79,7 @@ function attachment_iframe( & $Form, & $LinkOwner, $iframe_name = NULL, $creatin
 
 	if( $creating )
 	{	// Creating new Item
-		$fieldset_title .= ' - <a id="title_file_add" href="#" >'.get_icon( 'folder', 'imgtag' ).' '.T_('Add/Link files').'</a> <span class="note">(popup)</span>';
+		$fieldset_title .= ' '.get_manual_link('post-attachments-fieldset').' - <a id="title_file_add" href="#" >'.get_icon( 'folder', 'imgtag' ).' '.T_('Add/Link files').'</a> <span class="note">(popup)</span>';
 
 		$Form->begin_fieldset( $fieldset_title, array( 'id' => 'itemform_createlinks' ) );
 		$Form->hidden( 'is_attachments', 'false' );
@@ -101,7 +101,7 @@ function attachment_iframe( & $Form, & $LinkOwner, $iframe_name = NULL, $creatin
 		$iframe_name = 'attach_'.generate_random_key( 16 );
 	}
 
-	$fieldset_title .= ' - '.action_icon( T_('Refresh'), 'refresh', $admin_url.'?ctrl=links&amp;action=edit_links&amp;link_type='.$LinkOwner->type.'&amp;mode=iframe&amp;iframe_name='.$iframe_name.'&amp;link_object_ID='.$LinkOwner->get_ID(), T_('Refresh'), 3, 4, array( 'target' => $iframe_name ) );
+	$fieldset_title .= ' '.get_manual_link('post-attachments-fieldset').' - '.action_icon( T_('Refresh'), 'refresh', $admin_url.'?ctrl=links&amp;action=edit_links&amp;link_type='.$LinkOwner->type.'&amp;mode=iframe&amp;iframe_name='.$iframe_name.'&amp;link_object_ID='.$LinkOwner->get_ID(), T_('Refresh'), 3, 4, array( 'target' => $iframe_name ) );
 
 	if( $current_User->check_perm( 'files', 'view', false, $Blog->ID )
 		&& $LinkOwner->check_perm( 'edit', false ) )
@@ -182,11 +182,15 @@ function display_attachments( & $LinkOwner, $params = array() )
 /**
  * Display link actions
  *
- * @param $link_ID
- * @param $cur_idx
- * @param $total_rows
+ * @param integer Link ID
+ * @param string Index type of current row:
+ *               'single' - when only one row in list
+ *               'first'  - Current row is first in whole list
+ *               'last'   - Current row is last in whole list
+ *               'middle' - Current row is not first and not last
+ * @return string
  */
-function link_actions( $link_ID, $cur_idx = 0, $total_rows = 2 )
+function link_actions( $link_ID, $row_idx_type = '' )
 {
 	/**
 	 * @var File
@@ -199,9 +203,9 @@ function link_actions( $link_ID, $cur_idx = 0, $total_rows = 2 )
 
 	// Change order.
 	if( $LinkOwner->check_perm( 'edit' ) )
-	{	// Check that we have permission to edit LinkOwner object:
-		if( $cur_idx > 0 )
-		{
+	{ // Check that we have permission to edit LinkOwner object:
+		if( $row_idx_type != 'first' && $row_idx_type != 'single' )
+		{ // Allow to move up all rows except of first
 			$r .= action_icon( T_('Move upwards'), 'move_up',
 				regenerate_url( 'ctrl,link_object_ID,action', 'ctrl=links&amp;link_ID='.$link_ID.'&amp;action=link_move_up&amp;'.url_crumb('link') ) );
 		}
@@ -210,8 +214,8 @@ function link_actions( $link_ID, $cur_idx = 0, $total_rows = 2 )
 			$r .= get_icon( 'nomove' ).' ';
 		}
 
-		if( $cur_idx < $total_rows-1 )
-		{
+		if( $row_idx_type != 'last' && $row_idx_type != 'single' )
+		{ // Allow to move down all rows except of last
 			$r .= action_icon( T_('Move down'), 'move_down',
 				regenerate_url( 'ctrl,p,itm_ID,action', 'ctrl=links&amp;link_ID='.$link_ID.'&amp;action=link_move_down&amp;'.url_crumb('link') ) );
 		}

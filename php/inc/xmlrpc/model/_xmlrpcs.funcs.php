@@ -674,7 +674,7 @@ function _wp_mw_getcategories( $m, $params = array() )
 	 * @var Blog
 	 */
 	if( ! $Blog = & xmlrpcs_get_Blog( $m, 0 ) )
-	{	// Login failed, return (last) error:
+	{	// Not found the selected blog, return (last) error:
 		return xmlrpcs_resperror();
 	}
 

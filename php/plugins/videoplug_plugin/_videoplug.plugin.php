@@ -34,7 +34,7 @@ class videoplug_plugin extends Plugin
 	 */
 	function PluginInit( & $params )
 	{
-		$this->short_desc = T_('Tinechitta [Yo te miro] plug for a few popular video sites.');
+		$this->short_desc = T_('Tinechitta [I see you: Yo te miro] plug for a few popular video sites.');
 		$this->long_desc = T_('This is a basic video plug pluigin. Use it by entering [video:rutube:123xyz], [video:youtube:123xyz] or [video:dailymotion:123xyz] into your post, where 123xyz is the ID of the video.');
 	}
 

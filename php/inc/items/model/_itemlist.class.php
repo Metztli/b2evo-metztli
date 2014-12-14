@@ -26,7 +26,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _itemlist.class.php 6225 2014-03-16 10:01:05Z attila $
+ * @version $Id: _itemlist.class.php 7479 2014-10-21 07:06:03Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 

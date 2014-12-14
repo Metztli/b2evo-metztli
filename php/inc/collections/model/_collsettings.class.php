@@ -25,7 +25,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE
  *
- * @version $Id: _collsettings.class.php 6643 2014-05-08 13:08:08Z yura $
+ * @version $Id: _collsettings.class.php 7434 2014-10-15 07:18:30Z yura $
  *
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -74,6 +74,7 @@ class CollectionSettings extends AbstractSettings
 			'tags_meta_keywords' => 1,
 			'slug_limit' => 5,
 			'tags_open_graph' => 1,
+			// 'post_moderation_statuses' => NULL,			// Possible values are a list of statuses from: 'community', 'protected', 'review', 'draft', but we don't specify a general default because it depends from the blog type ( see @Blog::get_setting() )
 
 		// Comment settings:
 			// 'new_feedback_status' => 'review',		// Default status for new anonymous comments: 'published', 'community', 'protected', 'private', 'review', 'draft' or 'deprecated'. We don't specify a general default because it depends from the blog type ( see @Blog::get_setting() )

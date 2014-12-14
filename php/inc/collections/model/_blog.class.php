@@ -30,7 +30,7 @@
  *
  * @package evocore
  *
- * @version $Id: _blog.class.php 7163 2014-07-21 13:13:37Z yura $
+ * @version $Id: _blog.class.php 7636 2014-11-13 10:55:48Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -260,6 +260,7 @@ class Blog extends DataObject
 				$this->set_setting( 'orderdir', 'DESC' );
 				$this->set_setting( 'enable_goto_blog', 'post' );
 				$this->set_setting( 'front_disp', 'front' );
+				$this->set_setting( 'allow_rating_comment_helpfulness', 1 );
 				break;
 
 			case 'manual':
@@ -625,6 +626,18 @@ class Blog extends DataObject
 
 			// call modules update_collection_features on this blog
 			modules_call_method( 'update_collection_features', array( 'edited_Blog' => & $this ) );
+
+			// load post moderation statuses
+			$moderation_statuses = get_visibility_statuses( 'moderation' );
+			$post_moderation_statuses = array();
+			foreach( $moderation_statuses as $status )
+			{
+				if( param( 'post_notif_'.$status, 'integer', 0 ) )
+				{
+					$post_moderation_statuses[] = $status;
+				}
+			}
+			$this->set_setting( 'post_moderation_statuses', implode( ',', $post_moderation_statuses ) );
 		}
 
 		if( in_array( 'comments', $groups ) )
@@ -2034,7 +2047,7 @@ class Blog extends DataObject
 		switch( $parname )
 		{
 			case 'normal_skin_ID':
-				if( $result == NULL )
+				if( $result === NULL )
 				{ // Try to get default from the global settings
 					$result = $Settings->get( 'def_'.$parname );
 				}
@@ -2042,7 +2055,7 @@ class Blog extends DataObject
 
 			case 'mobile_skin_ID':
 			case 'tablet_skin_ID':
-				if( $result == NULL )
+				if( $result === NULL )
 				{ // Try to get default from the global settings
 					$result = $Settings->get( 'def_'.$parname );
 				}
@@ -2053,7 +2066,8 @@ class Blog extends DataObject
 				break;
 
 			case 'moderation_statuses':
-				if( $result == NULL )
+			case 'post_moderation_statuses':
+				if( $result === NULL )
 				{ // moderation_statuses was not set yet, set the default value, which depends from the blog type
 					$default = 'review,draft';
 					$result = ( $this->type == 'forum' ) ? 'community,protected,'.$default : $default;
@@ -2062,7 +2076,7 @@ class Blog extends DataObject
 
 			case 'comment_inskin_statuses':
 			case 'post_inskin_statuses':
-				if( $result == NULL )
+				if( $result === NULL )
 				{ // inskin_statuses was not set yet, set the default value, which depends from the blog type
 					$default = 'published,community,protected,private,review';
 					$result = ( $this->type == 'forum' ) ? $default.',draft' : $default;
@@ -2071,7 +2085,7 @@ class Blog extends DataObject
 
 			case 'default_post_status':
 			case 'new_feedback_status':
-				if( $result == NULL )
+				if( $result === NULL )
 				{ // Default post/comment status was not set yet, use a default value corresponding to the blog type
 					$result = ( $this->type == 'forum' ) ? 'review' : 'draft';
 				}

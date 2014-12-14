@@ -22,7 +22,7 @@
  * @author fplanque: Francois PLANQUE
  * @author vegarg: Vegar BERG GULDAL
  *
- * @version $Id: stats.ctrl.php 6911 2014-06-17 15:35:37Z yura $
+ * @version $Id: stats.ctrl.php 7654 2014-11-15 14:13:15Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -53,32 +53,34 @@ if( in_array( $tab, array( 'settings', 'goals' ) ) )
 { // Change tab to default and blog to 'all' from other controllers
 	$tab_real = $tab;
 	$tab = 'summary';
-	$blog = 0;
 }
 
 param( 'action', 'string' );
 
-if ($tab == 'domains' && $current_User->check_perm( 'stats', 'edit' ))
+if( $tab == 'domains' && $current_User->check_perm( 'stats', 'edit' ) )
 {
 	require_js( 'jquery/jquery.jeditable.js', 'rsc_url' );
 }
 
 if( $blog == 0 )
 {
-	if( (!$perm_view_all) && isset($collections_Module) )
-	{	// Find a blog we can view stats for:
+	if( ! $perm_view_all && isset( $collections_Module ) )
+	{ // Find a blog we can view stats for:
 		if( ! $selected = autoselect_blog( 'stats', 'view' ) )
 		{ // No blog could be selected
 			$Messages->add( T_('Sorry, there is no blog you have permission to view stats for.'), 'error' );
 			$action = 'nil';
 		}
 		elseif( set_working_blog( $selected ) )	// set $blog & memorize in user prefs
-		{	// Selected a new blog:
+		{ // Selected a new blog:
 			$BlogCache = & get_BlogCache();
 			$Blog = & $BlogCache->get_by_ID( $blog );
 		}
 	}
 }
+
+// Check permission to view current blog
+$current_User->check_perm( 'stats', 'list', true, $blog );
 
 switch( $action )
 {
@@ -240,6 +242,7 @@ if( isset($collections_Module) && $tab_from != 'antispam' )
 }
 
 $AdminUI->breadcrumbpath_init( true, array( 'text' => T_('Analytics'), 'url' => '?ctrl=stats&amp;blog=$blog$' ) );
+$AdminUI->set_page_manual_link( 'analytics-tab' );
 
 if( isset( $tab_real ) )
 { // Restore real tab value
@@ -351,6 +354,7 @@ switch( $tab )
 				$AdminUI->breadcrumbpath_add( T_('Goal hits'), '?ctrl=stats&amp;blog=$blog$&amp;tab='.$tab );
 				break;
 		}
+		$AdminUI->set_page_manual_link( 'goal-hits' );
 		break;
 
 	case 'settings':

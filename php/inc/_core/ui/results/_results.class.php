@@ -29,7 +29,7 @@
  * @author fplanque: Francois PLANQUE
  * @author fsaya: Fabrice SAYA-GASNIER / PROGIDISTRI
  *
- * @version $Id: _results.class.php 7221 2014-08-06 09:05:46Z yura $
+ * @version $Id: _results.class.php 7725 2014-12-02 08:43:47Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -505,15 +505,22 @@ class Results extends Table
 				$sql .= ' ORDER BY '.$orders.' ';
 			}
 			else
-			{	// try to insert the chosen order at an existing '*' point
+			{ // try to insert the chosen order at an existing '*' point
+				if( preg_match( '#[^\s]+\s(DESC|ASC)#i', $orders, $match_orders ) )
+				{ // Set an order direction for additional order field to the same value as it has first order field
+					// For example, this sql clause "ORDER BY *, hit_ID" should be changed to:
+					//    1) "ORDER BY *, hit_ID ASC"  if $orders == "hit_type ASC, hit_response_code DESC"
+					//    2) "ORDER BY *, hit_ID DESC" if $orders == "hit_type DESC, hit_response_code ASC"
+					$sql = preg_replace( '# \s ORDER \s+ BY .+ \*, \s+ ([a-z0-9\-_]+)$#xi', ' ORDER BY *, $1 '.$match_orders[1], $sql );
+				}
 				$inserted_sql = preg_replace( '# \s ORDER \s+ BY (.+) \* #xi', ' ORDER BY $1 '.$orders, $sql );
 
 				if( $inserted_sql != $sql )
-				{	// Insertion ok:
+				{ // Insertion ok:
 					$sql = $inserted_sql;
 				}
 				else
-				{	// No insert point found:
+				{ // No insert point found:
 					// the chosen order must be appended to an existing ORDER BY clause
 					$sql .= ', '.$orders;
 				}
@@ -1570,9 +1577,6 @@ class Results extends Table
 				}
 			}
 			$this->order_field_list = implode( ',', $orders );
-
-			#pre_dump( $this->order_field_list );
-			#pre_dump( $this->order_callbacks );
 		}
 		return $this->order_field_list;	// May be empty
 	}
@@ -1618,8 +1622,9 @@ class Results extends Table
 		// Make callback function move_icons for orderable lists // dh> what does it do?
 		$content = str_replace( '{move}', "'.\$this->move_icons().'", $content );
 
-		$content = str_replace( '{CUR_IDX}', $this->current_idx, $content );
-		$content = str_replace( '{TOTAL_ROWS}', $this->total_rows, $content );
+		$content = str_replace( array( '{CUR_IDX}', '{TOTAL_ROWS}', '{ROW_IDX_TYPE}' ),
+			array( $this->current_idx, $this->total_rows, $this->get_row_order_type() ),
+			$content );
 
 		return $content;
 	}
@@ -2228,6 +2233,34 @@ class Results extends Table
 		return false;
 	}
 
+
+	/**
+	 * Get an order type of the current row
+	 *
+	 * @return string 'single' - when only one row in list
+	 *                'first'  - Current row is first in whole list
+	 *                'last'   - Current row is last in whole list
+	 *                'middle' - Current row is not first and not last
+	 */
+	function get_row_order_type()
+	{
+		if( $this->total_rows == 1 )
+		{ // Only one row in list
+			return 'single';
+		}
+		elseif( $this->page == 1 && $this->current_idx == 0 )
+		{ // First row
+			return 'first';
+		}
+		elseif( ( $this->page == $this->total_pages ) && ( $this->current_idx == $this->total_rows - ( ( $this->total_pages - 1 )* $this->limit ) - 1 ) )
+		{ // Last row
+			return 'last';
+		}
+		else
+		{ // Middle row
+			return 'middle';
+		}
+	}
 }
 
 

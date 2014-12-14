@@ -137,6 +137,24 @@ form#user_checkchanges.bComment {
   margin-bottom: 10px;
 }
 
+.forums_table.fixed_layout {
+  table-layout: fixed;
+}
+
+.forums_table.fixed_layout tr.fixrow0 {
+  margin: 0;
+}
+
+.forums_table.fixed_layout tr.fixrow0 td {
+  padding-top: 0;
+  padding-bottom: 0;
+  border: none;
+}
+
+.bForums.fixed_layout .ft_avatar {
+  width: 80px;
+}
+
 .forums_table tr:first-child th:first-child,
 .forums_table tr:first-child td:first-child {
   border-top-left-radius: 5px;
@@ -745,6 +763,25 @@ div.results div.filters {
   border-top-left-radius: 0;
   border-top-right-radius: 0;
   background: #FFF;
+}
+
+.vote_spam {
+  float: left;
+  padding: 1px 5px 0;
+  line-height: 19px;
+}
+
+.vote_spam a, .vote_spam span {
+  vertical-align: middle;
+  top: -1px;
+  display: inline-block;
+}
+
+.vote_helpful {
+  float: left;
+  display: block;
+  line-height: 21px;
+  padding-right: 5px;
 }
 
 /* The width switcher */

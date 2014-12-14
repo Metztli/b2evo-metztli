@@ -303,12 +303,12 @@ function import_cities( $country_ID, $file_name )
 			continue;
 		}
 
-		$postcode = trim( $data[0] );
-		$name = trim( $data[1] );
+		$postcode = trim( $data[0], " \xA0" ); // \xA0 - ASCII Non-breaking space
+		$name = trim( $data[1], " \xA0" );
 		$subregion_code = '';
 		if( isset( $data[2] ) )
 		{	// Optional field
-			$subregion_code = trim( $data[2] );
+			$subregion_code = trim( $data[2], " \xA0" );
 		}
 
 		if( empty( $postcode ) && empty( $name ) )

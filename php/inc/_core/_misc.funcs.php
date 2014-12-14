@@ -30,7 +30,7 @@
  *
  * @package evocore
  *
- * @version $Id: _misc.funcs.php 7258 2014-08-27 03:52:32Z yura $
+ * @version $Id: _misc.funcs.php 7756 2014-12-05 09:42:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -395,7 +395,7 @@ function excerpt( $str, $maxlen = 200 )
 	$str = format_to_output( $str, 'text' );
 
 	// Ger rid of all new lines and Display the html tags as source text:
-	$str = trim( str_replace( array( "\r", "\n", "\t" ), ' ', $str ) );
+	$str = trim( preg_replace( '#[\r\n\t\s]+#', ' ', $str ) );
 
 	$str = strmaxlen( $str, $maxlen, NULL, 'raw', true );
 
@@ -885,21 +885,22 @@ function callback_on_non_matching_blocks( $text, $pattern, $callback, $params = 
  * @param array|string Search list
  * @param array|string Replace list
  * @param string Source content
+ * @param string Type of callback function: 'preg' -> preg_replace(), 'str' -> str_replace() (@see replace_content())
  * @return string Replaced content
  */
-function replace_content_outcode( $search, $replace, $content, $replace_function_callback = 'replace_content' )
+function replace_content_outcode( $search, $replace, $content, $replace_function_callback = 'replace_content', $replace_function_type = 'preg' )
 {
-	if( !empty( $search ) && !empty( $replace ) )
+	if( !empty( $search ) )
 	{
 		if( stristr( $content, '<code' ) !== false || stristr( $content, '<pre' ) !== false )
-		{	// Call replace_content() on everything outside code/pre:
+		{ // Call replace_content() on everything outside code/pre:
 			$content = callback_on_non_matching_blocks( $content,
 				'~<(code|pre)[^>]*>.*?</\1>~is',
-				$replace_function_callback, array( $search, $replace ) );
+				$replace_function_callback, array( $search, $replace, $replace_function_type ) );
 		}
 		else
-		{	// No code/pre blocks, replace on the whole thing
-			$content = call_user_func( $replace_function_callback, $content, $search, $replace );
+		{ // No code/pre blocks, replace on the whole thing
+			$content = call_user_func( $replace_function_callback, $content, $search, $replace, $replace_function_type );
 		}
 	}
 
@@ -2309,7 +2310,7 @@ function pre_dump( $var__var__var__var__ )
 	{
 		$orig_html_errors = ini_set('html_errors', 0); // e.g. xdebug would use fancy html, if this is on; we catch (and use) xdebug explicitly above, but just in case
 
-		echo "\n<pre style=\"padding:1ex;border:1px solid #00f;\">\n";
+		echo "\n<pre style=\"padding:1ex;border:1px solid #00f;overflow:auto\">\n";
 		foreach( func_get_args() as $lvar )
 		{
 			ob_start();
@@ -5385,8 +5386,10 @@ function unset_from_mem_cache($key)
  */
 function gen_order_clause( $order_by, $order_dir, $dbprefix, $dbIDname_disambiguation, $available_fields = NULL )
 {
-	$orderby = str_replace( ' ', ',', $order_by );
-	$orderby_array = explode( ',', $orderby );
+	$order_by = str_replace( ' ', ',', $order_by );
+	$orderby_array = explode( ',', $order_by );
+
+	$order_dir = explode( ',', str_replace( ' ', ',', $order_dir ) );
 
 	if( is_array( $available_fields ) )
 	{ // Exclude the incorrect fields from order clause
@@ -5400,10 +5403,14 @@ function gen_order_clause( $order_by, $order_dir, $dbprefix, $dbIDname_disambigu
 	}
 
 	// Format each order param with default column names:
-	$orderby_array = preg_replace( '#^(.+)$#', $dbprefix.'$1 '.$order_dir, $orderby_array );
+	foreach( $orderby_array as $i => $orderby_value )
+	{ // If the order_by field contains a '.' character which is a table separator we must not use the prefix ( E.g. temp_table.value )
+		$use_dbprefix = ( strpos( $orderby_value, '.' ) !== false ) ? '' : $dbprefix;
+		$orderby_array[ $i ] = $use_dbprefix.$orderby_value.' '.( isset( $order_dir[ $i ] ) ? $order_dir[ $i ] : $order_dir[0] );
+	}
 
 	// Add an ID parameter to make sure there is no ambiguity in ordering on similar items:
-	$orderby_array[] = $dbIDname_disambiguation.' '.$order_dir;
+	$orderby_array[] = $dbIDname_disambiguation.' '.$order_dir[0];
 
 	$order_by = implode( ', ', $orderby_array );
 
@@ -5795,33 +5802,40 @@ if ( !function_exists( 'json_encode' ) )
  */
 function evo_json_encode( $a = false )
 {
-	if( is_string($a) )
-	{	// Convert to UTF-8
-		$a = current_charset_to_utf8($a);
+	if( is_string( $a ) )
+	{ // Convert to UTF-8
+		$a = current_charset_to_utf8( $a );
 	}
-	elseif( is_array($a) )
-	{	// Recursively convert to UTF-8
+	elseif( is_array( $a ) )
+	{ // Recursively convert to UTF-8
 		array_walk_recursive( $a, 'current_charset_to_utf8' );
 	}
 
-	return json_encode($a);
+	$result = json_encode( $a );
+	if( $result === false )
+	{ // If json_encode returns FALSE because of some error we should set correct json empty value as '[]' instead of false
+		$result = '[]';
+	}
+
+	return $result;
 }
 
 
 /**
  * A helper function to conditionally convert a string from current charset to UTF-8
  *
- * @param mixed
- * @return mixed
+ * @param string
+ * @return string
  */
-function current_charset_to_utf8( $a )
+function current_charset_to_utf8( & $a )
 {
 	global $current_charset;
 
-	if( is_string($a) && $current_charset != '' && $current_charset != 'utf-8' )
-	{
-		return convert_charset( $a, 'utf-8', $current_charset );
+	if( is_string( $a ) && $current_charset != '' && $current_charset != 'utf-8' )
+	{ // Convert string to utf-8 if it has another charset
+		$a = convert_charset( $a, 'utf-8', $current_charset );
 	}
+
 	return $a;
 }
 
@@ -6303,7 +6317,12 @@ function get_file_permissions_message()
  */
 function evo_flush()
 {
-	@ob_end_flush(); // This function helps to turn off output buffering on PHP 5.4.x
+	$zlib_output_compression = ini_get( 'zlib.output_compression' );
+	if( empty( $zlib_output_compression ) || $zlib_output_compression == 'Off' )
+	{ // This function helps to turn off output buffering
+		// But do NOT use it when zlib.output_compression is ON, because it creates the die errors
+		@ob_end_flush();
+	}
 	flush();
 }
 

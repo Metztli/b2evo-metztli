@@ -39,7 +39,7 @@
  * @author fplanque: Francois PLANQUE.
  * @author vegarg: Vegar BERG GULDAL.
  *
- * @version $Id: _hitlog.funcs.php 7032 2014-07-01 11:20:28Z yura $
+ * @version $Id: _hitlog.funcs.php 7495 2014-10-22 10:30:38Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -49,15 +49,26 @@ if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.'
  */
 function hits_results_block( $params = array() )
 {
-	if( !is_logged_in() )
-	{	// Only logged in users can access to this function
+	if( ! is_logged_in() )
+	{ // Only logged in users can access to this function
 		return;
 	}
 
-	global $current_User;
-	if( !$current_User->check_perm( 'stats', 'view' ) )
-	{	// Current user has no permission to view all stats (aggregated stats)
-		return;
+	global $blog, $current_User;
+
+	if( $blog == 0 )
+	{
+		if( ! $current_User->check_perm( 'stats', 'view' ) )
+		{ // Current user has no permission to view all stats (aggregated stats)
+			return;
+		}
+	}
+	else
+	{
+		if( ! $current_User->check_perm( 'stats', 'list', false, $blog ) )
+		{ // Current user has no permission to view the stats of the selected blog
+			return;
+		}
 	}
 
 	/**
@@ -235,6 +246,8 @@ function hits_results_block( $params = array() )
 	}
 
 	$default_order = '--D';
+
+	$SQL->ORDER_BY( '*, hit_ID' );
 
 	$Results = new Results( $SQL->get(), $resuts_param_prefix, $default_order, $UserSettings->get( 'results_per_page' ), $count_SQL->get() );
 
