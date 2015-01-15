@@ -49,6 +49,12 @@ cd b2evo/.
 
 rm -v index.php
 
+or
+
+rm -v ./*
+
+(please note the leading dot before the frontslash)
+
 git remote add upstream -m master git://github.com/Metztli/b2evo-metztli.git
 
 git pull -s recursive -X theirs upstream master

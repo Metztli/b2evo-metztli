@@ -31,7 +31,7 @@
  * @author fplanque: Francois PLANQUE.
  * @author mbruneau: Marc BRUNEAU / PROGIDISTRI
  *
- * @version $Id: _genericcategorycache.class.php 6135 2014-03-08 07:54:05Z manuel $
+ * @version $Id: _genericcategorycache.class.php 7841 2014-12-18 16:49:41Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -295,11 +295,12 @@ class GenericCategoryCache extends GenericCache
 	 * @param array callback funtions (to format the display)
 	 * @param integer|NULL NULL for all subsets
 	 * @param array categories list to display
-	 * @param int depth of  categories list
+	 * @param integer depth of categories list
+	 * @param integer Max depth of categories list, 0/empty - is infinite
 	 *
 	 * @return string recursive list of all loaded categories
 	 */
-	function recurse( $callbacks, $subset_ID = NULL, $cat_array = NULL, $level = 0 )
+	function recurse( $callbacks, $subset_ID = NULL, $cat_array = NULL, $level = 0, $max_level = 0 )
 	{
 		// Make sure children have been revealed for specific subset:
 		$this->reveal_children( $subset_ID );
@@ -322,15 +323,6 @@ class GenericCategoryCache extends GenericCache
 
 		$r = '';
 
-		if( is_array( $callbacks['before_level'] ) )
-		{ // object callback:
-			$r .= $callbacks['before_level'][0]->{$callbacks['before_level'][1]}( $level ); // <ul>
-		}
-		else
-		{
-			$r .= $callbacks['before_level']( $level ); // <ul>
-		}
-
 		foreach( $cat_array as $cat )
 		{
 			if( is_array( $callbacks['line'] ) )
@@ -342,9 +334,9 @@ class GenericCategoryCache extends GenericCache
 				$r .= $callbacks['line']( $cat, $level ); // <li> Category  - or - <tr><td>Category</td></tr> ...
 			}
 
-			if( !empty( $cat->children ) )
-			{	// Add children categories:
-				$r .= $this->recurse( $callbacks, $subset_ID, $cat->children, $level+1 );
+			if( ! empty( $cat->children ) && ( empty( $max_level ) || $max_level > $level + 1 ) )
+			{ // Add children categories if they exist and no restriction by level depth:
+				$r .= $this->recurse( $callbacks, $subset_ID, $cat->children, $level + 1, $max_level );
 			}
 			elseif( is_array( $callbacks['no_children'] ) )
 			{ // object callback:
@@ -354,7 +346,6 @@ class GenericCategoryCache extends GenericCache
 			{
 				$r .= $callbacks['no_children']( $cat, $level ); // </li>
 			}
-
 		}
 
 		if( !empty( $cat->parent_ID ) && !empty( $callbacks['posts'] ) )
@@ -369,13 +360,28 @@ class GenericCategoryCache extends GenericCache
 			}
 		}
 
-		if( is_array( $callbacks['after_level'] ) )
-		{ // object callback:
-			$r .= $callbacks['after_level'][0]->{$callbacks['after_level'][1]}( $level ); // </ul>
-		}
-		else
+		if( ! empty( $r ) )
 		{
-			$r .= $callbacks['after_level']( $level ); // </ul>
+			$r_before = '';
+			if( is_array( $callbacks['before_level'] ) )
+			{ // object callback:
+				$r_before .= $callbacks['before_level'][0]->{$callbacks['before_level'][1]}( $level ); // <ul>
+			}
+			else
+			{
+				$r_before .= $callbacks['before_level']( $level ); // <ul>
+			}
+
+			$r = $r_before.$r;
+
+			if( is_array( $callbacks['after_level'] ) )
+			{ // object callback:
+				$r .= $callbacks['after_level'][0]->{$callbacks['after_level'][1]}( $level ); // </ul>
+			}
+			else
+			{
+				$r .= $callbacks['after_level']( $level ); // </ul>
+			}
 		}
 
 		return $r;

@@ -58,7 +58,8 @@ if( !$user_profile_only )
 $is_admin = is_admin_page();
 if( $is_admin )
 {
-	$form_title = get_usertab_header( $edited_User, 'avatar', T_( 'Edit profile picture' ) );
+	$form_text_title = T_( 'Edit profile picture' ); // used for js confirmation message on leave the changed form
+	$form_title = get_usertab_header( $edited_User, 'avatar', $form_text_title );
 	$form_class = 'fform';
 	$Form->title_fmt = '<span style="float:right">$global_icons$</span><div>$title$</div>'."\n";
 	$ctrl_param = '?ctrl=user&amp;user_tab=avatar&amp;user_ID='.$edited_User->ID;
@@ -71,7 +72,7 @@ else
 	$ctrl_param = url_add_param( $Blog->gen_blogurl(), 'disp='.$disp );
 }
 
-$Form->begin_form( $form_class, $form_title );
+$Form->begin_form( $form_class, $form_title, array( 'title' => ( isset( $form_text_title ) ? $form_text_title : $form_title ) ) );
 
 	$Form->add_crumb( 'user' );
 	if( $is_admin )
@@ -123,16 +124,16 @@ if( $edited_User->has_avatar() )
 	}
 
 	$rotate_icons = $edited_User->get_rotate_avatar_icons( $edited_User->avatar_file_ID, array(
-			'before' => '<p class="center">',
-			'after'  => '</p>'
+			'before' => '',
+			'after'  => '<br />'
 		) );
 
 	$remove_picture_text = T_( 'No longer use this as main profile picture' );
 	$delete_picture_text = T_( 'Delete this profile picture' );
 
-	$action_picture_links = '<div>'.
-			'<p class="center">'.action_icon( $remove_picture_text, 'move_down', $remove_picture_url, $remove_picture_text, 3, 4, array( 'style' => 'display:block;text-indent:-16px;padding-left:16px' ), array( 'style' => 'margin-right:4px' ) ).'</p>'.
-			'<p class="center">'.action_icon( $delete_picture_text, 'xross', $delete_picture_url, $delete_picture_text, 3, 4, array( 'style' => 'display:block;text-indent:-16px;padding-left:16px', 'onclick' => 'return confirm(\''.TS_('Are you sure want to delete this picture?').'\');' ), array( 'style' => 'margin-right:4px' ) ).'</p>'.
+	$action_picture_links = '<div class="avatar_actions">'.
+			action_icon( $remove_picture_text, 'move_down', $remove_picture_url, ' '.$remove_picture_text, 3, 4 ).'<br />'.
+			action_icon( $delete_picture_text, 'xross', $delete_picture_url, ' '.$delete_picture_text, 3, 4, array( 'onclick' => 'return confirm(\''.TS_('Are you sure want to delete this picture?').'\');' ) ).'<br />'.
 			$rotate_icons.
 		'</div>';
 
