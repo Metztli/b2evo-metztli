@@ -8,7 +8,7 @@
  *
  * @package evoskins
  *
- * @version $Id: contacts.main.php 7043 2014-07-02 08:35:45Z yura $
+ * @version $Id: contacts.main.php 8020 2015-01-19 08:18:22Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -221,7 +221,7 @@ switch( $action )
 					$blocked_message = ' '.T_('You have also blocked this user from contacting you in the future.');
 				}
 			}
-			$Messages->add( T_('The user was repoted.').$blocked_message, 'success' );
+			$Messages->add( T_('The user was reported.').$blocked_message, 'success' );
 		}
 
 		header_redirect( url_add_param( $Blog->gen_blogurl(), 'disp=user&user_ID='.$user_ID ) );

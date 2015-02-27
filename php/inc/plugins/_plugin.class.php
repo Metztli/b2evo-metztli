@@ -31,7 +31,7 @@
  * @author fplanque: Francois PLANQUE - {@link http://fplanque.net/}
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: _plugin.class.php 6796 2014-05-28 16:03:16Z yura $
+ * @version $Id: _plugin.class.php 8237 2015-02-12 06:24:52Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -407,6 +407,7 @@ class Plugin
 	 * 'disabled': if true, it adds a 'disabled="disabled"' html attribute to the element and the value cannot be changed
 	 * 'no_edit': if true, the setting is not editable. This is useful for internal settings.
 	 * 'allow_none': set this to true to have "None" in the options list for types 'select_group' and 'select_user'.
+	 * 'allow_empty': set this to true to allow save the empty values, e.g. when type=integer and setting may be empty
 	 * 'valid_pattern': A regular expression pattern that the value must match.
 	 *                      This is either just a regexp pattern as string or an array
 	 *                      with the keys 'pattern' and 'error' to define a custom error message.
@@ -2869,7 +2870,7 @@ class Plugin
 	 * Get canonical name for database tables a plugin uses, by adding an unique
 	 * prefix for your plugin instance.
 	 *
-	 * You should use this when refering to your SQL table names.
+	 * You should use this when referring to your SQL table names.
 	 *
 	 * E.g., for the "test_plugin" with ID 7 and the default {@link $tableprefix} of "evo_" it
 	 * would generate: "evo_plugin_test_7_log" for a requested name "log".

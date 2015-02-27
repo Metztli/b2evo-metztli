@@ -155,6 +155,7 @@ class autolinks_plugin extends Plugin
 				'autolink_username' => array(
 						'label' => T_( 'Autolink usernames' ),
 						'type' => 'checkbox',
+						// TRANS: the user can type in any username after "@" but it's typically only lowercase letters and no spaces.
 						'note' => $this->T_( '@username will link to the user profile page' ),
 						'defaultvalue' => $default_values['autolink_username'],
 					),

@@ -248,7 +248,7 @@ function dre_process_messages( & $mbox, $limit )
 		unlink( $tmpMIME );
 
 		if( empty($html_body) )
-		{	// Plain text message
+		{	// Plain-text message
 			dre_msg('Message type: TEXT');
 			dre_msg('Message body: <pre style="font-size:10px">'.evo_htmlspecialchars($strbody).'</pre>');
 

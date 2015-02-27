@@ -174,7 +174,7 @@ class user_avatars_Widget extends ComponentWidget
 		$SQL->FROM( 'T_users' );
 		$SQL->WHERE( 'user_avatar_file_ID IS NOT NULL' );
 		$SQL->ORDER_BY( $sql_order );
-		$SQL->LIMIT( $this->disp_params[ 'limit' ] );
+		$SQL->LIMIT( intval( $this->disp_params[ 'limit' ] ) );
 
 		$UserList->sql = $SQL->get();
 
@@ -182,7 +182,7 @@ class user_avatars_Widget extends ComponentWidget
 
 		$layout = $this->disp_params[ 'thumb_layout' ];
 
-		$nb_cols = $this->disp_params[ 'grid_nb_cols' ];
+		$nb_cols = intval( $this->disp_params[ 'grid_nb_cols' ] );
 		$count = 0;
 		$r = '';
 		/**

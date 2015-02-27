@@ -27,7 +27,7 @@
  * @author efy-bogdan: Evo Factory / Bogdan.
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _registration.form.php 6405 2014-04-07 03:01:41Z manuel $
+ * @version $Id: _registration.form.php 8027 2015-01-19 11:58:16Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -83,11 +83,11 @@ $Form->begin_fieldset( T_('Default user settings').get_manual_link('default-user
 	$Form->checklist( $messaging_options, 'default_user_msgform', T_( 'Other users can send me' ) );
 
 	$notify_options = array(
-		array( 'notify_messages', 1, T_( 'I receive a private message.' ),  $Settings->get( 'def_notify_messages' ) ),
-		array( 'notify_unread_messages', 1, T_( 'I have unread private messages for more than 24 hours.' ),  $Settings->get( 'def_notify_unread_messages' ), false, T_( 'This notification is sent only once every 3 days.' ) ),
-		array( 'notify_published_comments', 1, T_( 'a comment is published on one of <strong>my</strong> posts.' ), $Settings->get( 'def_notify_published_comments' ) ),
-		array( 'notify_comment_moderation', 1, T_( 'a comment is posted and I have permissions to moderate it.' ), $Settings->get( 'def_notify_comment_moderation' ) ),
-		array( 'notify_post_moderation', 1, T_( 'a post is created and I have permissions to moderate it.' ), $Settings->get( 'def_notify_post_moderation' ) ),
+		array( 'notify_messages', 1, /* TRANS: Here we imply "Notify me when:" */ T_( 'I receive a private message.' ),  $Settings->get( 'def_notify_messages' ) ),
+		array( 'notify_unread_messages', 1, /* TRANS: Here we imply "Notify me when:" */ T_( 'I have unread private messages for more than 24 hours.' ),  $Settings->get( 'def_notify_unread_messages' ), false, T_( 'This notification is sent only once every 3 days.' ) ),
+		array( 'notify_published_comments', 1, /* TRANS: Here we imply "Notify me when:" */ T_( 'a comment is published on one of <strong>my</strong> posts.' ), $Settings->get( 'def_notify_published_comments' ) ),
+		array( 'notify_comment_moderation', 1, /* TRANS: Here we imply "Notify me when:" */ T_( 'a comment is posted and I have permissions to moderate it.' ), $Settings->get( 'def_notify_comment_moderation' ) ),
+		array( 'notify_post_moderation', 1, /* TRANS: Here we imply "Notify me when:" */ T_( 'a post is created and I have permissions to moderate it.' ), $Settings->get( 'def_notify_post_moderation' ) ),
 	);
 	$Form->checklist( $notify_options, 'default_user_notification', T_( 'Notify me by email whenever' ) );
 

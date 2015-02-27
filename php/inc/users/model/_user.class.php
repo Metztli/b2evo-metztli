@@ -29,7 +29,7 @@
  * @author fplanque: Francois PLANQUE
  * @author blueyed: Daniel HAHLER
  *
- * @version $Id: _user.class.php 7633 2014-11-13 09:57:07Z yura $
+ * @version $Id: _user.class.php 8214 2015-02-10 10:17:40Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -817,12 +817,19 @@ class User extends DataObject
 		{
 			$reqID = param( 'reqID', 'string', '' );
 
+			global $edited_user_pass1, $edited_user_pass2;
+
+			$edited_user_pass1 = param( 'edited_user_pass1', 'string', true );
+			$edited_user_pass2 = param( 'edited_user_pass2', 'string', true );
+
+			// Remove the invalid chars from password vars
+			$edited_user_pass1 = preg_replace( '/[<>&]/', '', $edited_user_pass1 );
+			$edited_user_pass2 = preg_replace( '/[<>&]/', '', $edited_user_pass2 );
+
 			if( $is_new_user || ( !empty( $reqID ) && $reqID == $Session->get( 'core.changepwd.request_id' ) ) )
 			{ // current password is not required:
 				//   - new user creating process
 				//   - password change requested by email
-				param( 'edited_user_pass1', 'string', true );
-				$edited_user_pass2 = param( 'edited_user_pass2', 'string', true );
 
 				if( param_check_passwords( 'edited_user_pass1', 'edited_user_pass2', true, $Settings->get('user_minpwdlen') ) )
 				{ // We can set password
@@ -832,8 +839,6 @@ class User extends DataObject
 			else
 			{
 				// ******* Password edit form ****** //
-				param( 'edited_user_pass1', 'string', true );
-				$edited_user_pass2 = param( 'edited_user_pass2', 'string', true );
 
 				$current_user_pass = param( 'current_user_pass', 'string', true );
 
@@ -1320,9 +1325,11 @@ class User extends DataObject
 				'login_mask'     => '', // example: 'text $login$ text'
 				'display_bubbletip' => true,
 				'nowrap'         => true,
+				'user_tab'       => 'profile',
+				'blog_ID'        => NULL,
 			), $params );
 
-		$identity_url = get_user_identity_url( $this->ID );
+		$identity_url = get_user_identity_url( $this->ID, $params['user_tab'], $params['blog_ID'] );
 
 		$attr_bubbletip = '';
 		if( $params['display_bubbletip'] )
@@ -1785,13 +1792,26 @@ class User extends DataObject
 	/**
 	 * Get user page url
 	 *
+	 * @param integer|NULL Blog ID or NULL to use current blog
 	 * @return string
 	 */
-	function get_userpage_url()
+	function get_userpage_url( $blog_ID = NULL )
 	{
-		global $Blog, $Settings;
+		global $Settings;
 
-		if( empty( $Blog ) || empty( $Settings ) )
+		if( ! empty( $blog_ID ) )
+		{ // Use blog from param by ID
+			$BlogCache = & get_BlogCache();
+			$current_Blog = & $BlogCache->get_by_ID( $blog_ID, false, false );
+		}
+
+		if( empty( $current_Blog ) )
+		{ // Use current blog
+			global $Blog;
+			$current_Blog = & $Blog;
+		}
+
+		if( empty( $current_Blog ) || empty( $Settings ) )
 		{ // Wrong request
 			return NULL;
 		}
@@ -1804,7 +1824,7 @@ class User extends DataObject
 			}
 			else
 			{ // Use an user page if url is not defined
-				return url_add_param( $Blog->get( 'userurl' ), 'user_ID='.$this->ID );
+				return url_add_param( $current_Blog->get( 'userurl' ), 'user_ID='.$this->ID );
 			}
 		}
 		else
@@ -1815,7 +1835,7 @@ class User extends DataObject
 			}
 			elseif( $Settings->get( 'allow_anonymous_user_profiles' ) )
 			{ // Use an user page if url is not defined and this is enabled by setting for anonymous users
-				return url_add_param( $Blog->get( 'userurl' ), 'user_ID='.$this->ID );
+				return url_add_param( $current_Blog->get( 'userurl' ), 'user_ID='.$this->ID );
 			}
 		}
 

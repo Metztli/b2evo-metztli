@@ -15,7 +15,7 @@
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _item_list_full.view.php 7046 2014-07-02 11:41:10Z yura $
+ * @version $Id: _item_list_full.view.php 8036 2015-01-20 17:20:55Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -274,9 +274,9 @@ while( $Item = & $ItemList->get_item() )
 			if( $Blog->get_setting( 'allow_comments' ) != 'never' )
 			{
 				echo '<a href="?ctrl=items&amp;blog='.$Blog->ID.'&amp;p='.$Item->ID.'#comments" class="'.button_class( 'text' ).'">';
-				// TRANS: Link to comments for current post
 				$comments_number = generic_ctp_number( $Item->ID, 'comments', 'total' );
 				echo get_icon( $comments_number > 0 ? 'comments' : 'nocomment' );
+				// TRANS: Link to comments for current post
 				comments_number( T_('no comment'), T_('1 comment'), T_('%d comments'), $Item->ID );
 				load_funcs('comments/_trackback.funcs.php'); // TODO: use newer call below
 				trackback_number('', ' &middot; '.T_('1 Trackback'), ' &middot; '.T_('%d Trackbacks'), $Item->ID);

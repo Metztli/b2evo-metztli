@@ -18,7 +18,7 @@
  * @author blueyed: Daniel HAHLER
  * @author fplanque: Francois PLANQUE.
  *
- * @version $Id: _coll_general.form.php 6135 2014-03-08 07:54:05Z manuel $
+ * @version $Id: _coll_general.form.php 8265 2015-02-15 04:34:35Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -39,7 +39,7 @@ if( $edited_Blog->ID == 0 )
 	$kind_title = get_collection_kinds( $kind );
 	$form_title = sprintf( T_('New %s'), $kind_title ).':';
 
-	$Form->global_icon( sprintf( T_('Abort New %s'), $kind_title ), 'close', $admin_url.'?ctrl=collections&amp;tab=list', ' '.sprintf( T_('Abort New %s'), $kind_title ), 3, 3 );
+	$Form->global_icon( T_('Abort creating new collection'), 'close', $admin_url.'?ctrl=collections&amp;tab=list', ' '.sprintf( T_('Abort New %s'), $kind_title ), 3, 3 );
 }
 
 $Form->begin_form( 'fform', $form_title );
@@ -70,7 +70,7 @@ $Form->begin_fieldset( T_('Collection type').get_manual_link('collection-type') 
 		if( $edited_Blog->ID > 0 )
 		{
 			echo '<p><a href="'.$admin_url.'?ctrl=coll_settings&tab=general&action=type&blog='.$edited_Blog->ID.'">'
-					.T_('Change collection type / Reset &raquo;')
+					.T_('Change collection type / Reset')
 			.'</a></p>';
 		}
 	}

@@ -22,7 +22,7 @@
  * @author blueyed: Daniel HAHLER.
  * @author fplanque: Francois PLANQUE
  *
- * @version $Id: _comment.class.php 6806 2014-05-29 12:01:27Z yura $
+ * @version $Id: _comment.class.php 8040 2015-01-21 13:31:59Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -3327,9 +3327,9 @@ class Comment extends DataObject
 					break;
 
 				default:
-					/* TRANS: Subject of the mail to send on new comments. */
-					// In case of full notification the first %s is blog name, the second %s is the item's title.
-					// In case of short notification the first %s is author login, the second %s is the item's title.
+					/* TRANS: Subject of the mail to send on new comments.
+					   In case of full notification the first %s is blog name, the second %s is the item's title.
+					   In case of short notification the first %s is author login, the second %s is the item's title. */
 					$subject = $notify_full ? T_('[%s] New comment on "%s"') : T_( '%s posted a new comment on "%s"' );
 					if( $only_moderators )
 					{

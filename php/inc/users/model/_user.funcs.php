@@ -32,7 +32,7 @@
  * @author jeffbearer: Jeff BEARER - {@link http://www.jeffbearer.com/}.
  * @author jupiterx: Jordan RUNNING.
  *
- * @version $Id: _user.funcs.php 7802 2014-12-11 10:41:39Z yura $
+ * @version $Id: _user.funcs.php 8214 2015-02-10 10:17:40Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -586,8 +586,8 @@ function get_user_logout_link( $before = '', $after = '', $link_text = '', $link
 		return false;
 	}
 
-	if( $link_text == '' ) $link_text = T_('Logout');
-	if( $link_title == '#' ) $link_title = T_('Logout from your account');
+	if( $link_text == '' ) $link_text = T_('Log out');
+	if( $link_title == '#' ) $link_title = T_('Log out from your account');
 
 	$r = $before;
 	$r .= '<a href="'.get_user_logout_url().'"';
@@ -920,11 +920,12 @@ function get_user_identity_link( $user_login, $user_ID = NULL, $profile_tab = 'p
  *
  * @param integer User ID
  * @param string Name of user tab in backoffice ( values: profile, avatar, pwdchange, userprefs, advanced, admin, blogs )
+ * @param integer|NULL Blog ID or NULL to use current blog
  * @return string Url
  */
-function get_user_identity_url( $user_ID, $user_tab = 'profile' )
+function get_user_identity_url( $user_ID, $user_tab = 'profile', $blog_ID = NULL )
 {
-	global $current_User, $Blog, $Settings;
+	global $current_User, $Settings;
 
 	if( $user_ID == NULL )
 	{
@@ -946,7 +947,7 @@ function get_user_identity_url( $user_ID, $user_tab = 'profile' )
 
 	if( !is_logged_in() )
 	{ // user is not logged in
-		return $User->get_userpage_url();
+		return $User->get_userpage_url( $blog_ID );
 	}
 
 	if( !$current_User->check_perm( 'user', 'view', false, $User ) )
@@ -956,12 +957,12 @@ function get_user_identity_url( $user_ID, $user_tab = 'profile' )
 
 	if( !is_admin_page() )
 	{ // can't display the profile form, display the front office User form
-		return $User->get_userpage_url();
+		return $User->get_userpage_url( $blog_ID );
 	}
 
-	if( $current_User->check_status( 'can_access_admin' ) && ( ($current_User->ID == $user_ID ) || $current_User->check_perm( 'users', 'view' ) ) )
+	if( $current_User->check_status( 'can_access_admin' ) && ( ( $current_User->ID == $user_ID ) || $current_User->check_perm( 'users', 'view' ) ) )
 	{	// Go to backoffice profile:
-		return get_user_settings_url( $user_tab, $user_ID );
+		return get_user_settings_url( $user_tab, $user_ID, $blog_ID );
 	}
 
 	// can't show anything:
@@ -1213,7 +1214,7 @@ function user_preferredname( $user_ID )
  */
 function profile_check_params( $params, $User = NULL )
 {
-	global $Messages, $Settings;
+	global $Messages, $Settings, $dummy_fields;
 
 	foreach( $params as $k => $v )
 	{
@@ -1318,6 +1319,10 @@ function profile_check_params( $params, $User = NULL )
 			elseif( isset($User) && $params['pass1'][0] == $User->get('nickname') )
 			{
 				param_error( $params['pass1'][1], T_('The password must be different from your nickname.') );
+			}
+			elseif( preg_match( '/[<>&]/', $_POST[ $dummy_fields[ $params['pass1'][1] ] ] ) )
+			{ // Checking the not allowed chars
+				param_error_multiple( array( $dummy_fields[ $params['pass1'][1] ], $dummy_fields[ $params['pass2'][1] ] ), T_('Passwords cannot contain the characters &lt;, &gt; and &amp;.') );
 			}
 		}
 	}
@@ -3561,7 +3566,7 @@ function display_user_email_status_message( $user_ID = 0 )
 	// Display info about last error only when such data exists
 	$email_last_sent_ts = ( empty( $EmailAddress ) ? '' : $EmailAddress->get( 'last_sent_ts' ) );
 	$last_error_info = empty( $email_last_sent_ts ) ? '' :
-		sprintf( T_( ' (last error was detected on %s)' ), mysql2localedatetime_spans( $email_last_sent_ts, 'M-d' ) );
+		' '.sprintf( /* TRANS: date of last error */ T_( '(last error was detected on %s)' ), mysql2localedatetime_spans( $email_last_sent_ts, 'M-d' ) );
 
 	switch( $email_status )
 	{

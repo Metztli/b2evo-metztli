@@ -31,7 +31,7 @@
  * @todo (sessions) When creating a blog, provide "edit options" (3 tabs) instead of a single long "New" form (storing the new Blog object with the session data).
  * @todo Currently if you change the name of a blog it gets not reflected in the blog list buttons!
  *
- * @version $Id: collections.ctrl.php 7985 2015-01-14 18:41:51Z fplanque $
+ * @version $Id: collections.ctrl.php 8040 2015-01-21 13:31:59Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -82,8 +82,6 @@ switch( $action )
 
 		param( 'kind', 'string', true );
 
-		// dh> TODO: "New %s" is probably too generic. What can %s become? (please comment it in "TRANS")
-		// Tblue> Look at get_collection_kinds(). I wrote a TRANS comment (30.01.09 22:03, HEAD).
 		$AdminUI->append_path_level( 'new', array( 'text' => sprintf( /* TRANS: %s can become "Standard blog", "Photoblog", "Group blog" or "Forum" */ T_('New %s'), get_collection_kinds($kind) ) ) );
 		break;
 

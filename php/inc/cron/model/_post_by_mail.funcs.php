@@ -14,7 +14,7 @@
  *
  * @package admin
  *
- * @version $Id: _post_by_mail.funcs.php 6470 2014-04-15 09:14:13Z yura $
+ * @version $Id: _post_by_mail.funcs.php 8039 2015-01-21 11:33:57Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -267,7 +267,7 @@ function pbm_process_messages( & $mbox, $limit )
 		unlink( $tmpMIME );
 
 		if( empty($html_body) )
-		{	// Plain text message
+		{	// Plain-text message
 			pbm_msg('Message type: TEXT');
 			pbm_msg('Message body: <pre style="font-size:10px">'.evo_htmlspecialchars($strbody).'</pre>');
 
