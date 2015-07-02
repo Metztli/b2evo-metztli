@@ -3,25 +3,13 @@
  * This file implements the Widget class.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: _widget.class.php 6411 2014-04-07 15:17:33Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -82,6 +70,11 @@ class ComponentWidget extends DataObject
 	* @var BlockCache
 	*/
 	var $BlockCache;
+
+	/**
+	* @var Blog
+	*/
+	var $Blog = NULL;
 
 
 	/**
@@ -149,7 +142,14 @@ class ComponentWidget extends DataObject
 		// Loop through all widget params:
 		foreach( $this->get_param_definitions( array( 'for_editing' => true, 'for_updating' => true  ) ) as $parname => $parmeta )
 		{
-			autoform_set_param_from_request( $parname, $parmeta, $this, 'Widget' );
+			$parvalue = NULL;
+			if( $parname == 'allow_blockcache'
+					&& isset( $parmeta['disabled'] )
+					&& ( $parmeta['disabled'] == 'disabled' ) )
+			{ // Force checkbox "Allow caching" to unchecked when it is disallowed from widget config
+				$parvalue = 0;
+			}
+			autoform_set_param_from_request( $parname, $parmeta, $this, 'Widget', NULL, $parvalue );
 		}
 	}
 
@@ -228,6 +228,54 @@ class ComponentWidget extends DataObject
 		}
 
 		return T_('Unknown');
+	}
+
+
+	/**
+	 * Get help URL
+	 *
+	 * @return string|NULL URL, NULL - when core widget doesn't define the url yet
+	 */
+	function get_help_url()
+	{
+		if( $widget_Plugin = & $this->get_Plugin() )
+		{ // Get url of the plugin widget
+			$help_url = $widget_Plugin->get_help_url( '$widget_url' );
+		}
+		else
+		{ // Core widget must defines this URL
+			$help_url = NULL;
+		}
+
+		return $help_url;
+	}
+
+
+	/**
+	 * Get help link
+	 *
+	 * @param string Icon
+	 * @param boolean TRUE - to add info to display it in tooltip on mouseover
+	 * @return string icon
+	 */
+	function get_help_link( $icon = 'help', $use_tooltip = true )
+	{
+		$widget_url = $this->get_help_url();
+
+		if( empty( $widget_url ) )
+		{ // Return empty string when widget URL is not defined
+			return '';
+		}
+
+		$link_attrs = array( 'target' => '_blank' );
+
+		if( $use_tooltip )
+		{ // Add these data only for tooltip
+			$link_attrs['class']  = 'action_icon help_plugin_icon';
+			$link_attrs['rel']    = format_to_output( $this->get_desc(), 'htmlattr' );
+		}
+
+		return action_icon( '', $icon, $widget_url, NULL, NULL, NULL, $link_attrs );
 	}
 
 
@@ -359,7 +407,7 @@ class ComponentWidget extends DataObject
 	 * Prepare display params
 	 *
 	 * @todo Document default params and default values.
-	 *       This might link to a wiki page, too.
+	 * @todo fp> do NOT call this when just listing widget names in the back-office. It's overkill!
 	 *
 	 * @param array MUST contain at least the basic display params
 	 */
@@ -377,13 +425,17 @@ class ComponentWidget extends DataObject
 		$defs = $this->get_param_definitions( array() );
 		foreach( $defs as $parname => $parmeta )
 		{
-			if( isset( $parmeta['defaultvalue'] ) )
+			if( isset( $parmeta['type'] ) && $parmeta['type'] == 'checklist' )
 			{
-				$widget_defaults[ $parname ] = $parmeta['defaultvalue'];
+				$widget_defaults[ $parname ] = array();
+				foreach( $parmeta['options'] as $parmeta_option )
+				{
+					$widget_defaults[ $parname ][ $parmeta_option[0] ] = $parmeta_option[2];
+				}
 			}
 			else
 			{
-				$widget_defaults[ $parname ] = NULL;
+				$widget_defaults[ $parname ] = ( isset( $parmeta['defaultvalue'] ) ) ? $parmeta['defaultvalue'] : NULL;
 			}
 		}
 
@@ -393,7 +445,7 @@ class ComponentWidget extends DataObject
 		// Merge basic defaults < widget defaults < container params < DB params
 		// note: when called with skin_widget it falls back to basic defaults < widget defaults < calltime params < array()
 		$params = array_merge( array(
-					'block_start' => '<div class="$wi_class$">',
+					'block_start' => '<div class="evo_widget widget $wi_class$">',
 					'block_end' => '</div>',
 					'block_display_title' => true,
 					'block_title_start' => '<h3>',
@@ -425,6 +477,10 @@ class ComponentWidget extends DataObject
 					'grid_colend' => '</tr>',
 					'grid_cellstart' => '<td>',
 					'grid_cellend' => '</td>',
+					'flow_start' => '<div class="widget_flow_blocks">',
+					'flow_end' => '</div>',
+					'flow_block_start' => '<div>',
+					'flow_block_end' => '</div>',
 					'thumb_size' => 'crop-80x80',
 					// 'thumb_size' => 'fit-160x120',
 					'link_type' => 'canonic',		// 'canonic' | 'context' (context will regenrate URL injecting/replacing a single filter)
@@ -432,6 +488,10 @@ class ComponentWidget extends DataObject
 					'item_selected_text_end' => '',
 					'group_start' => '<ul>',
 					'group_end' => '</ul>',
+					'group_item_start' => '<li>',
+					'group_item_end' => '</li>',
+					'group_item_selected_start' => '<li class="selected">',
+					'group_item_selected_end' => '</li>',
 					'notes_start' => '<div class="notes">',
 					'notes_end' => '</div>',
 					'tag_cloud_start' => '<p class="tag_cloud">',
@@ -465,7 +525,8 @@ class ComponentWidget extends DataObject
 		global $Plugins;
 		global $rsc_url;
 
-		$this->init_display( $params ); // just in case it hasn't been done before
+		// prepare for display:
+		$this->init_display( $params );
 
 		switch( $this->type )
 		{
@@ -498,28 +559,30 @@ class ComponentWidget extends DataObject
 		$this->init_display( $params );
 
 		// Display the debug conatainers when $debug = 2 OR when it is turned on from evo menu under "Blog" -> "Show/Hide containers"
-		$show_debug_containers = $Session->get( 'debug_containers_'.$Blog->ID ) == 1 || $debug == 2;
+		$display_containers = $Session->get( 'display_containers_'.$Blog->ID ) == 1 || $debug == 2;
 
 		if( ! $Blog->get_setting('cache_enabled_widgets')
-			|| ! $this->disp_params['allow_blockcache'] )
-		{	// NO CACHING - We do NOT want caching for this collection or for this specific widget:
+		    || ! $this->disp_params['allow_blockcache']
+		    || $this->get_cache_status() == 'disallowed' )
+		{ // NO CACHING - We do NOT want caching for this collection or for this specific widget:
 
-			if( $show_debug_containers )
-			{	// DEBUG:
-				echo '<div class="debug_widget"><div class="debug_widget_name" title="'.
-							( $Blog->get_setting('cache_enabled_widgets') ? 'Widget params have BlockCache turned off' : 'Collection params have BlockCache turned off' ).'"><span class="debug_container_action"><a href="'
-							.$admin_url.'?ctrl=widgets&amp;action=edit&amp;wi_ID='.$this->ID.'">Edit</a></span>CACHE OFF: '.$this->get_name().'</div><div class="$wi_class$">'."\n";
+			if( $display_containers )
+			{ // DEBUG:
+				echo '<div class="dev-blocks dev-blocks--widget"><div class="dev-blocks-name" title="'.
+							( $Blog->get_setting('cache_enabled_widgets') ? 'Widget params have BlockCache turned off' : 'Collection params have BlockCache turned off' ).'">'
+							.'<span class="dev-blocks-action"><a href="'.$admin_url.'?ctrl=widgets&amp;action=edit&amp;wi_ID='.$this->ID.'">Edit</a></span>'
+							.'Widget: <b>'.$this->get_name().'</b> - Cache OFF <i class="fa fa-info">?</i></div>'."\n";
 			}
 
 			$this->display( $params );
 
-			if( $show_debug_containers )
-			{	// DEBUG:
-				echo "</div></div>\n";
+			if( $display_containers )
+			{ // DEBUG:
+				echo "</div>\n";
 			}
 		}
 		else
-		{	// Instantiate BlockCache:
+		{ // Instantiate BlockCache:
 			$Timer->resume( 'BlockCache' );
 			// Extend cache keys:
 			$keys += $this->get_cache_keys();
@@ -533,27 +596,29 @@ class ComponentWidget extends DataObject
 			if( $content !== false )
 			{ // cache hit, let's display:
 
-				if( $show_debug_containers )
-				{	// DEBUG:
-					echo '<div class="debug_widget widget_in_cache"><div class="debug_widget_name" title="'.$this->BlockCache->serialized_keys.'"><span class="debug_container_action"><a href="'
-								.$admin_url.'?ctrl=widgets&amp;action=edit&amp;wi_ID='.$this->ID.'">Edit</a></span>FROM CACHE: '.$this->get_name().'</div><div class="$wi_class$">'."\n";
+				if( $display_containers )
+				{ // DEBUG:
+					echo '<div class="dev-blocks dev-blocks--widget dev-blocks--widget--incache"><div class="dev-blocks-name" title="Cache key = '.$this->BlockCache->serialized_keys.'">'
+								.'<span class="dev-blocks-action"><a href="'.$admin_url.'?ctrl=widgets&amp;action=edit&amp;wi_ID='.$this->ID.'">Edit</a></span>'
+								.'Widget: <b>'.$this->get_name().'</b> - FROM cache <i class="fa fa-info">?</i></div>'."\n";
 				}
 
 				echo $content;
 
-				if( $show_debug_containers )
-				{	// DEBUG:
-					echo "</div></div>\n";
+				if( $display_containers )
+				{ // DEBUG:
+					echo "</div>\n";
 				}
 
 			}
 			else
-			{	// Cache miss, we have to generate:
+			{ // Cache miss, we have to generate:
 
-				if( $show_debug_containers )
-				{	// DEBUG:
-					echo '<div class="debug_widget widget_not_in_cache"><div class="debug_widget_name" title="'.$this->BlockCache->serialized_keys.'"><span class="debug_container_action"><a href="'
-								.$admin_url.'?ctrl=widgets&amp;action=edit&amp;wi_ID='.$this->ID.'">Edit</a></span>NOT IN CACHE: '.$this->get_name().'</div><div class="$wi_class$">'."\n";
+				if( $display_containers )
+				{ // DEBUG:
+					echo '<div class="dev-blocks dev-blocks--widget dev-blocks--widget--notincache"><div class="dev-blocks-name" title="Cache key = '.$this->BlockCache->serialized_keys.'">'
+								.'<span class="dev-blocks-action"><a href="'.$admin_url.'?ctrl=widgets&amp;action=edit&amp;wi_ID='.$this->ID.'">Edit</a></span>'
+								.'Widget: <b>'.$this->get_name().'</b> - NOT in cache <i class="fa fa-info">?</i></div>'."\n";
 				}
 
 				$this->BlockCache->start_collect();
@@ -563,9 +628,9 @@ class ComponentWidget extends DataObject
 				// Save collected cached data if needed:
 				$this->BlockCache->end_collect();
 
-				if( $show_debug_containers )
-				{	// DEBUG:
-					echo "</div></div>\n";
+				if( $display_containers )
+				{ // DEBUG:
+					echo "</div>\n";
 				}
 
 			}
@@ -586,6 +651,45 @@ class ComponentWidget extends DataObject
 				'wi_ID'   => $this->ID,				// Have the widget settings changed ?
 				'set_coll_ID' => $Blog->ID,		// Have the settings of the blog changed ? (ex: new skin)
 			);
+	}
+
+
+	/**
+	 * Get cache status
+	 *
+	 * @param boolean TRUE to check if blog allows a caching for widgets
+	 * @return string 'enabled', 'disabled', 'disallowed', 'denied'
+	 */
+	function get_cache_status( $check_blog_restriction  = false )
+	{
+		$default_widget_params = $this->get_param_definitions( array() );
+		if( ! empty( $default_widget_params )
+		    && isset( $default_widget_params['allow_blockcache'] )
+		    && isset( $default_widget_params['allow_blockcache']['disabled'] )
+		    && ( $default_widget_params['allow_blockcache']['disabled'] == 'disabled' ) )
+		{ // Widget cache is NOT allowed by widget config
+			return 'disallowed';
+		}
+		else
+		{ // Check current cache status if it is allowed
+			if( $check_blog_restriction )
+			{ // Check blog restriction for widget caching
+				$widget_Blog = & $this->get_Blog();
+				if( ! $widget_Blog->get_setting( 'cache_enabled_widgets' ) )
+				{ // Widget/block cache is not allowed by blog setting
+					return 'denied';
+				}
+			}
+
+			if( $this->get_param( 'allow_blockcache' ) )
+			{ // Enabled
+				return 'enabled';
+			}
+			else
+			{ // Disabled
+				return 'disabled';
+			}
+		}
 	}
 
 
@@ -768,5 +872,21 @@ class ComponentWidget extends DataObject
 		BlockCache::invalidate_key( 'wi_ID', $this->ID );
 	}
 
+
+	/**
+	 * Get Blog
+	 *
+	 * @return object Blog
+	 */
+	function & get_Blog()
+	{
+		if( $this->Blog === NULL )
+		{ // Get blog only first time
+			$BlogCache = & get_BlogCache();
+			$this->Blog = & $BlogCache->get_by_ID( $this->coll_ID );
+		}
+
+		return $this->Blog;
+	}
 }
 ?>

@@ -3,33 +3,14 @@
  * This file implements the UI controller for System configuration and analysis.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2006 by Daniel HAHLER - {@link http://daniel.hahler.de/}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package admin
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- * @author blueyed
- *
- * @version $Id: system.ctrl.php 8098 2015-01-28 12:35:01Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -38,12 +19,17 @@ load_funcs( 'tools/model/_system.funcs.php' );
 // Check minimum permission:
 $current_User->check_perm( 'options', 'view', true );
 
+if( $current_User->check_perm( 'options', 'edit' ) && system_check_charset_update() )
+{ // DB charset is required to update
+	$Messages->add( sprintf( T_('WARNING: Some of your tables have different charsets/collations than the expected. It is strongly recommended to upgrade your database charset by running the tool <a %s>Check/Convert/Normalize the charsets/collations used by the DB (UTF-8 / ASCII)</a>.'), 'href="'.$admin_url.'?ctrl=tools&amp;action=utf8check&amp;'.url_crumb( 'tools' ).'"' ) );
+}
+
 $AdminUI->set_path( 'options', 'system' );
 
 
 $AdminUI->breadcrumbpath_init( false );  // fp> I'm playing with the idea of keeping the current blog in the path here...
-$AdminUI->breadcrumbpath_add( T_('System'), '?ctrl=system' );
-$AdminUI->breadcrumbpath_add( T_('Status'), '?ctrl=system' );
+$AdminUI->breadcrumbpath_add( T_('System'), $admin_url.'?ctrl=system' );
+$AdminUI->breadcrumbpath_add( T_('Status'), $admin_url.'?ctrl=system' );
 
 
 // Display <html><head>...</head> section! (Note: should be done early if actions do not redirect)
@@ -86,7 +72,7 @@ $facilitate_exploits = '<p>'.T_('When enabled, this feature is known to facilita
 $change_ini = '<p>'.T_('If possible, change this setting to <code>%s</code> in your php.ini or ask your hosting provider about it.').'</p>';
 
 
-echo '<h2>'.T_('System status').'</h2>';
+echo '<h2 class="page-title">'.T_('System status').'</h2>';
 
 // Get system stats to display:
 $system_stats = get_system_stats();
@@ -101,7 +87,7 @@ if( b2evonet_get_updates( true ) !== NULL )
 {	// Updates are allowed, display them:
 
 	// Display info & error messages
-	echo $Messages->display( NULL, NULL, false, 'action_messages' );
+	$Messages->display();
 
 	/**
 	 * @var AbstractSettings
@@ -638,17 +624,6 @@ else
 }
 $block_item_Widget->disp_template_raw( 'block_end' );
 
-
-/*
- * Info pages
- */
-$block_item_Widget->title = T_('Info pages');
-$block_item_Widget->disp_template_replaced( 'block_start' );
-
-init_system_check( 'Default page:', '<a href="'.$baseurl.'default.php">'.$baseurl.'default.php</a>' );
-disp_system_check( 'note' );
-
-$block_item_Widget->disp_template_raw( 'block_end' );
 
 // TODO: dh> output_buffering (recommend off)
 // TODO: dh> session.auto_start (recommend off)

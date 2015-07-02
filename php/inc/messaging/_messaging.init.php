@@ -1,26 +1,16 @@
 <?php
 /**
  * This file is part of b2evolution - {@link http://b2evolution.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2009-2014 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2009-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2009 by The Evo Factory - {@link http://www.evofactory.com/}.
  *
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- *
- * {@internal Open Source relicensing agreement:
- * The Evo Factory grants Francois PLANQUE the right to license
- * The Evo Factory's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
  * @package messaging
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author efy-maxim: Evo Factory / Maxim.
- * @author fplanque: Francois Planque.
- *
- * @version $Id: _messaging.init.php 6411 2014-04-07 15:17:33Z yura $
  */
 if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page directly.' );
 
@@ -43,6 +33,7 @@ $required_mysql_version[ 'messaging' ] = '5.0.3';
  */
 $db_config['aliases']['T_messaging__thread'] = $tableprefix.'messaging__thread';
 $db_config['aliases']['T_messaging__message'] = $tableprefix.'messaging__message';
+$db_config['aliases']['T_messaging__prerendering'] = $tableprefix.'messaging__prerendering';
 $db_config['aliases']['T_messaging__threadstatus'] = $tableprefix.'messaging__threadstatus';
 $db_config['aliases']['T_messaging__contact'] = $tableprefix.'messaging__contact';
 $db_config['aliases']['T_messaging__contact_groups'] = $tableprefix.'messaging__contact_groups';
@@ -86,6 +77,24 @@ function & get_MessageCache()
 	}
 
 	return $MessageCache;
+}
+
+
+/**
+ * Get the MessagePrerenderingCache
+ *
+ * @return MessagePrerenderingCache
+ */
+function & get_MessagePrerenderingCache()
+{
+	global $MessagePrerenderingCache;
+
+	if( ! isset( $MessagePrerenderingCache ) )
+	{ // Cache doesn't exist yet:
+		$MessagePrerenderingCache = array();
+	}
+
+	return $MessagePrerenderingCache;
 }
 
 
@@ -320,22 +329,41 @@ class messaging_Module extends Module
 					);
 			}
 
-			$right_entries['messaging'] = array(
-				'text' => T_('Messages'),
-				'href' => get_dispctrl_url( 'threads' ),
-				'class' => 'evo_messages_link',
-			);
+			$messages_url = get_dispctrl_url( 'threads' );
+			$contacts_url = get_dispctrl_url( 'contacts' );
+
+			if( ! empty( $messages_url ) || ! empty( $contacts_url )  )
+			{
+				$right_entries[] = array( 'separator' => true );
+			}
+
+			if( ! empty( $messages_url ) )
+			{ // Display this menu item only when url is available to current user
+				$right_entries['messages'] = array(
+						'text' => T_('Messages'),
+						'href' => $messages_url,
+						'class' => 'evo_messages_link',
+					);
+			}
+			if( ! empty( $contacts_url ) )
+			{ // Display this menu item only when url is available to current user
+				$right_entries['contacts'] = array(
+						'text' => T_('Contacts'),
+						'href' => $contacts_url,
+						'class' => 'evo_messages_link',
+					);
+			}
 
 			// Count unread messages for current user
 			$unread_messages_count = get_unread_messages_count();
 			if( $unread_messages_count > 0 )
 			{
-				$right_entries['messaging']['text'] = '<b>'.T_('Messages').' <span class="badge">'.$unread_messages_count.'</span></b>';
+				$right_entries['messages']['text'] = T_('Messages').' <span class="badge badge-important">'.$unread_messages_count.'</span>';
 			}
 		}
 
 		$topleft_Menu->add_menu_entries( 'tools', $left_entries );
-		$topright_Menu->insert_menu_entries_after( 'userprefs', $right_entries );
+		$topright_Menu->insert_menu_entries_after( array( 'userprefs', 'name' ), $right_entries );
 	}
 
 	/**
@@ -345,7 +373,7 @@ class messaging_Module extends Module
 	 */
 	function build_menu_3()
 	{
-		global $dispatcher;
+		global $admin_url;
 		/**
 		 * @var User
 		 */
@@ -362,16 +390,46 @@ class messaging_Module extends Module
 		}
 
 		if( $current_User->check_perm( 'perm_messaging', 'reply' ) )
-		{	// Permission to view messaging:
+		{ // Permission to view messaging:
+
+			// Count unread messages for current user
+			$unread_messages_count = get_unread_messages_count();
+			if( $unread_messages_count > 0 )
+			{
+				$messages_counter = ' <span class="badge badge-important">'.$unread_messages_count.'</span>';
+			}
+			else
+			{
+				$messages_counter = '';
+			}
+
 			$AdminUI->add_menu_entries( NULL, array(
 						'messaging' => array(
-						'text' => T_('Messages'),
+						'text' => T_('Messages').$messages_counter,
 						'title' => T_('Messages'),
-						'href' => $dispatcher.'?ctrl=threads',
+						'href' => $admin_url.'?ctrl=threads',
 						'entries' => get_messaging_sub_entries( true )
 					),
 				), 'users' );
 		}
+	}
+
+
+	/**
+	 * Get the messaging module cron jobs
+	 *
+	 * @see Module::get_cron_jobs()
+	 */
+	function get_cron_jobs()
+	{
+		return array(
+			'send-unread-messages-reminders' => array(
+				'name'   => T_('Send reminders about unread messages'),
+				'help'   => '#',
+				'ctrl'   => 'cron/jobs/_unread_message_reminder.job.php',
+				'params' => NULL,
+			)
+		);
 	}
 
 
@@ -416,12 +474,13 @@ class messaging_Module extends Module
 		}
 
 		if( ( $disp != 'contacts' ) && ( $thrd_ID = param( 'thrd_ID', 'integer', '', true ) ) )
-		{// Load thread from cache:
+		{ // Load thread from cache:
 			$ThreadCache = & get_ThreadCache();
-			if( ($edited_Thread = & $ThreadCache->get_by_ID( $thrd_ID, false )) === false )
-			{	unset( $edited_Thread );
+			if( ( $edited_Thread = & $ThreadCache->get_by_ID( $thrd_ID, false ) ) === false )
+			{ // Thread doesn't exists with this ID
+				unset( $edited_Thread );
 				forget_param( 'thrd_ID' );
-				$Messages->add( sprintf( T_('Requested &laquo;%s&raquo; object does not exist any longer.'), T_('Thread') ), 'error' );
+				$Messages->add( T_('The requested thread does not exist any longer.'), 'error' );
 				$action = 'nil';
 			}
 		}
@@ -430,7 +489,7 @@ class messaging_Module extends Module
 		{
 			// threads action
 			case 'threads':
-				if( $action != 'create' )
+				if( $action != 'create' && $action != 'preview' )
 				{ // Make sure we got a thrd_ID:
 					param( 'thrd_ID', 'integer', true );
 				}
@@ -438,6 +497,7 @@ class messaging_Module extends Module
 				switch( $action )
 				{
 					case 'create': // create thread
+					case 'preview': // preview message
 						// Stop a request from the blocked IP addresses or Domains
 						antispam_block_request();
 
@@ -447,18 +507,23 @@ class messaging_Module extends Module
 							debug_die( 'Invalid request, new conversation limit already reached!' );
 						}
 
-						if( !create_new_thread() )
-						{ // unsuccessful new thread creation
+						$creating_success = create_new_thread();
+						if( !$creating_success || $action == 'preview' )
+						{ // unsuccessful new thread creation OR preview mode
 							global $edited_Thread, $edited_Message, $thrd_recipients, $thrd_recipients_array;
 
 							$redirect_to .= '&action=new';
 							// save new message and thread params into the Session to not lose the content
 							$unsaved_message_params = array();
+							$unsaved_message_params[ 'action' ] = $action;
 							$unsaved_message_params[ 'subject' ] = $edited_Thread->title;
 							$unsaved_message_params[ 'message' ] = $edited_Message->text;
+							$unsaved_message_params[ 'message_original' ] = $edited_Message->original_text;
+							$unsaved_message_params[ 'renderers' ] = $edited_Message->get_renderers_validated();
 							$unsaved_message_params[ 'thrdtype' ] = param( 'thrdtype', 'string', 'individual' );  // alternative: discussion
 							$unsaved_message_params[ 'thrd_recipients' ] = $thrd_recipients;
 							$unsaved_message_params[ 'thrd_recipients_array' ] = $thrd_recipients_array;
+							$unsaved_message_params[ 'creating_success' ] = $creating_success;
 							save_message_params_to_session( $unsaved_message_params );
 						}
 						break;
@@ -471,7 +536,7 @@ class messaging_Module extends Module
 						if( $confirmed )
 						{
 							$msg = sprintf( T_('Thread &laquo;%s&raquo; deleted.'), $edited_Thread->dget('title') );
-							$edited_Thread->dbdelete( true );
+							$edited_Thread->dbdelete();
 							unset( $edited_Thread );
 							forget_param( 'thrd_ID' );
 							$Messages->add( $msg, 'success' );
@@ -520,48 +585,78 @@ class messaging_Module extends Module
 				{ // only block or unblock is valid
 					debug_die( "Invalid action param" );
 				}
-				set_contact_blocked( $user_ID, ( ( $action == 'block' ) ? 1 : 0 ) );
+				if( set_contact_blocked( $user_ID, ( ( $action == 'block' ) ? 1 : 0 ) ) )
+				{
+					if( $action == 'block' )
+					{
+						$Messages->add( T_('You have blocked this user from contacting you.'), 'success' );
+					}
+					else
+					{
+						$Messages->add( T_('You have unblocked this user so he can contact you again.'), 'success' );
+					}
+				}
 				$redirect_to = str_replace( '&amp;', '&', $redirect_to );
 				break;
 
 			// messages action
 			case 'messages':
-				// Stop a request from the blocked IP addresses or Domains
-				antispam_block_request();
-
-				if( $action == 'create' )
-				{ // create new message
-					create_new_message( $thrd_ID );
-				}
-				elseif( $action == 'delete' )
+				switch( $action )
 				{
-					// Check permission:
-					$current_User->check_perm( 'perm_messaging', 'delete', true );
+					case 'create': // create new message
+						// Stop a request from the blocked IP addresses or Domains
+						antispam_block_request();
 
-					$msg_ID = param( 'msg_ID', 'integer', true );
-					$MessageCache = & get_MessageCache();
-					if( ($edited_Message = & $MessageCache->get_by_ID( $msg_ID, false )) === false )
-					{
-						$Messages->add( sprintf( T_('Requested &laquo;%s&raquo; object does not exist any longer.'), T_('Message') ), 'error' );
+						create_new_message( $thrd_ID );
 						break;
-					}
 
-					$confirmed = param( 'confirmed', 'integer', 0 );
-					if( $confirmed )
-					{ // delete message
-						$edited_Message->dbdelete();
-						unset( $edited_Message );
-						$Messages->add( T_('Message deleted.'), 'success' );
-					}
-					else
-					{
-						$delete_url = $samedomain_htsrv_url.'action.php?mname=messaging&disp=messages&thrd_ID='.$thrd_ID.'&msg_ID='.$msg_ID.'&action=delete&confirmed=1';
-						$delete_url = url_add_param( $delete_url, 'redirect_to='.rawurlencode( $redirect_to ), '&' ).'&'.url_crumb( 'messaging_messages' );
-						$ok_button = '<span class="linkbutton"><a href="'.$delete_url.'">'.T_( 'I am sure!' ).'!</a></span>';
-						$cancel_button = '<span class="linkbutton"><a href="'.$redirect_to.'">CANCEL</a></span>';
-						$msg = T_('You are about to delete this message. ').'<br /> '.T_('This CANNOT be undone!').'<br />'.T_( 'Are you sure?' ).'<br /><br />'.$ok_button.$cancel_button;
-						$Messages->add( $msg, 'error' );
-					}
+					case 'preview': // create new message
+						// Stop a request from the blocked IP addresses or Domains
+						antispam_block_request();
+
+						global $edited_Message;
+
+						$creating_success = create_new_message( $thrd_ID, 'preview' );
+
+						// save new message and thread params into the Session to not lose the content
+						$unsaved_message_params = array();
+						$unsaved_message_params[ 'action' ] = $action;
+						$unsaved_message_params[ 'message' ] = $edited_Message->text;
+						$unsaved_message_params[ 'message_original' ] = $edited_Message->original_text;
+						$unsaved_message_params[ 'renderers' ] = $edited_Message->get_renderers_validated();
+						$unsaved_message_params[ 'creating_success' ] = $creating_success;
+						save_message_params_to_session( $unsaved_message_params );
+						break;
+
+					case 'delete': // delete message
+						// Check permission:
+						$current_User->check_perm( 'perm_messaging', 'delete', true );
+
+						$msg_ID = param( 'msg_ID', 'integer', true );
+						$MessageCache = & get_MessageCache();
+						if( ($edited_Message = & $MessageCache->get_by_ID( $msg_ID, false )) === false )
+						{
+							$Messages->add( sprintf( T_('Requested &laquo;%s&raquo; object does not exist any longer.'), T_('Message') ), 'error' );
+							break;
+						}
+
+						$confirmed = param( 'confirmed', 'integer', 0 );
+						if( $confirmed )
+						{ // delete message
+							$edited_Message->dbdelete();
+							unset( $edited_Message );
+							$Messages->add( T_('Message deleted.'), 'success' );
+						}
+						else
+						{
+							$delete_url = $samedomain_htsrv_url.'action.php?mname=messaging&disp=messages&thrd_ID='.$thrd_ID.'&msg_ID='.$msg_ID.'&action=delete&confirmed=1';
+							$delete_url = url_add_param( $delete_url, 'redirect_to='.rawurlencode( $redirect_to ), '&' ).'&'.url_crumb( 'messaging_messages' );
+							$ok_button = '<span class="linkbutton"><a href="'.$delete_url.'">'.T_( 'I am sure!' ).'!</a></span>';
+							$cancel_button = '<span class="linkbutton"><a href="'.$redirect_to.'">CANCEL</a></span>';
+							$msg = T_('You are about to delete this message. ').'<br /> '.T_('This CANNOT be undone!').'<br />'.T_( 'Are you sure?' ).'<br /><br />'.$ok_button.$cancel_button;
+							$Messages->add( $msg, 'error' );
+						}
+						break;
 				}
 				break;
 		}

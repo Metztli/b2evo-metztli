@@ -3,8 +3,8 @@
  * This file implements the Prism plugin for b2evolution
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package plugins
  */
@@ -86,6 +86,19 @@ class prism_plugin extends Plugin
 
 
 	/**
+	 * Event handler: Called before at the beginning, if a message of thread form gets sent (and received).
+	 */
+	function MessageThreadFormSent( & $params )
+	{
+		$apply_rendering = $this->get_msg_setting( 'msg_apply_rendering' );
+		if( $this->is_renderer_enabled( $apply_rendering, $params['renderers'] ) )
+		{ // render code blocks in message
+			$this->FilterItemContents( $params );
+		}
+	}
+
+
+	/**
 	 * Perform rendering
 	 *
 	 * @see Plugin::RenderItemAsHtml()
@@ -93,6 +106,18 @@ class prism_plugin extends Plugin
 	function RenderItemAsHtml( & $params )
 	{
 		/* Required a declaration of this method to identify this plugin as renderer */
+	}
+
+
+	/**
+	 * Encode HTML entities inside <code> blocks
+	 *
+	 * @param array Block
+	 * @return string
+	 */
+	function encode_html_entities( $block )
+	{
+		return $block[1].htmlspecialchars( $block[2] ).$block[3];
 	}
 
 
@@ -259,6 +284,23 @@ class prism_plugin extends Plugin
 
 
 	/**
+	 * Event handler: Called when displaying editor toolbars for message.
+	 *
+	 * @param array Associative array of parameters
+	 * @return boolean did we display a toolbar?
+	 */
+	function DisplayMessageToolbar( & $params )
+	{
+		$apply_rendering = $this->get_msg_setting( 'msg_apply_rendering' );
+		if( ! empty( $apply_rendering ) && $apply_rendering != 'never' )
+		{
+			return $this->display_toolbar();
+		}
+		return false;
+	}
+
+
+	/**
 	 * Display a toolbar in admin
 	 *
 	 * @param array Associative array of parameters
@@ -298,28 +340,34 @@ class prism_plugin extends Plugin
 	 */
 	function display_toolbar()
 	{
-		echo '<div class="edit_toolbar prism_toolbar">';
+		echo $this->get_template( 'toolbar_before', array( '$toolbar_class$' => 'prism_toolbar' ) );
+
 		// Codespan buttons:
-		echo T_('Codespan').': ';
-		echo '<input type="button" title="'.T_('Insert Markup codespan').'" data-func="prism_tag|markup|span" value="'.format_to_output( T_('Markup'), 'htmlattr' ).'" />';
-		echo '<input type="button" title="'.T_('Insert CSS codespan').'" data-func="prism_tag|css|span" value="'.format_to_output( T_('CSS'), 'htmlattr' ).'" />';
-		echo '<input type="button" title="'.T_('Insert JavaScript codespan').'" data-func="prism_tag|javascript|span" value="'.format_to_output( T_('JS'), 'htmlattr' ).'" />';
-		echo '<input type="button" title="'.T_('Insert PHP codespan').'" data-func="prism_tag|php|span" value="'.format_to_output( T_('PHP'), 'htmlattr' ).'" />';
-		echo '<input type="button" title="'.T_('Insert SQL codespan').'" data-func="prism_tag|sql|span" value="'.format_to_output( T_('SQL'), 'htmlattr' ).'" />';
+		echo $this->get_template( 'toolbar_title_before' ).T_('Codespan').': '.$this->get_template( 'toolbar_title_after' );
+		echo $this->get_template( 'toolbar_group_before' );
+		echo '<input type="button" title="'.T_('Insert Markup codespan').'" class="'.$this->get_template( 'toolbar_button_class' ).'" data-func="prism_tag|markup|span" value="'.format_to_output( T_('Markup'), 'htmlattr' ).'" />';
+		echo '<input type="button" title="'.T_('Insert CSS codespan').'" class="'.$this->get_template( 'toolbar_button_class' ).'" data-func="prism_tag|css|span" value="'.format_to_output( T_('CSS'), 'htmlattr' ).'" />';
+		echo '<input type="button" title="'.T_('Insert JavaScript codespan').'" class="'.$this->get_template( 'toolbar_button_class' ).'" data-func="prism_tag|javascript|span" value="'.format_to_output( T_('JS'), 'htmlattr' ).'" />';
+		echo '<input type="button" title="'.T_('Insert PHP codespan').'" class="'.$this->get_template( 'toolbar_button_class' ).'" data-func="prism_tag|php|span" value="'.format_to_output( T_('PHP'), 'htmlattr' ).'" />';
+		echo '<input type="button" title="'.T_('Insert SQL codespan').'" class="'.$this->get_template( 'toolbar_button_class' ).'" data-func="prism_tag|sql|span" value="'.format_to_output( T_('SQL'), 'htmlattr' ).'" />';
+		echo $this->get_template( 'toolbar_group_after' );
+
 		// Codeblock buttons:
-		echo ' '.T_('Codeblock').': ';
-		echo '<input type="button" title="'.T_('Insert Markup codeblock').'" data-func="prism_tag|markup" value="'.format_to_output( T_('Markup'), 'htmlattr' ).'" />';
-		echo '<input type="button" title="'.T_('Insert CSS codeblock').'" data-func="prism_tag|css" value="'.format_to_output( T_('CSS'), 'htmlattr' ).'" />';
-		echo '<input type="button" title="'.T_('Insert JavaScript codeblock').'" data-func="prism_tag|javascript" value="'.format_to_output( T_('JS'), 'htmlattr' ).'" />';
-		echo '<input type="button" title="'.T_('Insert PHP codeblock').'" data-func="prism_tag|php" value="'.format_to_output( T_('PHP'), 'htmlattr' ).'" />';
-		echo '<input type="button" title="'.T_('Insert SQL codeblock').'" data-func="prism_tag|sql" value="'.format_to_output( T_('SQL'), 'htmlattr' ).'" />';
-		echo '</div>';
+		echo $this->get_template( 'toolbar_title_before' ).T_('Codeblock').': '.$this->get_template( 'toolbar_title_after' );
+		echo $this->get_template( 'toolbar_group_before' );
+		echo '<input type="button" title="'.T_('Insert Markup codeblock').'" class="'.$this->get_template( 'toolbar_button_class' ).'" data-func="prism_tag|markup" value="'.format_to_output( T_('Markup'), 'htmlattr' ).'" />';
+		echo '<input type="button" title="'.T_('Insert CSS codeblock').'" class="'.$this->get_template( 'toolbar_button_class' ).'" data-func="prism_tag|css" value="'.format_to_output( T_('CSS'), 'htmlattr' ).'" />';
+		echo '<input type="button" title="'.T_('Insert JavaScript codeblock').'" class="'.$this->get_template( 'toolbar_button_class' ).'" data-func="prism_tag|javascript" value="'.format_to_output( T_('JS'), 'htmlattr' ).'" />';
+		echo '<input type="button" title="'.T_('Insert PHP codeblock').'" class="'.$this->get_template( 'toolbar_button_class' ).'" data-func="prism_tag|php" value="'.format_to_output( T_('PHP'), 'htmlattr' ).'" />';
+		echo '<input type="button" title="'.T_('Insert SQL codeblock').'" class="'.$this->get_template( 'toolbar_button_class' ).'" data-func="prism_tag|sql" value="'.format_to_output( T_('SQL'), 'htmlattr' ).'" />';
+		echo $this->get_template( 'toolbar_group_after' );
+
+		echo $this->get_template( 'toolbar_after' );
 
 		// Load js to work with textarea
 		require_js( 'functions.js', 'blog', true, true );
 
-		?>
-		<script type="text/javascript">
+		?><script type="text/javascript">
 			//<![CDATA[
 			function prism_tag( lang, type )
 			{
@@ -339,8 +387,7 @@ class prism_plugin extends Plugin
 				textarea_wrap_selection( b2evoCanvas, '['+type+' lang="'+lang+'"'+line+']', '[/'+type+']', 0 );
 			}
 			//]]>
-		</script>
-		<?php
+		</script><?php
 
 		return true;
 	}

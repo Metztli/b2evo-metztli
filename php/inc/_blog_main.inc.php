@@ -3,26 +3,14 @@
  * This file loads and initializes the blog to be displayed.
  *
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2004-2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
- * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package main
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author blueyed: Daniel HAHLER
- * @author fplanque: Francois PLANQUE
- *
- * @version $Id: _blog_main.inc.php 7431 2014-10-15 04:23:46Z yura $
  */
 if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page directly.' );
 
@@ -69,15 +57,26 @@ if( empty( $Blog ) )
 }
 
 
-// Show/Hide the debug containers:
-$debug_containers = param( 'debug_containers', 'string' );
-if( $debug_containers == 'show' )
+// Show/Hide the containers:
+$display_containers = param( 'display_containers', 'string' );
+if( $display_containers == 'show' )
 {
-	$Session->set( 'debug_containers_'.$blog, 1 );
+	$Session->set( 'display_containers_'.$blog, 1 );
 }
-elseif( $debug_containers == 'hide' )
+elseif( $display_containers == 'hide' )
 {
-	$Session->delete( 'debug_containers_'.$blog );
+	$Session->delete( 'display_containers_'.$blog );
+}
+
+// Show/Hide the includes:
+$display_includes = param( 'display_includes', 'string' );
+if( $display_includes == 'show' )
+{
+	$Session->set( 'display_includes_'.$blog, 1 );
+}
+elseif( $display_includes == 'hide' )
+{
+	$Session->delete( 'display_includes_'.$blog );
 }
 
 
@@ -97,9 +96,11 @@ $is_front = false;	// So far we have not detected that we are displaying the fro
 fp>there is no blog defined in _main and there should not be any
 blueyed> Sure, but that means we should either split it, or use the locale here only, if there's no-one given with higher priority.
 */
-// Activate matching locale:
-$Debuglog->add( 'Activating blog locale: '.$Blog->get('locale'), 'locale' );
-locale_activate( $Blog->get('locale') );
+if( $Blog->get_setting( 'locale_source' ) == 'blog' )
+{ // Activate matching locale:
+	$Debuglog->add( 'Activating blog locale: '.$Blog->get( 'locale' ), 'locale' );
+	locale_activate( $Blog->get( 'locale' ) );
+}
 
 
 // Re-Init charset handling, in case current_charset has changed:
@@ -483,7 +484,7 @@ if( !empty( $tempskin ) )
 
 
 // Set $disp to 'posts' when filter by categories or tags or date
-param( 'catsel', 'array/integer', NULL );
+param( 'catsel', 'array:integer', NULL );
 param( 'cat', 'string', NULL );
 param( 'tag', 'string', NULL );
 param( 'm', 'string', NULL );
@@ -523,12 +524,12 @@ elseif( !empty($preview) )
 elseif( $disp == '-' && !empty($Item) )
 { // We have not requested a specific disp but we have identified a specific post to be displayed
 	// We are going to display a single post
-	// if( in_array( $Item->ptyp_ID, $posttypes_specialtypes ) )
+	// if( in_array( $Item->ityp_ID, $posttypes_specialtypes ) )
 	if( preg_match( '|[&?](download=\d+)|', $ReqURI ) )
 	{
 		$disp = 'download';
 	}
-	elseif( $Item->ptyp_ID == 1000 )
+	elseif( $Item->ityp_ID == 1000 )
 	{
 		$disp = 'page';
 	}
@@ -541,6 +542,7 @@ elseif( $disp == '-' )
 { // No specific request of any kind...
 	// We consider this to be the home page:
 	$disp = $Blog->get_setting('front_disp');
+	// Note: the above is where we MIGHT in fact set $disp = 'front';
 
 	$is_front = true; // we have detected that we are displaying the front page
 
@@ -550,10 +552,10 @@ elseif( $disp == '-' )
 	{ // Check if the URL was canonical:
 		$canonical_url = $Blog->gen_blogurl();
 		if( ! is_same_url($ReqURL, $canonical_url) )
-		{	// We are not on the canocial blog url:
+		{	// We are not on the canonicial blog url:
 			if( $Blog->get_setting( 'canonical_homepage' ) && $redir == 'yes' )
 			{	// REDIRECT TO THE CANONICAL URL:
-				header_redirect( $canonical_url, true );
+				header_redirect( $canonical_url, (empty( $display_containers ) && empty( $display_includes )) ? 301 : 303 );
 			}
 			else
 			{	// Use link rel="canoncial":
@@ -627,7 +629,7 @@ if( isset( $skin ) )
 	}
 	elseif( skin_exists( $skin ) && ! skin_installed( $skin ) )
 	{	// The requested skin is not a feed skin and exists in the file system, but isn't installed:
-		debug_die( sprintf( T_( 'The skin [%s] is not installed on this system.' ), evo_htmlspecialchars( $skin ) ) );
+		debug_die( sprintf( T_( 'The skin [%s] is not installed on this system.' ), htmlspecialchars( $skin ) ) );
 	}
 	elseif( ! empty( $tempskin ) )
 	{ // By definition, we want to see the temporary skin (if we don't use feedburner... )
@@ -647,7 +649,7 @@ if( !isset( $skin ) && !empty( $blog_skin_ID ) )	// Note: if $skin is set to '',
 if( !empty( $skin ) && !skin_exists( $skin ) )
 { // We want to use a skin, but it doesn't exist!
 	$err_msg = sprintf( T_('The skin [%s] set for blog [%s] does not exist. It must be properly set in the <a %s>blog properties</a> or properly overriden in a stub file.'),
-		evo_htmlspecialchars($skin),
+		htmlspecialchars($skin),
 		$Blog->dget('shortname'),
 		'href="'.$admin_url.'?ctrl=coll_settings&amp;tab=skin&amp;blog='.$Blog->ID.'"' );
 	debug_die( $err_msg );
@@ -680,6 +682,14 @@ $Timer->pause( '_BLOG_MAIN.inc');
 $Timer->log_duration( '_BLOG_MAIN.inc' );
 
 
+// Init global vars which may be required for any skin
+skin_init_global_vars();
+
+
+// Check if current user has acces to this blog
+$Blog->check_access();
+
+
 /*
  * _______________________________ READY TO DISPLAY _______________________________
  *
@@ -689,7 +699,7 @@ $Timer->log_duration( '_BLOG_MAIN.inc' );
 
 // Trigger plugin event:
 // fp> TODO: please doc with example of what this can be used for
-$Plugins->trigger_event( 'BeforeBlogDisplay', array('skin'=>$skin) );
+$Plugins->trigger_event( 'BeforeBlogDisplay', array( 'skin' => $skin ) );
 
 if( !empty( $skin ) )
 { // We want to display with a skin now:
@@ -709,12 +719,9 @@ if( !empty( $skin ) )
 	{	// Cache miss, we have to generate:
 		$Timer->pause( 'PageCache' );
 
-		// Init global vars which may be required for any skin
-		skin_init_global_vars();
-
-		if( $skin_provided_by_plugin = skin_provided_by_plugin($skin) )
+		if( $skin_provided_by_plugin = skin_provided_by_plugin( $skin ) )
 		{
-			$Plugins->call_method( $skin_provided_by_plugin, 'DisplaySkin', $tmp_params = array('skin'=>$skin) );
+			$Plugins->call_method( $skin_provided_by_plugin, 'DisplaySkin', $tmp_params = array( 'skin' => $skin ) );
 		}
 		else
 		{
@@ -750,53 +757,57 @@ if( !empty( $skin ) )
 					'useritems'      => 'useritems.main.php',
 					'usercomments'   => 'usercomments.main.php',
 					'download'       => 'download.main.php',
+					'access_requires_login' => 'access_requires_login.main.php',
 					// All others will default to index.main.php
 				);
 
-			if( $disp == 'search' && ! file_exists( $ads_current_skin_path.'_item_block.inc.php' ) )
-			{	// Skins from 2.x don't have '_item_block.inc.php' file, and there's no fallback file in /skins directory
-				// So we simply load the 'posts' disp handler
-				$disp = 'posts';
-			}
+			if( ! empty( $disp ) && ( $disp == 'single' || $disp == 'page' ) &&
+			    ! empty( $Item ) && ( $ItemType = & $Item->get_ItemType() ) && $ItemType->get( 'template_name' ) != '' )
+			{ // Get template name for the current Item if it is defined by Item Type
+				$disp_handler_custom = $ItemType->get( 'template_name' ).'.main.php';
 
-			if( !empty($disp_handlers[$disp]) )
-			{
-				if( file_exists( $disp_handler = $ads_current_skin_path.$disp_handlers[$disp] ) )
-				{	// The skin has a customized page handler for this display:
-					$Debuglog->add('blog_main: include '.rel_path_to_base($disp_handler).' (custom to this skin)', 'skins' );
-					require $disp_handler;
+				if( file_exists( $disp_handler = $ads_current_skin_path.$disp_handler_custom ) )
+				{ // Custom template is found in skin folder
+					$disp_handler_custom_found = true;
+					$Debuglog->add('blog_main: include '.rel_path_to_base( $disp_handler ).' (custom for item type)', 'skins' );
 				}
-				elseif( file_exists( $disp_handler = $skins_path.$disp_handlers[$disp] ) )
-				{	// Skins have a general page handler for this display:
-					$Debuglog->add('blog_main: include '.rel_path_to_base($disp_handler).' (for CSS include -- added in v 4.1)', 'skins' );
-					require $disp_handler;
-				}
-				elseif( $disp_handlers[$disp] == 'posts.main.php' && file_exists( $disp_handler = $ads_current_skin_path.'items.main.php' ) )
-				{	// Compatibility with skins < 2.2.0
-					$Debuglog->add('blog_main: include '.rel_path_to_base($disp_handler).' (compat with skins < 2.2.0)', 'skins' );
-					require $disp_handler;
-				}
-				elseif( $disp_handlers[$disp] == 'comments.main.php' && file_exists( $disp_handler = $ads_current_skin_path.'latestcom.tpl.php' ) )
-				{	// Compatibility with skins < 2.2.0
-					$Debuglog->add('blog_main: include '.rel_path_to_base($disp_handler).' (compat with skins < 2.2.0)', 'skins' );
-					require $disp_handler;
-				}
-				elseif( $disp_handlers[$disp] == 'feedback_popup.main.php' && file_exists( $disp_handler = $ads_current_skin_path.'feedback_popup.tpl.php' ) )
-				{	// Compatibility with skins < 2.2.0
-					$Debuglog->add('blog_main: include '.rel_path_to_base($disp_handler).' (compat with skins < 2.2.0)', 'skins' );
-					require $disp_handler;
+				elseif( $disp_handler = skin_fallback_path( $disp_handler_custom ) )
+				{ // Custom template is found only in fallback skin folders
+					$Debuglog->add('blog_main: include '.rel_path_to_base( $disp_handler ).' (fallback to custom for item type)', 'skins' );
 				}
 				else
-				{	// Use the default handler from the skins dir:
-					$Debuglog->add('blog_main: include '.rel_path_to_base($ads_current_skin_path.'index.main.php').' (default handler)', 'skins' );
-					require $ads_current_skin_path.'index.main.php';
+				{ // No found custom template
+					$disp_handler = NULL;
 				}
 			}
-			else
-			{	// Use the default handler from the skins dir:
-				$Debuglog->add('blog_main: include '.rel_path_to_base($ads_current_skin_path.'index.main.php').' (default index handler)', 'skins' );
-				require $ads_current_skin_path.'index.main.php';
+
+			if( empty( $disp_handler ) )
+			{ // Set $disp_handler only if it is not defined above
+				if( ! empty( $disp_handlers[ $disp ] ) )
+				{
+					if( file_exists( $disp_handler = $ads_current_skin_path.$disp_handlers[ $disp ] ) )
+					{ // The skin has a customized page handler for this display:
+						$Debuglog->add('blog_main: include '.rel_path_to_base( $disp_handler ).' (custom to this skin)', 'skins' );
+					}
+					elseif( $disp_handler = skin_fallback_path( $disp_handlers[ $disp ] ) )
+					{ // Skins have a general page handler for this display:
+						$Debuglog->add('blog_main: include '.rel_path_to_base( $disp_handler ).' (for CSS include -- added in v 4.1)', 'skins' );
+					}
+					else
+					{ // Use the default handler from the skins dir:
+						$disp_handler = $ads_current_skin_path.'index.main.php';
+						$Debuglog->add('blog_main: include '.rel_path_to_base( $disp_handler ).' (default handler)', 'skins' );
+					}
+				}
+				else
+				{ // Use the default handler from the skins dir:
+					$disp_handler = $ads_current_skin_path.'index.main.php';
+					$Debuglog->add('blog_main: include '.rel_path_to_base( $disp_handler ).' (default index handler)', 'skins' );
+				}
 			}
+
+			// CALL THE MAIN TEMPLATE NOW:
+			require $disp_handler;
 		}
 
 		// Save collected cached data if needed:

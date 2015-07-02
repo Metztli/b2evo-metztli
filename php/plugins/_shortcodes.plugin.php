@@ -7,8 +7,8 @@
  *  http://sourceforge.net/project/memberlist.php?group_id=51422
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package plugins
  */
@@ -62,8 +62,7 @@ class shortcodes_plugin extends Plugin
 		// Load js to work with textarea
 		require_js( 'functions.js', 'blog', true, true );
 
-		?>
-		<script type="text/javascript">
+		?><script type="text/javascript">
 		//<![CDATA[
 		var shortcodes_buttons = new Array();
 
@@ -78,7 +77,7 @@ class shortcodes_plugin extends Plugin
 
 		shortcodes_buttons[shortcodes_buttons.length] = new shortcodes_button(
 				'shortcodes_teaserbreak', '[teaserbreak]', '[teaserbreak]',
-				'<?php echo TS_('Teaser break') ?>', 'margin-left:8px;'
+				'<?php echo TS_('Teaser break') ?>', ''
 			);
 		shortcodes_buttons[shortcodes_buttons.length] = new shortcodes_button(
 				'shortcodes_pagebreak', '[pagebreak]', '[pagebreak]',
@@ -87,41 +86,33 @@ class shortcodes_plugin extends Plugin
 
 		function shortcodes_toolbar( title )
 		{
-			document.write( '<div>' + title );
+			document.write( '<?php echo $this->get_template( 'toolbar_title_before' ); ?>' + title + '<?php echo $this->get_template( 'toolbar_title_after' ); ?>' );
+			document.write( '<?php echo $this->get_template( 'toolbar_group_before' ); ?>' );
 			for( var i = 0; i < shortcodes_buttons.length; i++ )
 			{
 				var button = shortcodes_buttons[i];
 				document.write( '<input type="button" id="' + button.id + '" title="' + button.title + '"'
-					+ ( typeof( button.style ) != 'undefined' ? ' style="' + button.style + '"' : '' ) + ' class="shortcodes" data-func="shortcodes_insert_tag|b2evoCanvas|'+i+'" value="' + button.text + '" />' );
+					+ ( typeof( button.style ) != 'undefined' ? ' style="' + button.style + '"' : '' ) + ' class="<?php echo $this->get_template( 'toolbar_button_class' ); ?>" data-func="shortcodes_insert_tag|b2evoCanvas|'+i+'" value="' + button.text + '" />' );
 			}
-			document.write('</div>');
+			document.write( '<?php echo $this->get_template( 'toolbar_group_after' ); ?>' );
 		}
 
 		function shortcodes_insert_tag( canvas_field, i )
 		{
-			var tag = shortcodes_buttons[i].tag;
 			if( typeof( tinyMCE ) != 'undefined' && typeof( tinyMCE.activeEditor ) != 'undefined' && tinyMCE.activeEditor )
-			{ // tinyMCE plugin is active now, we should insert separators by plugin buttons to render them
-				if( tag == '[teaserbreak]' && typeof( tinyMCE.activeEditor.execCommands.mceMore ) != 'undefined' )
-				{ // MorePlugin exists in tinyMCE
-					tinyMCE.execCommand( 'mceMore', false, tinyMCE.activeEditor.id );
-					return;
-				}
-				if( tag == '[pagebreak]' && typeof( tinyMCE.activeEditor.execCommands.mcePageBreak ) != 'undefined' )
-				{ // PageBreakPlugin exists in tinyMCE
-					tinyMCE.execCommand( 'mcePageBreak', false, tinyMCE.activeEditor.id );
-					return;
-				}
+			{ // tinyMCE plugin is active now, we should focus cursor to the edit area
+				tinyMCE.execCommand( 'mceFocus', false, tinyMCE.activeEditor.id );
 			}
-			// Insert plain text in simple textarea
-			textarea_wrap_selection( canvas_field, tag, '', 0 );
+			// Insert tag text in area
+			textarea_wrap_selection( canvas_field, shortcodes_buttons[i].tag, '', 0 );
 		}
 		//]]>
-		</script>
+		</script><?php
 
-		<div class="edit_toolbar shortcodes_toolbar"><script type="text/javascript">shortcodes_toolbar( '<?php echo TS_('Shortcodes:'); ?>' );</script></div>
+		echo $this->get_template( 'toolbar_before', array( '$toolbar_class$' => 'shortcodes_toolbar' ) );
+		?><script type="text/javascript">shortcodes_toolbar( '<?php echo TS_('Shortcodes:'); ?>' );</script><?php
+		echo $this->get_template( 'toolbar_after' );
 
-		<?php
 		return true;
 	}
 }

@@ -175,6 +175,7 @@ function _wp_mw_newmediaobject($m)
 		if( $error = validate_dirname($filepath_part) )
 		{	// invalid relative path:
 			logIO( $error );
+			syslog_insert( sprintf( 'Invalid name is detected for folder %s', '<b>'.$filepath_part.'</b>' ), 'warning', 'file' );
 			return xmlrpcs_resperror( 6, $error );
 		}
 
@@ -397,7 +398,7 @@ function _wp_mw_get_item_struct( & $Item )
 			'wp_page_order'				=> new xmlrpcval( $Item->order ), // We don't use 'int' here because b2evolution "order" is stored as double while WP uses integer values
 			'wp_author_id'				=> new xmlrpcval( $Item->creator_user_ID, 'string' ),
 			'wp_author_display_name'	=> new xmlrpcval( $Item->get('t_author') ),
-			'wp_post_format'			=> new xmlrpcval( $Item->ptyp_ID ),
+			'wp_post_format'			=> new xmlrpcval( $Item->ityp_ID ),
 			'date_created_gmt'			=> new xmlrpcval( datetime_to_iso8601($Item->issue_date, true), 'dateTime.iso8601' ),
 			'dateCreated'				=> new xmlrpcval( datetime_to_iso8601($Item->issue_date),'dateTime.iso8601' ),
 			'custom_fields'				=> new xmlrpcval( $item_settings, 'array' ),
@@ -568,6 +569,17 @@ function _mw_get_cat_IDs( $contentstruct, $Blog, $empty_struct_is_ok = false )
 }
 
 
+function add_to_categories_data( $Chapter )
+{
+	global $categories_data, $categoryIdName;
+
+	$categories_data[] = new xmlrpcval( array(
+			$categoryIdName => new xmlrpcval( $Chapter->ID ),
+			'categoryName' => new xmlrpcval( $Chapter->name )
+		), 'struct' );
+}
+
+
 /**
  * Helper for {@link b2_getcategories()} and {@link mt_getPostCategories()}, because they differ
  * only in the "categoryId" case ("categoryId" (b2) vs "categoryID" (MT))
@@ -581,7 +593,7 @@ function _mw_get_cat_IDs( $contentstruct, $Blog, $empty_struct_is_ok = false )
  */
 function _b2_or_mt_get_categories( $type, $m )
 {
-	global $DB, $Settings;
+	global $DB;
 
 	/**
 	 * @var User
@@ -600,46 +612,22 @@ function _b2_or_mt_get_categories( $type, $m )
 		return xmlrpcs_resperror();
 	}
 
-	$SQL = new SQL();
-	$SQL->SELECT( 'cat_ID, cat_name, cat_order' );
-	$SQL->FROM( 'T_categories' );
-	$SQL->WHERE( $Blog->get_sql_where_aggregate_coll_IDs('cat_blog_ID') );
-
-	if( $Settings->get('chapter_ordering') == 'manual' )
-	{	// Manual order
-		$SQL->ORDER_BY( 'cat_order' );
-	}
-	else
-	{	// Alphabetic order
-		$SQL->ORDER_BY( 'cat_name' );
-	}
-
-	$rows = $DB->get_results( $SQL->get() );
-	if( $DB->error )
-	{	// DB error
-		return xmlrpcs_resperror( 99, 'DB error: '.$DB->last_error ); // user error 9
-	}
-	logIO( 'Categories: '.count($rows) );
-
+	global $categories_data, $categoryIdName;
+	$categories_data = array();
 	$categoryIdName = ( $type == 'b2' ? 'categoryID' : 'categoryId' );
+	$aggregate_coll_IDs = $Blog->get_aggregate_coll_IDs();
+	$callbacks = array( 'line' => 'add_to_categories_data' );
 
 	$ChapterCache = & get_ChapterCache();
-	$data = array();
-	foreach( $rows as $row )
-	{
-		$Chapter = & $ChapterCache->get_by_ID( $row->cat_ID, false, false );
-		if( ! $Chapter )
-		{
-			continue;
-		}
-		$data[] = new xmlrpcval( array(
-				$categoryIdName => new xmlrpcval( $Chapter->ID ),
-				'categoryName' => new xmlrpcval( $Chapter->name )
-			), 'struct' );
-	}
+	$ChapterCache->recurse( $callbacks, $aggregate_coll_IDs, NULL, 0, 0, array( 'sorted' => true ) );
 
+	logIO( 'Categories: '.count($ChapterCache->cache) );
 	logIO( 'OK.' );
-	return new xmlrpcresp( new xmlrpcval($data, 'array') );
+
+	$result = new xmlrpcresp( new xmlrpcval($categories_data, 'array') );
+	unset( $categories_data );
+
+	return $result;
 }
 
 
@@ -658,7 +646,7 @@ function _b2_or_mt_get_categories( $type, $m )
  */
 function _wp_mw_getcategories( $m, $params = array() )
 {
-	global $DB, $Settings;
+	global $DB;
 
 	// CHECK LOGIN:
 	/**
@@ -687,14 +675,8 @@ function _wp_mw_getcategories( $m, $params = array() )
 	{	// Category name starts with 'search'
 		$SQL->WHERE_and( 'cat_name LIKE "'.$DB->like_escape( $params['search'] ).'%"' );
 	}
-	if( $Settings->get('chapter_ordering') == 'manual' )
-	{	// Manual order
-		$SQL->ORDER_BY( 'cat_order' );
-	}
-	else
-	{	// Alphabetic order
-		$SQL->ORDER_BY( 'cat_name' );
-	}
+	// TODO: asimo>fp How should we order categories from multiple blogs?
+	$SQL->ORDER_BY( 'cat_name' );
 
 	$rows = $DB->get_results( $SQL->get() );
 	if( $DB->error )
@@ -1051,7 +1033,7 @@ function xmlrpcs_new_comment( $params = array(), & $commented_Item )
 		$User = NULL;
 
 		$author = trim($params['author']);
-		$email = evo_strtolower( trim($params['author_email']) );
+		$email = utf8_strtolower( trim($params['author_email']) );
 
 		if( $commented_Item->Blog->get_setting('allow_anon_url') )
 		{
@@ -1448,7 +1430,7 @@ function xmlrpcs_new_item( $params, & $Blog = NULL )
 	$edited_Item->set( 'main_cat_ID', $params['main_cat_ID'] );
 	$edited_Item->set( 'extra_cat_IDs', $params['extra_cat_IDs'] );
 	$edited_Item->set( 'status', $params['status'] );
-	$edited_Item->set( 'ptyp_ID', $params['item_typ_ID'] );
+	$edited_Item->set( 'ityp_ID', $params['item_typ_ID'] );
 	$edited_Item->set( 'featured', $params['featured'] );
 	$edited_Item->set_tags_from_string( $params['tags'] );
 	$edited_Item->set( 'locale', $current_User->locale );
@@ -1459,13 +1441,13 @@ function xmlrpcs_new_item( $params, & $Blog = NULL )
 	if( $params['parent_ID'] != '' ) $edited_Item->set( 'parent_ID', $params['parent_ID'] );
 	if( !empty($params['order']) ) $edited_Item->set( 'order', $params['order'] ); // Do not set if order is 0
 
-	if( ($Blog->get_setting('allow_comments') != 'never') && ($Blog->get_setting('disable_comments_bypost')) )
-	{	// Comment status
+	if( $edited_Item->allow_comment_statuses() )
+	{ // Comment status
 		$edited_Item->set( 'comment_status', $params['comment_status'] );
 	}
 
-	$edited_Item->dbinsert( 'through_xmlrpc' );
-	if( empty($edited_Item->ID) )
+	$edited_Item->dbinsert();
+	if( empty( $edited_Item->ID ) )
 	{
 		return xmlrpcs_resperror( 99, 'Error while inserting item: '.$DB->last_error );
 	}
@@ -1611,7 +1593,7 @@ function xmlrpcs_edit_item( & $edited_Item, $params )
 	}
 	if( !is_null($params['item_typ_ID']) )
 	{
-		$edited_Item->set('ptyp_ID', $params['item_typ_ID']);
+		$edited_Item->set('ityp_ID', $params['item_typ_ID']);
 	}
 	if( !is_null($params['featured']) )
 	{
@@ -1640,7 +1622,7 @@ function xmlrpcs_edit_item( & $edited_Item, $params )
 	{
 		$edited_Item->set( 'excerpt', $params['excerpt'] );
 	}
-	if( !empty($params['comment_status']) && ($Blog->get_setting('allow_comments') != 'never') && ($Blog->get_setting('disable_comments_bypost')) )
+	if( !empty($params['comment_status']) && $edited_Item->allow_comment_statuses() )
 	{	// Comment status
 		$edited_Item->set( 'comment_status', $params['comment_status'] );
 	}
@@ -1808,7 +1790,7 @@ function xmlrpc_get_items( $params, & $Blog )
 	$params = array_merge( array(
 			'limit' => 0,
 			'item_ID' => 0,
-			'types' => '', // all item types
+			'types' => '', // all post types
 		), $params);
 
 	// Protected and private get checked by statuses_where_clause().

@@ -3,33 +3,14 @@
  * This file implements the Results class.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * PROGIDISTRI S.A.S. grants Francois PLANQUE the right to license
- * PROGIDISTRI S.A.S.'s contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE
- * @author fsaya: Fabrice SAYA-GASNIER / PROGIDISTRI
- *
- * @version $Id: _results.class.php 8198 2015-02-09 08:58:14Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -232,6 +213,26 @@ class Results extends Table
 	 */
 	var $order_callbacks;
 
+	/**
+	 * Default ordering of columns (special syntax) if not specified in the URL params
+	 *    example: -A-- will sort in ascending order on 2nd column
+	 *    example: ---D will sort in descending order on 4th column
+	 * @var string
+	 */
+	var $default_order;
+
+	/**
+	 * Used to force an order param to default value when total rows count > this var;
+	 * NULL - to don't force
+	 * @var integer|NULL
+	 */
+	var $force_order_by_count;
+
+	/**
+	 * The internal messages that are displayed under filters block
+	 * @var array
+	 */
+	var $messages;
 
 	/**
 	 * Parameters for the functions area (to display functions at the end of results array):
@@ -257,13 +258,13 @@ class Results extends Table
 	 *               example: -A-- will sort in ascending order on 2nd column
 	 *               example: ---D will sort in descending order on 4th column
 	 * @param integer Default number of lines displayed on one page (0 to disable paging; null to use $UserSettings/results_per_page)
-	 * @param string SQL to get the total count of results
-	 * @param boolean
 	 * @param string|integer SQL query used to count the total # of rows
 	 * 												- if integer, we'll use that as the count
 	 * 												- if NULL, we'll try to COUNT(*) by ourselves
+	 * @param boolean TRUE to initialize page params
+	 * @param integer|NULL Total rows count that allows to use an order of any column, NULL - don't restrict
 	 */
-	function Results( $sql, $param_prefix = '', $default_order = '', $default_limit = NULL, $count_sql = NULL, $init_page = true )
+	function Results( $sql, $param_prefix = '', $default_order = '', $default_limit = NULL, $count_sql = NULL, $init_page = true, $force_order_by_count = NULL )
 	{
 		parent::Table( NULL, $param_prefix );
 
@@ -273,12 +274,13 @@ class Results extends Table
 		$this->init_limit_param( $default_limit );
 
 		if( $init_page )
-		{	// attribution of a page number
+		{ // attribution of a page number
 			$this->page_param = 'results_'.$this->param_prefix.'page';
 			$this->page = param( $this->page_param, 'integer', 1, true );
 		}
 
-		$this->init_order_param( $default_order );
+		$this->default_order = $default_order;
+		$this->force_order_by_count = $force_order_by_count;
 	}
 
 
@@ -332,12 +334,8 @@ class Results extends Table
 
 	/**
 	 * Initialize the order param
-	 *
-	 * @param string default ordering of columns (special syntax) if not specified in the URL params
-	 *               example: -A-- will sort in ascending order on 2nd column
-	 *               example: ---D will sort in descending order on 4th column
 	 */
-	function init_order_param( $default_order )
+	function init_order_param()
 	{
 		global $UserSettings;
 
@@ -348,15 +346,45 @@ class Results extends Table
 
 		// attribution of an order type
 		$this->order_param = 'results_'.$this->param_prefix.'order';
-		$this->order = param( $this->order_param, 'string', '', true );
+		$order_request = param( $this->order_param, 'string', '', true );
 		// remove symbols '-' from the end
-		$this->order = preg_replace( '/(-*[AD]+)(-*)/i', '$1', $this->order );
+		$order_request = rtrim( $order_request, '-' );
+
+		if( $this->force_order_by_count !== NULL && ! empty( $order_request ) )
+		{ // Check if we should force an order filed to default value
+			if( $this->get_total_rows() > $this->force_order_by_count )
+			{ // This table has very much records we should force an order to default
+				$reverse_default_order = str_replace( 'D', 'A', $this->default_order );
+				$reverse_default_order = ( $reverse_default_order == $this->default_order ) ? str_replace( 'A', 'D', $this->default_order ) : $reverse_default_order;
+				if( $order_request != $this->default_order && $order_request != $reverse_default_order )
+				{ // If an order from request is not default then we must change it to default
+					$this->order = $this->default_order;
+					$order_request_title = $order_request;
+					if( isset( $this->cols ) )
+					{ // Try to find a title of the ordered field to display it in warning message
+						$order_index = strpos( $order_request, 'A' );
+						$order_index = ( $order_index === FALSE ) ? strpos( $order_request, 'D' ) : $order_index;
+						if( isset( $this->cols[ $order_index ] ) && isset( $this->cols[ $order_index ]['th'] ) )
+						{
+							$order_request_title = $this->cols[ $order_index ]['th'];
+						}
+					}
+					// Add a message to inform user about this order type is not allowed in this case
+					$this->add_message( sprintf( T_( 'In order to maintain good performance, you cannot sort by %s when there are more than %s results.' ), $order_request_title, number_format( $this->force_order_by_count, 0, '', ' ' ) ) );
+				}
+			}
+		}
+
+		if( empty( $this->order ) )
+		{ // Set an order from GET request
+			$this->order = $order_request;
+		}
 
 		if( !empty( $this->param_prefix ) &&
 		    !empty( $this->order ) &&
 		    $this->order != $UserSettings->get( $this->order_param ) )
 		{	// Change an order param in DB for current user and current list
-			if( $this->order == $default_order )
+			if( $this->order == $this->default_order )
 			{	// Delete an order param for current list if it is a default value
 				$UserSettings->delete( $this->order_param );
 			}
@@ -377,7 +405,7 @@ class Results extends Table
 
 		if( empty( $this->order ) )
 		{	// Set a default value
-			$this->order = $default_order;
+			$this->order = $this->default_order;
 		}
 	}
 
@@ -912,12 +940,18 @@ class Results extends Table
 				echo $this->replace_vars( $this->params['head_title'] );
 			}
 
+			// Set this to TRUE in order to display all checkboxes before labels
+			$this->force_checkboxes_to_inline = true;
+
 			// DISPLAY FILTERS:
 			$this->display_filters();
 		}
 
 		// Flush in order to show the filters before slow SQL query will be executed below
 		evo_flush();
+
+		// Initialize the order param
+		$this->init_order_param();
 
 		// Make sure query has executed and we're at the top of the resultset:
 		$this->restart();
@@ -941,6 +975,9 @@ class Results extends Table
 			}
 			else
 			{ // We have rows to display:
+
+				// Display internal messages
+				$this->display_messages();
 
 				// GLOBAL (NAV) HEADER:
 				$this->display_nav( 'header' );
@@ -1204,7 +1241,7 @@ class Results extends Table
 
 				$out = eval( "return '$output';" );
 				// fp> <input> is needed for checkboxes in the Blog User/Group permissions table > advanced
-				echo ( trim(strip_tags($out,'<img><input>')) === '' ? '&nbsp;' : $out );
+				echo ( trim(strip_tags($out,'<img><input><span>')) === '' ? '&nbsp;' : $out );
 
 				// COL START:
 				$this->display_col_end();
@@ -1361,21 +1398,22 @@ class Results extends Table
 	 */
 	function display_nav( $template )
 	{
-		if( empty($this->limit) && isset($this->params[$template.'_text_no_limit']) )
-		{	// No LIMIT (there's always only one page)
+		if( empty( $this->limit ) && isset( $this->params[$template.'_text_no_limit'] ) )
+		{ // No LIMIT (there's always only one page)
 			$navigation = $this->params[$template.'_text_no_limit'];
 		}
 		elseif( ( $this->total_pages <= 1 ) )
-		{	// Single page (we probably don't want to show navigation in this case)
+		{ // Single page (we probably don't want to show navigation in this case)
 			$navigation = $this->replace_vars( $this->params[$template.'_text_single'] );
 		}
 		else
-		{	// Several pages
+		{ // Several pages
 			$navigation = $this->replace_vars( $this->params[$template.'_text'] );
 		}
 
-		if( !empty( $navigation ) )
-		{	// Display navigation
+		$navigation_text = trim( strip_tags( $navigation ) );
+		if( ! empty( $navigation_text ) )
+		{ // Display navigation only when it is really filled with some text
 			echo $this->params[$template.'_start'];
 
 			echo $navigation;
@@ -1500,6 +1538,7 @@ class Results extends Table
 					return '';
 				}
 
+				$this->order = '';
 				foreach( $this->cols as $col )
 				{
 					if( isset( $col['order'] ) || isset( $col['order_objects_callback'] ) || isset( $col['order_rows_callback'] ) )
@@ -1602,7 +1641,7 @@ class Results extends Table
 		// Make variable substitution for URL STRINGS:
 		$content = preg_replace( '#\x{c2}\x{a3} (\w+) \x{c2}\x{a3}#ix', "'.format_to_output(\$row->$1, 'urlencoded').'", $content );
 		// Make variable substitution for escaped strings:
-		$content = preg_replace( '#\x{c2}\x{b2} (\w+) \x{c2}\x{b2}#ix', "'.evo_htmlentities(\$row->$1).'", $content );
+		$content = preg_replace( '#\x{c2}\x{b2} (\w+) \x{c2}\x{b2}#ix', "'.htmlentities(\$row->$1).'", $content );
 		// Make variable substitution for RAWS:
 		$content = preg_replace( '!\# (\w+) \#!ix', "\$row->$1", $content );
 		// Make variable substitution for full ROW:
@@ -1623,7 +1662,7 @@ class Results extends Table
 		$content = str_replace( '{move}', "'.\$this->move_icons().'", $content );
 
 		$content = str_replace( array( '{CUR_IDX}', '{TOTAL_ROWS}', '{ROW_IDX_TYPE}' ),
-			array( $this->current_idx, $this->total_rows, $this->get_row_order_type() ),
+			array( $this->current_idx, $this->total_rows, "'".$this->get_row_order_type()."'" ),
 			$content );
 
 		return $content;
@@ -2043,7 +2082,7 @@ class Results extends Table
 		$html = '<small>';
 		$html .= T_('Lines per page:');
 
-		$html .= ' <select name="'.$this->limit_param.'" onchange="location.href=\''.regenerate_url( $this->page_param.','.$this->limit_param, $this->limit_param, $page_url ).'=\'+this.value" class="form-control">';
+		$html .= ' <select name="'.$this->limit_param.'" onchange="location.href=\''.regenerate_url( $this->page_param.','.$this->limit_param, $this->limit_param, $page_url ).'=\'+this.value" class="form-control input-sm">';
 		foreach( $page_size_options as $value => $name )
 		{
 			$selected = '';
@@ -2073,7 +2112,11 @@ class Results extends Table
 		$page_next_i = $this->page + 1;
 		for( $i=$min; $i<=$max; $i++)
 		{
-			if( isset( $this->params['page_item_before'] ) )
+			if( $i == $this->page && isset( $this->params['page_item_current_before'] ) )
+			{
+				$list .= $this->params['page_item_current_before'];
+			}
+			elseif( isset( $this->params['page_item_before'] ) )
 			{
 				$list .= $this->params['page_item_before'];
 			}
@@ -2110,7 +2153,11 @@ class Results extends Table
 				$list .= '>'.$i.'</a>';
 			}
 
-			if( isset( $this->params['page_item_after'] ) )
+			if( $i == $this->page && isset( $this->params['page_item_current_after'] ) )
+			{
+				$list .= $this->params['page_item_current_after'];
+			}
+			elseif( isset( $this->params['page_item_after'] ) )
 			{
 				$list .= $this->params['page_item_after'];
 			}
@@ -2231,6 +2278,40 @@ class Results extends Table
 			return true;
 		}
 		return false;
+	}
+
+
+	/**
+	 * Add message to array
+	 *
+	 * @param string Message string
+	 */
+	function add_message( $message )
+	{
+		if( ! is_array( $this->messages ) )
+		{ // Initialize array only first time
+			$this->messages = array();
+		}
+
+		$this->messages[] = $message;
+	}
+
+
+	/**
+	 * Print out the messages on screen
+	 */
+	function display_messages()
+	{
+		if( empty( $this->messages ) )
+		{ // No messages, Don't print
+			return;
+		}
+
+		echo $this->replace_vars( $this->params['messages_start'] );
+
+		echo implode( $this->params['messages_separator'], $this->messages );
+
+		echo $this->params['messages_end'];
 	}
 
 

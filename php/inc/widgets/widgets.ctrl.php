@@ -3,18 +3,10 @@
  * This file implements the UI controller for managing widgets inside of a blog.
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
- *
- * {@internal Open Source relicensing agreement:
- * }}
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
- *
- * @version $Id: widgets.ctrl.php 7178 2014-07-23 08:11:33Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -57,14 +49,14 @@ else
 {	// We could not find a blog we have edit perms on...
 	// Note: we may still have permission to edit categories!!
 	// redirect to blog list:
-	header_redirect( '?ctrl=collections' );
+	header_redirect( $admin_url.'?ctrl=dashboard' );
 	// EXITED:
 	$Messages->add( T_('Sorry, you have no permission to edit blog properties.'), 'error' );
 	$action = 'nil';
 	$tab = '';
 }
 
-param( 'action', 'string', 'list' );
+$action = param_action( 'list' );
 param( 'display_mode', 'string', 'normal' );
 $display_mode = ( in_array( $display_mode, array( 'js', 'normal' ) ) ? $display_mode : 'normal' );
 if( $display_mode == 'js' )
@@ -80,9 +72,11 @@ if( $display_mode == 'js' )
  */
 switch( $action )
 {
- 	case 'nil':
- 	case 'list':
- 	case 'reload':
+	case 'nil':
+	case 'list':
+	case 'reload':
+	case 'activate':
+	case 'deactivate':
 		// Do nothing
 		break;
 
@@ -110,16 +104,19 @@ switch( $action )
 
 	case 'edit':
 	case 'update':
+	case 'update_edit':
 	case 'delete':
 	case 'move_up':
 	case 'move_down':
 	case 'toggle':
+	case 'cache_enable':
+	case 'cache_disable':
 		param( 'wi_ID', 'integer', true );
 		$WidgetCache = & get_WidgetCache();
 		$edited_ComponentWidget = & $WidgetCache->get_by_ID( $wi_ID );
 		// Take blog from here!
 		// echo $edited_ComponentWidget->coll_ID;
- 		set_working_blog( $edited_ComponentWidget->coll_ID );
+		set_working_blog( $edited_ComponentWidget->coll_ID );
 		$BlogCache = & get_BlogCache();
 		/**
 		* @var Blog
@@ -167,9 +164,9 @@ $container_list = $Skin->get_containers();
  */
 switch( $action )
 {
- 	case 'nil':
- 	case 'new':
- 	case 'edit':
+	case 'nil':
+	case 'new':
+	case 'edit':
 		// Do nothing
 		break;
 
@@ -228,7 +225,10 @@ switch( $action )
 						$edited_ComponentWidget->ID,
 						$container,
 						$edited_ComponentWidget->get( 'order' ),
-						$edited_ComponentWidget->get_name(),
+						'<a href="'.regenerate_url( 'blog', 'action=edit&amp;wi_ID='.$edited_ComponentWidget->ID ).'" class="widget_name">'
+							.$edited_ComponentWidget->get_desc_for_list()
+						.'</a> '.$edited_ComponentWidget->get_help_link(),
+						$edited_ComponentWidget->get_cache_status( true ),
 					),
 					// Open widget settings:
 					'editWidget' => array(
@@ -246,6 +246,7 @@ switch( $action )
 
 
 	case 'update':
+	case 'update_edit':
 		// Update Settings
 
 		// Check that this action request is not a CSRF hacked request:
@@ -254,14 +255,28 @@ switch( $action )
 		$edited_ComponentWidget->load_from_Request();
 
 		if(	! param_errors_detected() )
-		{	// Update settings:
+		{ // Update settings:
 			$edited_ComponentWidget->dbupdate();
 			$Messages->add( T_('Widget settings have been updated'), 'success' );
 			switch( $display_mode )
 			{
 				case 'js' : // js reply
 					$edited_ComponentWidget->init_display( array() );
-					send_javascript_message(array( 'widgetSettingsCallback' => array( $edited_ComponentWidget->ID, $edited_ComponentWidget->get_desc_for_list() ), 'closeWidgetSettings' => array() ), true );
+					$methods = array();
+					$methods['widgetSettingsCallback'] = array(
+							$edited_ComponentWidget->ID,
+							$edited_ComponentWidget->get_desc_for_list(),
+							$edited_ComponentWidget->get_cache_status( true )
+						);
+					if( $action == 'update' )
+					{ // Close window after update, and don't close it when user wants continue editing after updating
+						$methods['closeWidgetSettings'] = array();
+					}
+					else
+					{ // Scroll to messages after update
+						$methods['showMessagesWidgetSettings'] = array();
+					}
+					send_javascript_message( $methods, true );
 					break;
 			}
 			$action = 'list';
@@ -270,7 +285,7 @@ switch( $action )
 		}
 		elseif( $display_mode == 'js' )
 		{ // send errors back as js
-			send_javascript_message( array(), true );
+			send_javascript_message( array( 'showMessagesWidgetSettings' => array() ), true );
 		}
 		break;
 
@@ -370,7 +385,76 @@ switch( $action )
 			// EXITS:
 			send_javascript_message( array( 'doToggle' => array( $edited_ComponentWidget->ID, (int)! $enabled ) ) );
 		}
-		header_redirect( '?ctrl=widgets&blog='.$Blog->ID, 303 );
+		header_redirect( $admin_url.'?ctrl=widgets&blog='.$Blog->ID, 303 );
+		break;
+
+	case 'cache_enable':
+	case 'cache_disable':
+		// Enable or disable the block caching for the widget:
+
+		// Check that this action request is not a CSRF hacked request:
+		$Session->assert_received_crumb( 'widget' );
+
+		if( $edited_ComponentWidget->get_cache_status() == 'disallowed' )
+		{ // Don't allow to change cache status because it is not allowed by widget config
+			$Messages->add( T_( 'This widget cannot be cached in the block cache.' ), 'error' );
+		}
+		else
+		{ // Update widget cache status
+			$edited_ComponentWidget->set( 'allow_blockcache', $action == 'cache_enable' ? 1 : 0 );
+			$edited_ComponentWidget->dbupdate();
+
+			if( $action == 'cache_enable' )
+			{
+				$Messages->add( T_( 'Block caching has been turned on for this widget.' ), 'success' );
+			}
+			else
+			{
+				$Messages->add( T_( 'Block caching has been turned off for this widget.' ), 'success' );
+			}
+		}
+
+		if ( $display_mode == 'js' )
+		{
+			// EXITS:
+			send_javascript_message( array( 'doToggleCache' => array(
+					$edited_ComponentWidget->ID,
+					$edited_ComponentWidget->get_cache_status( true ),
+				) ) );
+		}
+		header_redirect( $admin_url.'?ctrl=widgets&blog='.$Blog->ID, 303 );
+		break;
+
+	case 'activate':
+	case 'deactivate':
+		// Enable or disable the widgets:
+
+		// Check that this action request is not a CSRF hacked request:
+		$Session->assert_received_crumb( 'widget' );
+
+		$widgets = param( 'widgets', 'array:integer' );
+
+		if( count( $widgets ) )
+		{ // Enable/Disable the selected widgets
+			$updated_widgets = $DB->query( 'UPDATE T_widget
+				  SET wi_enabled = '.$DB->quote( $action == 'activate' ? '1' : '0' ).'
+				WHERE wi_ID IN ( '.$DB->quote( $widgets ).' )
+				  AND wi_coll_ID = '.$DB->quote( $Blog->ID ) );
+		}
+
+		if( ! empty( $updated_widgets ) )
+		{ // Display a result message only when at least one widget has been updated
+			if( $action == 'activate' )
+			{
+				$Messages->add( sprintf( T_( '%d widgets have been enabled.' ), $updated_widgets ), 'success' );
+			}
+			else
+			{
+				$Messages->add( sprintf( T_( '%d widgets have been disabled.' ), $updated_widgets ), 'success' );
+			}
+		}
+
+		header_redirect( $admin_url.'?ctrl=widgets&blog='.$Blog->ID, 303 );
 		break;
 
 	case 'delete':
@@ -381,7 +465,7 @@ switch( $action )
 
 		$msg = sprintf( T_('Widget &laquo;%s&raquo; removed.'), $edited_ComponentWidget->get_name() );
 		$edited_widget_ID = $edited_ComponentWidget->ID;
-		$edited_ComponentWidget->dbdelete( true );
+		$edited_ComponentWidget->dbdelete();
 		unset( $edited_ComponentWidget );
 		forget_param( 'wi_ID' );
 		$Messages->add( $msg, 'success' );
@@ -475,10 +559,12 @@ if( $display_mode == 'normal' )
 	/**
 	 * Display page header, menus & messages:
 	 */
-	$AdminUI->set_coll_list_params( 'blog_properties', 'edit', array( 'ctrl' => 'widgets' ),
-				T_('Site'), '?ctrl=collections&amp;blog=0' );
+	$AdminUI->set_coll_list_params( 'blog_properties', 'edit', array( 'ctrl' => 'widgets' ) );
 
-	$AdminUI->set_path( 'blogs', 'widgets' );
+	$AdminUI->set_path( 'collections', 'widgets' );
+
+	// We should activate toolbar menu items for this controller and mode
+	$activate_collection_toolbar = true;
 
 	// load the js and css required to make the magic work
 	add_js_headline( '
@@ -497,10 +583,14 @@ if( $display_mode == 'normal' )
 	 *
 	 * @internal Tblue> We get the whole img tags here (easier).
 	 */
-	var enabled_icon_tag = \''.get_icon( 'enabled', 'imgtag', array( 'title' => T_( 'The widget is enabled.' ) ) ).'\';
-	var disabled_icon_tag = \''.get_icon( 'disabled', 'imgtag', array( 'title' => T_( 'The widget is disabled.' ) ) ).'\';
+	var enabled_icon_tag = \''.get_icon( 'bullet_green', 'imgtag', array( 'title' => T_( 'The widget is enabled.' ) ) ).'\';
+	var disabled_icon_tag = \''.get_icon( 'bullet_empty_grey', 'imgtag', array( 'title' => T_( 'The widget is disabled.' ) ) ).'\';
 	var activate_icon_tag = \''.get_icon( 'activate', 'imgtag', array( 'title' => T_( 'Enable this widget!' ) ) ).'\';
 	var deactivate_icon_tag = \''.get_icon( 'deactivate', 'imgtag', array( 'title' => T_( 'Disable this widget!' ) ) ).'\';
+	var cache_enabled_icon_tag = \''.get_icon( 'block_cache_on', 'imgtag', array( 'title' => T_( 'Caching is enabled. Click to disable.' ) ) ).'\';
+	var cache_disabled_icon_tag = \''.get_icon( 'block_cache_off', 'imgtag', array( 'title' => T_( 'Caching is disabled. Click to enable.' ) ) ).'\';
+	var cache_disallowed_icon_tag = \''.get_icon( 'block_cache_disabled', 'imgtag', array( 'title' => T_( 'This widget cannot be cached.' ) ) ).'\';
+	var cache_denied_icon_tag = \''.get_icon( 'block_cache_denied', 'imgtag', array( 'title' => T_( 'This widget could be cached but the block cache is OFF. Click to enable.' ) ) ).'\';
 
 	var b2evo_dispatcher_url = "'.$admin_url.'";' );
 	require_js( '#jqueryUI#' ); // auto requires jQuery
@@ -509,9 +599,8 @@ if( $display_mode == 'normal' )
 	require_css( 'blog_widgets.css' );
 
 
-	$AdminUI->breadcrumbpath_init( true, array( 'text' => T_('Structure'), 'url' => '?ctrl=coll_settings' ) );
-	$AdminUI->breadcrumbpath_add( T_('Settings'), '?ctrl=coll_settings&amp;blog=$blog$' );
-	$AdminUI->breadcrumbpath_add( T_('Widgets'), '?ctrl=widgets&amp;blog=$blog$' );
+	$AdminUI->breadcrumbpath_init( true, array( 'text' => T_('Collections'), 'url' => $admin_url.'?ctrl=dashboard&amp;blog=$blog$' ) );
+	$AdminUI->breadcrumbpath_add( T_('Widgets'), $admin_url.'?ctrl=widgets&amp;blog=$blog$' );
 
 	// Display <html><head>...</head> section! (Note: should be done early if actions do not redirect)
 	$AdminUI->disp_html_head();
@@ -544,6 +633,7 @@ switch( $action )
 
 	case 'edit':
 	case 'update':	// on error
+	case 'update_edit':
 		switch( $display_mode )
 		{
 			case 'js' : // js request
@@ -578,7 +668,10 @@ switch( $action )
 
 		// this will be enabled if js available:
 		echo '<div class="available_widgets">'."\n";
-		echo '<div class="available_widgets_toolbar"><a href="#" class="rollover floatright" style="padding: 1px 0;">'.get_icon('close').'</a>'.T_( 'Select widget to add:' ).'</div>'."\n";
+		echo '<div class="available_widgets_toolbar modal-header">'
+						.'<a href="#" class="floatright close">'.get_icon('close').'</a>'
+						.'<h4 class="modal-title">'.T_( 'Select widget to add:' ).'</h4>'
+					.'</div>'."\n";
 		echo '<div id="available_widgets_inner">'."\n";
 		$AdminUI->disp_view( 'widgets/views/_widget_list_available.view.php' );
 		echo '</div></div>'."\n";

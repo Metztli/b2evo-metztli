@@ -3,25 +3,13 @@
  * This file implements the menu_link_Widget class.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: _menu_link.widget.php 8237 2015-02-12 06:24:52Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -29,7 +17,7 @@ load_class( 'widgets/model/_widget.class.php', 'ComponentWidget' );
 
 global $menu_link_widget_link_types;
 $menu_link_widget_link_types = array(
-		'home' => T_('Blog home'),
+		'home' => T_('Front Page'),
 		'recentposts' => T_('Recent posts'),
 		'search' => T_('Search page'),
 		'arcdir' => T_('Archive directory'),
@@ -52,9 +40,10 @@ $menu_link_widget_link_types = array(
 		'avatar' => T_('Edit profile picture'),
 
 		'item' => T_('Any item (post, page, etc...)'),
-		'url' => T_('Any URL'),
+		'postnew' => T_('New Item'),
 
-		'postnew' => T_('Write a new post'),
+		'admin' => T_('Admin / Back-Office link'),
+		'url' => T_('Any URL'),
 	);
 
 /**
@@ -77,6 +66,17 @@ class menu_link_Widget extends ComponentWidget
 	{
 		// Call parent constructor:
 		parent::ComponentWidget( $db_row, 'core', 'menu_link' );
+	}
+
+
+	/**
+	 * Get help URL
+	 *
+	 * @return string URL
+	 */
+	function get_help_url()
+	{
+		return get_manual_url( 'menu-link-widget' );
 	}
 
 
@@ -148,8 +148,8 @@ class menu_link_Widget extends ComponentWidget
 					'defaultvalue' => '',
 				),
 				'blog_ID' => array(
-					'label' => T_('Blog ID'),
-					'note' => T_( 'Leave empty for current blog.' ),
+					'label' => T_('Collection ID'),
+					'note' => T_( 'Leave empty for current collection.' ),
 					'type' => 'integer',
 					'allow_empty' => true,
 					'size' => 5,
@@ -343,7 +343,7 @@ class menu_link_Widget extends ComponentWidget
 				}
 				$text = T_('Contact');
 				// Is this the current display?
-				if( $disp == 'msgform' )
+				if( $disp == 'msgform' || ( isset( $_GET['disp'] ) && $_GET['disp'] == 'msgform' ) )
 				{ // Let's display the link as selected
 					// fp> I think it's interesting to select this link , even if the recipient ID is different from the owner
 					// odds are there is no other link to highlight in this case
@@ -484,7 +484,7 @@ class menu_link_Widget extends ComponentWidget
 				{	// Don't show this link for not logged in users
 					return false;
 				}
-				$url = url_add_param( $current_Blog->get( 'url' ), 'disp=user' );
+				$url = $current_Blog->get( 'userurl' );
 				$text = T_('My profile');
 				// Is this the current display?  (Edit my Profile)
 				global $user_ID, $current_User;
@@ -496,10 +496,26 @@ class menu_link_Widget extends ComponentWidget
 				}
 				break;
 
+			case 'admin':
+				global $current_User;
+				if( ! ( is_logged_in() && $current_User->check_perm( 'admin', 'restricted' ) && $current_User->check_status( 'can_access_admin' ) ) )
+				{ // Don't allow admin url for users who have no access to backoffice
+					return false;
+				}
+				global $admin_url;
+				$url = $admin_url;
+				$text = T_('Admin').' &raquo;';
+				break;
+
 			case 'home':
 			default:
 				$url = $current_Blog->get( 'url' );
-				$text = T_('Home');
+				$text = T_('Front Page');
+				global $is_front;
+				if( $disp == 'front' || ! empty( $is_front ) )
+				{ // Let's display the link as selected on front page
+					$link_class = $this->disp_params['link_selected_class'];
+				}
 		}
 
 		// Override default link text?

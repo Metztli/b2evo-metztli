@@ -19,24 +19,23 @@ margin:0 2em 0 0;
 	/* border-top:1px solid #ccc; */
 }
 
-.widget_state
-{
+.widget_state, .widget_checkbox {
 	border-right: 1px solid #9DB0BC;
 	margin-right: 10px;
 	padding-right: 10px;
-	float: left;
-
-	/* Tblue> Can this be done better? */
-	padding-top: 4px;
-	height: 13px;
+	/*float: left;*/
 }
 
-.widget_actions{
+.widget_actions, span.widget_cache_status {
 	border-left:1px solid #9DB0BC;
 	margin-left:10px;
 	padding-left:10px;
-	cursor:pointer;
+	cursor:default;
 	float:right;
+}
+td.widget_cache_status, span.widget_cache_status {
+	width: 40px;
+	text-align: center;
 }
 
 .widget_actions img{

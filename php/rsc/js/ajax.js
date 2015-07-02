@@ -1,7 +1,7 @@
 /**
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
- * @version $Id: ajax.js 13 2012-14-01 23:42:53Z fplanque $
+ * See also {@link https://github.com/b2evolution/b2evolution}.
+ * @version $Id: ajax.js 8373 2015-02-28 21:44:37Z fplanque $
  */
 
 

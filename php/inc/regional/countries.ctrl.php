@@ -1,33 +1,14 @@
 <?php
 /**
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2009-2014 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2009-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2009 by The Evo Factory - {@link http://www.evofactory.com/}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * The Evo Factory grants Francois PLANQUE the right to license
- * The Evo Factory's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author efy-maxim: Evo Factory / Maxim.
- * @author fplanque: Francois Planque.
- *
- * @version $Id: countries.ctrl.php 6264 2014-03-19 12:23:26Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -143,8 +124,8 @@ switch( $action )
 			$edited_Country->set( 'preferred', 1 );
 			$Messages->add( sprintf( T_('Added to preferred countries (%s, #%d).'), $edited_Country->name, $edited_Country->ID ), 'success' );
 
-			if( $edited_Country->get( 'status' ) == '' )
-			{ // If status was 'unknown' and country is became pref now, We should change country to trusted status
+			if( ! $edited_Country->get( 'status' ) )
+			{ // If the country status is empty ( which means 'unknown' ) and the coutnry was marked as prefrerred, than the status must be changed to 'trusted'
 				$edited_Country->set( 'status', 'trusted' );
 			}
 		}
@@ -293,7 +274,7 @@ switch( $action )
 		if( param( 'confirm', 'integer', 0 ) )
 		{ // confirmed, Delete from DB:
 			$msg = sprintf( T_('Country &laquo;%s&raquo; deleted.'), $edited_Country->dget('name') );
-			$edited_Country->dbdelete( true );
+			$edited_Country->dbdelete();
 			unset( $edited_Country );
 			forget_param( 'ctry_ID' );
 			$Messages->add( $msg, 'success' );
@@ -318,10 +299,10 @@ if( empty( $action ) )
 }
 
 $AdminUI->breadcrumbpath_init( false );
-$AdminUI->breadcrumbpath_add( T_('System'), '?ctrl=system',
+$AdminUI->breadcrumbpath_add( T_('System'), $admin_url.'?ctrl=system',
 		T_('Global settings are shared between all blogs; see Blog settings for more granular settings.') );
-$AdminUI->breadcrumbpath_add( T_('Regional settings'), '?ctrl=locales' );
-$AdminUI->breadcrumbpath_add( T_('Countries'), '?ctrl=countries' );
+$AdminUI->breadcrumbpath_add( T_('Regional'), $admin_url.'?ctrl=locales' );
+$AdminUI->breadcrumbpath_add( T_('Countries'), $admin_url.'?ctrl=countries' );
 
 
 // Display <html><head>...</head> section! (Note: should be done early if actions do not redirect)

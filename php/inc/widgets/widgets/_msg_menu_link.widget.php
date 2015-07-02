@@ -3,25 +3,13 @@
  * This file implements the msg_menu_link_Widget class.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author efy-asimo: Attila Simo
- *
- * @version $Id: _msg_menu_link.widget.php 8229 2015-02-11 09:41:33Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -49,6 +37,17 @@ class msg_menu_link_Widget extends ComponentWidget
 	{
 		// Call parent constructor:
 		parent::ComponentWidget( $db_row, 'core', 'msg_menu_link' );
+	}
+
+
+	/**
+	 * Get help URL
+	 *
+	 * @return string URL
+	 */
+	function get_help_url()
+	{
+		return get_manual_url( 'messaging-menu-link-widget' );
 	}
 
 
@@ -127,8 +126,8 @@ class msg_menu_link_Widget extends ComponentWidget
 					'defaultvalue' => '',
 				),
 				'blog_ID' => array(
-					'label' => T_('Blog ID'),
-					'note' => T_('Leave empty for current blog.'),
+					'label' => T_('Collection ID'),
+					'note' => T_('Leave empty for current collection.'),
 					'type' => 'integer',
 					'allow_empty' => true,
 					'size' => 5,
@@ -246,7 +245,7 @@ class msg_menu_link_Widget extends ComponentWidget
 				// set allow blockcache to 0, this way make sure block cache is never allowed for messages
 				$this->disp_params[ 'allow_blockcache' ] = 0;
 				// Is this the current display?
-				if( $disp == 'threads' || $disp == 'messages' )
+				if( ( $disp == 'threads' && ( ! isset( $_GET['disp'] ) || $_GET['disp'] != 'msgform' ) ) || $disp == 'messages' )
 				{ // The current page is currently displaying the messages:
 					// Let's display it as selected
 					$link_class = $this->disp_params['link_selected_class'];
@@ -274,7 +273,7 @@ class msg_menu_link_Widget extends ComponentWidget
 
 		if( ( $this->disp_params[ 'show_badge' ] ) && ( $unread_messages_count > 0 ) )
 		{
-			$badge = ' <span class="badge">'.$unread_messages_count.'</span>';
+			$badge = ' <span class="badge badge-important">'.$unread_messages_count.'</span>';
 			if( isset( $this->BlockCache ) )
 			{ // Do not cache if bage is displayed because the number of unread messages are always changing
 				$this->BlockCache->abort_collect();

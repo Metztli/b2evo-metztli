@@ -3,13 +3,11 @@
  * This file implements the UI controller for additional tools.
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
  * @author blueyed: Daniel HAHLER
- *
- * @version $Id: tools.ctrl.php 7516 2014-10-27 05:56:16Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -17,9 +15,17 @@ if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.'
 load_funcs('plugins/_plugin.funcs.php');
 load_funcs('tools/model/_dbmaintenance.funcs.php');
 load_funcs('tools/model/_tool.funcs.php');
+load_funcs( 'tools/model/_system.funcs.php' );
 
 // load item class
 load_class( 'items/model/_item.class.php', 'Item' );
+
+if( $current_User->check_perm( 'options', 'edit' ) &&
+    ( $action != 'utf8check' && $action != 'utf8upgrade' ) &&
+    system_check_charset_update() )
+{ // DB charset is required to update
+	$Messages->add( sprintf( T_('WARNING: Some of your tables have different charsets/collations than the expected. It is strongly recommended to upgrade your database charset by running the tool <a %s>Check/Convert/Normalize the charsets/collations used by the DB (UTF-8 / ASCII)</a>.'), 'href="'.$admin_url.'?ctrl=tools&amp;action=utf8check&amp;'.url_crumb( 'tools' ).'"' ) );
+}
 
 param( 'tab', 'string', '', true );
 param( 'tab3', 'string', 'tools', true );
@@ -74,15 +80,18 @@ if( empty($tab) )
 	switch( $action )
 	{
 		case 'del_itemprecache':
-			// Clear pre-renderered item cache (DB)
+			// Clear pre-rendered item cache (DB)
 			dbm_delete_itemprecache();
 			break;
 
 		case 'del_commentprecache':
-			// Clear pre-renderered comment cache (DB)
-			$DB->query('DELETE FROM T_comments__prerendering WHERE 1=1');
+			// Clear pre-rendered comment cache (DB)
+			dbm_delete_commentprecache();
+			break;
 
-			$Messages->add( sprintf( T_('Removed %d cached entries.'), $DB->rows_affected ), 'success' );
+		case 'del_messageprecache':
+			// Clear pre-rendered message cache (DB)
+			dbm_delete_messageprecache();
 			break;
 
 		case 'del_pagecache':
@@ -283,29 +292,59 @@ if( empty($tab) )
 			$template_title = T_('Log of test flush').get_manual_link( 'test-flush-tool' );
 			break;
 
+		case 'utf8check':
 		case 'utf8upgrade':
-			// Upgrade DB to UTF-8
+			// Check/Upgrade DB to UTF-8
 			load_funcs('_core/model/db/_upgrade.funcs.php');
 			$template_action = $action;
 			break;
+
+		case 'update_tools':
+			// UPDATE general settings from tools:
+
+			// Check permission:
+			$current_User->check_perm( 'options', 'edit', true );
+
+			// Lock system
+			if( $current_User->check_perm( 'users', 'edit' ) )
+			{
+				$system_lock = param( 'system_lock', 'integer', 0 );
+				if( $Settings->get( 'system_lock' ) && ( ! $system_lock ) && ( ! $Messages->has_errors() ) && ( 1 == $Messages->count() ) )
+				{ // System lock was turned off and there was no error, remove the warning about the system lock
+					$Messages->clear();
+				}
+				$Settings->set( 'system_lock', $system_lock );
+			}
+
+			if( ! $Messages->has_errors() )
+			{
+				$Settings->dbupdate();
+				$Messages->add( T_('Site settings updated.'), 'success' );
+			}
+
+			// Redirect so that a reload doesn't write to the DB twice:
+			header_redirect( '?ctrl=tools', 303 ); // Will EXIT
+			// We have EXITed already at this point!!
+			break;
 	}
 }
+
 $AdminUI->breadcrumbpath_init( false );  // fp> I'm playing with the idea of keeping the current blog in the path here...
-$AdminUI->breadcrumbpath_add( T_('System'), '?ctrl=system' );
-$AdminUI->breadcrumbpath_add( T_('Maintenance'), '?ctrl=tools' );
+$AdminUI->breadcrumbpath_add( T_('System'), $admin_url.'?ctrl=system' );
+$AdminUI->breadcrumbpath_add( T_('Maintenance'), $admin_url.'?ctrl=tools' );
 switch( $tab3 )
 {
 	case 'import':
-		$AdminUI->breadcrumbpath_add( T_('Import'), '?ctrl=tools&amp;tab3=import' );
+		$AdminUI->breadcrumbpath_add( T_('Import'), $admin_url.'?ctrl=tools&amp;tab3=import' );
 		break;
 
 	case 'test':
-		$AdminUI->breadcrumbpath_add( T_('Testing'), '?ctrl=tools&amp;tab3=import' );
+		$AdminUI->breadcrumbpath_add( T_('Testing'), $admin_url.'?ctrl=tools&amp;tab3=import' );
 		break;
 
 	case 'tools':
 	default:
-		$AdminUI->breadcrumbpath_add( T_('Tools'), '?ctrl=tools' );
+		$AdminUI->breadcrumbpath_add( T_('Tools'), $admin_url.'?ctrl=tools' );
 		break;
 }
 

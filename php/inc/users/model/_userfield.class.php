@@ -1,31 +1,14 @@
 <?php
 /**
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2009-2014 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2009-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2009 by The Evo Factory - {@link http://www.evofactory.com/}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * The Evo Factory grants Francois PLANQUE the right to license
- * The Evo Factory's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author evofactory-test
- * @author fplanque: Francois Planque.
  *
  * @version _userfield.class.php,v 1.5 2009/09/16 18:11:51 fplanque Exp
  */
@@ -48,12 +31,14 @@ class Userfield extends DataObject
 
 	var $type = '';
 	var $name = '';
-	var $options = NULL;
+	var $options;
 	var $required = 'optional';
 	var $duplicated = 'allowed';
 	var $order = '';
 	var $suggest = '1';
-	var $bubbletip = '';
+	var $bubbletip;
+	var $icon_name;
+	var $code;
 
 	/**
 	 * Constructor
@@ -68,10 +53,6 @@ class Userfield extends DataObject
 		// Allow inseting specific IDs
 		$this->allow_ID_insert = true;
 
-		$this->delete_restrictions = array();
-
-		$this->delete_cascades = array();
-
 		if( $db_row != NULL )
 		{
 			$this->ID         = $db_row->ufdf_ID;
@@ -84,9 +65,8 @@ class Userfield extends DataObject
 			$this->order      = $db_row->ufdf_order;
 			$this->suggest    = $db_row->ufdf_suggest;
 			$this->bubbletip  = $db_row->ufdf_bubbletip;
-		}
-		else
-		{	// Create a new user field:
+			$this->icon_name  = $db_row->ufdf_icon_name;
+			$this->code       = $db_row->ufdf_code;
 		}
 	}
 
@@ -192,23 +172,34 @@ class Userfield extends DataObject
 		param_string_not_empty( 'ufdf_type', T_('Please enter a type.') );
 		$this->set_from_Request( 'type' );
 
+		// Code
+		$code = param( 'ufdf_code', 'string' );
+		param_check_not_empty( 'ufdf_code', T_('Please provide a code to uniquely identify this field.') );
+		param_check_regexp( 'ufdf_code', '#^[a-z0-9_]{1,20}$#', T_('The field code must contain only lowercase letters, digits or the "_" sign. 20 characters max.') );
+		$this->set_from_Request( 'code' );
+
 		// Name
 		param_string_not_empty( 'ufdf_name', T_('Please enter a name.') );
 		$this->set_from_Request( 'name' );
 
+		// Icon name
+		param( 'ufdf_icon_name', 'string' );
+		$this->set_from_Request( 'icon_name', 'ufdf_icon_name', true );
+
 		// Options
 		if( param( 'ufdf_type', 'string' ) == 'list' )
-		{	// Save 'Options' only for Field type == 'Option list'
-			$ufdf_options = explode( "\n", param( 'ufdf_options', 'text' ) );
-			if( count( $ufdf_options ) < 2 )
-			{	// We don't want save an option list with one item
+		{ // Save 'Options' only for Field type == 'Option list'
+			$ufdf_options = param( 'ufdf_options', 'text' );
+			if( count( explode( "\n", $ufdf_options ) ) < 2 )
+			{ // We don't want save an option list with one item
 				param_error( 'ufdf_options', T_('Please enter at least 2 options on 2 different lines.') );
 			}
-			$this->set_from_Request( 'options' );
-		}
-		else
-		{ // The 'options' field must be set because it doesn't have a default value
-			$this->set( 'options', '' );
+			elseif( utf8_strlen( $ufdf_options ) > 255 )
+			{ // This may not happen in normal circumstances because the textarea max length is set to 255 chars
+				// This extra check is for the case if js is not enabled or someone would try to directly edit the html
+				param_error( 'ufdf_options', T_('"Options" field content can not be longer than 255 symbols.') );
+			}
+			$this->set( 'options', $ufdf_options );
 		}
 
 		// Required
@@ -234,7 +225,17 @@ class Userfield extends DataObject
 
 		// Bubbletip
 		param( 'ufdf_bubbletip', 'text', '' );
-		$this->set_from_Request( 'bubbletip' );
+		$this->set_from_Request( 'bubbletip', NULL, true );
+
+		if( ! param_errors_detected() )
+		{ // Field code must be unique, Check it only when no errors on the form
+			if( $field_ID = $this->dbexists( 'ufdf_code', $this->get( 'code' ) ) )
+			{ // We have a duplicate entry:
+				param_error( 'ufdf_code',
+					sprintf( T_('Another user field already uses this code. Do you want to <a %s>edit the existing user field</a>?'),
+						'href="?ctrl=userfields&amp;action=edit&amp;ufdf_ID='.$field_ID.'"' ) );
+			}
+		}
 
 		return ! param_errors_detected();
 	}
@@ -247,8 +248,9 @@ class Userfield extends DataObject
 	 *
 	 * @param string parameter name
 	 * @param mixed parameter value
+	 * @param boolean true to set to NULL if empty string value
 	 */
-	function set( $parname, $parvalue )
+	function set( $parname, $parvalue, $make_null = false )
 	{
 		switch( $parname )
 		{
@@ -256,7 +258,7 @@ class Userfield extends DataObject
 			case 'name':
 			case 'required':
 			default:
-				$this->set_param( $parname, 'string', $parvalue );
+				$this->set_param( $parname, 'string', $parvalue, $make_null );
 		}
 	}
 
@@ -270,37 +272,5 @@ class Userfield extends DataObject
 	{
 		return $this->name;
 	}
-
-
-	/**
-	 * Check existence of specified user field ID in ufdf_ID unique field.
-	 *
-	 * @todo dh> Two returns here!!
-	 * @return int ID if user field exists otherwise NULL/false
-	 */
-	function dbexists()
-	{
-		global $DB;
-
-		$sql = "SELECT $this->dbIDname
-						  FROM $this->dbtablename
-					   WHERE $this->dbIDname = $this->ID";
-
-		return $DB->get_var( $sql );
-
-		return parent::dbexists('ufdf_ID', $this->ID);
-	}
 }
-
-
-/*
- * _userfield.class.php,v
- * Revision 1.5  2009/09/16 18:11:51  fplanque
- * Readded with -kkv option
- *
- * Revision 1.1  2009/09/11 18:34:06  fplanque
- * userfields editing module.
- * needs further cleanup but I think it works.
- *
- */
 ?>

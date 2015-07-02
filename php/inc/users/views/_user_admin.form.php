@@ -3,28 +3,13 @@
  * This file implements the UI view for those user preferences which are visible only for admin users.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author efy-asimo: Attila Simo
- *
- * @version $Id: _user_admin.form.php 7878 2014-12-23 11:54:05Z yura $
  */
 
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -38,7 +23,7 @@ global $current_User;
 
 global $servertimenow, $admin_url;
 
-if( !$current_User->check_perm( 'users', 'edit' ) )
+if( !$current_User->can_moderate_user( $edited_User->ID ) )
 { // Check permission:
 	debug_die( T_( 'You have no permission to see this tab!' ) );
 }
@@ -93,6 +78,12 @@ else
 	$status_icon = '<div id="user_status_icon" class="status_icon">'.$user_status_icons[ $edited_User->get( 'status' ) ].'</div>';
 	$Form->select_input_array( 'edited_user_status', $edited_User->get( 'status' ), get_user_statuses(), T_( 'Account status' ), '', array( 'field_suffix' => $status_icon ) );
 	$GroupCache = & get_GroupCache();
+	if( ! $current_User->check_perm( 'users', 'edit' ) )
+	{ // Show the limited list for moderators
+		$GroupCache->clear();
+		$GroupCache->load_where( 'grp_level < '.$current_User->get_Group()->get( 'level' ) );
+		$GroupCache->all_loaded = true;
+	}
 	$Form->select_object( 'edited_user_grp_ID', $edited_User->grp_ID, $GroupCache, T_('User group') );
 
 	$Form->text_input( 'edited_user_level', $edited_User->get('level'), 2, T_('User level'), $level_fieldnote, array( 'required' => true ) );
@@ -106,7 +97,15 @@ $Form->begin_fieldset( T_('Email').get_manual_link('user-admin-email') );
 
 	$email_status = $edited_User->get_email_status();
 	$email_status_icon = '<div id="email_status_icon" class="status_icon">'.emadr_get_status_icon( $email_status ).'</div>';
-	$Form->select_input_array( 'edited_email_status', $email_status, emadr_get_status_titles(), T_('Email status'), '', array( 'force_keys_as_values' => true, 'background_color' => emadr_get_status_colors(), 'field_suffix' => $email_status_icon ) );
+	if( $current_User->check_perm( 'users', 'edit' ) )
+	{
+		$Form->select_input_array( 'edited_email_status', $email_status, emadr_get_status_titles(), T_('Email status'), '', array( 'force_keys_as_values' => true, 'background_color' => emadr_get_status_colors(), 'field_suffix' => $email_status_icon ) );
+	}
+	else
+	{ // Moderators can only view the email status
+		$email_status_titles = emadr_get_status_titles();
+		$Form->info( T_('Email status'), $email_status_icon.$email_status_titles[ $email_status ] );
+	}
 
 	global $UserSettings;
 
@@ -276,7 +275,13 @@ $Form->begin_fieldset( T_('Reputation').get_manual_link('user-admin-reputaion') 
 
 	$Form->info( T_('Number of posts'), $edited_User->get_reputation_posts() );
 
-	$Form->info( T_('Comments'), $edited_User->get_reputation_comments() );
+	$Form->info( T_('Comments'), $edited_User->get_reputation_comments( array( 'view_type' => 'extended' ) ) );
+
+	$Form->info( T_('Photos'), $edited_User->get_reputation_files( array( 'file_type' => 'image', 'view_type' => 'extended' ) ) );
+
+	$Form->info( T_('Audio'), $edited_User->get_reputation_files( array( 'file_type' => 'audio' ) ) );
+
+	$Form->info( T_('Other files'), $edited_User->get_reputation_files( array( 'file_type' => 'other' ) ) );
 
 	$Form->info( T_('Spam fighter score'), $edited_User->get_reputation_spam() );
 
@@ -442,6 +447,10 @@ jQuery( '#edited_user_status' ).change( function()
 	}
 } );
 
+<?php
+if( $current_User->check_perm( 'users', 'edit' ) )
+{ // START OF email status change script
+?>
 var email_status_icons = new Array;
 <?php
 $email_status_icons = emadr_get_status_icons();
@@ -486,6 +495,7 @@ jQuery( 'input#edited_user_email' ).keyup( function()
 		jQuery( '#email_status_icon' ).show();
 	}
 } );
+<?php } // END OF email status change script ?>
 
 <?php
 if( $current_User->check_perm( 'spamblacklist', 'edit' ) )

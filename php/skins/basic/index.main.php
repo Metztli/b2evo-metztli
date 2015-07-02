@@ -3,14 +3,12 @@
  * This is the main/default page template.
  *
  * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://b2evolution.net/man/skin-structure}
+ * {@link http://b2evolution.net/man/skin-development-primer}
  *
  * It is used to display the blog when no specific page template is available to handle the request.
  *
  * @package evoskins
  * @subpackage basic
- *
- * @version $Id: index.main.php 4276 2013-07-17 11:05:10Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -60,7 +58,7 @@ siteskin_include( '_site_body_header.inc.php' );
 		// Display container and contents:
 		skin_container( NT_('Page Top'), array(
 				// The following params will be used as defaults for widgets included in this container:
-				'block_start' => '<div class="$wi_class$">',
+				'block_start' => '<div>',
 				'block_end' => '</div>',
 				'block_display_title' => false,
 				'list_start' =>  T_('Select blog:').' ',
@@ -123,6 +121,7 @@ siteskin_include( '_site_body_header.inc.php' );
 				'glue'        => ' - ',
 				'title_single_disp' => true,
 				'format'      => 'htmlbody',
+				'user_text'   => '',
 			) );
 		// ------------------------------ END OF REQUEST TITLE -----------------------------
 	?>
@@ -151,7 +150,7 @@ siteskin_include( '_site_body_header.inc.php' );
 			?>
 
 			<h3>
-				<?php $Item->issue_time(); ?>
+				<?php $Item->issue_time( array( 'time_format' => '#short_time' ) ); ?>
 				<a href="<?php $Item->permanent_url() ?>" title="<?php echo T_('Permanent link to full entry') ?>"><img src="img/icon_minipost.gif" alt="Permalink" width="12" height="9" border="0" align="absmiddle" /></a>
 				<?php
 					$Item->title( array(
@@ -174,17 +173,19 @@ siteskin_include( '_site_body_header.inc.php' );
 
 					if( $Item->status != 'published' )
 					{
-						$Item->status( array( 'before' => ' &bull; <small>'.T_('Status').': ', 'after' => '</small>' ) );
+						$Item->format_status( array(
+								'template' => ' &bull; <small>'.T_('Status').': $status_title$</small>',
+							) );
 					}
 				?>
 
 				<?php
 					// ---------------------- POST CONTENT INCLUDED HERE ----------------------
 					skin_include( '_item_content.inc.php', array(
-							'image_size'	=>	'fit-400x320',
+							'image_size' => 'fit-400x320',
 						) );
-					// Note: You can customize the default item feedback by copying the generic
-					// /skins/_item_feedback.inc.php file into the current skin folder.
+					// Note: You can customize the default item content by copying the generic
+					// /skins/_item_content.inc.php file into the current skin folder.
 					// -------------------------- END OF POST CONTENT -------------------------
 				?>
 
@@ -199,7 +200,6 @@ siteskin_include( '_site_body_header.inc.php' );
 										'link_text_one' => '#',
 										'link_text_more' => '#',
 										'link_title' => '#',
-										'use_popup' => false,
 									) );
 					?>
 

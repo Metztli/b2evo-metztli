@@ -3,25 +3,13 @@
  * This is the handler for ANONYMOUS (not logged in) users unsubscribe calls.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evocore
- *
- * @version $Id: anon_async.php 1121 2012-03-29 09:59:02Z yura $
  */
 
 /**
@@ -70,7 +58,7 @@ switch( $type )
 				.T_('Please note:')
 				.' '.T_('For security reasons the link is only valid for your current session (by means of your session cookie).')
 				."\n\n"
-				.T_('If it was not you that requested this, simply ignore this mail.');
+				.T_('If it was not you that requested this, simply ignore this email.');
 
 			if( send_mail( $anon_email, NULL, T_('Confirm opt-out for emails through message form'), $message ) )
 			{
@@ -98,7 +86,7 @@ switch( $type )
 			$DB->query( '
 				UPDATE T_comments
 				   SET comment_allow_msgform = 0
-				 WHERE comment_author_email = '.$DB->quote( evo_strtolower( $anon_email ) ) );
+				 WHERE comment_author_email = '.$DB->quote( utf8_strtolower( $anon_email ) ) );
 
 			$Messages->add( T_('All your comments have been marked not to allow emailing you through a message form.'), 'success' );
 

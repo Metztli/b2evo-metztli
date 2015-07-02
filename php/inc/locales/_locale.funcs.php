@@ -3,42 +3,23 @@
  * This file implements functions for handling locales and i18n.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
- *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
  *
  * @package evocore
  *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author blueyed: Daniel HAHLER.
- * @author fplanque: Francois PLANQUE.
- *
  * @todo Make it a class / global object!
  *        - Provide (static) functions to extract .po files / generate _global.php files (single quoted strings!)
- *
- * @version $Id: _locale.funcs.php 8080 2015-01-27 06:26:04Z yura $
  */
 if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page directly.' );
 
 
 // DEBUG: (Turn switch on or off to log debug info for specified category)
-$GLOBALS['debug_locale'] = false;
+$GLOBALS['debug_locale'] = true;
 
 
 // LOCALIZATION:
@@ -124,6 +105,8 @@ if( isset( $use_l10n ) && $use_l10n )
 
 		if( ! isset( $trans[ $messages ] ) )
 		{ // Translations for current locale have not yet been loaded:
+			$Debuglog->add( 'We need to load a new translation file to translate: "'. $string.'"', 'locale' );
+
 			if ( $params['alt_basedir'] != '' )
 			{	// Load the translation file from the alternative base dir:
 				//$Debuglog->add( 'Using alternative basedir ['.$params['alt_basedir'].']', 'locale' );
@@ -209,7 +192,10 @@ if( isset( $use_l10n ) && $use_l10n )
 			//$Debuglog->add( 'String ['.$string.'] not found', 'locale' );
 			// Return the English string:
 			$r = $string;
-			$messages_charset = 'iso-8859-1'; // our .php file encoding
+
+			// $messages_charset = 'iso-8859-1'; // our .php file encoding  
+			// fp> I am changing the above for the User custom field group labels (in theroy the php files are plain ASCII anyways!!)
+			$messages_charset = $evo_charset;
 		}
 
 		if( ! empty($evo_charset) ) // this extra check is needed, because $evo_charset may not yet be determined.. :/
@@ -218,7 +204,7 @@ if( isset( $use_l10n ) && $use_l10n )
 		}
 		else
 		{
-			$Debuglog->add(sprintf('Warning: evo_charset not set to translate "%s"', evo_htmlspecialchars($string)), 'locale');
+			$Debuglog->add(sprintf('Warning: evo_charset not set to translate "%s"', htmlspecialchars($string)), 'locale');
 		}
 
 		if( $params['for_helper'] )
@@ -432,7 +418,7 @@ function locale_shorttimefmt()
 {
 	global $locales, $current_locale;
 
-	return str_replace( ':s', '', $locales[$current_locale]['timefmt'] );
+	return $locales[$current_locale]['shorttimefmt'];
 }
 
 
@@ -714,15 +700,22 @@ function locale_priosort( $a, $b )
  */
 function locale_overwritefromDB()
 {
-	global $DB, $locales, $default_locale, $Settings, $Debuglog;
+	global $DB, $locales, $default_locale, $Settings, $Debuglog, $Messages;
+
+	// Load all locales from disk to get 'charset' insrtad of DB
+	locales_load_available_defs();
 
 	$usedprios = array();  // remember which priorities are used already.
 	$priocounter = 0;
 	$query = 'SELECT
-						loc_locale, loc_charset, loc_datefmt, loc_timefmt, loc_startofweek,
+						loc_locale, loc_datefmt, loc_timefmt, loc_shorttimefmt, loc_startofweek,
 						loc_name, loc_messages, loc_priority, loc_transliteration_map, loc_enabled
 						FROM T_locales ORDER BY loc_priority';
 
+	$ctrl = isset( $_GET['ctrl'] ) ? $_GET['ctrl'] : '';
+	$priocounter_max = 0;
+	$wrong_locales = array();
+	$wrong_default_locale = '';
 	foreach( $DB->get_results( $query, ARRAY_A ) as $row )
 	{ // Loop through loaded locales:
 
@@ -734,29 +727,78 @@ function locale_overwritefromDB()
 		{
 			$priocounter = $row['loc_priority'];
 		}
+		$priocounter_max = $priocounter;
 
 		//remember that we used this
 		$usedprios[] = $priocounter;
 
 		$transliteration_map = '';
 		// Try to unserialize the value
-		if( ($r = @unserialize(@base64_decode($row[ 'loc_transliteration_map' ]))) !== false )
+		if( ( $r = @unserialize( @base64_decode( $row[ 'loc_transliteration_map' ] ) ) ) !== false )
 		{
 			$transliteration_map = $r;
 		}
 
+		if( isset( $locales[ $row['loc_locale'] ], $locales[ $row['loc_locale'] ]['charset'] ) )
+		{ // Use charset from locale file if such file exists on disk
+			$loc_charset = $locales[ $row['loc_locale'] ]['charset'];
+		}
+		else
+		{ // Use charset from DB
+			$loc_charset = 'utf-8';
+		}
+
+		if( ( $ctrl == 'locales' || $ctrl == 'regional' ) && $row['loc_enabled'] && $loc_charset != 'utf-8' )
+		{ // Check wrong non utf-8 locales in order to deactivate them
+			$Messages->add( sprintf( T_('The locale %s has been deactivated because it\'s not UTF-8'), '<b>'.$row['loc_locale'].'</b>' ) );
+			if( $Settings->get( 'default_locale' ) == $row['loc_locale'] && $default_locale != $row['loc_locale'] )
+			{ // Change main locale to default
+				$wrong_default_locale = $row['loc_locale'];
+				$Messages->add( sprintf( T_('The main locale was no longer valid and has been set to %s.'), '<b>'.$default_locale.'</b>' ) );
+			}
+			$wrong_locales[] = $row['loc_locale'];
+			$row['loc_enabled'] = 0;
+		}
+
 		$locales[ $row['loc_locale'] ] = array(
-				'charset'     => $row[ 'loc_charset' ],
-				'datefmt'     => $row[ 'loc_datefmt' ],
-				'timefmt'     => $row[ 'loc_timefmt' ],
-				'startofweek' => $row[ 'loc_startofweek' ],
-				'name'        => $row[ 'loc_name' ],
-				'messages'    => $row[ 'loc_messages' ],
+				'charset'      => $loc_charset,
+				'datefmt'      => $row['loc_datefmt'],
+				'timefmt'      => $row['loc_timefmt'],
+				'shorttimefmt' => $row['loc_shorttimefmt'],
+				'startofweek'  => $row['loc_startofweek'],
+				'name'         => $row['loc_name'],
+				'messages'     => $row['loc_messages'],
 				'transliteration_map' => $transliteration_map,
-				'priority'    => $priocounter,
-				'enabled'     => $row[ 'loc_enabled' ],
-				'fromdb'      => 1
+				'priority'     => $priocounter,
+				'enabled'      => $row['loc_enabled'],
+				'fromdb'       => 1
 			);
+	}
+
+	if( count( $wrong_locales ) )
+	{ // Deactivate locales that have wrong charset
+		$DB->query( 'UPDATE T_locales
+			  SET loc_enabled = 0
+			WHERE loc_locale IN( '.$DB->quote( $wrong_locales ).' )' );
+		if( ! empty( $wrong_default_locale ) )
+		{ // If main locale is wring we sgould updated it to default and use this for all users and blogs that used this wrong locale
+			$Settings->set( 'default_locale', $default_locale );
+			$Settings->dbupdate();
+			$DB->query( 'UPDATE T_users
+				  SET user_locale = '.$DB->quote( $default_locale ).'
+				WHERE user_locale = '.$DB->quote( $wrong_default_locale ) );
+			$DB->query( 'UPDATE T_blogs
+				  SET blog_locale = '.$DB->quote( $default_locale ).'
+				WHERE blog_locale = '.$DB->quote( $wrong_default_locale ) );
+		}
+	}
+
+	foreach( $locales as $l_ley => $locale )
+	{ // Change priority of non-db locales to put them at the end of list
+		if( empty( $locale['fromdb'] ) && $locale['priority'] < $priocounter_max )
+		{
+			$locales[ $l_ley ]['priority'] = $priocounter_max + $locale['priority'];
+		}
 	}
 
 	// set default priorities, if nothing was set in DB.
@@ -915,7 +957,7 @@ function locale_updateDB()
 		}
 	}
 
-	$query = "REPLACE INTO T_locales ( loc_locale, loc_charset, loc_datefmt, loc_timefmt, loc_startofweek, loc_name, loc_messages, loc_priority, loc_transliteration_map, loc_enabled ) VALUES ";
+	$query = "REPLACE INTO T_locales ( loc_locale, loc_datefmt, loc_timefmt, loc_shorttimefmt, loc_startofweek, loc_name, loc_messages, loc_priority, loc_transliteration_map, loc_enabled ) VALUES ";
 	foreach( $locales as $localekey => $lval )
 	{
 		if( empty($lval['messages']) )
@@ -938,9 +980,9 @@ function locale_updateDB()
 
 		$query .= '(
 			'.$DB->quote($localekey).',
-			'.$DB->quote($lval['charset']).',
 			'.$DB->quote($lval['datefmt']).',
 			'.$DB->quote($lval['timefmt']).',
+			'.$DB->quote($lval['shorttimefmt']).',
 			'.$DB->quote($lval['startofweek']).',
 			'.$DB->quote($lval['name']).',
 			'.$DB->quote($lval['messages']).',
@@ -1179,17 +1221,21 @@ function init_charsets( $req_io_charset )
  */
 function locales_load_available_defs()
 {
-	global $locales_path;
-	global $locales;
+	global $locales_path, $locales, $locales_loaded_form_disk;
+
+	if( ! empty( $locales_loaded_form_disk ) )
+	{ // All locales have been already loaded
+		return;
+	}
 
 	// This is where language packs will store their locale defintions:
 	$locale_defs = array();
 
 	// Get all locale folder names:
 	$filename_params = array(
-			'inc_files'	=> false,
-			'recurse'	=> false,
-			'basename'	=> true,
+			'inc_files' => false,
+			'recurse'   => false,
+			'basename'  => true,
 		);
 	$locale_folders = get_filenames( $locales_path, $filename_params );
 	// Go through all locale folders:
@@ -1240,7 +1286,7 @@ function locales_load_available_defs()
 		}
 	}
 
-	foreach( $locales as $lkey=>$locale )
+	foreach( $locales as $lkey => $locale )
 	{
 		if( !isset($locale['priority']) )
 		{
@@ -1248,6 +1294,8 @@ function locales_load_available_defs()
 		}
 	}
 
+	// Set this var to TRUE to don't call this function twice
+	$locales_loaded_form_disk = true;
 }
 
 
@@ -1411,9 +1459,9 @@ function locale_insert_default()
 			}
 
 			$insert_data[] = '( '.$DB->quote( $a_locale ).', '
-				.$DB->quote( $locales[ $a_locale ]['charset'] ).', '
 				.$DB->quote( $locales[ $a_locale ]['datefmt'] ).', '
 				.$DB->quote( $locales[ $a_locale ]['timefmt'] ).', '
+				.$DB->quote( empty( $locales[ $a_locale ]['shorttimefmt'] ) ? $locales[ $a_locale ]['timefmt'] : $locales[ $a_locale ]['shorttimefmt'] ).', '
 				.$DB->quote( $locales[ $a_locale ]['startofweek'] ).', '
 				.$DB->quote( $locales[ $a_locale ]['name'] ).', '
 				.$DB->quote( $locales[ $a_locale ]['messages'] ).', '
@@ -1425,7 +1473,7 @@ function locale_insert_default()
 		if( count( $insert_data ) )
 		{ // Do insert only if at least one locale requires this
 			$DB->query( 'INSERT INTO T_locales '
-					 .'( loc_locale, loc_charset, loc_datefmt, loc_timefmt, '
+					 .'( loc_locale, loc_datefmt, loc_timefmt, loc_shorttimefmt, '
 					 .'loc_startofweek, loc_name, loc_messages, loc_priority, '
 					 .'loc_transliteration_map, loc_enabled ) '
 					 .'VALUES '.implode( ', ', $insert_data ) );

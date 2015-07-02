@@ -1,33 +1,14 @@
 <?php
 /**
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2009-2014 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2009-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2009 by The Evo Factory - {@link http://www.evofactory.com/}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * The Evo Factory grants Francois PLANQUE the right to license
- * The Evo Factory's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author efy-maxim: Evo Factory / Maxim.
- * @author fplanque: Francois Planque.
- *
- * @version $Id: _country_list.view.php 6264 2014-03-19 12:23:26Z yura $
  */
 
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -259,50 +240,14 @@ $Results->display();
 
 if( $current_User->check_perm( 'options', 'edit' ) )
 { // Check permission to edit Country:
-?>
-<script type="text/javascript">
-jQuery( document ).ready( function()
-{
-	jQuery( '.country_status_edit' ).editable( htsrv_url + 'async.php?action=country_status_edit&<?php echo url_crumb( 'country' ) ?>',
-	{
-	data : function( value, settings )
-		{
-			value = ajax_debug_clear( value );
-			var re =  /rel="(.*)"/;
-			var result = value.match(re);
-			return {
-				''         : '<?php echo ctry_status_title( '' ) ?>',
-				'trusted'  : '<?php echo ctry_status_title( 'trusted' ) ?>',
-				'suspect'  : '<?php echo ctry_status_title( 'suspect' ) ?>',
-				'blocked'  : '<?php echo ctry_status_title( 'blocked' ) ?>',
-				'selected' : result[1]
-			}
-		},
-	type     : 'select',
-	name     : 'new_status',
-	tooltip  : 'Click to edit',
-	event    : 'click',
-	callback : function( settings, original )
-		{
-			//evoFadeSuccess( this );
-			jQuery( this ).html( ajax_debug_clear( settings ) );
-			var link = jQuery( this ).find( 'a' );
-			jQuery( this ).css( 'background-color', link.attr( 'color' ) );
-			link.removeAttr( 'color' );
-		},
-	onsubmit: function( settings, original ) {
-	},
-	submitdata: function( value, settings ) {
-			var id = jQuery( this ).attr( 'id' );
-			console.log( id );
-			return { ctry_ID: id }
-		},
-	onerror : function( settings, original, xhr ) {
-			evoFadeFailure( original );
-		}
-	} );
-} );
-</script>
-<?php
+	// Print JS to edit a country status
+	echo_editable_column_js( array(
+		'column_selector' => '.country_status_edit',
+		'ajax_url'        => get_secure_htsrv_url().'async.php?action=country_status_edit&'.url_crumb( 'country' ),
+		'options'         => ctry_status_titles(),
+		'new_field_name'  => 'new_status',
+		'ID_value'        => 'jQuery( this ).attr( "id" )',
+		'ID_name'         => 'ctry_ID',
+		'colored_cells'   => true ) );
 }
 ?>

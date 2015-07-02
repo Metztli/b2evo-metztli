@@ -8,39 +8,14 @@
  * All Hitlogs are also bound to a Session.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- *
- * Matt FOLLETT grants Francois PLANQUE the right to license
- * Matt FOLLETT's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author blueyed: Daniel HAHLER.
- * @author fplanque: Francois PLANQUE.
- * @author jeffbearer: Jeff BEARER - {@link http://www.jeffbearer.com/}.
- * @author mfollett:  Matt FOLLETT - {@link http://www.mfollett.com/}.
- *
- * @version $Id: _session.class.php 6135 2014-03-08 07:54:05Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -109,7 +84,7 @@ class Session
 
 	/**
 	 * The user device from where this session was created
-	 * 
+	 *
 	 * @var string
 	 */
 	var $sess_device;
@@ -278,6 +253,62 @@ class Session
 			$Debuglog->add( 'Session: ID (generated): '.$this->ID, 'request' );
 			$Debuglog->add( 'Session: Cookie sent.', 'request' );
 		}
+	}
+
+
+	/**
+	 * Get this class db table config params
+	 *
+	 * @return array
+	 */
+	static function get_class_db_config()
+	{
+		static $session_db_config;
+
+		if( !isset( $session_db_config ) )
+		{
+			$session_db_config = array(
+				'dbtablename'        => 'T_sessions',
+				'dbprefix'           => 'sess_',
+				'dbIDname'           => 'sess_ID',
+			);
+		}
+
+		return $session_db_config;
+	}
+
+
+	/**
+	 * Delete sessions from database based on where condition or by object ids
+	 *
+	 * @return array
+	 */
+	static function db_delete_where( $class_name, $sql_where, $object_ids = NULL, $params = NULL )
+	{
+		global $DB;
+
+		$DB->begin();
+
+		if( ! empty( $sql_where ) )
+		{
+			$object_ids = $DB->get_col( 'SELECT sess_ID FROM T_sessions WHERE '.$sql_where );
+		}
+
+		if( ! $object_ids )
+		{ // There is no session to delete
+			$DB->commit();
+			return;
+		}
+
+		$session_ids_to_delete = implode( ', ', $object_ids );
+
+		$result = $DB->query( 'DELETE FROM T_hitlog WHERE hit_sess_ID IN ( '.$session_ids_to_delete.' )' );
+
+		$result = ( $result !== false ) ? $DB->query( 'DELETE FROM T_sessions WHERE sess_ID IN ( '.$session_ids_to_delete.')' ) : $result;
+
+		( $result !== false ) ? $DB->commit() : $DB->rollback();
+
+		return $result;
 	}
 
 

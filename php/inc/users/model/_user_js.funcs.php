@@ -51,8 +51,9 @@ for(var c = 0; c < jQuery( 'select[id^=criteria_type]' ).length; c++ )
 jQuery( document ).on( 'click', 'span[rel=add_criteria]', function()
 { // Add new criteria to search
 	var params = '<?php
-			global $b2evo_icons_type;
+			global $b2evo_icons_type, $blog;
 			echo empty( $b2evo_icons_type ) ? '' : '&b2evo_icons_type='.$b2evo_icons_type;
+			echo is_admin_page() ? '&is_backoffice=1' : '&blog='.$blog;
 		?>';
 
 	obj_this = jQuery( this ).parent().parent();
@@ -82,11 +83,18 @@ jQuery( document ).on( 'click', 'span[rel=add_criteria]', function()
 
 <?php
 global $current_User;
-if( is_admin_page() && is_logged_in() && $current_User->check_perm( 'users', 'edit', false ) )
+if( is_admin_page() && is_logged_in() && $current_User->check_perm( 'users', 'moderate', false ) )
 {	// If user can edit the users - Init js to edit user level by AJAX
 ?>
 jQuery(document).ready( function()
 {
+	jQuery('.user_level_edit').each( function()
+	{
+		if( jQuery( this ).find( 'a' ).length == 0 )
+		{
+			jQuery( this ).removeClass( 'user_level_edit' );
+		}
+	} );
 <?php
 	$user_levels = array();
 	for( $l = 0; $l <= 10; $l++ )

@@ -3,28 +3,13 @@
  * This is the install file for the core modules
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: __core.install.php 6908 2014-06-17 11:51:45Z yura $
  */
 if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page directly.' );
 
@@ -48,6 +33,7 @@ $schema_queries = array(
 		"CREATE TABLE T_groups (
 			grp_ID                           int(11) NOT NULL auto_increment,
 			grp_name                         varchar(50) NOT NULL default '',
+			grp_level                        int unsigned DEFAULT 0 NOT NULL,
 			grp_perm_blogs                   enum('user','viewall','editall') COLLATE ascii_general_ci NOT NULL default 'user',
 			grp_perm_bypass_antispam         TINYINT(1) NOT NULL DEFAULT 0,
 			grp_perm_xhtmlvalidation         VARCHAR(10) COLLATE ascii_general_ci NOT NULL default 'always',
@@ -90,7 +76,8 @@ $schema_queries = array(
 		"CREATE TABLE T_users (
 			user_ID int(11) unsigned NOT NULL auto_increment,
 			user_login varchar(20) NOT NULL,
-			user_pass CHAR(32) COLLATE ascii_general_ci NOT NULL,
+			user_pass BINARY(16) NOT NULL,
+			user_salt CHAR(8) NOT NULL default '',
 			user_grp_ID int(4) NOT NULL default 1,
 			user_email varchar(255) COLLATE ascii_general_ci NOT NULL,
 			user_status enum( 'activated', 'autoactivated', 'closed', 'deactivated', 'emailchanged', 'failedactivation', 'new' ) COLLATE ascii_general_ci NOT NULL default 'new',
@@ -128,12 +115,14 @@ $schema_queries = array(
 			ufdf_ufgp_ID    int(10) unsigned NOT NULL,
 			ufdf_type       char(8) COLLATE ascii_general_ci NOT NULL,
 			ufdf_name       varchar(255) NOT NULL,
-			ufdf_options    text NOT NULL,
+			ufdf_options    VARCHAR(255) NULL DEFAULT NULL,"/* Do NOT change this field back to TEXT without a very good reason. */."
 			ufdf_required   enum('hidden','optional','recommended','require') COLLATE ascii_general_ci NOT NULL default 'optional',
 			ufdf_duplicated enum('forbidden','allowed','list') COLLATE ascii_general_ci NOT NULL default 'allowed',
 			ufdf_order      int(11) NOT NULL,
 			ufdf_suggest    tinyint(1) NOT NULL DEFAULT 0,
 			ufdf_bubbletip  varchar(2000) NULL,
+			ufdf_icon_name  varchar(100) COLLATE ascii_general_ci NULL,
+			ufdf_code       varchar(20) COLLATE ascii_general_ci UNIQUE NOT NULL,
 			PRIMARY KEY (ufdf_ID)
 		) ENGINE = innodb DEFAULT CHARSET = $db_storage_charset" ),
 
@@ -169,6 +158,48 @@ $schema_queries = array(
 			PRIMARY KEY ( urep_target_user_ID, urep_reporter_ID )
 		) ENGINE = innodb DEFAULT CHARSET = $db_storage_charset" ),
 
+	'T_users__postreadstatus' => array(
+		'Creating table for User post read status',
+		"CREATE TABLE T_users__postreadstatus (
+			uprs_user_ID int(11) unsigned NOT NULL,
+			uprs_post_ID int(11) unsigned NOT NULL,
+			uprs_read_post_ts TIMESTAMP NOT NULL DEFAULT '2000-01-01 00:00:00',
+			uprs_read_comment_ts TIMESTAMP NOT NULL DEFAULT '2000-01-01 00:00:00',
+			PRIMARY KEY ( uprs_user_ID, uprs_post_ID )
+		) ENGINE = innodb DEFAULT CHARSET = $db_storage_charset" ),
+
+	'T_users__invitation_code' => array(
+		'Creating table for User invitation codes',
+		"CREATE TABLE T_users__invitation_code (
+			ivc_ID        int(11) unsigned NOT NULL auto_increment,
+			ivc_code      varchar(32) COLLATE ascii_general_ci NOT NULL,
+			ivc_expire_ts TIMESTAMP NOT NULL DEFAULT '2000-01-01 00:00:00',
+			ivc_source    varchar(30) NULL,
+			ivc_grp_ID    int(4) NOT NULL,
+			PRIMARY KEY ( ivc_ID ),
+			UNIQUE ivc_code ( ivc_code )
+		) ENGINE = innodb DEFAULT CHARSET = $db_storage_charset" ),
+
+	'T_users__organization' => array(
+		'Creating table for User organizations',
+		"CREATE TABLE T_users__organization (
+			org_ID   INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+			org_name VARCHAR(255) NOT NULL,
+			org_url  VARCHAR(2000) NULL,
+			PRIMARY KEY ( org_ID ),
+			UNIQUE org_name ( org_name )
+		) ENGINE = innodb DEFAULT CHARSET = $db_storage_charset" ),
+
+	'T_users__user_org' => array(
+		'Creating table for relations users with organizations',
+		"CREATE TABLE T_users__user_org (
+			uorg_user_ID  INT(11) UNSIGNED NOT NULL,
+			uorg_org_ID   INT(11) UNSIGNED NOT NULL,
+			uorg_accepted TINYINT(1) DEFAULT 0,
+			uorg_role     VARCHAR(255) NULL,
+			PRIMARY KEY ( uorg_user_ID, uorg_org_ID )
+		) ENGINE = innodb DEFAULT CHARSET = $db_storage_charset" ),
+
 	'T_i18n_original_string' => array(
 		'Creating table for a latest version of the POT file',
 		"CREATE TABLE T_i18n_original_string (
@@ -194,9 +225,9 @@ $schema_queries = array(
 		'Creating table for Locales',
 		"CREATE TABLE T_locales (
 			loc_locale varchar(20) NOT NULL default '',
-			loc_charset varchar(15) COLLATE ascii_general_ci NOT NULL default 'iso-8859-1',
 			loc_datefmt varchar(20) COLLATE ascii_general_ci NOT NULL default 'y-m-d',
 			loc_timefmt varchar(20) COLLATE ascii_general_ci NOT NULL default 'H:i:s',
+			loc_shorttimefmt varchar(20) COLLATE ascii_general_ci NOT NULL default 'H:i',
 			loc_startofweek TINYINT UNSIGNED NOT NULL DEFAULT 1,
 			loc_name varchar(40) NOT NULL default '',
 			loc_messages varchar(20) NOT NULL default '',
@@ -287,12 +318,12 @@ $schema_queries = array(
 	'T_cron__task' => array(
 		'Creating cron tasks table',
 		"CREATE TABLE T_cron__task(
-			ctsk_ID              int(10) unsigned      not null AUTO_INCREMENT,
-			ctsk_start_datetime  datetime              not null DEFAULT '2000-01-01 00:00:00',
+			ctsk_ID              int(10) unsigned not null AUTO_INCREMENT,
+			ctsk_start_datetime  datetime not null DEFAULT '2000-01-01 00:00:00',
 			ctsk_repeat_after    int(10) unsigned,
-			ctsk_name            varchar(255)          not null,
-			ctsk_controller      varchar(50)           not null,
-			ctsk_params          text,
+			ctsk_key             varchar(50) COLLATE ascii_general_ci not null,
+			ctsk_name            varchar(255) null COMMENT 'Specific name of this task. This value is set only if this job name was modified by an admin user',
+			ctsk_params          varchar(255),
 			PRIMARY KEY (ctsk_ID)
 		) ENGINE = innodb DEFAULT CHARSET = $db_storage_charset" ),
 
@@ -453,6 +484,22 @@ $schema_queries = array(
 			csnd_user_ID  INT(11) UNSIGNED NOT NULL,
 			csnd_emlog_ID INT(11) UNSIGNED NULL,
 			PRIMARY KEY   csnd_PK ( csnd_camp_ID, csnd_user_ID )
+		) ENGINE = myisam DEFAULT CHARACTER SET = $db_storage_charset" ),
+
+	'T_syslog' => array(
+		'Creating system log table',
+		"CREATE TABLE T_syslog (
+			slg_ID        INT NOT NULL AUTO_INCREMENT,
+			slg_timestamp TIMESTAMP NOT NULL,
+			slg_user_ID   INT UNSIGNED NULL,
+			slg_type      ENUM('info', 'warning', 'error', 'critical_error') COLLATE ascii_general_ci NOT NULL DEFAULT 'info',
+			slg_origin    ENUM('core', 'plugin') COLLATE ascii_general_ci,
+			slg_origin_ID INT UNSIGNED NULL,
+			slg_object    ENUM('comment', 'item', 'user', 'file') COLLATE ascii_general_ci,
+			slg_object_ID INT UNSIGNED NULL,
+			slg_message   VARCHAR(255) NOT NULL,
+			PRIMARY KEY   (slg_ID),
+			INDEX         slg_object (slg_object, slg_object_ID)
 		) ENGINE = myisam DEFAULT CHARACTER SET = $db_storage_charset" )
 );
 

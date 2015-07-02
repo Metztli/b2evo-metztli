@@ -3,33 +3,14 @@
  * This file implements the UI view for the regional settings.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package admin
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- * @author blueyed: Daniel HAHLER.
- *
- * @version $Id: _locale_settings.form.php 8046 2015-01-22 07:33:04Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -107,14 +88,16 @@ if( $action == 'edit' )
 	$Form->text_input( 'newloc_name', ( isset( $ltemplate['name'] ) ? $ltemplate['name'] : get_param( 'newloc_name' ) ), 40,
 		T_('Name'), T_('name of the locale') );
 	// Charset
-	$Form->text_input( 'newloc_charset', ( isset( $ltemplate['charset'] ) ? $ltemplate['charset'] : get_param( 'newloc_charset' ) ), 20,
-		T_('Charset'), T_('Must match the lang file charset.'), array( 'required' => true, 'maxlength' => 15 ) );
+	$Form->info( T_('Charset'), 'utf-8' );
 	// Date format
 	$Form->text_input( 'newloc_datefmt', ( isset( $ltemplate['datefmt'] ) ? $ltemplate['datefmt'] : get_param( 'newloc_datefmt' ) ), 20,
 		T_('Date format'), T_('See below.'), array( 'required' => true ) );
 	// Time format
 	$Form->text_input( 'newloc_timefmt', ( isset( $ltemplate['timefmt'] ) ? $ltemplate['timefmt'] : get_param( 'newloc_timefmt' ) ), 20,
 		T_('Time format'), T_('See below.'), array( 'required' => true ) );
+	// Short time format
+	$Form->text_input( 'newloc_shorttimefmt', ( isset( $ltemplate['shorttimefmt'] ) ? $ltemplate['shorttimefmt'] : get_param( 'newloc_shorttimefmt' ) ), 20,
+		T_('Short time format'), T_('See below.'), array( 'required' => true ) );
 	// Start of week
 	$Form->dayOfWeek( 'newloc_startofweek', ( isset( $ltemplate['startofweek'] ) ? $ltemplate['startofweek'] : get_param( 'newloc_startofweek' ) ),
 		T_('Start of week'), T_('Day at the start of the week.') );
@@ -278,6 +261,7 @@ else
 		<th><?php echo T_('Charset') ?></th>
 		<th><?php echo T_('Date fmt') ?></th>
 		<th><?php echo T_('Time fmt') ?></th>
+		<th><?php echo T_('Short time fmt') ?></th>
 		<th title="<?php echo T_('Day at the start of the week: 0 for Sunday, 1 for Monday, 2 for Tuesday, etc');
 			?>"><?php echo T_('Start of week') ?></th>
 		<th><?php echo T_('Priority') ?></th>
@@ -310,6 +294,7 @@ else
 		locale_temp_switch( $lkey );
 		$datefmt_preview = date_i18n( $locale_data['datefmt'], $localtimenow );
 		$timefmt_preview = date_i18n( $locale_data['timefmt'], $localtimenow );
+		$shorttimefmt_preview = date_i18n( ( isset( $locale_data['shorttimefmt'] ) ? $locale_data['shorttimefmt'] : str_replace( ':s', '', $locale_data['timefmt'] ) ), $localtimenow );
 		locale_restore_previous();
 
 		?>
@@ -346,14 +331,17 @@ else
 				<td>
 					<input type="text" name="loc_'.$i.'_name" value="'.format_to_output( $locale_data['name'], 'formvalue' ).'" maxlength="40" size="17" class="form-control input-sm" />
 				</td>
-				<td>
-					<input type="text" name="loc_'.$i.'_charset" value="'.format_to_output( $locale_data['charset'], 'formvalue' ).'" maxlength="20" size="6" class="form-control input-sm" />
+				<td'.( $locale_data['charset'] == 'utf-8' ? '' : ' class="red"' ).'>
+					'.$locale_data['charset'].'
 				</td>
 				<td>
 					<input type="text" name="loc_'.$i.'_datefmt" value="'.format_to_output( $locale_data['datefmt'], 'formvalue' ).'" maxlength="20" size="6" title="'.format_to_output( sprintf( T_('Preview: %s'), $datefmt_preview ), 'formvalue' ).'" class="form-control input-sm" />
 				</td>
 				<td>
 					<input type="text" name="loc_'.$i.'_timefmt" value="'.format_to_output( $locale_data['timefmt'], 'formvalue' ).'" maxlength="20" size="6" title="'.format_to_output( sprintf( T_('Preview: %s'), $timefmt_preview ), 'formvalue' ).'" class="form-control input-sm" />
+				</td>
+				<td>
+					<input type="text" name="loc_'.$i.'_shorttimefmt" value="'.format_to_output( ( isset( $locale_data['shorttimefmt'] ) ? $locale_data['shorttimefmt'] : str_replace( ':s', '', $locale_data['timefmt'] ) ), 'formvalue' ).'" maxlength="20" size="6" title="'.format_to_output( sprintf( T_('Preview: %s'), $shorttimefmt_preview ), 'formvalue' ).'" class="form-control input-sm" />
 				</td>
 				<td>';
 			$Form->switch_layout( 'none' );

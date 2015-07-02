@@ -14,7 +14,7 @@
 /* top elements */
 * { padding: 0; margin: 0; }
 
-div#skin_wrapper div.sitewide_header {
+div#skin_wrapper .sitewide_header {
 	margin-bottom: 0;
 }
 
@@ -452,6 +452,10 @@ form#login_form {
 #styled_content_block .bTitle .status_protected,
 #styled_content_block .bTitle .status_private {
 	top: 24px;
+}
+
+.search_title {
+	color: #72A545;
 }
 
 #add_group_contacts {

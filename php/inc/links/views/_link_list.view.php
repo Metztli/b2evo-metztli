@@ -3,22 +3,13 @@
  * This file displays the links attached to an Object, which can be an Item, Comment, ... (called within the attachment_frame)
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
- *
- * @version $Id: $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -100,6 +91,8 @@ function display_link()
 		if( $view_link = $current_File->get_view_link() )
 		{
 			$r .= $view_link;
+			// Use this hidden field to solve the conflicts on quick upload
+			$r .= '<input type="hidden" value="'.$current_File->get_root_and_rel_path().'" />';
 		}
 		else
 		{ // File extension unrecognized
@@ -118,6 +111,7 @@ function display_link()
 $Results->cols[] = array(
 						'th' => T_('Destination'),
 						'td' => '%display_link()%',
+						'td_class' => 'fm_filename',
 					);
 
 $Results->cols[] = array(
@@ -132,7 +126,7 @@ if( $current_User->check_perm( 'files', 'view', false, $Blog->ID ) )
 	$Results->cols[] = array(
 							'th' => T_('Actions'),
 							'td_class' => 'shrinkwrap',
-							'td' => '%link_actions( #link_ID#, {ROW_IDX_TYPE} )%',
+							'td' => '%link_actions( #link_ID#, {ROW_IDX_TYPE}, "'.$LinkOwner->type.'" )%',
 						);
 }
 
@@ -142,6 +136,56 @@ $Results->cols[] = array(
 						'td' => '%display_link_position( {row} )%',
 					);
 
-$Results->display( $AdminUI->get_template( 'compact_results' ) );
+// Add attr "id" to handle quick uploader
+$compact_results_params = $AdminUI->get_template( 'compact_results' );
+$compact_results_params['body_start'] = str_replace( '<tbody', '<tbody id="filelist_tbody"', $compact_results_params['body_start'] );
+$compact_results_params['no_results_start'] = str_replace( '<tbody', '<tbody id="filelist_tbody"', $compact_results_params['no_results_start'] );
 
+$Results->display( $compact_results_params );
+
+// Print out JavaScript to change a link position
+echo_link_position_js();
+
+if( $Results->total_pages == 0 )
+{ // If no results we should get a template of headers in order to add it on first quick upload
+	ob_start();
+	$Results->display_col_headers();
+	$table_headers = ob_get_clean();
+}
+else
+{ // Headers are already on the page
+	$table_headers = '';
+}
+
+// Display a button to quick upload the files by drag&drop method
+echo '<div id="fileuploader_form">';
+display_dragdrop_upload_button( array(
+		'fileroot_ID'      => FileRoot::gen_ID( 'collection', $Blog->ID ),
+		'path'             => '/quick-uploads/'.( $LinkOwner->type == 'item' ? 'p' : 'c' ).$LinkOwner->link_Object->ID.'/',
+		'list_style'       => 'table',
+		'template_filerow' => '<table><tr>'
+					.'<td class="firstcol shrinkwrap qq-upload-image"><span class="qq-upload-spinner">&nbsp;</span></td>'
+					.'<td class="qq-upload-file fm_filename">&nbsp;</td>'
+					.'<td class="qq-upload-link-id shrinkwrap">&nbsp;</td>'
+					.'<td class="qq-upload-link-actions shrinkwrap">'
+						.'<div class="qq-upload-status">'
+							.TS_('Uploading...')
+							.'<span class="qq-upload-spinner"></span>'
+							.'<span class="qq-upload-size"></span>'
+							.'<a class="qq-upload-cancel" href="#">'.TS_('Cancel').'</a>'
+						.'</div>'
+					.'</td>'
+					.'<td class="qq-upload-link-position lastcol shrinkwrap"></td>'
+				.'</tr></table>',
+		'display_support_msg'    => false,
+		'additional_dropzone'    => '#filelist_tbody',
+		'filename_before'        => '',
+		'LinkOwner'              => $LinkOwner,
+		'display_status_success' => false,
+		'status_conflict_place'  => 'before_button',
+		'conflict_file_format'   => 'full_path_link',
+		'resize_frame'           => true,
+		'table_headers'          => $table_headers,
+	) );
+echo '</div>';
 ?>

@@ -3,12 +3,10 @@
  * This template generates a sitemap feed for the requested blog's latest posts
  *
  * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://b2evolution.net/man/skin-structure}
+ * {@link http://b2evolution.net/man/skin-development-primer}
  *
  * @package evoskins
  * @subpackage rss
- *
- * @version $Id: index.main.php 3157 2013-03-06 04:34:44Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 

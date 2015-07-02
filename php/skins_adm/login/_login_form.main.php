@@ -3,26 +3,13 @@
  * This is the login form
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package htsrv
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -39,7 +26,7 @@ if( $Session->has_User() )
 			$redirect_to = $baseurl;
 		}
 		$Messages->add( sprintf( T_('Note: You are already logged in as %s!'), $tmp_User->get('login') )
-			.' <a href="'.evo_htmlspecialchars($redirect_to).'">'.T_('Continue').' &raquo;</a>', 'note' );
+			.' <a href="'.htmlspecialchars($redirect_to).'">'.T_('Continue').'&nbsp;&raquo;</a>', 'note' );
 	}
 	unset($tmp_User);
 }
@@ -49,7 +36,7 @@ if( $Session->has_User() )
  * Include page header (also displays Messages):
  */
 $page_title = T_('Log in to your account');
-$wrap_height = '300px';
+$wrap_width = '380px';
 
 /*
   fp> The login page is small. Let's use it as a preloader for the backoffice (which is awfully slow to initialize)
@@ -73,32 +60,45 @@ if( $transmit_hashed_password )
 	require_js( 'build/sha1_md5.bmin.js' );
 }
 
-/**
- * Login header
- */
+// Use the links in the form title
+$use_form_links = true;
+
+// Header
 require dirname(__FILE__).'/_html_header.inc.php';
 
+// Login form
 $params = array(
-	'form_before' => str_replace( '$title$', $page_title, $form_before ),
-	'form_after' => $form_after,
-	'form_action' => $secure_htsrv_url.'login.php',
-	'form_layout' => 'fieldset',
-	'form_class' => 'form-login',
-	'source' => param( 'source', 'string', 'std login form' ),
-	'inskin' => false,
-	'inskin_urls' => false,
-	'redirect_to' => $redirect_to,
-	'login' => evo_strtolower( $login ),
-	'login_required' => $login_required,
-	'validate_required' => $validate_required,
-	'action' => $action,
-	'reqID' => isset( $reqID ) ? $reqID : NULL,
-	'sessID' => isset( $sessID ) ? $sessID : NULL,
+	'skin_form_before'         => $login_form_params['formstart'],
+	'skin_form_after'          => $login_form_params['formend'],
+	'form_title_login'         => $page_title,
+	'login_page_class'         => 'evo_panel__login',
+	'login_page_before'        => '',
+	'login_page_after'         => '',
+	'login_form_action'        => $secure_htsrv_url.'login.php',
+	'login_form_name'          => 'login_form',
+	'login_form_title'         => '',
+	'login_form_layout'        => 'fieldset',
+	'form_class_login'         => 'form-horizontal evo_form__login',
+	'login_form_source'        => param( 'source', 'string', 'std login form' ),
+	'login_form_inskin'        => false,
+	'login_form_inskin_urls'   => false,
+	'login_form_required'      => $login_required,
+	'login_validate_required'  => $validate_required,
+	'login_form_redirect_to'   => $redirect_to,
+	'login_form_login'         => utf8_strtolower( $login ),
+	'login_action_value'       => $action,
+	'login_form_reqID'         => isset( $reqID ) ? $reqID : NULL,
+	'login_form_sessID'        => isset( $sessID ) ? $sessID : NULL,
 	'transmit_hashed_password' => $transmit_hashed_password,
+	'display_abort_link'       => true,
+	'abort_link_position'      => 'form_title',
+	'abort_link_text'          => '<button type="button" class="close" aria-label="Close"><span aria-hidden="true">&times;</span></button>',
+	'display_reg_link'         => true,
+	'login_form_footer'        => false,
 );
+require skin_fallback_path( '_login.disp.php', 6 );
 
-display_login_form( $params );
-
+// Footer
 require dirname(__FILE__).'/_html_footer.inc.php';
 
 ?>

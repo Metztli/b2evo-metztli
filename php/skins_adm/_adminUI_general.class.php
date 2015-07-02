@@ -5,28 +5,16 @@
  * for example.
  *
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
- *
- * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
  *
  * @package admin
  *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author blueyed: Daniel HAHLER
- * @author fplanque: Francois PLANQUE.
- *
  * @todo dh> Refactor to allow easier contributions!
- *
- * @version $Id: _adminUI_general.class.php 8214 2015-02-10 10:17:40Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -126,6 +114,7 @@ class AdminUI_general extends Menu
 	 */
 	var $coll_list_onclick = NULL;
 
+
 	/**
 	 * Bread crumb path
 	 *
@@ -182,11 +171,11 @@ class AdminUI_general extends Menu
 	*/
 	function breadcrumbpath_init( $add_blog = true, $additional_path = array() )
 	{
-		global $Blog, $Settings;
+		global $Blog, $Settings, $admin_url;
 
 		// Path to site root
 		$site_style = $Settings->get( 'site_color' ) != '' ? 'style="color:'.$Settings->get( 'site_color' ).'"' : '';
-		$this->breadcrumbpath_add( $Settings->get( 'site_code' ), '?ctrl=dashboard&amp;blog=0', NULL, $site_style );
+		$this->breadcrumbpath_add( $Settings->get( 'site_code' ), $admin_url.'?ctrl=dashboard', NULL, $site_style );
 
 		if( !empty( $additional_path ) )
 		{ // Additional path
@@ -202,7 +191,7 @@ class AdminUI_general extends Menu
 
 		if( $add_blog && isset( $Blog ) )
 		{ // Add path to Blog
-			$this->breadcrumbpath_add( $Blog->dget('shortname'), !empty( $blog_url ) ? $blog_url : '?ctrl=dashboard&amp;blog=$blog$' );
+			$this->breadcrumbpath_add( $Blog->dget('shortname'), !empty( $blog_url ) ? $blog_url : $admin_url.'?ctrl=dashboard&amp;blog=$blog$' );
 		}
 
 		// Initialize the default manual link, this is always visible when explicit manual link is not set for a page
@@ -526,7 +515,9 @@ class AdminUI_general extends Menu
 			return;
 		}
 
-		global $skins_path, $mode;
+		load_funcs('skins/_skin.funcs.php');
+
+		global $mode;
 
 		/**
 		 * @var Hit
@@ -545,7 +536,9 @@ class AdminUI_general extends Menu
 
 			if( $display_messages )
 			{ // Display info & error messages
-				$Messages->display( NULL, NULL, true, 'action_messages' );
+				$Messages->display();
+				// Clear the messages to avoid double displaying
+				$Messages->clear();
 			}
 			return;
 		}
@@ -555,13 +548,13 @@ class AdminUI_general extends Menu
 		{ // user is logged in
 			if( $this->get_show_evobar() )
 			{ // show evobar options is enabled for this admin skin
-				require $skins_path.'_toolbar.inc.php';
+				require skin_fallback_path( '_toolbar.inc.php' );
 				$skin_wrapper_class = $skin_wrapper_class.'_loggedin';
 			}
 		}
 		else
 		{ // user is not logged in
-			require $skins_path.'_toolbar.inc.php';
+			require skin_fallback_path( '_toolbar.inc.php' );
 			$skin_wrapper_class = $skin_wrapper_class.'_anonymous';
 		}
 
@@ -690,7 +683,7 @@ class AdminUI_general extends Menu
 	 * @param string
 	 * @param array params to be used in the view (optional)
 	 */
-	function disp_view( $view_name, $view_params = array() )
+	function disp_view( $view_name, $params = array() )
 	{
 		global $inc_path;
 
@@ -764,7 +757,6 @@ class AdminUI_general extends Menu
 		$buttons = '';
 		$select_options = '';
 		$not_favorite_blogs = false;
-
 		foreach( $blog_array as $l_blog_ID )
 		{ // Loop through all blogs that match the requested permission:
 
@@ -859,9 +851,10 @@ class AdminUI_general extends Menu
 	 *
 	 * @param string Name of the template ('main', 'sub')
 	 * @param integer Nesting level (start at 0)
+	 * @param boolean TRUE to die on unknown template name
 	 * @return array Associative array which defines layout and optionally properties.
 	 */
-	function get_template( $name, $level = 0 )
+	function get_template( $name, $level = 0, $die_on_unknown = false )
 	{
 		switch( $name )
 		{
@@ -901,7 +894,7 @@ class AdminUI_general extends Menu
 							.'<span style="float:right">$global_icons$</span>'
 							."</div>\n</div>"
 							."\n".'<div class="tabbedpanelblock">',
-						'empty' => '<div class="panelblock">',
+						'empty' => '<div class="panelblock"><span style="float:right">$global_icons$</span>',
 						'beforeEach' => '<li>',
 						'afterEach'  => '</li>',
 						'beforeEachSel' => '<li class="current">',
@@ -960,8 +953,11 @@ class AdminUI_general extends Menu
 					'head_title' => '<div class="table_title"><span style="float:right">$global_icons$</span>$title$</div>'."\n",
 					'filters_start' => '<div class="filters">',
 					'filters_end' => '</div>',
+					'messages_start' => '<div class="messages">',
+					'messages_end' => '</div>',
+					'messages_separator' => '<br />',
 					'list_start' => '<div class="table_scroll">'."\n"
-					               .'<table class="grouped" cellspacing="0">'."\n",
+					               .'<table class="grouped $list_class$" cellspacing="0" $list_attrib$>'."\n",
 						'head_start' => "<thead>\n",
 							'line_start_head' => '<tr>',  // TODO: fusionner avec colhead_start_first; mettre a jour admin_UI_general; utiliser colspan="$headspan$"
 							'colhead_start' => '<th $class_attrib$>',
@@ -1101,9 +1097,9 @@ class AdminUI_general extends Menu
 						'list_span' => 11,
 						'scroll_list_range' => 5,
 					'footer_end' => "</div>\n\n",
-					'no_results_start' => '<table class="grouped" cellspacing="0">'."\n\n",
-					'no_results_end'   => '<tr class="lastline"><td class="firstcol lastcol">$no_results$</td></tr>'
-								                .'</table>'."\n\n",
+					'no_results_start' => '<table class="grouped" cellspacing="0"><tbody>'."\n\n",
+					'no_results_end'   => '<tr class="lastline noresults"><td class="firstcol lastcol">$no_results$</td></tr>'
+								                .'</tbody></table>'."\n\n",
 				'after' => '</div>',
 				'sort_type' => 'basic'
 				);
@@ -1126,6 +1122,7 @@ class AdminUI_general extends Menu
 					'labelempty' => '',
 					'inputstart' => '',
 					'infostart' => '',
+					'infoend' => '',
 					'inputend' => "\n",
 					'fieldend' => '</span>'.get_icon( 'pixel' )."\n",
 					'buttonsstart' => '',
@@ -1145,8 +1142,8 @@ class AdminUI_general extends Menu
 					'title_fmt' => '<span style="float:right">$global_icons$</span><h2>$title$</h2>'."\n",
 					'no_title_fmt' => '<span style="float:right">$global_icons$</span>'."\n",
 					'fieldset_begin' => '<div class="fieldset_wrapper $class$" id="fieldset_wrapper_$id$"><fieldset $fieldset_attribs$>'."\n"
-															.'<legend $title_attribs$>$fieldset_title$</legend>'."\n",
-					'fieldset_end' => '</fieldset></div>'."\n",
+															.'<legend $title_attribs$>$fieldset_title$</legend><div class="fieldset">'."\n",
+					'fieldset_end' => '</div></fieldset></div>'."\n",
 					'fieldstart' => '<fieldset $ID$>'."\n",
 					'labelclass' => '',
 					'labelstart' => '<div class="label">',
@@ -1154,6 +1151,7 @@ class AdminUI_general extends Menu
 					'labelempty' => '<div class="label"></div>', // so that IE6 aligns DIV.input correcctly
 					'inputstart' => '<div class="input">',
 					'infostart' => '<div class="info">',
+					'infoend' => "</div>\n",
 					'inputend' => "</div>\n",
 					'fieldend' => "</fieldset>\n\n",
 					'buttonsstart' => '<fieldset><div class="input">',
@@ -1173,7 +1171,7 @@ class AdminUI_general extends Menu
 			case 'block_item':
 			case 'dash_item':
 				return array(
-					'block_start' => '<div class="block_item" id="styled_content_block"><h3><span style="float:right">$global_icons$</span>$title$</h3>',
+					'block_start' => '<div class="block_item evo_content_block" id="styled_content_block"><h3><span style="float:right">$global_icons$</span>$title$</h3>',
 					'block_end' => '</div>',
 				);
 
@@ -1213,13 +1211,30 @@ class AdminUI_general extends Menu
 				return 'hintbox';
 				break;
 
-			case 'modal_window_js':
-				// JavaScript to init Modals, @see echo_user_ajaxwindow_js()
-				return false;
+			case 'modal_window_js_func':
+				// JavaScript function to initialize Modal windows, @see echo_user_ajaxwindow_js()
+				return false; // Use standard functions
+				break;
+
+			case 'pagination':
+				// Pagination, @see echo_comment_pages()
+				return array();
+				break;
+
+			case 'blog_base.css':
+				// File name of blog_base.css that are used on several back-office pages
+				return 'blog_base.css';
 				break;
 
 			default:
-				debug_die( 'Unknown $name for AdminUI::get_template(): '.var_export($name, true) );
+				if( $die_on_unknown )
+				{ // Die because template name is unknown
+					debug_die( 'Unknown $name for AdminUI::get_template(): '.var_export( $name, true ) );
+				}
+				else
+				{ // Return NULL, if we want to know when template is not defined by current skin
+					return NULL;
+				}
 		}
 	}
 
@@ -1554,7 +1569,7 @@ class AdminUI_general extends Menu
 
 	/**
 	 * Get show evobar setting. Default true for every admin skin.
-	 * @return boolean
+	 * @return boolean 
 	 */
 	function get_show_evobar()
 	{

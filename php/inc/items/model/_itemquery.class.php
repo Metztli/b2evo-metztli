@@ -3,28 +3,13 @@
  * This file implements the ItemQuery class.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: _itemquery.class.php 6135 2014-03-08 07:54:05Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -229,8 +214,9 @@ class ItemQuery extends SQL
 	 * @param string 'wide' to search in extra cats too
 	 *               'main' for main cat only
 	 *               'extra' for extra cats only
+	 * @param string Collection IDs
 	 */
-	function where_chapter2( & $Blog, $cat_array, $cat_modifier, $cat_focus = 'wide' )
+	function where_chapter2( & $Blog, $cat_array, $cat_modifier, $cat_focus = 'wide', $coll_IDs = NULL )
 	{
 		// Save for future use (permission checks..)
 		$this->blog = $Blog->ID;
@@ -252,13 +238,17 @@ class ItemQuery extends SQL
 			$cat_ID_field = 'post_main_cat_ID';
 		}
 
-		if( $cat_focus == 'main' )
+		if( ! empty( $coll_IDs ) )
+		{ // Force to aggregate the collection IDs from current param and not from blog setting
+			$this->WHERE_and( $Blog->get_sql_where_aggregate_coll_IDs( 'cat_blog_ID', $coll_IDs ) );
+		}
+		elseif( $cat_focus == 'main' )
 		{ // We are requesting a narrow search
 			$this->WHERE_and( 'cat_blog_ID = '.$Blog->ID );
 		}
 		else
-		{
-			$this->WHERE_and( $Blog->get_sql_where_aggregate_coll_IDs('cat_blog_ID') );
+		{ // Aggregate the collections IDs from blog setting
+			$this->WHERE_and( $Blog->get_sql_where_aggregate_coll_IDs( 'cat_blog_ID' ) );
 		}
 
 
@@ -291,17 +281,53 @@ class ItemQuery extends SQL
 	 * Restrict to the visibility/sharing statuses we want to show
 	 *
 	 * @param array Restrict to these statuses
+	 * @param string What blogs should be used to check the status permissions:
+	 *               - Empty string to use current blog setting
+	 *               - A list separated by ','
+	 *               - Value '*' to use all blogs
+	 *               - Value '-' to use only current blog without aggregated blog
 	 */
-	function where_visibility( $show_statuses )
+	function where_visibility( $show_statuses, $aggregate_coll_IDs = NULL )
 	{
 		$this->show_statuses = $show_statuses;
 
-		if( !isset( $this->blog ) )
+		if( ! isset( $this->blog ) )
 		{
 			debug_die( 'Status restriction requires to work with a specific blog first.' );
 		}
 
-		$this->WHERE_and( statuses_where_clause( $show_statuses, $this->dbprefix, $this->blog, 'blog_post!', true, $this->author ) );
+		if( empty( $aggregate_coll_IDs ) )
+		{ // Blog IDs are not defined, Use them depending on current blog setting
+			$BlogCache = & get_BlogCache();
+			$Blog = & $BlogCache->get_by_ID( $this->blog );
+			$aggregate_coll_IDs = $Blog->get_setting( 'aggregate_coll_IDs' );
+		}
+
+		$blog_IDs = array();
+		if( empty( $aggregate_coll_IDs ) || $aggregate_coll_IDs == '-' )
+		{ // Get status restriction only for current blog
+			$this->WHERE_and( statuses_where_clause( $show_statuses, $this->dbprefix, $this->blog, 'blog_post!', true, $this->author ) );
+			return; // Exit here, because we don't need to check the permissions for multiple blogs
+		}
+
+		// Check status permission for multiple blogs
+		if( $aggregate_coll_IDs == '*' )
+		{ // Get the status restrictions for all blogs
+			global $DB;
+			$blog_IDs = $DB->get_col( 'SELECT blog_ID FROM T_blogs ORDER BY blog_ID' );
+		}
+		else
+		{ // Get the status restrictions for several blogs
+			$blog_IDs = explode( ',', $aggregate_coll_IDs );
+		}
+
+		$status_restrictions = array();
+		foreach( $blog_IDs as $blog_ID )
+		{ // Check status permission for each blog separately
+			$status_restrictions[] = 'cat_blog_ID='.$blog_ID.' AND '.statuses_where_clause( $show_statuses, $this->dbprefix, $blog_ID, 'blog_post!', true, $this->author );
+		}
+
+		$this->WHERE_and( '( '.implode( ' ) OR ( ', $status_restrictions ).' )' );
 	}
 
 
@@ -542,7 +568,7 @@ class ItemQuery extends SQL
 
 
 	/**
-	 * Restrict to specific item types
+	 * Restrict to specific post types
 	 *
 	 * @param string List of types to restrict to (must have been previously validated)
 	 */
@@ -557,16 +583,16 @@ class ItemQuery extends SQL
 
 		if( $types == '-' )
 		{	// List is ONLY a MINUS sign (we want only those not assigned)
-			$this->WHERE_and( $this->dbprefix.'ptyp_ID IS NULL' );
+			$this->WHERE_and( $this->dbprefix.'ityp_ID IS NULL' );
 		}
 		elseif( substr( $types, 0, 1 ) == '-' )
 		{	// List starts with MINUS sign:
-			$this->WHERE_and( '( '.$this->dbprefix.'ptyp_ID IS NULL
-			                  OR '.$this->dbprefix.'ptyp_ID NOT IN ('.substr( $types, 1 ).') )' );
+			$this->WHERE_and( '( '.$this->dbprefix.'ityp_ID IS NULL
+			                  OR '.$this->dbprefix.'ityp_ID NOT IN ('.substr( $types, 1 ).') )' );
 		}
 		else
 		{
-			$this->WHERE_and( $this->dbprefix.'ptyp_ID IN ('.$types.')' );
+			$this->WHERE_and( $this->dbprefix.'ityp_ID IN ('.$types.')' );
 		}
 	}
 

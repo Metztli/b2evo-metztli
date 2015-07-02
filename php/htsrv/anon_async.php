@@ -3,25 +3,13 @@
  * This is the handler for ANONYMOUS (non logged in) asynchronous 'AJAX' calls.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evocore
- *
- * @version $Id: anon_async.php 7582 2014-11-06 11:52:51Z yura $
  */
 
 
@@ -70,30 +58,16 @@ switch( $action )
 
 		locale_activate( $Blog->get('locale') );
 
-		// Re-Init charset handling, in case current_charset has changed:
-		if( init_charsets( $current_charset ) )
-		{
-			// Reload Blog(s) (for encoding of name, tagline etc):
-			$BlogCache->clear();
-			$Blog = & $BlogCache->get_by_ID( $blog_ID );
-		}
-
 		$disp = param( 'disp', '/^[a-z0-9\-_]+$/', '' );
-		$skin = '';
 		$blog_skin_ID = $Blog->get_skin_ID();
-		if( !empty( $blog_skin_ID ) )
+		if( ! empty( $blog_skin_ID ) )
 		{ // check if Blog skin has specific comment form
 			$SkinCache = & get_SkinCache();
 			$Skin = & $SkinCache->get_by_ID( $blog_skin_ID );
-			$skin = $Skin->folder.'/';
-			$ads_current_skin_path = $skins_path.$skin;
-			if( ! file_exists( $skins_path.$skin.'_item_comment_form.inc.php' ) )
-			{
-				$skin = '';
-			}
+			$ads_current_skin_path = $skins_path.$Skin->folder.'/';
 		}
 
-		require $skins_path.$skin.'_item_comment_form.inc.php';
+		require skin_template_path( '_item_comment_form.inc.php' );
 		break;
 
 
@@ -112,14 +86,6 @@ switch( $action )
 
 		locale_activate( $Blog->get('locale') );
 
-		// Re-Init charset handling, in case current_charset has changed:
-		if( init_charsets( $current_charset ) )
-		{
-			// Reload Blog(s) (for encoding of name, tagline etc):
-			$BlogCache->clear();
-			$Blog = & $BlogCache->get_by_ID( $blog_ID );
-		}
-
 		if( $recipient_id > 0 )
 		{ // Get identity link for existed users
 			$RecipientCache = & get_UserCache();
@@ -136,7 +102,15 @@ switch( $action )
 			$recipient_link = '<span class="user anonymous'.$gender_class.'" rel="bubbletip_comment_'.$comment_id.'">'.$recipient_name.'</span>';
 		}
 
-		require $skins_path.'_contact_msg.form.php';
+		$blog_skin_ID = $Blog->get_skin_ID();
+		if( ! empty( $blog_skin_ID ) )
+		{ // check if Blog skin has specific concact message form
+			$SkinCache = & get_SkinCache();
+			$Skin = & $SkinCache->get_by_ID( $blog_skin_ID );
+			$ads_current_skin_path = $skins_path.$Skin->folder.'/';
+		}
+
+		require skin_template_path( '_contact_msg.form.php' );
 		break;
 
 
@@ -203,7 +177,7 @@ switch( $action )
 			// Display user avatar with login
 			// Attributes 'w' & 'h' we use for following js-scale div If image is downloading first time (Fix bubbletip)
 			echo '<div class="center" w="'.$width.'" h="'.$height.'">';
-			echo get_avatar_imgtag( $User->login, true, true, $avatar_size, 'avatar_above_login', '', $avatar_overlay_text, $link_overlay_class );
+			echo get_avatar_imgtag( $User->login, 'login', true, $avatar_size, 'avatar_above_login', '', $avatar_overlay_text, $link_overlay_class );
 			echo '</div>';
 
 			if( ! ( $Settings->get( 'allow_anonymous_user_profiles' ) || ( is_logged_in() && $current_User->check_perm( 'user', 'view', false, $User ) ) ) )
@@ -368,15 +342,19 @@ switch( $action )
 	case 'voting':
 		// Actions for voting by AJAX
 
-		// Check that this action request is not a CSRF hacked request:
-		$Session->assert_received_crumb( 'voting' );
-
 		if( !is_logged_in( false ) )
 		{ // Only active logged in users can vote
 			break;
 		}
 
 		param( 'vote_action', 'string', '' );
+
+		if( !empty( $vote_action ) )
+		{ // Use crumb checking only for actions
+			// Check that this action request is not a CSRF hacked request:
+			$Session->assert_received_crumb( 'voting' );
+		}
+
 		param( 'vote_type', 'string', '' );
 		param( 'vote_ID', 'string', 0 );
 		param( 'checked', 'integer', 0 );
@@ -432,6 +410,21 @@ switch( $action )
 				if( empty( $vote_action ) || in_array( $vote_action, array( 'like', 'noopinion', 'dontlike' ) ) )
 				{ // Display a voting form if no action
 					// or Refresh a voting form only for these actions (in order to disable icons)
+					if( ! empty( $blog_ID ) )
+					{ // If blog is defined we should check if we can display info about number of votes
+						$BlogCache = & get_BlogCache();
+						if( $Blog = & $BlogCache->get_by_ID( $blog_ID, false, false ) &&
+						    $blog_skin_ID = $Blog->get_skin_ID() )
+						{
+							$LinkOwner = & $Link->get_LinkOwner();
+							$SkinCache = & get_SkinCache();
+							if( $Skin = & $SkinCache->get_by_ID( $blog_skin_ID, false, false ) &&
+							    $Skin->get_setting( 'colorbox_vote_'.$LinkOwner->get( 'name' ).'_numbers' ) )
+							{ // Display number of votes for current link type if it is enabled by blog skin
+								$voting_form_params['display_numbers'] = true;
+							}
+						}
+					}
 					display_voting_form( $voting_form_params );
 				}
 				break;
@@ -507,7 +500,7 @@ switch( $action )
 		}
 
 		$userfields = $DB->get_results( '
-			SELECT ufdf_ID, "0" AS uf_ID, ufdf_type, ufdf_name, "" AS uf_varchar, ufdf_required, ufdf_options, ufdf_suggest, ufdf_duplicated, ufgp_ID, ufgp_name
+			SELECT ufdf_ID, "0" AS uf_ID, ufdf_type, ufdf_code, ufdf_name, ufdf_icon_name, "" AS uf_varchar, ufdf_required, ufdf_options, ufdf_suggest, ufdf_duplicated, ufgp_ID, ufgp_name
 				FROM T_users__fielddefs
 				LEFT JOIN T_users__fieldgroups ON ufgp_ID = ufdf_ufgp_ID
 			WHERE ufdf_ID = "'.$field_ID.'"' );
@@ -594,24 +587,31 @@ switch( $action )
 
 		break;
 
-	case 'get_widget_login_hidden_fields':
-		// get the loginform crumb, the password encryption salt, and the Session ID
-		$pwd_salt = $Session->get('core.pwd_salt');
-		if( empty($pwd_salt) )
-		{ // Session salt is not generated yet, needs to generate
-			$pwd_salt = generate_random_key(64);
-			$Session->set( 'core.pwd_salt', $pwd_salt, 86400 /* expire in 1 day */ );
-			$Session->dbsave(); // save now, in case there's an error later, and not saving it would prevent the user from logging in.
-		}
-		// display result to return
-		echo get_crumb( 'loginform' ).' '.$pwd_salt.' '.$Session->ID;
-		break;
-
 	case 'get_userfields_criteria':
 		// Get fieldset for users filter by Specific criteria
 
 		// Use the glyph or font-awesome icons if requested by skin
 		param( 'b2evo_icons_type', 'string', '' );
+
+		if( param( 'is_backoffice', 'integer', 0 ) )
+		{
+			global $current_User, $UserSettings, $is_admin_page;
+			$admin_skin = $UserSettings->get( 'admin_skin', $current_User->ID );
+			$is_admin_page = true;
+			/**
+			 * Load the AdminUI class for the skin.
+			 */
+			require_once $adminskins_path.$admin_skin.'/_adminUI.class.php';
+			$AdminUI = new AdminUI();
+		}
+		else
+		{
+			$BlogCache = &get_BlogCache();
+			$Blog = & $BlogCache->get_by_ID( $blog_ID, true );
+			$skin_ID = $Blog->get_skin_ID();
+			$SkinCache = & get_SkinCache();
+			$Skin = & $SkinCache->get_by_ID( $skin_ID );
+		}
 
 		$Form = new Form();
 		$Form->switch_layout( 'blockspan' );
@@ -756,20 +756,28 @@ switch( $action )
 	case 'validate_login':
 		// Validate if username is available
 		param( 'login', 'string', '' );
-		if( !empty( $login ) )
-		{
-			$SQL = new SQL( 'Validate if username is available' );
-			$SQL->SELECT( 'user_ID' );
-			$SQL->FROM( 'T_users' );
-			$SQL->WHERE( 'user_login = "'.$DB->escape( $login ).'"' );
-			if( $DB->get_var( $SQL->get() ) )
-			{	// Login already exists
-				echo 'exists';
+
+		if( param_check_valid_login( 'login' ) )
+		{	// Login format is correct
+			if( !empty( $login ) )
+			{
+				$SQL = new SQL( 'Validate if username is available' );
+				$SQL->SELECT( 'user_ID' );
+				$SQL->FROM( 'T_users' );
+				$SQL->WHERE( 'user_login = "'.$DB->escape( $login ).'"' );
+				if( $DB->get_var( $SQL->get() ) )
+				{	// Login already exists
+					echo 'exists';
+				}
+				else
+				{	// Login is available
+					echo 'available';
+				}
 			}
-			else
-			{	// Login is available
-				echo 'available';
-			}
+		}
+		else
+		{	// Incorrect format of login
+			echo param_get_error_msg( 'login' );
 		}
 		break;
 
@@ -881,48 +889,219 @@ switch( $action )
 		echo evo_json_encode( $result_users );
 		exit(0);
 
-	case 'moderate_comment':
-		// Used for quick moderation of comments in front-office
+	case 'set_comment_status':
+		// Used for quick moderation of comments in dashboard, item list full view, comment list and front-office screens
 
 		// Check that this action request is not a CSRF hacked request:
 		$Session->assert_received_crumb( 'comment' );
 
-		if( !is_logged_in() )
+		$result_success = false;
+
+		if( is_logged_in() )
 		{ // Only logged in users can moderate comments
+
+			// Check comment moderate permission below after we have the $edited_Comment object
+
+			$request_from = param( 'request_from', 'string', NULL );
+			$is_admin_page = $request_from != 'front';
+			$blog = param( 'blogid', 'integer' );
+			$moderation = param( 'moderation', 'string', NULL );
+			$status = param( 'status', 'string' );
+			$expiry_status = param( 'expiry_status', 'string', 'active' );
+			$limit = param( 'limit', 'integer', 0 );
+
+			$edited_Comment = & Comment_get_by_ID( param( 'commentid', 'integer' ), false );
+			if( $edited_Comment !== false )
+			{ // The comment still exists
+				// Check permission:
+				$current_User->check_perm( 'comment!'.$status, 'moderate', true, $edited_Comment );
+
+				$redirect_to = param( 'redirect_to', 'url', NULL );
+
+				$edited_Comment->set( 'status', $status );
+				// Comment moderation is done, handle moderation "secret"
+				$edited_Comment->handle_qm_secret();
+				$result_success = $edited_Comment->dbupdate();
+				if( $result_success !== false )
+				{
+					if( $status == 'published' )
+					{
+						$edited_Comment->handle_notifications( false, $current_User->ID );
+					}
+				}
+			}
+		}
+
+		if( $result_success === false )
+		{ // Some errors on deleting of the comment, Exit here
+			header_http_response( '500 '.T_('Comment cannot be updated!'), 500 );
+			exit(0);
+		}
+
+		if( $moderation != NULL && in_array( $request_from, array( 'items', 'comments' ) ) )
+		{ // AJAX request goes from backoffice and ctrl = items or comments
+			if( param( 'is_backoffice', 'integer', 0 ) )
+			{ // Set admin skin, used for buttons, @see button_class()
+				global $current_User, $UserSettings, $is_admin_page, $adminskins_path;
+				$admin_skin = $UserSettings->get( 'admin_skin', $current_User->ID );
+				$is_admin_page = true;
+				require_once $adminskins_path.$admin_skin.'/_adminUI.class.php';
+				$AdminUI = new AdminUI();
+			}
+
+			$statuses = param( 'statuses', 'string', NULL );
+			$item_ID = param( 'itemid', 'integer' );
+			$currentpage = param( 'currentpage', 'integer', 1 );
+
+			if( strlen($statuses) > 2 )
+			{
+				$statuses = substr( $statuses, 1, strlen($statuses) - 2 );
+			}
+			$status_list = explode( ',', $statuses );
+			if( $status_list == NULL )
+			{
+				$status_list = get_visibility_statuses( 'keys', array( 'redirected', 'trash' ) );
+			}
+
+			// In case of comments_fullview we must set a filterset name to be abble to restore filterset.
+			// If $moderation is not NULL, then this requests came from the comments_fullview
+			// TODO: asimo> This should be handled with a better solution
+			$filterset_name = ( $item_ID > 0 ) ? '' : 'fullview';
+
+			echo_item_comments( $blog, $item_ID, $status_list, $currentpage, $limit, array(), $filterset_name, $expiry_status );
+		}
+		elseif( $request_from == 'front' )
+		{ // AJAX request goes from frontoffice
+			// Send new current status as ajax response
+			echo $edited_Comment->status;
+			// Also send the statuses which will be after raising/lowering of a status by current user
+			$comment_raise_status = $edited_Comment->get_next_status( true, $edited_Comment->status );
+			$comment_lower_status = $edited_Comment->get_next_status( false, $edited_Comment->status );
+			echo ':'.( $comment_raise_status ? $comment_raise_status[0] : '' );
+			echo ':'.( $comment_lower_status ? $comment_lower_status[0] : '' );
+		}
+		break;
+
+	case 'get_user_new_org':
+		// Used in the identity user form to add a new organization
+		if( ! is_logged_in() )
+		{ // User must be logged in
 			break;
 		}
 
-		// Check comment moderate permission below after we have the $edited_Comment object
+		$first_org = param( 'first_org', 'integer', 0 );
 
-		$blog = param( 'blogid', 'integer' );
-		$status = param( 'status', 'string' );
-		$edited_Comment = & Comment_get_by_ID( param( 'commentid', 'integer' ), false );
-		if( $edited_Comment !== false )
-		{ // The comment still exists
-			// Check permission:
-			$current_User->check_perm( 'comment!'.$status, 'moderate', true, $edited_Comment );
+		// Use the glyph or font-awesome icons if it is defined by skin
+		param( 'b2evo_icons_type', 'string', '' );
 
-			$redirect_to = param( 'redirect_to', 'url', NULL );
+		$Form = new Form();
 
-			$edited_Comment->set( 'status', $status );
-			// Comment moderation is done, handle moderation "secret"
-			$edited_Comment->handle_qm_secret();
-			if( $edited_Comment->dbupdate() !== false )
-			{
-				if( $status == 'published' )
-				{
-					$edited_Comment->handle_notifications( false, $current_User->ID );
-				}
+		$OrganizationCache = & get_OrganizationCache();
+		$OrganizationCache->clear();
+		$OrganizationCache->load_all();
 
-				// Send new current status as ajax response
-				echo $edited_Comment->status;
-				// Also send the statuses which will be after raising/lowering of a status by current user
-				$comment_raise_status = $edited_Comment->get_next_status( true, $edited_Comment->status );
-				$comment_lower_status = $edited_Comment->get_next_status( false, $edited_Comment->status );
-				echo ':'.( $comment_raise_status ? $comment_raise_status[0] : '' );
-				echo ':'.( $comment_lower_status ? $comment_lower_status[0] : '' );
-			}
+		$Form->output = false;
+		$Form->switch_layout( 'none' );
+		$org_suffix = ' &nbsp; <strong>'.T_('Role').':</strong> '.$Form->text_input( 'org_roles[]', '', 20, '', '', array( 'maxlength' => 255 ) ).' &nbsp; ';
+		$Form->switch_layout( NULL );
+		$Form->output = true;
+
+		// Special form template that will be replaced to current skin on ajax response
+		$Form->fieldstart = '#fieldstart#';
+		$Form->fieldend = '#fieldend#';
+		$Form->labelclass = '#labelclass#';
+		$Form->labelstart = '#labelstart#';
+		$Form->labelend = '#labelend#';
+		$Form->inputstart = '#inputstart#';
+		$Form->inputend = '#inputend#';
+
+		$org_suffix .= ' '.get_icon( 'add', 'imgtag', array( 'class' => 'add_org', 'style' => 'cursor:pointer' ) );
+		$org_suffix .= ' '.get_icon( 'minus', 'imgtag', array( 'class' => 'remove_org', 'style' => 'cursor:pointer' ) );
+		$Form->select_input_object( 'organizations[]', 0, $OrganizationCache, T_('Organization'), array( 'allow_none' => $first_org ? true : false, 'field_suffix' => $org_suffix ) );
+
+		break;
+
+	case 'autocomplete_usernames':
+		// Get usernames by first chars for autocomplete jQuery plugin & TinyMCE autocomplete plugin
+
+		$q = param( 'q', 'string', '' );
+
+		if( ! is_valid_login( $q ) || evo_strlen( $q ) < 4 )
+		{ // Restrict a wrong request
+			debug_die( 'Wrong request' );
 		}
+		// Add backslash for special char of sql operator LIKE
+		$q = str_replace( '_', '\_', $q );
+
+		if( utf8_strlen( $q ) == 0 )
+		{ // Don't search logins with empty request
+			$usernames = array();
+		}
+		else
+		{
+			$SQL = new SQL();
+			$SQL->SELECT( 'user_login' );
+			$SQL->FROM( 'T_users' );
+			$SQL->WHERE( 'user_login LIKE '.$DB->quote( $q.'%' ) );
+			$SQL->WHERE_and( 'user_status = "activated" OR user_status = "autoactivated"' );
+			$SQL->ORDER_BY( 'user_login' );
+			$usernames = $DB->get_col( $SQL->get() );
+		}
+
+		echo evo_json_encode( $usernames );
+
+		exit(0); // Exit here in order to don't display the AJAX debug info after JSON formatted data
+
+		break;
+
+	case 'get_user_salt':
+		// Get the salt of the user from the given login info
+		// Note: If there are more users with the received login then give at most 3 salt values for the 3 most recently active users
+		// It always returns at least one salt value to show no difference between the existing and not existing user names
+
+		$get_widget_login_hidden_fields = param( 'get_widget_login_hidden_fields', 'boolean', false );
+
+		// Check that this action request is not a CSRF hacked request:
+		if( ! $get_widget_login_hidden_fields )
+		{ // If the request was received from the normal login form check the loginsalt crumb
+			$Session->assert_received_crumb( 'loginsalt' );
+		}
+
+		$result = array();
+
+		if( $get_widget_login_hidden_fields )
+		{ // Get the loginform crumb, the password encryption salt, and the Session ID for the widget login form
+			$pwd_salt = $Session->get('core.pwd_salt');
+			if( empty($pwd_salt) )
+			{ // Session salt is not generated yet, needs to generate
+				$pwd_salt = generate_random_key(64);
+				$Session->set( 'core.pwd_salt', $pwd_salt, 86400 /* expire in 1 day */ );
+				$Session->dbsave(); // save now, in case there's an error later, and not saving it would prevent the user from logging in.
+			}
+			$result['crumb'] = get_crumb( 'loginform' );
+			$result['pwd_salt'] = $pwd_salt;
+			$result['session_id'] = $Session->ID;
+		}
+
+		$login = param( $dummy_fields[ 'login' ], 'string', '' );
+		$check_field = is_email( $login ) ? 'user_email' : 'user_login';
+
+		// Get the most recently used 3 users with matching email address
+		$salts = $DB->get_col('SELECT user_salt FROM T_users
+						WHERE '.$check_field.' = '.$DB->quote( utf8_strtolower( $login ) ).'
+						ORDER BY user_lastseen_ts DESC, user_status ASC
+						LIMIT 3' );
+
+		// Make sure to return at least one salt, to make it unable to guess if user exists with the given login
+		if( empty( $salts ) )
+		{ // User with the given login was not found add one random salt value
+			$salts[] = generate_random_key( 8 );
+		}
+		$result['salts'] = $salts;
+
+		echo evo_json_encode( $result );
+
+		exit(0); // Exit here in order to don't display the AJAX debug info after JSON formatted data
 		break;
 
 	case 'get_tags':
@@ -933,28 +1112,160 @@ switch( $action )
 
 		$term = param( 'term', 'string' );
 
-		$tags = $DB->get_results( '
-			SELECT tag_name AS id, tag_name AS title
-			  FROM T_items__tag
-			 WHERE tag_name LIKE '.$DB->quote('%'.$term.'%').'
-			 ORDER BY tag_name', ARRAY_A );
+		if( substr( $term, 0, 1 ) == '-' )
+		{ // Prevent chars '-' in first position
+			$term = preg_replace( '/^-+/', '', $term );
+		}
 
-		// Check if current term is not an existing tag
 		$term_is_new_tag = true;
-		foreach( $tags as $tag )
-		{
-			if( $tag['title'] == $term )
-			{ // Current term is an existing tag
-				$term_is_new_tag = false;
+
+		if( ! empty( $term ) )
+		{ // Find tags in DB only when term is not empty
+			$tags = $DB->get_results( '
+				SELECT tag_name AS id, tag_name AS title
+				  FROM T_items__tag
+				 WHERE tag_name LIKE '.$DB->quote('%'.$term.'%').' COLLATE utf8_general_ci
+				 ORDER BY tag_name', ARRAY_A );
+			/* Yura: Here I added "COLLATE utf8_general_ci" because:
+			 * It allows to match "testA" with "testa", and otherwise "testa" with "testA".
+			 * It also allows to find "ee" when we type in "éè".
+			 * BUT it does NOT allow to find "éè" when we type in "ee".
+			 */
+
+			// Check if current term is not an existing tag
+			foreach( $tags as $tag )
+			{
+				/* Yura: I have added "utf8_strtolower()" below in condition in order to:
+				 * When we enter new tag 'testA' and the tag 'testa' already exists
+				 * then we suggest only 'testa' instead of 'testA'.
+				 */
+				if( utf8_strtolower( $tag['title'] ) == utf8_strtolower( $term ) )
+				{ // Current term is an existing tag
+					$term_is_new_tag = false;
+				}
 			}
 		}
-		if( $term_is_new_tag )
-		{	// Add current term in the beginning of the tags list
+
+		if( $term_is_new_tag && ! empty( $term ) )
+		{ // Add current term in the beginning of the tags list
 			array_unshift( $tags, array( 'id' => $term, 'title' => $term ) );
 		}
 
 		echo evo_json_encode( $tags );
 		exit(0);
+
+	case 'crop':
+		// Get form to crop profile picture
+
+		if( ! is_logged_in() )
+		{ // Only the logged in user can crop pictures
+			break;
+		}
+
+		$file_ID = param( 'file_ID', 'integer' );
+		$cropped_File = & $current_User->get_File_by_ID( $file_ID, $error_code );
+		if( ! $cropped_File )
+		{ // Wrong file for cropping
+			break;
+		}
+
+		require_js( '#jcrop#', 'blog', false, true );
+		require_css( '#jcrop_css#', 'blog', NULL, NULL, '#', true );
+
+		$BlogCache = &get_BlogCache();
+		$Blog = & $BlogCache->get_by_ID( $blog_ID, true );
+		$skin_ID = $Blog->get_skin_ID();
+		$SkinCache = & get_SkinCache();
+		$Skin = & $SkinCache->get_by_ID( $skin_ID );
+
+		$display_mode = 'js';
+		$form_action = get_secure_htsrv_url().'profile_update.php';
+
+		$window_width = param( 'window_width', 'integer' );
+		$window_height = param( 'window_height', 'integer' );
+
+		require $inc_path.'users/views/_user_crop.form.php';
+		break;
+
+	case 'get_user_report_form':
+		// Get form to report for user
+
+		// Check that this action request is not a CSRF hacked request:
+		$Session->assert_received_crumb( 'user' );
+
+		if( ! is_logged_in() || ( isset( $User ) && $current_User->ID == $User->ID ) || ! $current_User->check_status( 'can_report_user' ) )
+		{ // Only if current user can reports
+			break;
+		}
+
+		$user_ID = param( 'user_ID', 'integer', true );
+		$UserCache = & get_UserCache();
+		$edited_User = & $UserCache->get_by_ID( $user_ID );
+
+		if( param( 'is_backoffice', 'integer', 0 ) )
+		{ // Load the AdminUI class for the skin.
+			$user_tab = param( 'user_tab', 'string' );
+			global $current_User, $UserSettings, $is_admin_page;
+			$admin_skin = $UserSettings->get( 'admin_skin', $current_User->ID );
+			$is_admin_page = true;
+			require_once $adminskins_path.$admin_skin.'/_adminUI.class.php';
+			$AdminUI = new AdminUI();
+		}
+		else
+		{ // Load Blog skin
+			$BlogCache = & get_BlogCache();
+			$Blog = & $BlogCache->get_by_ID( $blog_ID, true );
+			$skin_ID = $Blog->get_skin_ID();
+			$SkinCache = & get_SkinCache();
+			$Skin = & $SkinCache->get_by_ID( $skin_ID );
+		}
+
+		$display_mode = 'js';
+		$form_action = get_secure_htsrv_url().'profile_update.php';
+
+		require $inc_path.'users/views/_user_report.form.php';
+		break;
+
+	case 'get_user_contact_form':
+		// Get form to add/edit user to contact
+
+		// Check that this action request is not a CSRF hacked request:
+		$Session->assert_received_crumb( 'user' );
+
+		if( ! is_logged_in() || ( isset( $User ) && $current_User->ID == $User->ID ) ||
+		    ! $current_User->check_perm( 'perm_messaging', 'reply' ) ||
+				! $current_User->check_status( 'can_edit_contacts' ) )
+		{ // Only if current user can reports
+			break;
+		}
+
+		$user_ID = param( 'user_ID', 'integer', true );
+		$UserCache = & get_UserCache();
+		$edited_User = & $UserCache->get_by_ID( $user_ID );
+
+		if( param( 'is_backoffice', 'integer', 0 ) )
+		{ // Load the AdminUI class for the skin.
+			$user_tab = param( 'user_tab', 'string' );
+			global $current_User, $UserSettings, $is_admin_page;
+			$admin_skin = $UserSettings->get( 'admin_skin', $current_User->ID );
+			$is_admin_page = true;
+			require_once $adminskins_path.$admin_skin.'/_adminUI.class.php';
+			$AdminUI = new AdminUI();
+		}
+		else
+		{ // Load Blog skin
+			$BlogCache = & get_BlogCache();
+			$Blog = & $BlogCache->get_by_ID( $blog_ID, true );
+			$skin_ID = $Blog->get_skin_ID();
+			$SkinCache = & get_SkinCache();
+			$Skin = & $SkinCache->get_by_ID( $skin_ID );
+		}
+
+		$display_mode = 'js';
+		$form_action = get_secure_htsrv_url().'profile_update.php';
+
+		require $inc_path.'users/views/_user_groups.form.php';
+		break;
 
 	default:
 		$Ajaxlog->add( T_('Incorrect action!'), 'error' );

@@ -3,33 +3,14 @@
  * This file implements the UserSettings class which handles user_ID/name/value triplets.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE
- * @author blueyed: Daniel HAHLER
- *
- * @version $Id: _usersettings.class.php 7347 2014-10-01 11:52:15Z yura $
  *
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -61,7 +42,16 @@ class UserSettings extends AbstractSettings
 		'control_form_abortions' => 1,
 		'focus_on_first_input' => 0,			// TODO: fix sideeffect when pressing F5
 		'pref_browse_tab' => 'full',
-		'pref_edit_tab' => 'simple',
+
+		// Folding settings, 1 - Hide, 0 - Show
+		'fold_itemform_workflow_props' => 1,
+		'fold_itemform_links' => 1,
+		'fold_itemform_plugin_googlemap' => 1,
+		'fold_itemform_meta_cmnt' => 1,
+		'fold_itemform_extra' => 1,
+		'fold_itemform_comments' => 1,
+		'fold_itemform_goals' => 1,
+		'fold_upgrade_backup_options' => 1,
 
 		'fm_imglistpreview' => 1,
 		'fm_showdate'       => 'compact',
@@ -109,7 +99,9 @@ class UserSettings extends AbstractSettings
 
 		'email_format' => 'auto', // Email format: auto | html | text
 
-		'admin_skin' => 'chicago',  // User default admin skin
+		'admin_skin' => 'bootstrap',  // User default admin skin
+
+		'suggest_item_tags' => 1, // Suggest to autocomplete item tags on edit form
 	);
 
 	/**
@@ -128,6 +120,7 @@ class UserSettings extends AbstractSettings
 		'notify_published_comments' => 1, // Notify user when a comment is published in an own post
 		'notify_comment_moderation' => 1, // Notify when a comment is awaiting moderation and the user has right to moderate that comment
 		'notify_post_moderation' => 1, // Notify when a post is awaiting moderation and the user has right to moderate that post
+		'notify_meta_comments' => 1, // Notify user when a META comment is published in a post where user can sees meta comments
 
 		'enable_PM' => 1,
 		'enable_email' => 1,

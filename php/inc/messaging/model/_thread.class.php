@@ -1,26 +1,16 @@
 <?php
 /**
  * This file is part of b2evolution - {@link http://b2evolution.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2009-2014 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2009-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2009 by The Evo Factory - {@link http://www.evofactory.com/}.
  *
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- *
- * {@internal Open Source relicensing agreement:
- * The Evo Factory grants Francois PLANQUE the right to license
- * The Evo Factory's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
  * @package messaging
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author efy-maxim: Evo Factory / Maxim.
- * @author fplanque: Francois Planque.
- *
- * @version $Id: _thread.class.php 6135 2014-03-08 07:54:05Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -58,9 +48,6 @@ class Thread extends DataObject
 	{
 		// Call parent constructor:
 		parent::DataObject( 'T_messaging__thread', 'thrd_', 'thrd_ID', 'datemodified' );
-
-		$this->delete_restrictions = array();
-		$this->delete_cascades = array();
 
 		if( $db_row != NULL )
 		{
@@ -158,6 +145,45 @@ class Thread extends DataObject
 
 
 	/**
+	 * Get this class db table config params
+	 *
+	 * @return array
+	 */
+	static function get_class_db_config()
+	{
+		static $thread_db_config;
+
+		if( !isset( $thread_db_config ) )
+		{
+			$thread_db_config = array_merge( parent::get_class_db_config(),
+				array(
+					'dbtablename'        => 'T_messaging__thread',
+					'dbprefix'           => 'thrd_',
+					'dbIDname'           => 'thrd_ID',
+				)
+			);
+		}
+
+		return $thread_db_config;
+	}
+
+
+	/**
+	 * Get delete cascade settings
+	 *
+	 * @return array
+	 */
+	static function get_delete_cascades()
+	{
+		return array(
+				array( 'table'=>'T_messaging__message', 'fk'=>'msg_thread_ID', 'msg'=>T_('%d messages in thread'),
+						'class'=>'Message', 'class_path'=>'messaging/model/_message.class.php' ),
+				array( 'table'=>'T_messaging__threadstatus', 'fk'=>'tsta_thread_ID', 'msg'=>T_('%d read statuses in thread') ),
+			);
+	}
+
+
+	/**
 	 * Load data from Request form fields.
 	 * @return boolean true if loaded data seems valid.
 	 */
@@ -232,7 +258,7 @@ class Thread extends DataObject
 				$login = trim($recipient);
 				if( ! empty( $login ) )
 				{
-					$recipients_list[] = evo_strtolower( $login );
+					$recipients_list[] = utf8_strtolower( $login );
 				}
 			}
 		}
@@ -420,29 +446,9 @@ class Thread extends DataObject
 	 */
 	function dbdelete()
 	{
-		global $DB;
-
 		if( $this->ID == 0 ) debug_die( 'Non persistant object cannot be deleted!' );
 
-		$DB->begin();
-
-		// Delete Messages
-		$ret = $DB->query( 'DELETE FROM T_messaging__message
-												WHERE msg_thread_ID='.$this->ID );
-		// Delete Statuses
-		$ret = $DB->query( 'DELETE FROM T_messaging__threadstatus
-												WHERE tsta_thread_ID='.$this->ID );
-		// Delete Thread
-		if( ! parent::dbdelete() )
-		{
-			$DB->rollback();
-
-			return false;
-		}
-
-		$DB->commit();
-
-		return true;
+		return parent::dbdelete();
 	}
 
 

@@ -8,13 +8,11 @@
  * For example: /blogs/index.php?disp=comments
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  * @subpackage pureforums
- *
- * @version $Id: _front.disp.php 7043 2014-07-02 08:35:45Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -30,20 +28,21 @@ if( count( $chapters ) > 0 )
 ?>
 	<table class="forums_table highlight" cellspacing="0" cellpadding="0">
 <?php
-	foreach( $chapters as $Chapter )
+	foreach( $chapters as $root_Chapter )
 	{ // Loop through categories:
-		if( $Chapter->meta )
+		if( $root_Chapter->meta )
 		{ // Meta category
-			$chapters_children = $Chapter->children;
+			$root_Chapter->sort_children();
+			$chapters_children = $root_Chapter->children;
 ?>
 		<tr class="meta_category">
-			<th colspan="5"><a href="<?php echo $Chapter->get_permanent_url(); ?>" class="forumlink"><?php echo $Chapter->dget( 'name' ); ?></a></th>
+			<th colspan="5"><a href="<?php echo $root_Chapter->get_permanent_url(); ?>" class="forumlink"><?php echo $root_Chapter->dget( 'name' ); ?></a></th>
 		</tr>
 <?php
 		}
 		else
 		{	// Simple category with posts
-			$chapters_children = array( $Chapter );
+			$chapters_children = array( $root_Chapter );
 		}
 
 		foreach( $chapters_children as $Chapter )
@@ -73,6 +72,7 @@ if( count( $chapters ) > 0 )
 					echo '<div class="subcats">';
 					echo T_('Subforums').': ';
 					$cc = 0;
+					$Chapter->sort_children();
 					foreach( $Chapter->children as $child_Chapter )
 					{ // Display subforum
 						echo '<a href="'.$child_Chapter->get_permanent_url().'" class="forumlink">'.$child_Chapter->get('name').'</a>';
@@ -85,6 +85,7 @@ if( count( $chapters ) > 0 )
 			</td>
 			<td class="ft_count"><?php printf( T_('%s topics'), '<b>'.get_postcount_in_category( $Chapter->ID ).'</b>' ); ?></td>
 			<td class="ft_count"><?php printf( T_('%s replies'), '<b>'.get_commentcount_in_category( $Chapter->ID ).'</b>' ); ?></td>
+			<td class="ft_date"><?php echo $Chapter->get_last_touched_date( 'D M j, Y H:i' ); ?></td>
 		</tr>
 <?php
 		}

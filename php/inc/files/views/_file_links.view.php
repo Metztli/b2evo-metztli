@@ -3,28 +3,13 @@
  * This file implements the UI for item links in the filemanager.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: _file_links.view.php 7725 2014-12-02 08:43:47Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -50,13 +35,13 @@ if( $mode != 'upload' )
 
 	$Results = new Results( $SQL->get(), 'link_' );
 
-	$view_link_title = $LinkOwner->translate( 'View this owner...' );
+	$view_link_title = $LinkOwner->translate( 'View this xxx...' );
 	$Results->title = sprintf( T_('Files linked to &laquo;%s&raquo;'),
 					'<a href="'.$LinkOwner->get_view_url().'" title="'.$view_link_title.'">'.$LinkOwner->get( 'title' ).'</a>' );
 
 	if( $LinkOwner->check_perm( 'edit', false ) )
 	{
-		$Results->global_icon( $LinkOwner->translate( 'Edit this owner...' ), 'edit', $LinkOwner->get_edit_url(), T_('Edit') );
+		$Results->global_icon( $LinkOwner->translate( 'Edit this xxx...' ), 'edit', $LinkOwner->get_edit_url(), T_('Edit') );
 	}
 
 	// Close link mode and continue in File Manager (remember the Item_ID though):
@@ -133,13 +118,20 @@ if( $mode != 'upload' )
 
 	$Results->display();
 
+	// Print out JavaScript to change a link position
+	echo_link_position_js();
+
 	$Form->end_form( );
 }
 
 if( $LinkOwner->check_perm( 'edit' ) )
-{	// Check that we have permission to edit item:
-	echo '<div class="center">', $LinkOwner->translate( 'Click on link %s icons below to link additional files to $ownerTitle$.',
-							get_icon( 'link', 'imgtag', array('class'=>'top') ) ), '</div>';
+{ // Check that we have permission to edit item:
+	global $Messages;
+
+	$Messages->add( $LinkOwner->translate( 'Click on link %s icons below to link additional files to $xxx$.',
+							get_icon( 'link', 'imgtag', array('class'=>'top') ) ), 'note' );
+
+	$Messages->display();
 }
 
 ?>

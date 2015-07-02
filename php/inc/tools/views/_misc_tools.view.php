@@ -3,25 +3,19 @@
  * This file display the additional tools
  *
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
- * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
- *
  * @package admin
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author blueyed: Daniel HAHLER
- * @author efy-asimo: Attila Simo.
- *
- * @version $Id: _misc_tools.view.php 7516 2014-10-27 05:56:16Z yura $
  */
 
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
-global $Plugins, $template_action;
+global $Plugins, $template_action, $admin_url;
 
 $block_item_Widget = new Widget( 'block_item' );
 
@@ -76,9 +70,20 @@ if( !empty( $template_action ) )
 			dbm_delete_broken_posts();
 			break;
 
+		case 'utf8check':
+			// CHECK DB tables for expecting COLLATION
+			db_check_utf8_ascii();
+			?>
+			<p>
+				<a href="<?php echo regenerate_url( 'action', 'action=utf8upgrade&amp;'.url_crumb( 'tools' ) ); ?>" class="btn btn-primary"><?php echo T_('Proceed with normalization procedure!'); ?></a>
+				<a href="<?php echo $admin_url; ?>?ctrl=tools" class="btn btn-default"><?php echo T_('Cancel'); ?></a>
+			</p>
+			<?php
+			break;
+
 		case 'utf8upgrade':
 			// Upgrade DB to UTF-8
-			db_upgrade_to_utf8();
+			db_upgrade_to_utf8_ascii();
 			break;
 	}
 	$block_item_Widget->disp_template_raw( 'block_end' );
@@ -92,8 +97,8 @@ if( $current_User->check_perm( 'users', 'edit' ) )
 	$Form = new Form( NULL, 'settings_checkchanges' );
 	$Form->begin_form( 'fform' );
 
-	$Form->add_crumb( 'globalsettings' );
-	$Form->hidden( 'ctrl', 'gensettings' );
+	$Form->add_crumb( 'tools' );
+	$Form->hidden( 'ctrl', 'tools' );
 	$Form->hidden( 'action', 'update_tools' );
 
 	$Form->begin_fieldset( T_('Locking down b2evolution for maintenance, upgrade or server switching...').get_manual_link('system-lock') );
@@ -121,8 +126,9 @@ if( $current_User->check_perm('options', 'edit') )
 	// dh> TODO: add link to delete all caches at once?
 	$block_item_Widget->disp_template_replaced( 'block_start' );
 	echo '<ul>';
-	echo '<li><a href="'.regenerate_url('action', 'action=del_itemprecache&amp;'.url_crumb('tools')).'">'.T_('Clear pre-renderered item cache (DB)').'</a></li>';
-	echo '<li><a href="'.regenerate_url('action', 'action=del_commentprecache&amp;'.url_crumb('tools')).'">'.T_('Clear pre-renderered comment cache (DB)').'</a></li>';
+	echo '<li><a href="'.regenerate_url('action', 'action=del_itemprecache&amp;'.url_crumb('tools')).'">'.T_('Clear pre-rendered item cache (DB)').'</a></li>';
+	echo '<li><a href="'.regenerate_url('action', 'action=del_commentprecache&amp;'.url_crumb('tools')).'">'.T_('Clear pre-rendered comment cache (DB)').'</a></li>';
+	echo '<li><a href="'.regenerate_url('action', 'action=del_messageprecache&amp;'.url_crumb('tools')).'">'.T_('Clear pre-rendered message cache (DB)').'</a></li>';
 	echo '<li><a href="'.regenerate_url('action', 'action=del_filecache&amp;'.url_crumb('tools')).'">'.T_('Clear thumbnail caches (?evocache directories)').'</a></li>';
 	echo '<li><a href="'.regenerate_url('action', 'action=del_pagecache&amp;'.url_crumb('tools')).'">'.T_('Clear full page caches (/cache/* directories)').'</a></li>';
 	echo '<li><a href="'.regenerate_url('action', 'action=repair_cache&amp;'.url_crumb('tools')).'">'.T_('Repair /cache/* directory structure').'</a></li>';
@@ -135,11 +141,12 @@ if( $current_User->check_perm('options', 'edit') )
 	echo '<li><a href="'.regenerate_url('action', 'action=check_tables&amp;'.url_crumb('tools')).'">'.T_('CHECK database tables').'</a></li>';
 	echo '<li><a href="'.regenerate_url('action', 'action=optimize_tables&amp;'.url_crumb('tools')).'">'.T_('OPTIMIZE database tables').'</a></li>';
 	echo '<li><a href="'.regenerate_url('action', 'action=analyze_tables&amp;'.url_crumb('tools')).'">'.T_('ANALYZE database tables').'</a></li>';
+	echo '<li><a href="'.regenerate_url('action', 'action=utf8check&amp;'.url_crumb('tools')).'">'.T_('Check/Convert/Normalize the charsets/collations used by the DB (UTF-8 / ASCII)').'</a></li>';
 	// echo '<li><a href="'.regenerate_url('action', 'action=backup_db').'">'.T_('Backup database').'</a></li>';
 	echo '</ul>';
 	$block_item_Widget->disp_template_raw( 'block_end' );
 
-	$block_item_Widget->title = T_('Database Maintenance Tools');
+	$block_item_Widget->title = T_('Cleanup tools');
 	$block_item_Widget->disp_template_replaced( 'block_start' );
 	echo '<ul>';
 	echo '<li><a href="'.regenerate_url('action', 'action=del_obsolete_tags&amp;'.url_crumb('tools')).'">'.T_('Find and delete all orphan Tag entries (not used anywhere) - DB only.').'</a></li>';
@@ -150,18 +157,15 @@ if( $current_User->check_perm('options', 'edit') )
 	echo '<li><a href="'.regenerate_url('action', 'action=delete_orphan_files&amp;'.url_crumb('tools')).'">'.T_('Find and delete all orphan File objects (with no matching file on disk) - DB only.').'</a></li>';
 	echo '<li><a href="'.regenerate_url('action', 'action=delete_orphan_file_roots&amp;'.url_crumb('tools')).'">'.T_('Find and delete all orphan file roots (with no matching Collection or User) and all of their content recursively - Disk &amp; DB.').'</a></li>';
 	echo '<li><a href="'.regenerate_url('action', 'action=prune_hits_sessions&amp;'.url_crumb('tools')).'">'.T_('Prune old hits &amp; sessions (includes OPTIMIZE) - DB only.').'</a></li>';
+	echo '<li><a href="'.regenerate_url('action', 'action=recreate_itemslugs&amp;'.url_crumb('tools')).'">'.T_('Recreate all item Slugs (change title-[0-9] canonical slugs to a slug generated from current title). Old slugs will still work, but will redirect to the new ones - DB only.').'</a></li>';
 	echo '<li><a href="'.regenerate_url('action', 'action=recreate_autogenerated_excerpts&amp;'.url_crumb('tools')).'">'.T_('Recreate autogenerated excerpts - DB only.').'</a></li>';
 	echo '<li><a href="'.regenerate_url('action', 'action=convert_item_content_separators&amp;'.url_crumb('tools')).'">'.T_('Convert item content separators to [teaserbreak] and [pagebreak] - DB only.').'</a></li>';
-	echo '<li><a href="'.regenerate_url('action', 'action=utf8upgrade&amp;'.url_crumb('tools')).'">'.T_('Upgrade your DB to UTF-8 - DB only.').'</a></li>';
 	echo '</ul>';
-	$block_item_Widget->disp_template_raw( 'block_end' );
-
-	$block_item_Widget->title = T_('Recreate item slugs');
-	$block_item_Widget->disp_template_replaced( 'block_start' );
-	echo '&raquo; <a href="'.regenerate_url('action', 'action=recreate_itemslugs&amp;'.url_crumb('tools')).'">'.T_('Recreate all item slugs (change title-[0-9] canonical slugs to a slug generated from current title). Old slugs will still work, but redirect to the new one.').'</a>';
 	$block_item_Widget->disp_template_raw( 'block_end' );
 }
 
+// We should load GeoIP plugin here even if it is disabled now, because action 'geoip_download' may be requested
+$Plugins->load_plugin_by_classname( 'geoip_plugin' );
 
 // Event AdminToolPayload for each Plugin:
 $tool_plugins = $Plugins->get_list_by_event( 'AdminToolPayload' );

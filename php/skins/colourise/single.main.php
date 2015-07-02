@@ -3,13 +3,13 @@
  * This is the main/default page template.
  *
  * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://b2evolution.net/man/skin-structure}
+ * {@link http://b2evolution.net/man/skin-development-primer}
  *
  * The main page template is used to display the blog when no specific page template is available
  * to handle the request (based on $disp).
  *
  * @package evoskins
- * @subpackage evopress
+ * @subpackage colourise
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -24,9 +24,7 @@ skin_init( $disp );
 
 
 // -------------------------- HTML HEADER INCLUDED HERE --------------------------
-skin_include( '_html_header.inc.php' );
-// Note: You can customize the default HTML header by copying the generic
-// /skins/_html_header.inc.php file into the current skin folder.
+skin_include( '_html_header.inc.php', array() );
 // -------------------------------- END OF HEADER --------------------------------
 ?>
 
@@ -35,7 +33,7 @@ skin_include( '_html_header.inc.php' );
 // ------------------------- BODY HEADER INCLUDED HERE --------------------------
 skin_include( '_body_header.inc.php' );
 // Note: You can customize the default BODY header by copying the generic
-// /skins/_body_footer.inc.php file into the current skin folder.
+// /skins/_body_header.inc.php file into the current skin folder.
 // ------------------------------- END OF HEADER --------------------------------
 ?>
 
@@ -57,20 +55,29 @@ skin_include( '_body_header.inc.php' );
 		display_if_empty();
 
 		echo '<div id="styled_content_block">'; // Beginning of posts display
+
+		$item_class_params = array(
+				'item_class'        => 'post',
+				'item_type_class'   => 'post_ptyp',
+				'item_status_class' => 'post',
+			);
+
 		while( $Item = & mainlist_get_item() )
-		{	// For each blog post, do everything below up to the closing curly brace "}"
+		{ // For each blog post, do everything below up to the closing curly brace "}"
 			?>
-		
+
 			<?php
 				$Item->locale_temp_switch(); // Temporarily switch to post locale (useful for multilingual blogs)
 			?>
-		
-			<div id="<?php $Item->anchor_id() ?>" class="post post<?php $Item->status_raw() ?>" lang="<?php $Item->lang() ?>">
-		
+
+			<div id="<?php $Item->anchor_id() ?>" class="<?php $Item->div_classes( $item_class_params ) ?>" lang="<?php $Item->lang() ?>">
+
 				<?php
 				if( $Item->status != 'published' )
 				{
-					$Item->status( array( 'format' => 'styled' ) );
+					$Item->format_status( array(
+							'template' => '<div class="floatright"><span class="note status_$status$"><span>$status_title$</span></span></div>',
+						) );
 				}
 				?>
 				<h2><?php
@@ -78,14 +85,14 @@ skin_include( '_body_header.inc.php' );
 							'link_type' => 'permalink'
 						) );
 				?></h2>
-		
+
 				<?php
 					// ---------------------- POST CONTENT INCLUDED HERE ----------------------
 					skin_include( '_item_content.inc.php', array(
-							'image_size'	=>	'fit-400x320',
+							'image_size' => 'fit-400x320',
 						) );
-					// Note: You can customize the default item feedback by copying the generic
-					// /skins/_item_feedback.inc.php file into the current skin folder.
+					// Note: You can customize the default item content by copying the generic
+					// /skins/_item_content.inc.php file into the current skin folder.
 					// -------------------------- END OF POST CONTENT -------------------------
 				?>
 		
@@ -93,14 +100,14 @@ skin_include( '_body_header.inc.php' );
 					<small>
 						<?php
 							$Item->author( array(
-									'link_text'    => 'avatar',
+									'link_text'    => 'only_avatar',
 									'link_rel'     => 'nofollow',
 									'thumb_size'   => 'crop-top-32x32',
 									'thumb_class'  => 'leftmargin',
 								) );
 						?>
 						<?php
-							if( $Skin->get_setting( 'display_post_date') )
+							if( $Skin->get_setting( 'display_post_date' ) )
 							{	// We want to display the post date:
 								$Item->issue_time( array(
 										'before'      => /* TRANS: date */ T_('This entry was posted on '),
@@ -108,10 +115,11 @@ skin_include( '_body_header.inc.php' );
 									) );
 								$Item->issue_time( array(
 										'before'      => /* TRANS: time */ T_('at '),
+										'time_format' => '#short_time',
 									) );
 								$Item->author( array(
 										'before'    => T_('by '),
-										'link_text' => 'login',
+										'link_text' => 'preferredname',
 									) );
 							}
 							else
@@ -141,14 +149,8 @@ skin_include( '_body_header.inc.php' );
 									'separator' =>      ', ',
 								) );
 						?>
-		
 						<!-- You can follow any responses to this entry through the RSS feed. -->
-						<?php
-							$Item->edit_link( array( // Link to backoffice for editing
-									'before'    => '<div class="edit_link">',
-									'after'     => '</div>',
-								) );
-						?>
+						<?php $Item->edit_link(); ?>
 					</small>
 				</p>
 		
@@ -178,8 +180,8 @@ skin_include( '_body_header.inc.php' );
 	<?php
 	// ------------------------- SIDEBAR INCLUDED HERE --------------------------
 	skin_include( '_sidebar.inc.php' );
-	// Note: You can customize the default BODY footer by copying the
-	// _body_footer.inc.php file into the current skin folder.
+	// Note: You can customize the sidebar by copying the
+	// _sidebar.inc.php file into the current skin folder.
 	// ----------------------------- END OF SIDEBAR -----------------------------
 	?>
 

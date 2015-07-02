@@ -3,14 +3,12 @@
  * This template generates an RSS 1.0 (RDF) feed for the requested blog's latest comments
  *
  * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://b2evolution.net/man/skin-structure}
+ * {@link http://b2evolution.net/man/skin-development-primer}
  *
  * See {@link http://web.resource.org/rss/1.0/}
  *
  * @package evoskins
  * @subpackage rdf
- *
- * @version $Id: comments.main.php 3157 2013-03-06 04:34:44Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -79,7 +77,7 @@ echo '<?xml version="1.0" encoding="'.$io_charset.'"?'.'>';
 	<sy:updateBase>2000-01-01T12:00+00:00</sy:updateBase>
 	<items>
 		<rdf:Seq>
-		<?php while( $Comment = & $CommentList->get_next() )
+		<?php while( $Comment = & $CommentList->get_next( false ) )
 		{ // Loop through comments:
 			?>
 			<rdf:li rdf:resource="<?php $Comment->permanent_url() ?>"/>

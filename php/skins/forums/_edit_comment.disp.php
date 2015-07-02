@@ -5,15 +5,13 @@
  * Note: don't code this URL by hand, use the template functions to generate it!
  *
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}.
  *
  * @package evoskins
- *
- * @version $Id: _edit_comment.disp.php 7644 2014-11-14 08:12:53Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -68,7 +66,7 @@ $Form->begin_form( 'inskin', '', $display_params );
 	$Form->hidden( 'mname', 'collections' );
 	$Form->hidden( 'action_type', 'comment' );
 	$Form->hidden( 'comment_ID', $edited_Comment->ID );
-	$Form->hidden( 'redirect_to', url_add_tail( $comment_Item->get_permanent_url(), '#c'.$edited_Comment->ID ) );
+	$Form->hidden( 'redirect_to', $edited_Comment->get_permanent_url() );
 
 	$Form->info( T_('In response to'), $comment_Item->get_title() );
 
@@ -100,9 +98,14 @@ $Form->begin_form( 'inskin', '', $display_params );
 	$plugins_toolbar = ob_get_clean();
 
 	$Form->switch_template_parts( array(
-			'inputstart' => '<td class="row2 left">'.$plugins_toolbar,
+			'inputstart' => '<td class="row2 left comment_content">'.$plugins_toolbar,
 		) );
-	$Form->textarea_input( 'content', $comment_content, $disp_params['textarea_lines'], $disp_params['form_comment_text'], array( 'cols' => 60 , 'style' => 'width:99%', 'id' => $dummy_fields[ 'content' ] ) );
+	$Form->textarea_input( 'content', $comment_content, $disp_params['textarea_lines'], $disp_params['form_comment_text'], array(
+			'cols' => 60 ,
+			'style' => 'width:99%',
+			'class' => 'autocomplete_usernames',
+			'id' => $dummy_fields[ 'content' ]
+		) );
 
 	// set b2evoCanvas for plugins
 	echo '<script type="text/javascript">var b2evoCanvas = document.getElementById( "'.$dummy_fields[ 'content' ].'" );</script>';

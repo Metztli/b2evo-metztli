@@ -5,12 +5,10 @@
  * This file implements the XML-RPC handler, to be called by remote clients.
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package xmlsrv
- *
- * @version $Id: xmlrpc.php 6135 2014-03-08 07:54:05Z manuel $
  */
 
 // use xmlrpc_debugmsg() to add debug messages to responses or logIO() to

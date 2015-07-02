@@ -3,26 +3,14 @@
  * This file implements the Skin class.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: _skin.class.php 7178 2014-07-23 08:11:33Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -40,6 +28,13 @@ class Skin extends DataObject
 	var $name;
 	var $folder;
 	var $type;
+
+	/**
+	 * Do we want to use style.min.css instead of style.css ?
+	 */
+	var $use_min_css = false;  // true|false|'check' Set this to true for better optimization
+	// Note: we set this to false by default for backwards compatibility with third party skins.
+	// But for best performance, you should set it to true.
 
 	/**
 	 * Lazy filled.
@@ -65,17 +60,6 @@ class Skin extends DataObject
 		// Call parent constructor:
 		parent::DataObject( 'T_skins__skin', 'skin_', 'skin_ID' );
 
-		$this->delete_restrictions = array(
-				array( 'table'=>'T_coll_settings', 'fk'=>'cset_value', 'msg'=>T_('%d blogs using this skin'), 
-						'and_condition' => '( cset_name = "normal_skin_ID" OR cset_name = "mobile_skin_ID" OR cset_name = "tablet_skin_ID" )' ),
-				array( 'table'=>'T_settings', 'fk'=>'set_value', 'msg'=>T_('This skin is set as default skin.'), 
-						'and_condition' => '( set_name = "def_normal_skin_ID" OR set_name = "def_mobile_skin_ID" OR set_name = "def_tablet_skin_ID" )' ),
-			);
-
-		$this->delete_cascades = array(
-				array( 'table'=>'T_skins__container', 'fk'=>'sco_skin_ID', 'msg'=>T_('%d linked containers') ),
-			);
-
 		if( is_null($db_row) )
 		{	// We are creating an object here:
 			$this->set( 'folder', $skin_folder );
@@ -89,6 +73,35 @@ class Skin extends DataObject
 			$this->folder = $db_row->skin_folder;
 			$this->type = $db_row->skin_type;
 		}
+	}
+
+
+	/**
+	 * Get delete restriction settings
+	 *
+	 * @return array
+	 */
+	static function get_delete_restrictions()
+	{
+		return array(
+				array( 'table'=>'T_coll_settings', 'fk'=>'cset_value', 'msg'=>T_('%d blogs using this skin'),
+						'and_condition' => '( cset_name = "normal_skin_ID" OR cset_name = "mobile_skin_ID" OR cset_name = "tablet_skin_ID" )' ),
+				array( 'table'=>'T_settings', 'fk'=>'set_value', 'msg'=>T_('This skin is set as default skin.'),
+						'and_condition' => '( set_name = "def_normal_skin_ID" OR set_name = "def_mobile_skin_ID" OR set_name = "def_tablet_skin_ID" )' ),
+			);
+	}
+
+
+	/**
+	 * Get delete cascade settings
+	 *
+	 * @return array
+	 */
+	static function get_delete_cascades()
+	{
+		return array(
+				array( 'table'=>'T_skins__container', 'fk'=>'sco_skin_ID', 'msg'=>T_('%d linked containers') ),
+			);
 	}
 
 
@@ -127,6 +140,18 @@ class Skin extends DataObject
 	function get_name()
 	{
 		return $this->name;
+	}
+
+
+	/**
+	 * What evoSkins API does has this skin been designed with?
+	 *
+	 * This determines where we get the fallback templates from (skins_fallback_v*)
+	 * (allows to use new markup in new b2evolution versions)
+	 */
+	function get_api_version()
+	{
+		return 5;
 	}
 
 
@@ -192,15 +217,15 @@ class Skin extends DataObject
 		global $Timer, $Session;
 
 		$timer_name = 'skin_container('.$sco_name.')';
-		$Timer->start($timer_name);
+		$Timer->start( $timer_name );
 
-		$show_debug_containers = $Session->get( 'debug_containers_'.$Blog->ID ) == 1;
+		$display_containers = $Session->get( 'display_containers_'.$Blog->ID ) == 1;
 
-		if( $show_debug_containers )
-		{ // DEBUG:
-			echo '<div class="debug_container">';
-			echo '<div class="debug_container_name"><span class="debug_container_action"><a href="'
-						.$admin_url.'?ctrl=widgets&amp;blog='.$Blog->ID.'">Edit</a></span>'.$sco_name.'</div>';
+		if( $display_containers )
+		{ // Wrap container in visible container:
+			echo '<div class="dev-blocks dev-blocks--container">';
+			echo '<div class="dev-blocks-name"><span class="dev-blocks-action"><a href="'
+						.$admin_url.'?ctrl=widgets&amp;blog='.$Blog->ID.'">Edit</a></span>Container: <b>'.$sco_name.'</b></div>';
 		}
 
 		/**
@@ -209,26 +234,43 @@ class Skin extends DataObject
 		$EnabledWidgetCache = & get_EnabledWidgetCache();
 		$Widget_array = & $EnabledWidgetCache->get_by_coll_container( $Blog->ID, $sco_name );
 
-		if( !empty($Widget_array) )
+		if( ! empty( $Widget_array ) )
 		{
-			foreach( $Widget_array as $ComponentWidget )
-			{	// Let the Widget display itself (with contextual params):
+			foreach( $Widget_array as $w => $ComponentWidget )
+			{ // Let the Widget display itself (with contextual params):
+				if( $w == 0 )
+				{ // Use special params for first widget in the current container
+					$orig_params = $params;
+					if( isset( $params['block_first_title_start'] ) )
+					{
+						$params['block_title_start'] = $params['block_first_title_start'];
+					}
+					if( isset( $params['block_first_title_end'] ) )
+					{
+						$params['block_title_end'] = $params['block_first_title_end'];
+					}
+				}
 				$widget_timer_name = 'Widget->display('.$ComponentWidget->code.')';
-				$Timer->start($widget_timer_name);
+				$Timer->start( $widget_timer_name );
 				$ComponentWidget->display_with_cache( $params, array(
 						// 'sco_name' => $sco_name, // fp> not sure we need that for now
 					) );
-				$Timer->pause($widget_timer_name);
+				if( $w == 0 )
+				{ // Restore the params for next widgets after first
+					$params = $orig_params;
+					unset( $orig_params );
+				}
+				$Timer->pause( $widget_timer_name );
 			}
 		}
 
-		if( $show_debug_containers )
-		{ // DEBUG:
-			echo get_icon( 'pixel', 'imgtag', array( 'class' => 'clear' ) );
+		if( $display_containers )
+		{ // End of visible container:
+			//echo get_icon( 'pixel', 'imgtag', array( 'class' => 'clear' ) );
 			echo '</div>';
 		}
 
-		$Timer->pause($timer_name);
+		$Timer->pause( $timer_name );
 	}
 
 
@@ -468,33 +510,38 @@ class Skin extends DataObject
 	 *
 	 * @static
 	 */
-	function disp_skinshot( $skin_folder, $skin_name, $disp_params = array() )
+	static function disp_skinshot( $skin_folder, $skin_name, $disp_params = array() )
 	{
-		global $skins_path, $skins_url;
+		global $skins_path, $skins_url, $kind;
 
 		$disp_params = array_merge( array(
 				'selected'        => false,
 				'skinshot_class'  => 'skinshot',
 				'skin_compatible' => true,
+				'highlighted'     => false,
 			), $disp_params );
 
 		if( isset( $disp_params[ 'select_url' ] ) )
 		{
+			$skin_url = $disp_params[ 'select_url' ];
 			$select_a_begin = '<a href="'.$disp_params[ 'select_url' ].'" title="'.T_('Select this skin!').'">';
 			$select_a_end = '</a>';
 		}
 		elseif( isset( $disp_params[ 'function_url' ] ) )
 		{
+			$skin_url = $disp_params[ 'function_url' ];
 			$select_a_begin = '<a href="'.$disp_params[ 'function_url' ].'" title="'.T_('Install NOW!').'">';
 			$select_a_end = '</a>';
 		}
 		else
 		{
+			$skin_url = '';
 			$select_a_begin = '';
 			$select_a_end = '';
 		}
 
-		echo '<div class="'.$disp_params[ 'skinshot_class' ].'">';
+		// Display skinshot:
+		echo '<div class="'.$disp_params['skinshot_class'].'"'.( $disp_params['highlighted'] ? ' id="fadeout-'.$skin_folder : '' ).'">';
 		echo '<div class="skinshot_placeholder';
 		if( $disp_params[ 'selected' ] )
 		{
@@ -525,36 +572,69 @@ class Skin extends DataObject
 			echo '<div class="skinshot_name">'.$select_a_begin.$skin_folder.$select_a_end.'</div>';
 		}
 		echo '</div>';
+
+		//
 		echo '<div class="legend">';
-		if( isset( $disp_params[ 'function' ] ) && isset( $disp_params[ 'function_url' ] ) )
+		if( isset( $disp_params[ 'function' ] ) )
 		{
 			echo '<div class="actions">';
 			switch( $disp_params[ 'function' ] )
 			{
+				case 'broken':
+					echo '<span class="text-danger">';
+					if( !empty($disp_params[ 'msg' ]) )
+					{
+						echo $disp_params[ 'msg' ];
+					}
+					else
+					{
+						echo T_('Broken.');
+					}
+					echo '</span>';
+					break;
+
 				case 'install':
 					// Display a link to install the skin
 					if( $disp_params[ 'skin_compatible' ] )
 					{ // If skin is compatible for current selected type
-						echo '<a href="'.$disp_params[ 'function_url' ].'" title="'.T_('Install NOW!').'">';
-						echo T_('Install NOW!').'</a>';
+						if( ! empty( $skin_url ) )
+						{
+							echo '<a href="'.$skin_url.'" title="'.T_('Install NOW!').'">';
+							echo T_('Install NOW!').'</a>';
+						}
+						if( empty( $kind ) )
+						{ // Don't display the checkob on new collection creating form
+							$skin_name_before = '<label><input type="checkbox" name="skin_folders[]" value="'.$skin_name.'" /> ';
+							$skin_name_after = '</label>';
+						}
 					}
 					else
 					{ // Inform about skin type is wrong for current case
-						echo '<a href="'.$disp_params[ 'function_url' ].'" title="'.T_('Install NOW!').'" class="red">';
-						echo T_('Wrong Type!').'</a> ';
+						if( ! empty( $skin_url ) )
+						{
+							echo '<a href="'.$skin_url.'" title="'.T_('Install NOW!').'" class="red">';
+							echo T_('Wrong Type!').'</a> ';
+						}
 						echo get_icon( 'help', 'imgtag', array( 'title' => T_('This skin does not fit the blog type you are trying to create.') ) );
 					}
 					break;
 
 				case 'select':
 					// Display a link to preview the skin
-					echo '<a href="'.$disp_params[ 'function_url' ].'" target="_blank" title="'.T_('Preview blog with this skin in a new window').'">';
-					echo T_('Preview').'</a>';
+					if( ! empty( $skin_url ) )
+					{
+						echo '<a href="'.$skin_url.'" target="_blank" title="'.T_('Preview blog with this skin in a new window').'">';
+						echo T_('Preview').'</a>';
+					}
 					break;
 			}
 			echo '</div>';
 		}
-		echo '<strong>'.$skin_name.'</strong>';
+		echo '<strong>'
+				.( empty( $skin_name_before ) ? '<label>' : $skin_name_before )
+					.$skin_name
+				.( empty( $skin_name_after ) ? '</label>' : $skin_name_after )
+			.'</strong>';
 		echo '</div>';
 		echo '</div>';
 	}
@@ -614,7 +694,8 @@ class Skin extends DataObject
 	 *    - NULL - In this case the Blog post navigation setting will be used
 	 *    - 'same_category' - to always navigate through the same category in this skin
 	 *    - 'same_author' - to always navigate through the same authors in this skin
-	 * 
+	 *    - 'same_tag' - to always navigate through the same tags in this skin
+	 *
 	 * Set this to not NULL only if the same post navigation should be used in every Blog where this skin is used
 	 */
 	function get_post_navigation()
@@ -684,28 +765,126 @@ class Skin extends DataObject
 	/**
 	 * Get ready for displaying the skin.
 	 *
-	 * This may register some CSS or JS...
+	 * This method may register some CSS or JS. 
+	 * The default implementation can register a few common things that you may request in the $features param.
+	 *
+	 * If this doesn't do what you need you may add functions like the following to your skin's display_init():
+	 * require_js() , require_css() , add_js_headline()
+	 *
+	 * @param array of possible features you want to include. If empty, will default to {'b2evo_base', 'style', 'colorbox'} for backwards compatibility.
 	 */
-	function display_init()
+	function display_init( $features = array() )
 	{
-		// Add CSS:
-		// require_css( 'basic_styles.css', 'blog' ); // the REAL basic styles
-		// require_css( 'basic.css', 'blog' ); // Basic styles
-		// require_css( 'blog_base.css', 'blog' ); // Default styles for the blog navigation
-		// require_css( 'item_base.css', 'blog' ); // Default styles for the post CONTENT
-		// require_css( 'b2evo_base.bundle.css', 'blog' ); // Concatenation of the above
-		require_css( 'b2evo_base.bmin.css', 'blog' ); // Concatenation + Minifaction of the above
+		global $debug, $Messages;
 
-		// Make sure standard CSS is called ahead of custom CSS generated below:
-		require_css( 'style.css', true );
-
-		// Colorbox (a lightweight Lightbox alternative) allows to zoom on images and do slideshows with groups of images:
-		if( $this->get_setting( 'colorbox' ) )
-		{	// This can be enabled by a setting in skins where it may be relevant
-			require_js_helper( 'colorbox', 'blog' );
+		if( empty($features) )
+		{	// Fall back to v5 default set of features:
+			$features = array( 'b2evo_base_css', 'style_css', 'colorbox' );
 		}
 
-		// override this in specific skins...
+		foreach( $features as $feature )
+		{
+			switch( $feature ) 
+			{
+				case 'jquery':
+					// Include jQuery:
+					require_js( '#jquery#', 'blog' );
+					break;
+
+				case 'font_awesome':
+					// Initialize font-awesome icons and use them as a priority over the glyphicons, @see get_icon()
+					init_fontawesome_icons( 'fontawesome-glyphicons' );
+					break;
+
+				case 'bootstrap':
+					// Include Bootstrap:
+					require_js( '#bootstrap#', 'blog' );
+					require_css( '#bootstrap_css#', 'blog' );
+					break;
+
+				case 'bootstrap_theme_css':
+					// Include the Bootstrap Theme CSS:
+					require_css( '#bootstrap_theme_css#', 'blog' );
+					break;
+
+				case 'bootstrap_evo_css':
+					// Include the bootstrap-b2evo_base CSS (NEW / v6 style) - Use this when you use Bootstrap:
+					if( $debug )
+					{	// Use readable CSS:
+						// rsc/less/bootstrap-basic_styles.less
+						// rsc/less/bootstrap-basic.less
+						// rsc/less/bootstrap-blog_base.less
+						// rsc/less/bootstrap-item_base.less
+						// rsc/less/bootstrap-evoskins.less
+						require_css( 'bootstrap-b2evo_base.bundle.css', 'blog' );  // CSS concatenation of the above
+					}
+					else
+					{	// Use minified CSS:
+						require_css( 'bootstrap-b2evo_base.bmin.css', 'blog' ); // Concatenation + Minifaction of the above
+					}
+					break;
+
+				case 'bootstrap_init_tooltips':
+					// JS to init Bootstrap tooltips (E.g. on comment form for allowed file extensions):
+					add_js_headline( 'jQuery( function () { jQuery( \'[data-toggle="tooltip"]\' ).tooltip() } )' );
+					break;
+
+				case 'bootstrap_messages':
+					// Initialize $Messages Class to use Bootstrap styles:
+					$Messages->set_params( array(
+							'class_success'  => 'alert alert-dismissible alert-success fade in',
+							'class_warning'  => 'alert alert-dismissible alert-warning fade in',
+							'class_error'    => 'alert alert-dismissible alert-danger fade in',
+							'class_note'     => 'alert alert-dismissible alert-info fade in',
+							'before_message' => '<button type="button" class="close" data-dismiss="alert"><span aria-hidden="true">&times;</span></button>',
+						) );
+					break;
+
+				case 'b2evo_base_css':
+					// Include the b2evo_base CSS (OLD / v5 style) - Use this when you DON'T use Bootstrap:
+					if( $debug )
+					{	// Use readable CSS:
+						// require_css( 'basic_styles.css', 'blog' ); // the REAL basic styles
+						// require_css( 'basic.css', 'blog' ); // Basic styles
+						// require_css( 'blog_base.css', 'blog' ); // Default styles for the blog navigation
+						// require_css( 'item_base.css', 'blog' ); // Default styles for the post CONTENT
+						// require_css( 'b2evo_base.bundle.css', 'blog' ); // Concatenation of the above
+						require_css( 'b2evo_base.bundle.css', 'blog' ); // Concatenation + Minifaction of the above
+					}
+					else
+					{	// Use minified CSS:
+						require_css( 'b2evo_base.bmin.css', 'blog' ); // Concatenation + Minifaction of the above
+					}
+					break;
+				
+				case 'style_css':
+					// Include the default skin style.css:
+					// You should make sure this is called ahead of any custom generated CSS.
+					if( $this->use_min_css == false 
+						|| $debug 
+						|| ( $this->use_min_css == 'check' && !file_exists(dirname(__FILE__).'/style.min.css' ) ) )
+					{	// Use readable CSS:
+						require_css( 'style.css', 'relative' );	// Relative to <base> tag (current skin folder)
+					}
+					else
+					{	// Use minified CSS:
+						require_css( 'style.min.css', 'relative' );	// Relative to <base> tag (current skin folder)
+					}
+					break;
+
+				case 'colorbox':
+					// Colorbox (a lightweight Lightbox alternative) allows to zoom on images and do slideshows with groups of images:
+					if( $this->get_setting( 'colorbox' ) )
+					{	// This can be enabled by a setting in skins where it may be relevant
+						require_js_helper( 'colorbox', 'blog' );
+					}
+					break;
+
+
+				default:
+					debug_die( 'This skin has requested an unknown feature: \''.$feature.'\'. Maybe this skin requires a more recent version of b2evolution.' );
+			}
+		}
 	}
 
 
@@ -779,6 +958,9 @@ class Skin extends DataObject
 							            ."\n",
 					'filters_start' => '<div class="filters">',
 					'filters_end' => '</div>',
+					'messages_start' => '<div class="messages">',
+					'messages_end' => '</div>',
+					'messages_separator' => '<br />',
 					'list_start' => '<div class="table_scroll">'."\n"
 					               .'<table class="grouped" cellspacing="0">'."\n",
 						'head_start' => '<thead>'."\n",
@@ -861,6 +1043,7 @@ class Skin extends DataObject
 					'formstart' => '',
 					'title_fmt' => '$title$'."\n", // TODO: icons
 					'no_title_fmt' => '',          //           "
+					'no_title_no_icons_fmt' => '',          //           "
 					'fieldset_begin' => '<fieldset $fieldset_attribs$>'."\n"
 															.'<legend $title_attribs$>$fieldset_title$</legend>'."\n",
 					'fieldset_end' => '</fieldset>'."\n",
@@ -870,8 +1053,9 @@ class Skin extends DataObject
 					'labelend' => "\n",
 					'labelempty' => '',
 					'inputstart' => '',
-					'infostart' => '',
 					'inputend' => "\n",
+					'infostart' => '',
+					'infoend' => "\n",
 					'fieldend' => '</span>'.get_icon( 'pixel' )."\n",
 					'buttonsstart' => '',
 					'buttonsend' => "\n",

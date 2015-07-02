@@ -3,25 +3,13 @@
  * This file implements the UI view for the browser hits summary.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
- *
- * @version $Id: _stats_view.funcs.php 7495 2014-10-22 10:30:38Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -287,15 +275,15 @@ function stats_format_req_URI( $hit_coll_ID, $hit_uri, $max_len = 40, $hit_disp 
 	}
 
 	$int_search_uri = urldecode($hit_uri);
-	if( ( evo_strpos( $int_search_uri , '?s=' ) !== false )
-	 || ( evo_strpos( $int_search_uri , '&s=' ) !== false ) )
+	if( ( utf8_strpos( $int_search_uri , '?s=' ) !== false )
+	 || ( utf8_strpos( $int_search_uri , '&s=' ) !== false ) )
 	{ // This is an internal search:
 		preg_match( '~[?&]s=([^&#]*)~', $int_search_uri, $res );
 		$hit_uri = sprintf( T_( 'Internal search: %s' ), $res[1] );
 	}
-	elseif( evo_strlen($hit_uri) > $max_len )
+	elseif( utf8_strlen($hit_uri) > $max_len )
 	{
-		$hit_uri = '...'.evo_substr( $hit_uri, -$max_len );
+		$hit_uri = '...'.utf8_substr( $hit_uri, -$max_len );
 	}
 
 	if( $hit_disp != NULL || $hit_ctrl != NULL || $hit_action != NULL)
@@ -573,7 +561,7 @@ function hit_iprange_status( $IP_address )
  */
 function hit_iprange_status_title( $IP_address )
 {
-	global $current_User;
+	global $current_User, $admin_url;
 
 	// Get status code of IP range by IP address
 	$ip_range_status = hit_iprange_status( $IP_address );
@@ -592,7 +580,7 @@ function hit_iprange_status_title( $IP_address )
 
 	if( $current_User->check_perm( 'spamblacklist', 'view' ) )
 	{ // Current user has access to view IP ranges
-		global $admin_url, $blog;
+		global $blog;
 		$blog_param = empty( $blog ) ? '' : '&amp;blog=1';
 		return '<a href="'.$admin_url.'?ctrl=antispam&amp;tab=stats&amp;tab3=ipranges&amp;ip_address='.$IP_address.$blog_param.'">'.aipr_status_title( $ip_range_status ).'</a>';
 	}

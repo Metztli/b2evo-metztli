@@ -3,13 +3,13 @@
  * This is file implements the comments quick edit operations after email notification.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package htsrv
- *
- * @version $Id: comment_review.php 6806 2014-05-29 12:01:27Z yura $
  */
 
 /**
@@ -22,17 +22,42 @@ param('cmt_ID', 'integer', '' );
 param('secret', 'string', '' );
 param_action();
 
-$to_dashboard = $admin_url.'?ctrl=dashboard';
 $to_comment_edit = $admin_url.'?ctrl=comments&action=edit&comment_ID='.$cmt_ID;
 
-if( $cmt_ID != null )
+if( $action == 'exit' )
+{	// Display messages and exit
+
+	headers_content_mightcache( 'text/html', 0 );  // Do NOT cache!
+
+	require_css( 'basic.css', 'rsc_url' ); // Basic styles
+	?>
+	<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+	<html xml:lang="<?php locale_lang() ?>" lang="<?php locale_lang() ?>">
+	<html>
+	<head>
+		<title><?php echo T_('Comment moderation') ?></title>
+		<?php include_headlines() /* Add javascript and css files included by plugins and skin */ ?>
+	</head>
+	<body style="padding: 10px 20px">
+		<h1><?php echo T_('Comment moderation') ?></h1>
+		<?php $Messages->disp(); ?>
+		<div class="action_messages">
+			<p><a href="<?php echo $admin_url.'?ctrl=dashboard'; ?>"><?php echo T_('Go to the back-office...'); ?></a></p>
+		</div>
+	</body>
+	</html>
+	<?php
+
+	exit;
+}
+elseif( $cmt_ID != null )
 {
 	$posted_Comment = & Comment_get_by_ID( $cmt_ID );
 }
 else
 {
 	$Messages->add( 'Requested comment does not exist!' );
-	header_redirect( $to_dashboard );
+	header_redirect( regenerate_url('action', 'action=exit', '', '&') );
 }
 
 $comment_Item = & $posted_Comment->get_Item();
@@ -75,7 +100,7 @@ switch( $action )
 
 		$Messages->add( T_('Comment has been published.'), 'success' );
 
-		header_redirect( $to_dashboard );
+		header_redirect( regenerate_url('action', 'action=exit', '', '&') );
 		/* exited */
 		break;
 
@@ -88,7 +113,7 @@ switch( $action )
 
 		$Messages->add( T_('Comment has been deprecated.'), 'success' );
 
-		header_redirect( $to_dashboard );
+		header_redirect( regenerate_url('action', 'action=exit', '', '&') );
 		/* exited */
 		break;
 
@@ -98,7 +123,7 @@ switch( $action )
 
 		$Messages->add( T_('Comment has been deleted.'), 'success' );
 
-		header_redirect( $to_dashboard );
+		header_redirect( regenerate_url('action', 'action=exit', '', '&') );
 		break;
 
 	case 'recycle':
@@ -134,11 +159,13 @@ switch( $action )
 
 headers_content_mightcache( 'text/html', 0 );  // Do NOT cache!
 
+$b2evo_icons_type = 'fontawesome';
 ?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xml:lang="<?php locale_lang() ?>" lang="<?php locale_lang() ?>">
 <head>
 	<title><?php echo ' '.T_('Comment review').' '; ?></title>
+	<link type="text/css" rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css?v=<?php echo $app_version_long; ?>">
 </head>
 
 <body>
@@ -201,17 +228,17 @@ else
 ?>
 <fieldset>
 <legend><?php echo T_('Posted comment')?></legend>
-<div class=bComment>
+<div class="bComment">
 	<div class="bSmallHead">
 		<span class="bDate"><?php $posted_Comment->date(); ?></span>
 		@
-		<span class="bTime"><?php $posted_Comment->time( 'H:i' ); ?></span>
+		<span class="bTime"><?php $posted_Comment->time( '#short_time' ); ?></span>
 		<?php
 				$posted_Comment->author_url( '', ' &middot; Url: <span class="bUrl">', '</span>' );
 				if( $posted_Comment->author_url != null )
 				{
-					echo ' '.action_icon( T_('Delete comment URL'), 'delete', regenerate_url( '', array( 'action=deleteurl', 'cmt_ID='.$cmt_ID, 'secret='.$secret ) ) ).' ';
-					echo ' '.action_icon( T_('Antispam tool'), 'ban', $antispam_url );
+					echo ' '.action_icon( T_('Delete comment URL'), 'remove', regenerate_url( '', array( 'action=deleteurl', 'cmt_ID='.$cmt_ID, 'secret='.$secret ) ) ).' ';
+					echo ' '.action_icon( T_('Antispam tool'), 'lightning', $antispam_url );
 				}
 				$posted_Comment->author_email( '', ' &middot; Email: <span class="bEmail">', '</span>' );
 				$posted_Comment->author_ip( ' &middot; IP: <span class="bIP">', '</span>', 'antispam' );

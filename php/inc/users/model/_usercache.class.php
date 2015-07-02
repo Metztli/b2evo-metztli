@@ -3,33 +3,14 @@
  * This file implements the UserCache class.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE
- * @author blueyed: Daniel HAHLER
- *
- * @version $Id: _usercache.class.php 6135 2014-03-08 07:54:05Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -63,8 +44,23 @@ class UserCache extends DataObjectCache
 	function UserCache()
 	{
 		parent::DataObjectCache( 'User', false, 'T_users', 'user_', 'user_ID', NULL, '',
-			/* TRANS: "None" select option */ T_('No user') );
+			/* TRANS: "None" select option */ NT_('No user') );
 	}
+
+
+	/**
+	 * Load the cache **extensively**
+	 */
+	function load_all()
+	{
+		if( $this->all_loaded )
+		{ // Already loaded
+			return false;
+		}
+
+		debug_die( 'Load all is not allowed for UserCache!' );
+	}
+
 
 	/* this is for debugging only:
 	function & get_by_ID( $req_ID, $halt_on_error = true )
@@ -91,7 +87,7 @@ class UserCache extends DataObjectCache
 	{
 		// Make sure we have a lowercase login:
 		// We want all logins to be lowercase to guarantee uniqueness regardless of the database case handling for UNIQUE indexes.
-		$login = evo_strtolower( $login );
+		$login = utf8_strtolower( $login );
 
 		if( !( $force_db_check || isset( $this->cache_login[$login] ) ) )
 		{ // force db check is false and this login is not set in the cache it means that user with the given login doesn't exists
@@ -136,7 +132,7 @@ class UserCache extends DataObjectCache
 
 		if( !$pass_is_md5 )
 		{
-			$pass = md5($pass);
+			$pass = md5( $User->salt.$pass );
 		}
 
 		if( $User->pass != $pass )
@@ -155,18 +151,18 @@ class UserCache extends DataObjectCache
 	 *  -accounts that were used more recently than others
 	 *
 	 * @param string email address
-	 * @param string md5 hashed password
-	 * @param string hashed password - If this is set, it means we need to check the hasshed password instead of the md5 password
-	 * @param string password salt
+	 * @param string password
+	 * @param array hashed password - If this is set, it means we need to check the hasshed password instead of the md5 password
+	 * @param string current session password salt
 	 * @return false|array false if user with this email not exists, array( $User, $exists_more ) pair otherwise
 	 */
-	function get_by_emailAndPwd( $email, $pass_md5, $pwd_hashed = NULL, $pwd_salt = NULL )
+	function get_by_emailAndPwd( $email, $pass, $pwd_hashed = NULL, $pwd_salt = NULL )
 	{
 		global $DB;
 
 		// Get all users with matching email address
 		$result = $DB->get_results('SELECT * FROM T_users
-					WHERE user_email = '.$DB->quote( evo_strtolower( $email ) ).'
+					WHERE user_email = '.$DB->quote( utf8_strtolower( $email ) ).'
 					ORDER BY user_lastseen_ts DESC, user_status ASC');
 
 		if( empty( $result ) )
@@ -184,14 +180,26 @@ class UserCache extends DataObjectCache
 			$index++;
 			if( empty( $pwd_hashed ) )
 			{
-				if( $row->user_pass != $pass_md5 )
+				if( $row->user_pass != md5( $row->user_salt.$pass ) )
 				{ // password doesn't match
 					continue;
 				}
 			}
-			elseif( sha1($row->user_pass.$pwd_salt) != $pwd_hashed )
-			{ // password doesn't match
-				continue;
+			else
+			{
+				$pwd_matched = false;
+				foreach( $pwd_hashed as $encrypted_password )
+				{
+					$pwd_matched = ( sha1($row->user_pass.$pwd_salt) == $encrypted_password );
+					if( $pwd_matched )
+					{ // The corresponding user was found
+						break;
+					}
+				}
+				if( ! $pwd_matched )
+				{ // If the user with matched login credentials was not fount continue with the next row
+					continue;
+				}
 			}
 			// a user with matched password was found
 			$first_matched_index = $index;
@@ -238,7 +246,7 @@ class UserCache extends DataObjectCache
 	{
 		if( parent::add( $Obj ) )
 		{
-			$this->cache_login[ evo_strtolower($Obj->login) ] = & $Obj;
+			$this->cache_login[ utf8_strtolower($Obj->login) ] = & $Obj;
 
 			return true;
 		}
@@ -285,7 +293,7 @@ class UserCache extends DataObjectCache
 			return false;
 		}
 
-		$this->none_option_text = T_('No user');
+		$this->none_option_text = NT_('No user');
 
 		// Clear previous users to get only the members of this blog
 		$this->clear();
@@ -384,7 +392,7 @@ class UserCache extends DataObjectCache
 		if( isset($this->cache[$req_ID]) )
 		{
 			$Obj = & $this->cache[$req_ID];
-			unset( $this->cache_login[ evo_strtolower($Obj->login) ] );
+			unset( $this->cache_login[ utf8_strtolower($Obj->login) ] );
 		}
 		parent::remove_by_ID($req_ID);
 	}

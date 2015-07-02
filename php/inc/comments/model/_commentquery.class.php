@@ -3,24 +3,15 @@
  * This file implements the CommentQuery class.
  *
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}.
 *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
  *
- * {@internal Open Source relicensing agreement:
- * EVO FACTORY grants Francois PLANQUE the right to license
- * EVO FACTORY contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author asimo: Evo Factory / Attila Simo
- *
- * @version $Id: _commentquery.class.php 6605 2014-05-05 07:17:14Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -417,7 +408,7 @@ class CommentQuery extends SQL
 
 
 	/**
-	 * Restrict to specific item types
+	 * Restrict to specific post types
 	 *
 	 * @param string List of types to restrict to (must have been previously validated)
 	 */
@@ -543,12 +534,12 @@ class CommentQuery extends SQL
 
 		if( !$show_expired )
 		{
-			$this->FROM_add( 'LEFT JOIN T_items__item_settings as expiry_setting ON iset_item_ID = comment_item_ID AND iset_name = "post_expiry_delay"' );
+			$this->FROM_add( 'LEFT JOIN T_items__item_settings as expiry_setting ON iset_item_ID = comment_item_ID AND iset_name = "comment_expiry_delay"' );
 			$this->WHERE_and( 'expiry_setting.iset_value IS NULL OR expiry_setting.iset_value = "" OR TIMESTAMPDIFF(SECOND, comment_date, '.$DB->quote( date2mysql( $localtimenow ) ).') < expiry_setting.iset_value' );
 		}
 		elseif( !$show_active )
 		{
-			$this->FROM_add( 'LEFT JOIN T_items__item_settings as expiry_setting ON iset_item_ID = comment_item_ID AND iset_name = "post_expiry_delay"' );
+			$this->FROM_add( 'LEFT JOIN T_items__item_settings as expiry_setting ON iset_item_ID = comment_item_ID AND iset_name = "comment_expiry_delay"' );
 			$this->WHERE_and( 'expiry_setting.iset_value IS NOT NULL AND expiry_setting.iset_value <> "" AND TIMESTAMPDIFF(SECOND, comment_date, '.$DB->quote( date2mysql( $localtimenow ) ).') >= expiry_setting.iset_value' );
 		}
 	}

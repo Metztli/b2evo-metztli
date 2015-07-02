@@ -3,33 +3,14 @@
  * This is the login screen. It also handles actions related to loggin in and registering.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- *
- * Matt FOLLETT grants Francois PLANQUE the right to license
- * Matt FOLLETT's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package htsrv
- *
- * @version $Id: login.php 6487 2014-04-16 11:11:57Z yura $
  */
 
 /**
@@ -38,8 +19,8 @@
 require_once dirname(__FILE__).'/../conf/_config.php';
 require_once $inc_path.'_main.inc.php';
 
-$login = param( $dummy_fields[ 'login' ], 'string', '' );
-param( 'action', 'string', 'req_login' );
+$login = param( $dummy_fields['login'], 'string', '' );
+param_action( 'req_login' );
 param( 'mode', 'string', '' );
 param( 'inskin', 'boolean', false );
 if( $inskin )
@@ -93,10 +74,11 @@ switch( $action )
 		{ // user account was closed successful
 			// Send notification email about closed account to users with edit users permission
 			$email_template_params = array(
-					'login'   => $current_User->login,
-					'email'   => $current_User->email,
-					'reason'  => trim( param( 'account_close_type', 'string', '' ).' '.param( 'account_close_reason', 'text', '' ) ),
-					'user_ID' => $current_User->ID,
+					'login'      => $current_User->login,
+					'email'      => $current_User->email,
+					'reason'     => trim( param( 'account_close_type', 'string', '' ).' '.param( 'account_close_reason', 'text', '' ) ),
+					'user_ID'    => $current_User->ID,
+					'days_count' => $current_User->get_days_count_close()
 				);
 			send_admin_notification( NT_('User account closed'), 'account_closed', $email_template_params );
 
@@ -116,6 +98,15 @@ switch( $action )
 		global $servertimenow;
 		$login_required = true; // Do not display "Without login.." link on the form
 
+		if( empty( $login ) )
+		{ // Don't allow empty request
+			param_error( $dummy_fields['login'], T_('You must enter your username or your email address so we know where to send the password recovery email.'), '' );
+			// Set this var to know after redirection if error was here
+			$lostpassword_error = true;
+			$action = 'lostpassword';
+			break;
+		}
+
 		$request_ts_login = $Session->get( 'core.changepwd.request_ts_login' );
 		if( $request_ts_login != NULL )
 		{
@@ -134,7 +125,7 @@ switch( $action )
 		{ // user gave an email, get users by email
 			$only_activated = false;
 			// load all not closed users with this email address
-			$login = evo_strtolower( $login );
+			$login = utf8_strtolower( $login );
 			$UserCache->load_where( 'user_email = "'.$login.'" && user_status <> "closed"' );
 
 			$not_activated_Ids = array();
@@ -230,6 +221,8 @@ switch( $action )
 				$Session->dbsave(); // save immediately
 
 				$Messages->add( T_('If you correctly entered your login or email address, a link to change your password has been sent to your registered email address.' ), 'success' );
+
+				syslog_insert( 'User requested password reset', 'info', 'user', $forgetful_User->ID );
 			}
 		}
 
@@ -244,11 +237,11 @@ switch( $action )
 		param( 'sessID', 'integer', '' );
 
 		$UserCache = & get_UserCache();
-		$forgetful_User = & $UserCache->get_by_login($login);
+		$forgetful_User = & $UserCache->get_by_login( $login );
 
 		locale_temp_switch( $forgetful_User->locale );
 
-		if( ! $forgetful_User || empty($reqID) )
+		if( ! $forgetful_User || empty( $reqID ) )
 		{ // This was not requested
 			$Messages->add( T_('Invalid password change request! Please try again...'), 'error' );
 			$action = 'lostpassword';
@@ -273,8 +266,9 @@ switch( $action )
 			break;
 		}
 
-		// Link User to Session:
+		// Link User to Session and Log in:
 		$Session->set_user_ID( $forgetful_User->ID );
+		$current_User = & $forgetful_User;
 
 		// Add Message to change the password:
 		$Messages->add( T_( 'Please change your password to something you remember now.' ), 'success' );
@@ -289,18 +283,69 @@ switch( $action )
 			$Blog = $BlogCache->get_by_ID( $blog );
 			if( $Blog )
 			{
-				$changepwd_url = url_add_param( $Blog->gen_blogurl(), 'disp=pwdchange&reqID='.$reqID );
+				$changepwd_url = $Blog->get( 'userurl', array( 'url_suffix' => 'disp=pwdchange&reqID='.$reqID, 'glue' => '&' ) );
 			}
 		}
+
+		locale_restore_previous();
+
 		if( empty( $changepwd_url ) )
-		{ // redirect to admin change password form
-			$changepwd_url = url_add_param( $admin_url, 'ctrl=user&user_tab=pwdchange&user_ID='.$forgetful_User->ID.'&reqID='.$reqID, '&' );
+		{ // Display standard(non-skin) form to change password
+			$action = 'changepwd';
+		}
+		else
+		{ // redirect Will save $Messages into Session:
+			header_redirect( $changepwd_url ); // display user's change password tab
+			/* exited */
+		}
+		break;
+
+
+	case 'updatepwd':
+		// Update password(The submit action of the change password form)
+		param( 'reqID', 'string', '' );
+
+		if( ! is_logged_in() )
+		{ // Don't allow not logged in user here, because it must be logged in on the action 'changepwd' above
+			$Messages->add( T_('Invalid password change request! Please try again...'), 'error' );
+			$action = 'lostpassword';
+			$login_required = true; // Do not display "Without login.." link on the form
+			break;
+		}
+
+		$forgetful_User = & $current_User;
+
+		locale_temp_switch( $forgetful_User->locale );
+
+		if( ! $forgetful_User || empty( $reqID ) )
+		{ // This was not requested
+			$Messages->add( T_('Invalid password change request! Please try again...'), 'error' );
+			$action = 'lostpassword';
+			$login_required = true; // Do not display "Without login.." link on the form
+			break;
+		}
+
+		// Validate provided reqID against the one stored in the user's session
+		if( $Session->get( 'core.changepwd.request_id' ) != $reqID )
+		{
+			$Messages->add( T_('Invalid password change request! Please try again...'), 'error' );
+			$action = 'lostpassword';
+			$login_required = true; // Do not display "Without login.." link on the form
+			break;
+		}
+
+		$result = $forgetful_User->update_from_request();
+
+		if( $result !== true )
+		{ // Some errors exist on form submit, Display the form again to change them
+			$action = 'changepwd';
+			break;
 		}
 
 		locale_restore_previous();
 
 		// redirect Will save $Messages into Session:
-		header_redirect( $changepwd_url ); // display user's change password tab
+		header_redirect( $baseurl ); // display user's change password tab
 		/* exited */
 		break;
 
@@ -442,7 +487,7 @@ switch( $action )
 		}
 
 		param( 'req_validatemail_submit', 'integer', 0 ); // has the form been submitted
-		$email = evo_strtolower( param( $dummy_fields['email'], 'string', $current_User->email ) ); // the email address is editable
+		$email = utf8_strtolower( param( $dummy_fields['email'], 'string', $current_User->email ) ); // the email address is editable
 
 		if( $req_validatemail_submit )
 		{ // Form has been submitted
@@ -564,9 +609,17 @@ if( $inskin && use_in_skin_login() )
 				$redirect = url_add_param( $redirect, 'force_request=1', '&' );
 			}
 		}
+		elseif( $action == 'lostpassword' )
+		{ // redirect to inskin lost password page
+			$redirect = $Blog->get( 'lostpasswordurl', array( 'glue' => '&' ) );
+			if( ! empty( $lostpassword_error ) )
+			{ // Set this param to know after redirection if error was here
+				$redirect = url_add_param( $redirect, 'field_error=1', '&' );
+			}
+		}
 		else
 		{ // redirect to inskin login page
-			$redirect = url_add_param( $Blog->gen_blogurl(), 'disp=login', '&' );
+			$redirect = $Blog->get( 'loginurl', array( 'glue' => '&' ) );
 		}
 		$redirect = url_add_param( $redirect, 'redirect_to='.$redirect_to, '&' );
 		header_redirect( $redirect );
@@ -583,21 +636,30 @@ switch( $action )
 	case 'lostpassword':
 		// Lost password:
 		$page_title = T_('Lost your password?');
-		$page_icon = 'login';
-		$hidden_params = array( 'redirect_to' => url_rel_to_same_host($redirect_to, $secure_htsrv_url) );
+		$hidden_params = array( 'redirect_to' => url_rel_to_same_host( $redirect_to, $secure_htsrv_url ) );
 		$wrap_width = '480px';
-		$wrap_height = '430px';
+
+		// Use the links in the form title
+		$use_form_links = true;
+
 		// Include page header:
 		require $adminskins_path.'login/_html_header.inc.php';
-		// Display form:
-		display_lostpassword_form( $login, $hidden_params, array(
-				'form_before' => str_replace( '$title$', $page_title, $form_before ),
-				'form_after' => $form_after,
-				'form_class'    => 'form-login form-lostpass',
-				'form_template' => $login_form_params,
-				'inskin'        => false,
-				'inskin_urls'   => false,
-			) );
+
+		// Lost password form
+		$params = array(
+			'form_title_lostpass'  => $page_title,
+			'login_form_inskin'    => false,
+			'login_page_class'     => 'evo_panel__login',
+			'login_page_before'    => '<div class="evo_panel__lostpass">',
+			'login_page_after'     => '</div>',
+			'form_class_login'     => 'evo_form__login evo_form__lostpass',
+			'lostpass_form_params' => $login_form_params,
+			'lostpass_form_footer' => false,
+			'abort_link_text'      => '<button type="button" class="close" aria-label="Close"><span aria-hidden="true">&times;</span></button>',
+		);
+		require skin_fallback_path( '_lostpassword.disp.php', 6 );
+
+		// Include page footer:
 		require $adminskins_path.'login/_html_footer.inc.php';
 		break;
 
@@ -605,6 +667,11 @@ switch( $action )
 		// Send activation link by email (initial form and action)
 		// Display validation form:
 		require $adminskins_path.'login/_validate_form.main.php';
+		break;
+
+	case 'changepwd':
+		// Display form to change password:
+		require $adminskins_path.'login/_reset_pwd_form.main.php';
 		break;
 
 	default:

@@ -3,35 +3,13 @@
  * This file implements the UI view for the user report form.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * The Evo Factory grants Francois PLANQUE the right to license
- * The Evo Factory's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- *
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE
- *
- * @version $Id: _user_report.form.php 7878 2014-12-23 11:54:05Z yura $
  */
 
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -71,7 +49,7 @@ if( $display_mode != 'js' )
 $Form = new Form( $form_action, 'user_checkchanges' );
 
 $form_title = '';
-$form_class = 'fform';
+$form_class = 'fform user_report_form';
 $Form->title_fmt = '<span style="float:right">$global_icons$</span><div>$title$</div>'."\n";
 
 if( $display_mode != 'js' )
@@ -88,21 +66,35 @@ if( $display_mode != 'js' )
 $Form->begin_form( $form_class, $form_title, array( 'title' => ( isset( $form_text_title ) ? $form_text_title : $form_title ) ) );
 
 $Form->hidden_ctrl();
-$Form->hidden( 'user_tab', $user_tab );
+if( is_admin_page() )
+{ // Params for backoffice
+	$Form->hidden( 'user_tab', $user_tab );
+	$Form->hidden( 'is_backoffice', 1 );
+}
+else
+{ // Params for frontoffice
+	global $Blog;
+	$Form->hidden( 'blog', $Blog->ID );
+}
 
-$Form->begin_fieldset( T_('Report User'), array( 'class'=>'fieldset clear' ) );
+$close_icon = '';
+if( $display_mode == 'js' )
+{ // Display a close link for popup window
+	$close_icon = action_icon( T_('Close this window'), 'close', '', '', 0, 0, array( 'id' => 'close_button', 'class' => 'floatright' ) );
+}
+$Form->begin_fieldset( T_('Report User').$close_icon, array( 'class' => 'fieldset clear' ) );
 
 user_report_form( array(
 		'Form'       => $Form,
 		'user_ID'    => $edited_User->ID,
 		'crumb_name' => 'user',
-		'cancel_url' => $admin_url.'?ctrl=user&amp;user_tab='.$user_tab.'&amp;action=remove_report&amp;user_ID='.$edited_User->ID.'&amp;'.url_crumb( 'user' ),
+		'cancel_url' => get_secure_htsrv_url().'profile_update.php?'
+										.( is_admin_page() ? 'is_backoffice=1&amp;' : '' )
+										.'action=remove_report&amp;'
+										.'user_ID='.$edited_User->ID.'&amp;'
+										.( empty( $Blog ) || is_admin_page() ? '' : 'blog='.$Blog->ID.'&amp;' )
+										.url_crumb( 'user' ),
 	) );
-
-if( $display_mode == 'js' )
-{ // Display a close link for popup window
-	echo '<div class="center" style="margin-top:32px">'.action_icon( T_('Close this window'), 'close', '', ' '.T_('Close this window'), 3, 4, array( 'id' => 'close_button', 'class' => 'small' ) ).'</div>';
-}
 
 $Form->end_fieldset();
 

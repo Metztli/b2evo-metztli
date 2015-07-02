@@ -3,7 +3,7 @@
  * This template generates an Atom feed for the requested blog's latest posts
  *
  * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://b2evolution.net/man/skin-structure}
+ * {@link http://b2evolution.net/man/skin-development-primer}
  *
  * See {@link http://atompub.org/2005/07/11/draft-ietf-atompub-format-10.html}
  *
@@ -11,8 +11,6 @@
  * @subpackage atom
  *
  * @todo dh> isn't this missing a call to skin_init()!? - if so, other feeds are missing it, too. fp> no this is very much on purpose. there is a comment somewhere (don't know exactly)
- *
- * @version $Id: index.main.php 3157 2013-03-06 04:34:44Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 

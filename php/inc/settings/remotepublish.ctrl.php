@@ -3,13 +3,13 @@
  * This file implements the UI controller for Remote Publishing.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
- *
- * @version $Id: remotepublish.ctrl.php 6455 2014-04-13 10:51:51Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -52,7 +52,7 @@ switch( $action )
 				$Settings->set( 'eblog_novalidatecert', $eblog_novalidatecert );
 
 				param( 'eblog_server_host', 'string', true );
-				$Settings->set( 'eblog_server_host', evo_strtolower($eblog_server_host) );
+				$Settings->set( 'eblog_server_host', utf8_strtolower($eblog_server_host) );
 
 				param( 'eblog_server_port', 'integer', true );
 				$Settings->set( 'eblog_server_port', $eblog_server_port );
@@ -97,7 +97,7 @@ switch( $action )
 					$BlogCache = & get_BlogCache();
 					$setting_Blog = & $BlogCache->get_by_ID( $autoselect_blog );
 					$renderer_params = array( 'Blog' => & $setting_Blog, 'setting_name' => 'coll_apply_rendering' );
-					$renderers = $Plugins->validate_renderer_list( param( 'eblog_renderers', 'array/string', array() ), $renderer_params );
+					$renderers = $Plugins->validate_renderer_list( param( 'eblog_renderers', 'array:string', array() ), $renderer_params );
 					$Settings->set( 'eblog_renderers', $renderers );
 				}
 				break;
@@ -186,19 +186,19 @@ switch( $action )
 }
 
 $AdminUI->breadcrumbpath_init( false );
-$AdminUI->breadcrumbpath_add( T_('System'), '?ctrl=system',
+$AdminUI->breadcrumbpath_add( T_('System'), $admin_url.'?ctrl=system',
 		T_('Global settings are shared between all blogs; see Blog settings for more granular settings.') );
-$AdminUI->breadcrumbpath_add( T_('Remote publishing'), '?ctrl=remotepublish' );
+$AdminUI->breadcrumbpath_add( T_('Remote publishing'), $admin_url.'?ctrl=remotepublish' );
 
 switch( $tab )
 {
 	case 'eblog':
-		$AdminUI->breadcrumbpath_add( T_('Post by Email'), '?ctrl=remotepublish&amp;tab='.$tab );
+		$AdminUI->breadcrumbpath_add( T_('Post by Email'), $admin_url.'?ctrl=remotepublish&amp;tab='.$tab );
 		$AdminUI->set_page_manual_link( 'post-by-email' );
 		break;
 
 	case 'xmlrpc':
-		$AdminUI->breadcrumbpath_add( T_('XML-RPC'), '?ctrl=remotepublish&amp;tab='.$tab );
+		$AdminUI->breadcrumbpath_add( T_('XML-RPC'), $admin_url.'?ctrl=remotepublish&amp;tab='.$tab );
 		break;
 }
 

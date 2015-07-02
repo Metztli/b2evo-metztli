@@ -7,33 +7,14 @@
  * fp> When you reach that level of needs you're already a plugin maniac/developper and you hack the plugin php code anyway.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package admin
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- * @author blueyed: Daniel HAHLER.
- *
- * @version $Id: _plugin_list.view.php 6135 2014-03-08 07:54:05Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -91,7 +72,7 @@ if( count( $admin_Plugins->get_plugin_groups() ) )
 	 */
 	$Results->grp_cols[] = array(
 			'td_colspan' => 0,
-			'td' => '% {Obj}->group %',
+			'td' => '~conditional( {Obj}->group != "", {Obj}->group, "'.T_('Unclassified').'" )~',
 		);
 }
 
@@ -100,37 +81,60 @@ if( count( $admin_Plugins->get_plugin_groups() ) )
  */
 function plugin_results_td_status( $plug_status, $plug_ID )
 {
-	global $admin_Plugins;
+	global $admin_Plugins, $current_User, $admin_url;
+
+	$perm_edit = $current_User->check_perm( 'options', 'edit', false );
 
 	if( $plug_status == 'enabled' )
-	{
-		return get_icon('enabled', 'imgtag', array('title'=>T_('The plugin is enabled.')) );
+	{ // Enabled
+		if( $perm_edit )
+		{ // URL to disable the plugin
+			$plugin_status_url = $admin_url.'?ctrl=plugins&amp;action=disable_plugin&amp;plugin_ID='.$plug_ID.'&amp;'.url_crumb( 'plugin' );
+		}
+		$plugin_status_icon = get_icon( 'bullet_green', 'imgtag', array( 'title' => T_('The plugin is enabled.') ) );
 	}
 	elseif( $plug_status == 'broken' )
-	{
-		return get_icon('warning', 'imgtag', array(
+	{ // Broken
+		$plugin_status_icon = get_icon( 'warning', 'imgtag', array(
 			'title' => T_('The plugin is broken.')
 				.// Display load error from Plugins::register() (if any):
-				( isset( $admin_Plugins->plugin_errors[$plug_ID] )
-					&& ! empty($admin_Plugins->plugin_errors[$plug_ID]['register'])
-					? ' '.$admin_Plugins->plugin_errors[$plug_ID]['register']
+				( isset( $admin_Plugins->plugin_errors[ $plug_ID ] )
+					&& ! empty( $admin_Plugins->plugin_errors[ $plug_ID ]['register'] )
+					? ' '.$admin_Plugins->plugin_errors[ $plug_ID ]['register']
 					: '' )
 			) );
 	}
-	elseif( $plug_status == 'install' )
+	elseif( $plug_status == 'needs_config' )
+	{ // Needs config
+		if( $perm_edit )
+		{ // URL to edit plugin settings
+			$plugin_status_url = $admin_url.'?ctrl=plugins&amp;action=edit_settings&amp;plugin_ID='.$plug_ID;
+		}
+		$plugin_status_icon = get_icon( 'question', 'imgtag', array( 'title' => T_('The plugin is not installed completely.') ) );
+	}
+	else
+	{ // Disabled
+		if( $perm_edit )
+		{ // URL to enable the plugin
+			$plugin_status_url = $admin_url.'?ctrl=plugins&amp;action=enable_plugin&amp;plugin_ID='.$plug_ID.'&amp;'.url_crumb( 'plugin' );
+		}
+		$plugin_status_icon = get_icon( 'bullet_empty_grey', 'imgtag', array( 'title' => T_('The plugin is disabled.') ) );
+	}
+
+	if( isset( $plugin_status_url ) )
 	{
-		return get_icon('disabled', 'imgtag', array('title'=>T_('The plugin is not installed completely.')) );
+		return '<a href="'.$plugin_status_url.'">'.$plugin_status_icon.'</a>';
 	}
 	else
 	{
-		return get_icon('disabled', 'imgtag', array('title'=>T_('The plugin is disabled.')) );
+		return $plugin_status_icon;
 	}
 }
 $Results->cols[] = array(
 		'th' => /* TRANS: shortcut for enabled */ T_('En'),
 		'th_title' => T_('Enabled'),
 		'order' => 'plug_status',
-		'td' => '%plugin_results_td_status( \'$plug_status$\', $plug_ID$ )%',
+		'td' => '%plugin_results_td_status( #plug_status#, #plug_ID# )%',
 		'td_class' => 'center',
 	);
 
@@ -214,21 +218,21 @@ $Results->cols[] = array(
 /*
  * ACTIONS TD:
  */
-function plugin_results_td_actions($Plugin)
+function plugin_results_td_actions( $Plugin )
 {
-	global $dispatcher;
+	global $admin_url;
 
 	$r = '';
 	if( $Plugin->status == 'enabled' )
 	{
-		$r .= action_icon( T_('Disable the plugin!'), 'deactivate', $dispatcher.'?ctrl=plugins&amp;action=disable_plugin&amp;plugin_ID='.$Plugin->ID.'&amp;'.url_crumb('plugin') );
+		$r .= action_icon( T_('Disable the plugin!'), 'deactivate', $admin_url.'?ctrl=plugins&amp;action=disable_plugin&amp;plugin_ID='.$Plugin->ID.'&amp;'.url_crumb( 'plugin' ) );
 	}
 	elseif( $Plugin->status != 'broken' )
 	{
-		$r .= action_icon( T_('Enable the plugin!'), 'activate', $dispatcher.'?ctrl=plugins&amp;action=enable_plugin&amp;plugin_ID='.$Plugin->ID.'&amp;'.url_crumb('plugin') );
+		$r .= action_icon( T_('Enable the plugin!'), 'activate', $admin_url.'?ctrl=plugins&amp;action=enable_plugin&amp;plugin_ID='.$Plugin->ID.'&amp;'.url_crumb( 'plugin' ) );
 	}
 	$r .= $Plugin->get_edit_settings_link();
-	$r .= action_icon( T_('Un-install this plugin!'), 'delete', $dispatcher.'?ctrl=plugins&amp;action=uninstall&amp;plugin_ID='.$Plugin->ID.'&amp;'.url_crumb('plugin') );
+	$r .= action_icon( T_('Un-install this plugin!'), 'delete', $admin_url.'?ctrl=plugins&amp;action=uninstall&amp;plugin_ID='.$Plugin->ID.'&amp;'.url_crumb( 'plugin' ) );
 	return $r;
 }
 if( $current_User->check_perm( 'options', 'edit', false ) )

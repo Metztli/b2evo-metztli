@@ -3,28 +3,13 @@
  * This file implements the Cronjob class, which manages a single cron job as registered in the DB.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: _cronjob.class.php 6135 2014-03-08 07:54:05Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -42,7 +27,7 @@ class Cronjob extends DataObject
 	var $start_datetime;
 	var $repeat_after = NULL;
 	var $name;
-	var $controller;
+	var $key;
 
 	/**
 	 * @var array
@@ -66,7 +51,7 @@ class Cronjob extends DataObject
 			$this->start_timestamp = strtotime( $db_row->ctsk_start_datetime );
 			$this->repeat_after    = $db_row->ctsk_repeat_after;
 			$this->name            = $db_row->ctsk_name;
-			$this->controller      = $db_row->ctsk_controller;
+			$this->key             = $db_row->ctsk_key;
 			$this->params          = $db_row->ctsk_params;
 		}
 		else
@@ -94,7 +79,7 @@ class Cronjob extends DataObject
 				return $this->set_param( 'params', 'string', serialize($parvalue), false );
 
 			case 'name':
-				return $this->set_param( $parname, 'string', evo_substr( $parvalue, 0, 255 ), false );
+				return $this->set_param( $parname, 'string', utf8_substr( $parvalue, 0, 255 ), false );
 		}
 
 		return $this->set_param( $parname, 'string', $parvalue, $make_null );
@@ -124,24 +109,20 @@ class Cronjob extends DataObject
 	 *
 	 * @return boolean true if loaded data seems valid.
 	 */
-	function load_from_Request( $cron_job_names = array(), $cron_job_params = array() )
+	function load_from_Request()
 	{
+		$cron_jobs_config = get_cron_jobs_config();
+
 		if( $this->ID > 0 || get_param( 'ctsk_ID' ) > 0 )
-		{	// Update or copy cron job
+		{ // Update or copy cron job
 			$cjob_name = param( 'cjob_name', 'string', true );
-			param_check_not_empty( 'cjob_name', T_('Please enter job name') );
 		}
 		else
-		{	// Create new cron job
+		{ // Create new cron job
 			$cjob_type = param( 'cjob_type', 'string', true );
-			if( !isset( $cron_job_params[$cjob_type] ) )
+			if( !isset( $cron_jobs_config[ $cjob_type ] ) )
 			{ // This cron job type doesn't exist, so this is an invalid state
 				debug_die('Invalid job type received');
-				$cjob_name = '';
-			}
-			else
-			{
-				$cjob_name = $cron_job_names[$cjob_type];
 			}
 		}
 
@@ -166,11 +147,11 @@ class Cronjob extends DataObject
 
 		if( $this->ID == 0 && get_param( 'ctsk_ID' ) == 0 )
 		{	// Set these params only on creating and copying actions
-			// controller:
-			$this->set( 'controller', $cron_job_params[$cjob_type]['ctrl'] );
+			// key:
+			$this->set( 'key', $cjob_type );
 
 			// params:
-			$this->set( 'params', $cron_job_params[$cjob_type]['params'] );
+			$this->set( 'params', $cron_jobs_config[ $cjob_type ]['params'] );
 		}
 
 		return ! param_errors_detected();

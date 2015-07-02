@@ -6,8 +6,8 @@
  * It is meant to be called by an include in the main.page.php template (or other templates)
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  */
@@ -60,7 +60,7 @@ $Item->title( array(
 
 <a name="top"></a>
 <a name="p<?php echo $Item->ID; ?>"></a>
-<table id="styled_content_block" class="bForums fixed_layout" width="100%" cellspacing="1" cellpadding="2" border="0">
+<table id="styled_content_block" class="bForums fixed_layout evo_content_block" width="100%" cellspacing="1" cellpadding="2" border="0">
 	<?php /* This empty row is used to fix columns width, when table has css property "table-layout:fixed" */ ?>
 	<tr class="fixrow0"><td class="col1"></td><td></td></tr>
 	<tr class="top">
@@ -100,7 +100,9 @@ $Item->title( array(
 			$post_header_class = 'bPostDate';
 			if( $Skin->enabled_status_banner( $Item->status ) )
 			{
-				$Item->status( array( 'format' => 'styled' ) );
+				$Item->format_status( array(
+						'template' => '<div class="floatright"><span class="note status_$status$"><span>$status_title$</span></span></div>',
+					) );
 				$post_header_class .= ' '.$Item->status;
 				$legend_statuses[] = $Item->status;
 			}

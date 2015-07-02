@@ -12,26 +12,74 @@
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
-global $app_name;
-global $app_version;
+global $app_name, $app_version, $inc_path, $baseurl;
 
-@header('Content-Type: text/html; charset=iso-8859-1');
+require_once $inc_path.'/_core/_misc.funcs.php';
+require_once $inc_path.'/locales/_locale.funcs.php';
+
+$locale_lang = locale_lang( false );
 ?>
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
+<!DOCTYPE html>
+<html lang="<?php echo ( empty( $locale_lang ) ? 'en' : $locale_lang ); ?>">
 	<head>
-		<title><?php echo $app_name ?> is not configured yet</title>
+		<base href="<?php echo get_script_baseurl(); ?>">
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title><?php echo format_to_output( $error_title, 'htmlhead' ); ?></title>
+		<!-- Bootstrap -->
+		<link href="rsc/css/bootstrap/bootstrap.min.css" rel="stylesheet">
+		<link href="rsc/build/b2evo_helper_screens.css" rel="stylesheet">
 	</head>
-<body>
-	<div style="background-color:#fee; border: 1px solid red; text-align:center; ">
-		<p>This is <?php echo $app_name ?> version <?php echo $app_version ?>.</p>
-		<p><strong>You cannot use the application before you finish configuration and installation.</strong></p>
-		<div style="font-weight:bold; color:red;"><?php echo $error_message; ?></div>
-		<p>Please use the installer to finish your configuration/installation now.</p>
-		<p>On most installations, the installer will probably be either <a href="install/index.php">here</a> or <a href="../install/index.php">here</a>... (but I can't be sure since I have no config info available! :P)</p>
-	</div>
-</body>
-</html>
+	<body>
+		<div class="container">
+			<div class="header">
+				<nav>
+					<ul class="nav nav-pills pull-right">
+						<li role="presentation"><a href="readme.html"><?php echo T_('Read me'); ?></a></li>
+						<li role="presentation"><a href="install/index.php"><?php echo T_('Installer'); ?></a></li>
+						<li role="presentation" class="active"><a href="index.php"><?php echo T_('Your site'); ?></a></li>
+					</ul>
+				</nav>
+				<h3 class="text-muted"><a href="http://b2evolution.net/"><img src="rsc/img/b2evolution8.png" alt="b2evolution CCMS"></a></h3>
+			</div>
+
+			<div class="jumbotron">
+				<h2 class="h1_small"><?php echo $error_title; ?></h2>
+				<p class="lead">The b2evolution files are present on your server, but it seems the database is not yet set up as expected.</p>
+				<p class="lead">For more information, please visit our <a href="http://b2evolution.net/man/getting-started" class="text-nowrap">Getting Stated / Installation Guide</a>.</p>
+			</div>
+
 <?php
- 	exit(0);
+// Get a markdown content to replace the mask variables
+ob_start();
 ?>
+<p>This is $app_name$ version $app_version$.</p>
+<p>You cannot use the application before you finish configuration and installation.</p>
+<p>$error_message$</p>
+<p>Please use the installer to finish your configuration/installation now.</p>
+<p>On most installations, the installer should be <a href="install/index.php">here</a> (but I can&#39;t be sure since I have no config info available! :P)</p>
+
+<?php
+$markdown_content = ob_get_clean();
+
+// Print out the markdown content with replacing php vars
+echo str_replace(
+		array( '$app_name$', '$app_version$', '$error_message$' ),
+		array( $app_name,     $app_version,   '<div class="alert alert-danger">'.$error_message.'</div>' ),
+		$markdown_content );
+?>
+
+			<footer class="footer">
+				<p class="pull-right"><a href="https://github.com/b2evolution/b2evolution" class="text-nowrap"><?php echo T_('GitHub page'); ?></a></p>
+				<p><a href="http://b2evolution.net/" class="text-nowrap">b2evolution.net</a>
+				&bull; <a href="http://b2evolution.net/about/recommended-hosting-lamp-best-choices.php" class="text-nowrap"><?php echo T_('Find a host'); ?></a>
+				&bull; <a href="http://b2evolution.net/man/" class="text-nowrap"><?php echo T_('Online manual'); ?></a>
+				&bull; <a href="http://forums.b2evolution.net" class="text-nowrap"><?php echo T_('Help forums'); ?></a>
+				</p>
+			</footer>
+
+		</div><!-- /container -->
+	</body>
+</html>
+<?php exit( 0 );?>

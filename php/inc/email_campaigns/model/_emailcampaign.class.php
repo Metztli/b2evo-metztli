@@ -3,24 +3,15 @@
  * This file implements the email campaign class.
  *
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}.
 *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
  *
- * {@internal Open Source relicensing agreement:
- * EVO FACTORY grants Francois PLANQUE the right to license
- * EVO FACTORY contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: _emailcampaign.class.php 8039 2015-01-21 11:33:57Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -64,10 +55,6 @@ class EmailCampaign extends DataObject
 		// Call parent constructor:
 		parent::DataObject( 'T_email__campaign', 'ecmp_', 'ecmp_ID', 'date_ts' );
 
-		$this->delete_cascades = array(
-				array( 'table'=>'T_email__campaign_send', 'fk'=>'csnd_camp_ID', 'msg'=>T_('%d links with users') ),
-			);
-
 		if( $db_row != NULL )
 		{
 			$this->ID = $db_row->ecmp_ID;
@@ -78,6 +65,19 @@ class EmailCampaign extends DataObject
 			$this->email_text = $db_row->ecmp_email_text;
 			$this->sent_ts = $db_row->ecmp_sent_ts;
 		}
+	}
+
+
+	/**
+	 * Get delete cascade settings
+	 *
+	 * @return array
+	 */
+	static function get_delete_cascades()
+	{
+		return array(
+				array( 'table'=>'T_email__campaign_send', 'fk'=>'csnd_camp_ID', 'msg'=>T_('%d links with users') ),
+			);
 	}
 
 
@@ -284,13 +284,33 @@ class EmailCampaign extends DataObject
 	function send_email( $user_ID, $email_address = '', $mode = '' )
 	{
 		$newsletter_params = array(
-				'message_html' => $this->get( 'email_html' ),
-				'message_text' => $this->get( 'email_text' ),
+				'include_greeting' => false,
+				'message_html'     => $this->get( 'email_html' ),
+				'message_text'     => $this->get( 'email_text' ),
 			);
 
-		$email_template = $mode == 'test' ? 'newsletter_test' : 'newsletter';
+		if( $mode == 'test' )
+		{ // Send a test newsletter
+			global $current_User;
 
-		return send_mail_to_User( $user_ID, $this->get( 'email_title' ), $email_template, $newsletter_params, false, array(), $email_address );
+			$newsletter_params['boundary'] = 'b2evo-'.md5( rand() );
+			$headers = array( 'Content-Type' => 'multipart/mixed; boundary="'.$newsletter_params['boundary'].'"' );
+
+			$UserCache = & get_UserCache();
+			if( $test_User = & $UserCache->get_by_ID( $user_ID, false, false ) )
+			{ // Send a test email only when test user exists
+				$message = mail_template( 'newsletter', 'auto', $newsletter_params, $test_User );
+				return send_mail( $email_address, NULL, $this->get( 'email_title' ), $message, NULL, NULL, $headers );
+			}
+			else
+			{ // No test user found
+				return false;
+			}
+		}
+		else
+		{ // Send a newsletter to real user
+			return send_mail_to_User( $user_ID, $this->get( 'email_title' ), 'newsletter', $newsletter_params, false, array(), $email_address );
+		}
 	}
 
 

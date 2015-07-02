@@ -3,8 +3,8 @@
  * XML-RPC : MetaWeblog API
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @author tor
  *
@@ -12,8 +12,6 @@
  * @see http://www.xmlrpc.com/metaWeblogApi
  *
  * @package xmlsrv
- *
- * @version $Id: _metaweblog.api.php 6650 2014-05-09 09:22:38Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -66,7 +64,7 @@ $mwnewpost_sig = array(
  *					2 password (string): Password for said username.
  *					3 struct (struct)
  * 					4 publish (bool)
- * @param string item type 'post' or 'page'
+ * @param string post type 'post' or 'page'
  */
 function mw_newpost($m, $item_type = 'post' )
 {
@@ -119,7 +117,7 @@ function mw_newpost($m, $item_type = 'post' )
 
 	$item_typ_ID = isset($contentstruct['wp_post_format']) ? $contentstruct['wp_post_format'] : 1;
 	if( $item_type == 'page' )
-	{	// Force item type 'page'
+	{	// Force post type 'page'
 		$item_typ_ID = 1000;
 	}
 
@@ -193,7 +191,7 @@ $mweditpost_sig = array(
  *					2 password (string): Password for said username.
  *					3 struct (struct)
  *					4 publish (bool)
- * @param string item type 'post' or 'page'
+ * @param string post type 'post' or 'page'
  */
 function mw_editpost( $m, $item_type = 'post' )
 {

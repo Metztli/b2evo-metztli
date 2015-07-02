@@ -3,24 +3,15 @@
  * This file implements the right sidebar for the comment browsing screen.
  *
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}.
 *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
  *
- * {@internal Open Source relicensing agreement:
- * EVO FACTORY grants Francois PLANQUE the right to license
- * EVO FACTORY contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author asimo: Evo Factory / Attila Simo
- *
- * @version $Id: _comments_sidebar.view.php 6225 2014-03-16 10:01:05Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -71,9 +62,10 @@ $Form->begin_form( '' );
 
 	$Form->hidden_ctrl();
 	$Form->hidden( 'tab3', $tab3 );
-	$Form->submit( array( 'submit', T_('Search'), 'search', '', 'float:right' ) );
+	$Form->hidden( 'blog', $Blog->ID );
+	$Form->submit( array( 'submit', T_('Search'), 'search btn-info', '', 'float:right' ) );
 
-	echo '<fieldset>';
+	echo '<fieldset class="clear">';
 	echo '<legend>'.T_('Comments to show').'</legend>';
 
 	$exclude_statuses = array_merge( get_restricted_statuses( $Blog->ID, 'blog_comment!' ), array( 'redirected' ) );
@@ -101,7 +93,7 @@ $Form->begin_form( '' );
 
 	echo $Form->inputstart;
 	?>
-	<div><input type="text" name="<?php echo $pp ?>s" size="20" value="<?php echo evo_htmlspecialchars($s) ?>" class="SearchField" /></div>
+	<div><input type="text" name="<?php echo $pp ?>s" size="20" value="<?php echo htmlspecialchars($s) ?>" class="SearchField form-control" /></div>
 	<?php
 	echo $Form->inputend;
 	?>
@@ -172,7 +164,7 @@ $Form->begin_form( '' );
 
 	echo $Form->inputstart;
 	?>
-	<div><input type="text" name="<?php echo $pp ?>author_url" size="20" value="<?php echo evo_htmlspecialchars($author_url) ?>" class="SearchField" /></div>
+	<div><input type="text" name="<?php echo $pp ?>author_url" size="20" value="<?php echo htmlspecialchars($author_url) ?>" class="SearchField form-control" /></div>
 	<?php
 	echo $Form->inputend;
 	?>
@@ -195,14 +187,14 @@ $Form->begin_form( '' );
 	echo '<legend>'.T_('IP').'</legend>';
 	echo $Form->inputstart;
 	?>
-	<div><?php echo T_('IP') ?> <input type="text" name="<?php echo $pp ?>author_IP" size="20" value="<?php echo evo_htmlspecialchars($author_IP) ?>" class="SearchField" style="width:85%" /></div>
+	<div><?php echo T_('IP') ?> <input type="text" name="<?php echo $pp ?>author_IP" size="20" value="<?php echo htmlspecialchars($author_IP) ?>" class="SearchField form-control" style="width:85%" /></div>
 	<div class="note"><?php echo T_('use \'%\' for partial matches') ?></div>
 	<?php
 	echo $Form->inputend;
 
 	echo '</fieldset>';
 
-	$Form->submit( array( 'submit', T_('Search'), 'search' ) );
+	$Form->submit( array( 'submit', T_('Search'), 'search btn-info' ) );
 
 $Form->end_form();
 

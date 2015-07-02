@@ -3,14 +3,12 @@
  * This template generates an RSS 2.0 feed for the requested blog's latest comments
  *
  * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://b2evolution.net/man/skin-structure}
+ * {@link http://b2evolution.net/man/skin-development-primer}
  *
  * See {@link http://backend.userland.com/rss}
  *
  * @package evoskins
  * @subpackage rss
- *
- * @version $Id: comments.main.php 3157 2013-03-06 04:34:44Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -86,7 +84,7 @@ echo '<?xml version="1.0" encoding="'.$io_charset.'"?'.'>';
 		<docs>http://backend.userland.com/rss</docs>
 		<admin:generatorAgent rdf:resource="http://b2evolution.net/?v=<?php echo $app_version ?>"/>
 		<ttl>60</ttl>
-		<?php while( $Comment = & $CommentList->get_next() )
+		<?php while( $Comment = & $CommentList->get_next( false ) )
 		{ // Loop through comments:
 			// Load comment's Item:
 			$Comment->get_Item();

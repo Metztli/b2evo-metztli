@@ -6,15 +6,13 @@
  * It will also rely on default includes for specific dispays (like the comment form).
  *
  * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://manual.b2evolution.net/Skins_2.0}
+ * {@link http://b2evolution.net/man/skin-development-primer}
  *
  * The main page template is used to display the blog when no specific page template is available
  * to handle the request (based on $disp).
  *
  * @package evoskins
  * @subpackage manual
- *
- * @version $Id: front.main.php 7043 2014-07-02 08:35:45Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -68,9 +66,15 @@ skin_include( '_left_navigation_bar.inc.php' );
 			) );
 		// --------------------------------- END OF MESSAGES ---------------------------------
 
-		if( !empty( $cat ) )
-		{	// Display breadcrumbs if some category is selected
-			$Skin->display_breadcrumbs( $cat );
+		if( ! empty( $cat ) )
+		{ // Display breadcrumbs if some category is selected
+			skin_widget( array(
+					// CODE for the widget:
+					'widget' => 'breadcrumb_path',
+					// Optional display params
+					'block_start' => '<div class="breadcrumbs">',
+					'block_end'   => '</div>',
+				) );
 		}
 	?>
 
@@ -111,12 +115,17 @@ skin_include( '_left_navigation_bar.inc.php' );
 		// ----------------------------END ITEM BLOCK  ----------------------------
 	}
 
+	// --------------------------------- START OF CONTENT HIERARCHY --------------------------------
 	echo '<h2 class="table_contents">'.T_('Table of contents').'</h2>';
-	$Skin->display_chapters( array(
-			'display_blog_title' => false,
-			'display_children'   => true,
-			'class_selected'     => ''
+	skin_widget( array(
+			// CODE for the widget:
+			'widget' => 'content_hierarchy',
+			// Optional display params
+			'display_blog_title'   => false,
+			'open_children_levels' => 20,
+			'class_selected'       => ''
 		) );
+	// ---------------------------------- END OF CONTENT HIERARCHY ---------------------------------
 
 	if( !empty( $intro_Item ) )
 	{

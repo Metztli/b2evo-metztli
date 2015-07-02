@@ -3,26 +3,16 @@
  * Backup - This is a LINEAR controller
  *
  * This file is part of b2evolution - {@link http://b2evolution.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2009-2014 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2009-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2009 by The Evo Factory - {@link http://www.evofactory.com/}.
  *
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- *
- * {@internal Open Source relicensing agreement:
- * The Evo Factory grants Francois PLANQUE the right to license
- * The Evo Factory's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
  * @package maintenance
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author efy-maxim: Evo Factory / Maxim.
- * @author fplanque: Francois Planque.
- *
- * @version $Id: backup.ctrl.php 7341 2014-09-30 09:47:23Z yura $
  */
 
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -55,9 +45,9 @@ if( $action == 'backup' && !$current_Backup->load_from_Request() )
 
 
 $AdminUI->breadcrumbpath_init( false );  // fp> I'm playing with the idea of keeping the current blog in the path here...
-$AdminUI->breadcrumbpath_add( T_('System'), '?ctrl=system' );
-$AdminUI->breadcrumbpath_add( T_('Maintenance'), '?ctrl=tools' );
-$AdminUI->breadcrumbpath_add( T_('Backup'), '?ctrl=backup' );
+$AdminUI->breadcrumbpath_add( T_('System'), $admin_url.'?ctrl=system' );
+$AdminUI->breadcrumbpath_add( T_('Maintenance'), $admin_url.'?ctrl=tools' );
+$AdminUI->breadcrumbpath_add( T_('Backup'), $admin_url.'?ctrl=backup' );
 
 
 // Display <html><head>...</head> section! (Note: should be done early if actions do not redirect)
@@ -97,13 +87,31 @@ switch( $action )
 
 		evo_flush();
 
+		// Lock b2evolution while backing up
 		$success = true;
-		if( $maintenance_mode = param( 'bk_maintenance_mode', 'boolean' ) )
-		{	// Enable maintenance mode
-			$success = switch_maintenance_mode( true, 'all', T_( 'System backup is in progress. Please reload this page in a few minutes.' ) );
+		$lock_type = param( 'bk_lock_type', 'string' );
+		switch( $lock_type )
+		{
+			case 'maintenance_lock':
+				// Enable maintenance lock
+				$success = switch_maintenance_lock( true );
+				// Make sure we disable the maintenance lock if PHP dies
+				register_shutdown_function( 'switch_maintenance_lock', false );
+				break;
 
-			// Make sure we exit the maintenance mode if PHP dies
-			register_shutdown_function( 'switch_maintenance_mode', false, '', true );
+			case 'maintenance_mode':
+				// Enable maintenance mode
+				$success = switch_maintenance_mode( true, 'all', T_( 'System backup is in progress. Please reload this page in a few minutes.' ) );
+				// Make sure we exit the maintenance mode if PHP dies
+				register_shutdown_function( 'switch_maintenance_mode', false, '', true );
+				break;
+
+			case 'open': // Don't lock the site
+				break;
+
+			default:
+				debug_die( 'Invalid system lock type received!' );
+				break;
 		}
 
 		if( $success )
@@ -112,9 +120,19 @@ switch( $action )
 			$current_Backup->start_backup();
 		}
 
-		if( $maintenance_mode )
-		{	// Disable maintenance mode
-			switch_maintenance_mode( false, 'all' );
+		// Unlock b2evolution
+		switch( $lock_type )
+		{
+			case 'maintenance_lock': // Disable maintenance lock
+				switch_maintenance_lock( false );
+				break;
+
+			case 'maintenance_mode': // Disable maintenance mode
+				switch_maintenance_mode( false, 'all' );
+				break;
+
+			default: // Nothing to do because the b2evoltuion was not locked
+				break;
 		}
 
 		$Form->end_form();

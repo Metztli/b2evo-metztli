@@ -1,26 +1,16 @@
 <?php
 /**
  * This file is part of b2evolution - {@link http://b2evolution.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2009-2014 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2009-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2009 by The Evo Factory - {@link http://www.evofactory.com/}.
  *
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- *
- * {@internal Open Source relicensing agreement:
- * The Evo Factory grants Francois PLANQUE the right to license
- * The Evo Factory's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
  * @package messaging
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author efy-maxim: Evo Factory / Maxim.
- * @author fplanque: Francois Planque.
- *
- * @version $Id: _thread_list.view.php 8214 2015-02-10 10:17:40Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -52,11 +42,6 @@ $Results->title = T_('Conversations list');
 if( is_admin_page() )
 {
 	$Results->title .= get_manual_link( 'messaging' );
-}
-
-if( $unread_messages_count > 0 && !$perm_abuse_management )
-{
-	$Results->title = $Results->title.' <span class="badge badge-important">'.$unread_messages_count.'</span></b>';
 }
 
 /**
@@ -98,18 +83,9 @@ threads_results( $Results, array_merge( array(
 	), $display_params ) );
 
 if( ! $perm_abuse_management )
-{	// Show link to create a new conversation
-	if( is_admin_page() )
-	{
-		$newmsg_url = regenerate_url( 'action', 'action=new' );
-	}
-	else
-	{
-		$newmsg_url = regenerate_url( 'disp', 'disp=threads&action=new' );
-	}
-
-	$Results->global_icon( T_('See My Contacts'), '', get_dispctrl_url( 'contacts' ), T_('See My Contacts').' ', 3, 4 );
-	$Results->global_icon( T_('Create a new conversation...'), 'compose_new', $newmsg_url, T_('Compose new').' &raquo;', 3, 4 );
+{ // Show link to create a new conversation
+	$Results->global_icon( T_('See My Contacts'), 'contacts', get_dispctrl_url( 'contacts' ), T_('See My Contacts').' ', 3, 4 );
+	$Results->global_icon( T_('Create a new conversation...'), 'compose_new', get_dispctrl_url( 'threads', 'action=new' ), T_('Compose new').' &raquo;', 3, 4 );
 }
 
 $Results->display( $display_params );

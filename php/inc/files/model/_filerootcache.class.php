@@ -3,28 +3,13 @@
  * This file implements the FileRootCache class.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: _filerootcache.class.php 6135 2014-03-08 07:54:05Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -56,14 +41,22 @@ class FileRootCache
 	 *
 	 * @static
 	 *
+	 * @param string Special file root ID (Used e.g. to view file root of the special user)
 	 * @return array of FileRoots (key being the FileRoot's ID)
 	 */
-	function get_available_FileRoots()
+	function get_available_FileRoots( $special_root_ID = NULL )
 	{
 		global $current_User;
 		global $collections_Module;
 
 		$r = array();
+
+		if( ! empty( $special_root_ID ) &&
+		    ( $special_FileRoot = & $this->get_by_ID( $special_root_ID, true ) ) &&
+		    $current_User->check_perm( 'files', 'edit', false, $special_FileRoot ) )
+		{ // Try to add special file root if current user has an access
+			$r[ $special_FileRoot->ID ] = & $special_FileRoot;
+		}
 
 		// The user's blog (if available) is the default/first one:
 		$user_FileRoot = & $this->get_by_type_and_ID( 'user', $current_User->ID, true );

@@ -1,29 +1,14 @@
 <?php
 /**
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2009-2014 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2009-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2009 by The Evo Factory - {@link http://www.evofactory.com/}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * The Evo Factory grants Francois PLANQUE the right to license
- * The Evo Factory's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package evocore
- *
- * @version $Id: display.ctrl.php 7172 2014-07-22 08:07:56Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -46,6 +31,7 @@ switch ( $action )
 		// UPDATE display settings:
 		param( 'use_gravatar', 'integer', 0 );
 		param( 'default_gravatar', 'string', 'b2evo' );
+		param( 'username_display', 'string', 'login' );
 		param( 'gender_colored', 'integer', 0 );
 		param( 'bubbletip', 'integer', 0 );
 		param( 'bubbletip_size_admin', 'string', '' );
@@ -58,9 +44,10 @@ switch ( $action )
 		param( 'user_url_loggedin', 'string', '' );
 		param( 'user_url_anonymous', 'string', '' );
 
-		$Settings->set_array( array(
+		$updated_settings = array(
 			array( 'use_gravatar', $use_gravatar ),
 			array( 'default_gravatar', $default_gravatar ),
+			array( 'username_display', $username_display ),
 			array( 'gender_colored', $gender_colored ),
 			array( 'bubbletip', $bubbletip ),
 			array( 'bubbletip_size_admin', $bubbletip_size_admin ),
@@ -71,7 +58,27 @@ switch ( $action )
 			array( 'allow_anonymous_user_list', $allow_anonymous_user_list ),
 			array( 'allow_anonymous_user_profiles', $allow_anonymous_user_profiles ),
 			array( 'user_url_loggedin', $user_url_loggedin ),
-			array( 'user_url_anonymous', $user_url_anonymous ) ) );
+			array( 'user_url_anonymous', $user_url_anonymous ) );
+
+		if( $allow_anonymous_user_list || $allow_anonymous_user_profiles )
+		{ // Update the user groups levels only if at least one users page is available for anonymous users
+			param( 'allow_anonymous_user_level_min', 'integer', 0 );
+			param( 'allow_anonymous_user_level_max', 'integer', 0 );
+			param_check_interval( 'allow_anonymous_user_level_min', 'allow_anonymous_user_level_max', T_('User group level must be a number.'), T_('The minimum user group level must be lower than (or equal to) the maximum.') );
+			if( ! param_has_error( 'allow_anonymous_user_level_min' ) && $allow_anonymous_user_level_min < 0 )
+			{ // Limit by min user group level
+				param_error( 'allow_anonymous_user_level_min', T_('Minimum user group level cannot be lower than 0.') );
+			}
+			if( ! param_has_error( 'allow_anonymous_user_level_max' ) && $allow_anonymous_user_level_max > 10 )
+			{ // Limit by max user group level
+				param_error( 'allow_anonymous_user_level_max', T_('Maximum user group level cannot be higher than 10.') );
+			}
+
+			$updated_settings[] = array( 'allow_anonymous_user_level_min', $allow_anonymous_user_level_min );
+			$updated_settings[] = array( 'allow_anonymous_user_level_max', $allow_anonymous_user_level_max );
+		}
+
+		$Settings->set_array( $updated_settings );
 
 		if( ! $Messages->has_errors() )
 		{

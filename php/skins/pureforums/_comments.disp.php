@@ -8,13 +8,11 @@
  * For example: /blogs/index.php?disp=comments
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  * @subpackage pureforums
- *
- * @version $Id: _comments.disp.php 7043 2014-07-02 08:35:45Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -41,7 +39,7 @@ $CommentList->display_if_empty( array(
 if( $CommentList->result_num_rows > 0 )
 {
 ?>
-<table id="styled_content_block" class="forums_table topics_table single_topic" cellspacing="0" cellpadding="0">
+<table id="styled_content_block" class="forums_table topics_table single_topic evo_content_block" cellspacing="0" cellpadding="0">
 <?php
 while( $Comment = & $CommentList->get_next() )
 { // Loop through comments:

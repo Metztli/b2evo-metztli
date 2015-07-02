@@ -3,14 +3,12 @@
  * This file implements the UI view (+more :/) for the blogs permission management.
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
  *
  * @todo move user rights queries to object (fplanque)
- *
- * @version $Id: _coll_user_perm.form.php 6894 2014-06-13 09:56:09Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -45,7 +43,7 @@ $Form->hidden_ctrl();
 $Form->hidden( 'tab', 'perm' );
 $Form->hidden( 'blog', $edited_Blog->ID );
 
-$Form->begin_fieldset( T_('User permissions').get_manual_link('user_permissions') );
+$Form->begin_fieldset( T_('User permissions').get_manual_link('advanced-user-permissions') );
 
 
 /*
@@ -127,7 +125,7 @@ $Results->grp_cols[] = array(
 $Results->cols[] = array(
 						'th' => T_('Login'),
 						'order' => 'user_login',
-						'td' => '%get_user_identity_link( #user_login# )%',
+						'td' => '%get_user_identity_link( #user_login#, NULL, "profile", "avatar_login" )%',
 					);
 
 $Results->cols[] = array(
@@ -146,7 +144,7 @@ $Results->cols[] = array(
 					);
 
 $Results->cols[] = array(
-						'th' => T_('Post statuses'),
+						'th' => T_('Post Statuses'),
 						'th_class' => 'checkright',
 						'td' => '%coll_perm_status_checkbox( {row}, \'bloguser_\', \'published\', \''.format_to_output( TS_('Permission to post into this blog with published status'), 'htmlattr' ).'\', \'post\' )%'.
 								'%coll_perm_status_checkbox( {row}, \'bloguser_\', \'community\', \''.format_to_output( TS_('Permission to post into this blog with community status'), 'htmlattr' ).'\', \'post\' )%'.
@@ -160,7 +158,7 @@ $Results->cols[] = array(
 					);
 
 $Results->cols[] = array(
-						'th' => T_('Post types'),
+						'th' => T_('Post Types'),
 						'th_class' => 'checkright',
 						'td' => '%coll_perm_checkbox( {row}, \'bloguser_\', \'perm_page\', \''.format_to_output( TS_('Permission to create pages'), 'htmlattr' ).'\' )%'.
 								'%coll_perm_checkbox( {row}, \'bloguser_\', \'perm_intro\', \''.format_to_output( TS_('Permission to create intro posts (Intro-* post types)'), 'htmlattr' ).'\' )%'.

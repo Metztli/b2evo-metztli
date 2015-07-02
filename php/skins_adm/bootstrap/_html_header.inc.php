@@ -3,33 +3,18 @@
  * This file displays the first part of the page menu (before the page title).
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
- *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * PROGIDISTRI S.A.S. grants Francois PLANQUE the right to license
- * PROGIDISTRI S.A.S.'s contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
  *
  * @package admin
  *
  * @author blueyed
  * @author fplanque
  * @author mbruneau: Marc BRUNEAU / PROGIDISTRI
- *
- * @version $Id: _html_header.inc.php 6268 2014-03-19 14:15:42Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -44,6 +29,8 @@ require_js( 'ajax.js' );	// Functions to work with AJAX response data
 <!DOCTYPE html>
 <html lang="<?php locale_lang() ?>">
 <head>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta http-equiv="Content-Type" content="text/html; charset=<?php echo $io_charset ?>" />
 	<title><?php echo $this->get_html_title(); ?></title>
 	<?php
 	global $robots_index, $robots_follow;
@@ -59,7 +46,6 @@ require_js( 'ajax.js' );	// Functions to work with AJAX response data
 		var blog_id = '".param( 'blog', 'integer' )."';
 		var is_backoffice = true;" );
 
-	add_js_for_toolbar();		// Registers all the javascripts needed by the toolbar menu
 	init_bubbletip_js( 'rsc_url', $AdminUI->get_template( 'tooltip_plugin' ) ); // Init popover windows for usernames
 	init_results_js(); // Add functions to work with Results tables
 
@@ -85,9 +71,9 @@ require_js( 'ajax.js' );	// Functions to work with AJAX response data
 	global $Debuglog;
 	$Debuglog->add( 'Admin-Path: '.var_export($this->path, true), 'skins' );
 
-	if( $this->get_path(0) == 'files'
-			|| ($this->get_path_range(0,1) == array('blogs', 'perm') )
-			|| ($this->get_path_range(0,1) == array('blogs', 'permgroup') ) )
+	if( $this->get_path( 0 ) == 'files'
+			|| ( $this->get_path_range( 0, 2 ) == array( 'collections', 'settings', 'perm' ) )
+			|| ( $this->get_path_range( 0, 2 ) == array( 'collections', 'settings', 'permgroup' ) ) )
 	{{{ // -- Inject javascript ----------------
 		// gets initialized in _footer.php
 
@@ -99,7 +85,7 @@ require_js( 'ajax.js' );	// Functions to work with AJAX response data
 JS;
 			add_headline( $begin_script );
 
-			switch( $this->get_path(0) )
+			switch( $this->get_path( 0 ) )
 			{
 				case 'files':
 				/**

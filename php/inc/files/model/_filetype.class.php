@@ -3,33 +3,14 @@
  * This file implements the file type class.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * PROGIDISTRI S.A.S. grants Francois PLANQUE the right to license
- * PROGIDISTRI S.A.S.'s contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- * @author mbruneau: Marc BRUNEAU / PROGIDISTRI
- *
- * @version $Id: _filetype.class.php 6344 2014-03-26 11:28:02Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -56,14 +37,10 @@ class Filetype extends DataObject
 	 */
 	function Filetype( $db_row = NULL )
 	{
-
 		// Call parent constructor:
 		parent::DataObject( 'T_filetypes', 'ftyp_', 'ftyp_ID' );
 
-		$this->delete_restrictions = array();
-		$this->delete_cascades = array();
-
- 		if( $db_row != NULL )
+		if( $db_row != NULL )
 		{
 			$this->ID         = $db_row->ftyp_ID;
 			$this->extensions = $db_row->ftyp_extensions;
@@ -91,6 +68,7 @@ class Filetype extends DataObject
 		global $force_upload_forbiddenext;
 
 		// Extensions
+		$this->old_extensions = $this->extensions;
 		if( param_string_not_empty( 'ftyp_extensions', T_('Please enter file extensions separated by space.') ) )
 		{ // Check if estensions has a valid format
 			$GLOBALS['ftyp_extensions'] = strtolower( trim( $GLOBALS['ftyp_extensions'] ) );
@@ -107,6 +85,7 @@ class Filetype extends DataObject
 		$this->set_from_Request( 'name' );
 
 		// Mime type
+		$this->old_mimetype = $this->mimetype;
 		// asimo> TODO: Consider to add some further validation for the ftyp_mimetype param value
 		// If it will be correctly validated, the corresponding db field collation may be changed to 'ascii_bin'
 		param_string_not_empty( 'ftyp_mimetype', T_('Please enter a mime type.') );
@@ -173,19 +152,29 @@ class Filetype extends DataObject
 
 	/**
 	 * Return the img html code of the icon
+	 *
+	 * @param array Params
 	 * @return string
 	 */
-	function get_icon()
+	function get_icon( $params = array() )
 	{
+		$params = array_merge( array(
+				'alt'   => '#',
+				'title' => '#',
+			), $params );
+
 		global $rsc_url;
 
 		$icon = $this->icon;
-		if( empty($icon) )
+		if( empty( $icon ) )
 		{ // use default icon
 			$icon = 'file_unknown';
 		}
 
-		return get_icon( $icon, 'imgtag', array( 'alt' => $this->dget('name', 'htmlattr') ) );
+		return get_icon( $icon, 'imgtag', array(
+				'alt'   => $params['alt'] == '#' ? $this->dget( 'name', 'htmlattr' ) : $params['alt'],
+				'title' => $params['title'] == '#' ? $this->dget( 'name', 'htmlattr' ) : $params['title']
+			) );
 	}
 
 
@@ -218,6 +207,145 @@ class Filetype extends DataObject
 			$allow_locked = $current_User->check_perm( 'files', 'all' );
 		}
 		return ( $this->allowed != 'admin' ) ? true : $allow_locked;
+	}
+
+
+	/**
+	 * Insert object into DB based on previously recorded changes.
+	 *
+	 * @return boolean true on success, false on failure to insert
+	 */
+	function dbinsert()
+	{
+		global $DB;
+
+		$dbchanges = $this->dbchanges;
+
+		$DB->begin();
+
+		if( ( $r = parent::dbinsert() ) !== false )
+		{
+			// Update types of the Files
+			$this->update_file_types();
+
+			$DB->commit();
+		}
+		else
+		{
+			$DB->rollback();
+		}
+
+		return $r;
+	}
+
+
+	/**
+	 * Update the DB based on previously recorded changes
+	 *
+	 * @return boolean true on success, false on failure to update, NULL if no update necessary
+	 */
+	function dbupdate()
+	{
+		global $DB;
+
+		$dbchanges = $this->dbchanges;
+
+		$DB->begin();
+
+		if( ( $r = parent::dbupdate() ) !== false )
+		{
+			// Update types of the Files
+			$this->update_file_types();
+
+			$DB->commit();
+		}
+		else
+		{
+			$DB->rollback();
+		}
+
+		return $r;
+	}
+
+
+	/**
+	 * Delete object from DB.
+	 *
+	 * @return boolean true on success, false on failure to update
+	 */
+	function dbdelete()
+	{
+		global $DB;
+
+		// Save old extensions and old mimetype to update file types after deleting
+		$this->old_extensions = $this->extensions;
+		$this->extensions = '';
+		$this->old_mimetype = $this->mimetype;
+		$this->mimetype = '';
+
+		$DB->begin();
+
+		if( ( $r = parent::dbdelete() ) !== false )
+		{
+			// Update types of the Files
+			$this->update_file_types();
+
+			$DB->commit();
+		}
+		else
+		{
+			$DB->rollback();
+		}
+
+		return $r;
+	}
+
+
+	/**
+	 * Update field 'file_type' in the table T_files
+	 */
+	function update_file_types()
+	{
+		if( $this->extensions == $this->old_extensions && $this->mimetype == $this->old_mimetype )
+		{ // The extensions and mimetype were not changed
+			return;
+		}
+
+		global $DB;
+
+		$old_extensions = explode( ' ', $this->old_extensions );
+
+		if( preg_match( '#^audio/#', $this->old_mimetype ) && $this->mimetype != $this->old_mimetype )
+		{ // Previous mimetype was 'audio' but it is changed to other, We should update file type
+			$deleted_extensions = $old_extensions;
+		}
+
+		if( preg_match( '#^audio/#', $this->mimetype ) )
+		{ // Current file type is Audio format
+
+			$new_extensions = $this->get_extensions();
+			if( empty( $new_extensions ) && empty( $old_extensions ) )
+			{ // No extensions
+				return;
+			}
+
+			$deleted_extensions = array_diff( $old_extensions, $new_extensions );
+			$added_extensions = array_diff( $new_extensions, $old_extensions );
+		}
+
+		if( ! empty( $deleted_extensions ) )
+		{ // Delete file type from old extensions
+			$DB->query( 'UPDATE T_files
+					SET file_type = NULL
+				WHERE file_path LIKE "%.'.implode( '" OR file_path LIKE "%.', $deleted_extensions ).'"' );
+		}
+
+		if( ! empty( $added_extensions ) )
+		{ // Set audio file type for new extensions
+			$DB->query( 'UPDATE T_files
+					SET file_type = "audio"
+				WHERE file_path LIKE "%.'.implode( '" OR file_path LIKE "%.', $added_extensions ).'"' );
+		}
 	}
 }
 

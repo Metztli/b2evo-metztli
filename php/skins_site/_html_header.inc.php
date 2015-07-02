@@ -15,8 +15,7 @@ global $page_title;
 siteskin_init();
 
 ?>
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="<?php locale_lang() ?>" lang="<?php locale_lang() ?>">
+<html lang="<?php locale_lang() ?>">
 <head>
 	<title><?php
 		// ------------------------- TITLE FOR THE CURRENT REQUEST -------------------------
@@ -33,7 +32,7 @@ siteskin_init();
 /* In the future we probably want to include the toolbar here...
 
 // ---------------------------- TOOLBAR INCLUDED HERE ----------------------------
-require $skins_path.'_toolbar.inc.php';
+require skin_fallback_path( '_toolbar.inc.php' );
 // ------------------------------- END OF TOOLBAR --------------------------------
 
 echo "\n";

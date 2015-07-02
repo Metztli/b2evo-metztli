@@ -3,29 +3,14 @@
  * This file implements the Menu class.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * }}
- *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE
- *
- * @version $Id: _menu.class.php 6411 2014-04-07 15:17:33Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -276,14 +261,14 @@ class Menu extends Widget
 
 			foreach( $menuEntries as $loop_key => $loop_details )
 			{
-				if( empty($loop_details) )
-				{	// Empty placeholder, skip it. Might happen if the files module is disabled for example, then we had a file placeholder
+				if( empty( $loop_details ) )
+				{ // Empty placeholder, skip it. Might happen if the files module is disabled for example, then we had a file placeholder
 					// in the blog menu that will never be used. So don't display it...
 					continue;
 				}
 
 				if( !empty( $loop_details['separator'] ) )
-				{	// Separator
+				{ // Separator
 					$r .= $templateForLevel['separator'];
 					continue;
 				}
@@ -294,7 +279,7 @@ class Menu extends Widget
 				{
 					$href = $loop_details['href'];
 				}
-				elseif( !empty($loop_details['href_eval']) )
+				elseif( ! empty( $loop_details['href_eval'] ) )
 				{ // Useful for passing dynamic context vars (fp>> I AM using it)
 					$href = eval( $loop_details['href_eval'] );
 				}
@@ -333,19 +318,20 @@ class Menu extends Widget
 				// CLASS
 				$class = '';
 				if( !empty( $loop_details['class'] ) )
-				{	// disabled
+				{ // disabled
 					$class .= ' '.$loop_details['class'];
 				}
 				if( !empty( $loop_details['disabled'] ) )
-				{	// disabled
+				{ // disabled
 					$class .= ' '.$templateForLevel['disabled_class'];
 				}
-				if( !empty($class) )
-				{	// disabled
+				if( ! empty( $class ) )
+				{ // disabled
 					$anchor .= ' class="'.trim($class).'"';
 				}
 
-				$anchor .= '>'.(isset($loop_details['text']) ? format_to_output( $loop_details['text'], 'htmlbody' ) : '?')."</a>";
+				$anchor .= '>'.(isset($loop_details['text']) ? format_to_output( $loop_details['text'], 'htmlbody' ) : '?');
+				$anchor_end = '</a>';
 
 				if( $loop_key == $selected )
 				{ // Highlight selected entry
@@ -357,23 +343,36 @@ class Menu extends Widget
 						$r .= isset($templateForLevel['beforeEachSelWithSub']) ? $templateForLevel['beforeEachSelWithSub'] : $templateForLevel['beforeEachSel'];
 						$r .= $anchor;
 
-						if( $templateForLevel['_props']['recurse'] != 'no' )
-						{ // Recurse:
-							if( ! isset( $templateForLevel['_props']['recurse_level'] ) ||
+						if( $templateForLevel['_props']['recurse'] != 'no' && // Recurse:
+							  ( ! isset( $templateForLevel['_props']['recurse_level'] ) ||
 							    ( isset( $templateForLevel['_props']['recurse_level'] ) &&
-							      $templateForLevel['_props']['recurse_level'] > $level + 1 ) )
-							{ // Display submenus if this level is not limited by param 'recurse_level'
-								$r .= $this->get_html_menu( $recursePath, $template, $level+1 );
-							}
+							      $templateForLevel['_props']['recurse_level'] > $level + 1 ) ) )
+						{ // Display submenus if this level is not limited by param 'recurse_level'
+							$r .= $templateForLevel['arrow_level_'.( $level + 1 )].'</a>';
+							$r .= $this->get_html_menu( $recursePath, $template, $level+1 );
+						}
+						else
+						{ // End anchor without sub menus
+							$r .= $anchor_end;
 						}
 
 						$r .= isset($templateForLevel['afterEachSelWithSub']) ? $templateForLevel['afterEachSelWithSub'] : $templateForLevel['afterEachSel'];
 					}
 					else
 					{
-						$r .= $templateForLevel['beforeEachSel'];
-						$r .= $anchor;
-						$r .= $templateForLevel['afterEachSel'];
+						if( isset( $loop_details['order'] ) && $loop_details['order'] == 'group_last' &&
+						    isset( $templateForLevel['beforeEachSelGrpLast'], $templateForLevel['afterEachSelGrpLast'] ) )
+						{ // This selected menu item is last in a group
+							$r .= $templateForLevel['beforeEachSelGrpLast'];
+							$r .= $anchor.$anchor_end;
+							$r .= $templateForLevel['afterEachSelGrpLast'];
+						}
+						else
+						{ // Normal selected menu item
+							$r .= $templateForLevel['beforeEachSel'];
+							$r .= $anchor.$anchor_end;
+							$r .= $templateForLevel['afterEachSel'];
+						}
 					}
 				}
 				else
@@ -384,18 +383,41 @@ class Menu extends Widget
 							&& $this->get_menu_entries($recursePath) )
 					{
 						$r .= isset($templateForLevel['beforeEachWithSub']) ? $templateForLevel['beforeEachWithSub'] : $templateForLevel['beforeEachSel'];
-						$r .= $anchor;
+						$r .= $anchor.$templateForLevel['arrow_level_'.( $level + 1 )].'</a>';
 						// recurse:
 						$r .= $this->get_html_menu( $recursePath, $template, $level+1 );
 						$r .= isset($templateForLevel['afterEachWithSub']) ? $templateForLevel['afterEachWithSub'] : $templateForLevel['afterEachSel'];
 					}
 					else
 					{
-						$r .= $templateForLevel['beforeEach'];
-						$r .= $anchor;
-						$r .= $templateForLevel['afterEach'];
+						if( isset( $loop_details['order'] ) && $loop_details['order'] == 'group_last' &&
+						    isset( $templateForLevel['beforeEachGrpLast'], $templateForLevel['afterEachGrpLast'] ) )
+						{ // This menu item is last in a group
+							$r .= $templateForLevel['beforeEachGrpLast'];
+							$r .= $anchor.$anchor_end;
+							$r .= $templateForLevel['afterEachGrpLast'];
+						}
+						else
+						{ // Normal menu item
+							$r .= $templateForLevel['beforeEach'];
+							$r .= $anchor.$anchor_end;
+							$r .= $templateForLevel['afterEach'];
+						}
 					}
 				}
+
+				// Additional attribures for each menu entry
+				$entry_attrs = '';
+				$entry_class = '';
+				if( ! empty( $loop_details['entry_class'] ) )
+				{ // Css class for entry
+					if( strpos( $r, '$entry_class$' ) === false )
+					{
+						$entry_attrs .= ' class="'.$loop_details['entry_class'].'"';
+					}
+					$entry_class .= ' '.$loop_details['entry_class'];
+				}
+				$r = str_replace( array( '$entry_attrs$', '$entry_class$' ), array( $entry_attrs, $entry_class ), $r );
 			}
 			$r .= $templateForLevel['after'];
 		}
@@ -417,16 +439,19 @@ class Menu extends Widget
 	{
 		switch( $name )
 		{
-			case 'sf-menu-left':
-			case 'sf-menu-right':
+			case 'evobar-menu-right':
+				$arrow_level_2 = '<span class="evobar-icon-left fa fa-caret-left"></span>';
+			case 'evobar-menu-left':
 				return array(
-					'before' => '<ul class="sf-menu '.$name.'">',
-					'after' => '</ul>',
-					'beforeEach' => '<li>',
-					'afterEach' => '</li>',
-					'beforeEachSel' => '<li class="current">',
-					'afterEachSel' => '</li>',
-					'separator' => '<li class="separator"><div><hr /></div></li>',
+					'before'         => '<ul class="evobar-menu '.$name.'">',
+					'after'          => '</ul>',
+					'beforeEach'     => '<li$entry_attrs$>',
+					'afterEach'      => '</li>',
+					'beforeEachSel'  => '<li class="current$entry_class$"$entry_attrs$>',
+					'afterEachSel'   => '</li>',
+					'separator'      => '<li class="separator"><hr /></li>',
+					'arrow_level_1'  => '<span class="evobar-icon-down fa fa-caret-down"></span>',
+					'arrow_level_2'  => isset( $arrow_level_2 ) ? $arrow_level_2 : '<span class="evobar-icon-right fa fa-caret-right"></span>',
 					'disabled_class' => 'disabled',
 					'_props' => array(
 						'recurse' => 'always',  // options are: 'no' 'always' or 'intoselected'

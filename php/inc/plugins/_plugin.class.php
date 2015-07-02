@@ -3,35 +3,16 @@
  * This file implements the abstract {@link Plugin} class.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
- *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
  *
  * @package plugins
  *
  * @todo Add links to pages on b2evolution.net/man, once they are "clean"/tiny
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE - {@link http://fplanque.net/}
- * @author blueyed: Daniel HAHLER
- *
- * @version $Id: _plugin.class.php 8237 2015-02-12 06:24:52Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -280,6 +261,13 @@ class Plugin
 	 */
 	private $_plugin_url = array();
 
+	/**
+	 * Plugin template
+	 *
+	 * @var array
+	 */
+	var $template;
+
 	/**#@-*/
 
 
@@ -333,6 +321,89 @@ class Plugin
 		}
 
 		return true;
+	}
+
+
+	/**
+	 * Load template params from current skin
+	 */
+	function load_template()
+	{
+		$params = array(
+				'toolbar_before'       => '<div class="edit_toolbar $toolbar_class$">',
+				'toolbar_after'        => '</div>',
+				'toolbar_title_before' => '',
+				'toolbar_title_after'  => '',
+				'toolbar_group_before' => '',
+				'toolbar_group_after'  => ' ',
+				'toolbar_button_class' => 'quicktags',
+			);
+
+		if( is_admin_page() )
+		{ // Get plugin template from backoffice skin
+			if( is_logged_in() )
+			{
+				global $current_User, $UserSettings, $adminskins_path;
+				$admin_skin = $UserSettings->get( 'admin_skin', $current_User->ID );
+				require_once $adminskins_path.$admin_skin.'/_adminUI.class.php';
+				$AdminUI = new AdminUI();
+				$skin_template = $AdminUI->get_template( 'plugin_template' );
+			}
+		}
+		else
+		{ // Get plugin template from frontoffice skin
+			global $Blog;
+			if( ! empty( $Blog ) )
+			{
+				$skin_ID = $Blog->get_skin_ID();
+				$SkinCache = & get_SkinCache();
+				if( $Skin = & $SkinCache->get_by_ID( $skin_ID, false, false ) )
+				{
+					$skin_template = $Skin->get_template( 'plugin_template' );
+				}
+			}
+		}
+
+		if( empty( $skin_template ) )
+		{ // Use default template params when they are not set by skin
+			$this->template = $params;
+		}
+		else
+		{ // Merge default params with current skin params
+			$this->template = array_merge( $params, $skin_template );
+		}
+	}
+
+
+	/**
+	 * Get param of the current loaded template
+	 *
+	 * @param string Param name
+	 * @param array What should be replaced in the param (e.g. array( '$toolbar_class$' => 'quicktags_toolbar' ) )
+	 */
+	function get_template( $param_name, $replaces = NULL )
+	{
+		if( is_null( $this->template ) )
+		{ // Load template only first time
+			$this->load_template();
+		}
+
+		if( ! isset( $this->template[ $param_name ] ) )
+		{ // Return empty string if no defined param
+			return '';
+		}
+
+		$param_value = $this->template[ $param_name ];
+
+		if( is_array( $replaces ) )
+		{
+			foreach( $replaces as $search => $replace )
+			{
+				$param_value = str_replace( $search, $replace, $param_value );
+			}
+		}
+
+		return $param_value;
 	}
 
 
@@ -495,10 +566,10 @@ class Plugin
 			return array();
 		}
 
-		$render_note = get_manual_link('Plugin/apply_rendering');
+		$render_note = '';
 		if( empty( $this->code ) )
 		{
-			$render_note .= ' '.T_('Note: The plugin code is empty, so this plugin will not work as an "opt-out", "opt-in" or "lazy" renderer.');
+			$render_note .= T_('Note: The plugin code is empty, so this plugin will not work as an "opt-out", "opt-in" or "lazy" renderer.');
 		}
 		$admin_Plugins = & get_Plugins_admin();
 		$rendering_options = $admin_Plugins->get_apply_rendering_values( true );
@@ -517,6 +588,44 @@ class Plugin
 					'type' => 'select',
 					'options' => $rendering_options,
 					'defaultvalue' => $default_comment_rendering,
+					'note' => $render_note,
+				),
+			);
+
+		return $r;
+	}
+
+
+	/**
+	 * Define here default message settings that are to be made available in the backoffice.
+	 *
+	 * @see Plugin::GetDefaultSettings()
+	 * @param array Associative array of parameters.
+	 *    'for_editing': true, if the settings get queried for editing;
+	 *                   false, if they get queried for instantiating {@link Plugin::$UserSettings}.
+	 * @return array See {@link Plugin::GetDefaultSettings()}.
+	 */
+	function get_msg_setting_definitions( & $params )
+	{
+		if( $this->group != 'rendering' )
+		{
+			return array();
+		}
+
+		$render_note = $this->get_help_link();
+		if( empty( $this->code ) )
+		{
+			$render_note .= ' '.T_('Note: The plugin code is empty, so this plugin will not work as an "opt-out", "opt-in" or "lazy" renderer.');
+		}
+		$admin_Plugins = & get_Plugins_admin();
+		$rendering_options = $admin_Plugins->get_apply_rendering_values( true );
+		$default_msg_rendering = ( isset( $params['default_msg_rendering'] ) && in_array( $params['default_msg_rendering'], $rendering_options ) ) ? $params['default_msg_rendering'] : 'never';
+		$r = array(
+			'msg_apply_rendering' => array(
+					'label' => sprintf( /* TRANS: Apply <plugin name> (rendering): always/never/stealth... etc */ T_('Apply %s'), $this->name ),
+					'type' => 'select',
+					'options' => $rendering_options,
+					'defaultvalue' => $default_msg_rendering,
 					'note' => $render_note,
 				),
 			);
@@ -740,17 +849,12 @@ class Plugin
 	 *
 	 * @param array Associative array of parameters.
 	 *   - 'target_type': either 'Comment' or 'Item'.
-	 *   - 'edit_layout': "simple", "expert", etc. (users, hackers, plugins, etc. may create their own layouts in addition to these)
-	 *                    NOTE: Please respect the "simple" mode, which should display only the most simple things!
+	 *   - 'edit_layout': "inskin", "expert", etc. (users, hackers, plugins, etc. may create their own layouts in addition to these)
+	 *                    NOTE: Please respect the "inskin" mode, which should display only the most simple things!
 	 * @return boolean did we display a button?
 	 */
 	function AdminDisplayEditorButton( $params )
 	{
-		if( $params['edit_layout'] == 'simple' )
-		{ // Do nothing in simple mode
-			return false;
-		}
-
 		return false;		// Do nothing by default.
 	}
 
@@ -766,8 +870,8 @@ class Plugin
 	 *
 	 * @param array Associative array of parameters.
 	 *   - 'target_type': either 'Comment' or 'Item'.
-	 *   - 'edit_layout': "simple", "expert", etc. (users, hackers, plugins, etc. may create their own layouts in addition to these)
-	 *                    NOTE: Please respect the "simple" mode, which should display only the most simple things!
+	 *   - 'edit_layout': "inskin", "expert", etc. (users, hackers, plugins, etc. may create their own layouts in addition to these)
+	 *                    NOTE: Please respect the "inskin" mode, which should display only the most simple things!
 	 * @return boolean did we display a button?
 	 */
 	function DisplayEditorButton( $params )
@@ -781,8 +885,8 @@ class Plugin
 	 *
 	 * @param array Associative array of parameters
 	 *   - 'target_type': either 'Comment' or 'Item'.
-	 *   - 'edit_layout': "simple", "expert", etc. (users, hackers, plugins, etc. may create their own layouts in addition to these)
-	 *                    NOTE: Please respect the "simple" mode, which should display only the most simple things!
+	 *   - 'edit_layout': "inskin", "expert", etc. (users, hackers, plugins, etc. may create their own layouts in addition to these)
+	 *                    NOTE: Please respect the "inskin" mode, which should display only the most simple things!
 	 * @return boolean did we display a toolbar?
 	 */
 	function AdminDisplayToolbar( & $params )
@@ -861,7 +965,7 @@ class Plugin
 	/**
 	 * Event handler: Gets invoked when an action request was called which should be blocked in specific cases
 	 *
-	 * Blocakble actions: comment post, user login/registration, email send/validation, account activation 
+	 * Blocakble actions: comment post, user login/registration, email send/validation, account activation
 	 */
 	function BeforeBlockableAction()
 	{
@@ -1363,8 +1467,8 @@ class Plugin
 	 * @param array Associative array of parameters
 	 *   - 'Form': the {@link Form} object (by reference)
 	 *   - 'Item': the Item which gets edited (by reference)
-	 *   - 'edit_layout': "simple", "expert", etc. (users, hackers, plugins, etc. may create their own layouts in addition to these)
-	 *                    NOTE: Please respect the "simple" mode, which should display only the most simple things!
+	 *   - 'edit_layout': "inskin", "expert", etc. (users, hackers, plugins, etc. may create their own layouts in addition to these)
+	 *                    NOTE: Please respect the "inskin" mode, which should display only the most simple things!
 	 * @return boolean did we display something?
 	 */
 	function AdminDisplayItemFormFieldset( & $params )
@@ -1379,8 +1483,8 @@ class Plugin
 	 * @param array Associative array of parameters
 	 *   - 'Form': the {@link Form} object (by reference)
 	 *   - 'Item': the Item which gets edited (by reference)
-	 *   - 'edit_layout': "simple", "expert", etc. (users, hackers, plugins, etc. may create their own layouts in addition to these)
-	 *                    NOTE: Please respect the "simple" mode, which should display only the most simple things!
+	 *   - 'edit_layout': "inskin", "expert", etc. (users, hackers, plugins, etc. may create their own layouts in addition to these)
+	 *                    NOTE: Please respect the "inskin" mode, which should display only the most simple things!
 	 * @return boolean did we display something?
 	 */
 	function DisplayItemFormFieldset( & $params )
@@ -1770,6 +1874,18 @@ class Plugin
 	// Message form events: {{{
 
 	/**
+	 * Event handler: Called when displaying editor toolbars for message.
+	 *
+	 * @param array Associative array of parameters
+	 * @return boolean did we display a toolbar?
+	 */
+	function DisplayMessageToolbar( & $params )
+	{
+		return false;		// Do nothing by default.
+	}
+
+
+	/**
 	 * Event handler: Called at the end of the frontend message form, which
 	 * allows to send an email to a user/commentator.
 	 *
@@ -1798,6 +1914,19 @@ class Plugin
 	 *   - 'comment_ID': ID of the comment where the user clicked the msgform icon (if any)
 	 */
 	function DisplayMessageFormButton( & $params )
+	{
+	}
+
+
+	/**
+	 * Event handler: Called before at the beginning, if a message of thread form gets sent (and received).
+	 *
+	 * Use this to filter input
+	 *
+	 * @param array Associative array of parameters
+	 *   - 'content': the message text (by reference)
+	 */
+	function MessageThreadFormSent( & $params )
 	{
 	}
 
@@ -1834,6 +1963,48 @@ class Plugin
 	 */
 	function MessageFormSentCleanup( & $params )
 	{
+	}
+
+
+	/**
+	 * Event handler: called to filter the message's content
+	 *
+	 * @param array Associative array of parameters
+	 *   - 'data': the name of the author/blog (by reference)
+	 *   - 'Message': the {@link Comment} object
+	 */
+	function FilterMsgContent( & $params )
+	{
+		if( $this->group == 'rendering' )
+		{ // All plugin from 'rendering' group has a 'msg_apply_rendering' setting
+			$Message = & $params['Message'];
+			if( in_array( $this->code, $Message->get_renderers_validated() ) )
+			{ // Always allow rendering for message
+				$render_params = array_merge(  array( 'data' => & $Message->text ), $params );
+				$this->RenderMessageAsHtml( $render_params );
+			}
+		}
+	}
+
+	/**
+	 * Event handler: Called when rendering message contents as HTML. (CACHED)
+	 *
+	 * The rendered content will be *cached* and the cached content will be reused on subsequent displays.
+	 * Use {@link DisplayContentAsHtml()} instead if you want to do rendering at display time.
+	 *
+	 * Note: You have to change $params['data'] (which gets passed by reference).
+	 *
+	 * @param array Associative array of parameters
+	 *   - 'data': the data (by reference). You probably want to modify this.
+	 *   - 'format': see {@link format_to_output()}. Only 'htmlbody' and 'entityencoded' will arrive here.
+	 *   - 'Item': the {@link Item} object which gets rendered.
+	 *   - 'view_type': What part of a post are we displaying: 'teaser', 'extension' or 'full'
+	 * @return boolean Have we changed something?
+	 */
+	function RenderMessageAsHtml( & $params )
+	{
+		// Use this render by default temporarily
+		return $this->RenderItemAsHtml( $params );
 	}
 
 	// }}}
@@ -2056,6 +2227,16 @@ class Plugin
 	 * Use this to add notes/errors through {@link Plugin::msg()} or to process saved settings.
 	 */
 	function PluginCollSettingsUpdateAction()
+	{
+	}
+
+	// PluginMsgSettings {{{
+	/**
+	 * Event handler: Called as action just before updating plugin's messages settings.
+	 *
+	 * Use this to add notes/errors through {@link Plugin::msg()} or to process saved settings.
+	 */
+	function PluginMsgSettingsUpdateAction()
 	{
 	}
 
@@ -3009,23 +3190,41 @@ class Plugin
 	 *         - anchor to {@link $help_url} ("#anchor")
 	 *         - absolute link to some URL, e.g. "http://example.com/example.php"
 	 *         - '$help_url' or empty for {@link $help_url}, then also the "www" icon gets used
+	 *         - '$apply_rendering' - url to manual page about "Plugin / Apply Rendering"
+	 *         - '$widget_url' - url to manual page about widget plugin
+	 * @param string Icon
+	 * @param boolean TRUE - to add info to display it in tooltip on mouseover
 	 * @return string The html A tag, linking to the help (or empty in case of $readme, if there is none).
 	 */
-	function get_help_link( $target = '' )
+	function get_help_link( $target = '', $icon = 'help', $use_tooltip = true )
 	{
 		static $target_counter = 0;
 		$title = '';
-		$icon = 'help';
 		$word = '';
-		$link_attribs = array( 'target' => '_blank', 'id'=>'anchor_help_plugin_'.$this->ID.'_'.$target_counter++ );
+		$link_attribs = array( 'target' => '_blank', 'id' => 'anchor_help_plugin_'.$this->ID.'_'.$target_counter++ );
 
-		if( $target == '$help_url' || empty($target) )
+		$info_suffix_text = '';
+		if( empty( $target ) || in_array( $target, array( '$help_url', '$apply_rendering', '$widget_url' ) ) )
 		{
-			$url = $this->get_help_url();
+			if( $target == '$apply_rendering' )
+			{ // Url to info about plugin apply rendering options
+				$url = get_manual_url( 'plugin-apply-rendering' );
+			}
+			else
+			{ // Url to current plugin info
+				$url = $this->get_help_url( $target );
+			}
 			$title = T_('Homepage of the plugin');
-			$icon = 'help';
-			$link_attribs['class'] = 'action_icon help_plugin_icon';
-			$link_attribs['rel'] = format_to_output( $this->long_desc, 'htmlspecialchars' );
+			if( $use_tooltip )
+			{ // Add these data only for tooltip
+				$link_attribs['class'] = 'action_icon help_plugin_icon';
+				$link_attribs['rel'] = format_to_output( $this->long_desc, 'htmlspecialchars' );
+			}
+
+			// Display additional info for help plugin icon only one time. It is used on plugins.js
+			$info_suffix_text = '<div id="help_plugin_info_suffix" style="display:none"><p><strong>'
+					.sprintf( T_('Click %s to access full documentaion for this plugin'), get_icon( 'help' ) )
+				.'</strong></p></div>';
 		}
 		elseif( $target == '$readme' )
 		{ // README
@@ -3045,7 +3244,7 @@ class Plugin
 			debug_die( 'Invalid get_help_link() target: '.$target );
 		}
 
-		return action_icon( $title, $icon, $url, $word, 4, 1, $link_attribs );
+		return action_icon( $title, $icon, $url, $word, 4, 1, $link_attribs ).$info_suffix_text;
 	}
 
 
@@ -3054,17 +3253,30 @@ class Plugin
 	 *
 	 * If {@link Plugin::$help_url} is empty, it defaults to the manual wiki.
 	 *
+	 * @param string Target; one of the following:
+	 *         - '$help_url' or empty for standard help url
+	 *         - '$widget_url' - url to manual page about widget plugin
 	 * @return string
 	 */
-	function get_help_url()
+	function get_help_url( $target = '' )
 	{
-		if( empty( $this->help_url ) )
-		{
-			return get_manual_url( empty( $this->help_topic ) ? $this->classname : $this->help_topic );
+		if( $target == '$widget_url' )
+		{ // Get url for widget plugin manual
+			$plugin_slug = ( empty( $this->help_topic ) ? $this->classname : $this->help_topic );
+			$plugin_slug = preg_replace( '/[^a-z0-9]+/', '-', strtolower( $plugin_slug ).'-widget' );
+			$plugin_slug = str_replace( '-plugin', '', $plugin_slug );
+			return get_manual_url( $plugin_slug );
 		}
 		else
-		{
-			return $this->help_url;
+		{ // Get standard help url of the plugin
+			if( empty( $this->help_url ) )
+			{
+				return get_manual_url( empty( $this->help_topic ) ? $this->classname : $this->help_topic );
+			}
+			else
+			{
+				return $this->help_url;
+			}
 		}
 	}
 
@@ -3223,32 +3435,58 @@ class Plugin
 	 */
 
 	/**
- 	 * Get a skin specific param value from current Blog
- 	 *
- 	 * @param string
- 	 * @param Blog collection
+	 * Get a skin specific param value from current Blog
+	 *
+	 * @param string Setting name
+	 * @param object Blog collection
+	 * @param boolean TRUE - to allow empty Blog, it is used to get default value when Blog is not defined, e.g. in case with Messages
+	 * @return string Setting value
 	 */
-	function get_coll_setting( $parname, & $Blog )
+	function get_coll_setting( $parname, & $Blog, $allow_null_blog = false )
 	{
-		if( empty($Blog) )
-		{	// Blog is not defined
-			return NULL;
+		if( empty( $Blog ) )
+		{ // Blog is not defined
+			if( !$allow_null_blog )
+			{ // Empty blog is not allowed, Exit here
+				return NULL;
+			}
+			else
+			{ // We can get the coll default settings of this plugin
+				$blog_type = 'std';
+			}
 		}
+		else
+		{ // Get setting value from Blog
+			// Name of the setting in the blog settings:
+			$blog_setting_name = 'plugin'.$this->ID.'_'.$parname;
 
-		// Name of the setting in the blog settings:
-		$blog_setting_name = 'plugin'.$this->ID.'_'.$parname;
+			$value = $Blog->get_setting( $blog_setting_name );
 
-		$value = $Blog->get_setting( $blog_setting_name );
+			if( ! is_null( $value ) )
+			{ // We have a value for this param:
+				return $value;
+			}
 
-		if( ! is_null( $value ) )
-		{	// We have a value for this param:
-			return $value;
+			$blog_type = $Blog->get( 'type' );
 		}
 
 		// Try default values:
-		$params = $this->get_coll_setting_definitions( $tmp_params = array( 'for_editing' => true, 'blog_type' => $Blog->get( 'type' ) ) );
+		return $this->get_coll_default_setting( $parname, $blog_type );
+	}
+
+
+	/**
+	 * Get a coll default param value of this Plugin
+	 *
+	 * @param string Setting name
+	 * @param string Blog type
+	 * @return string Setting value
+	 */
+	function get_coll_default_setting( $parname, $blog_type = 'std' )
+	{
+		$params = $this->get_coll_setting_definitions( $tmp_params = array( 'for_editing' => true, 'blog_type' => $blog_type ) );
 		if( isset( $params[$parname]['defaultvalue'] ) )
-		{	// We have a default value:
+		{ // We have a default value:
 			return $params[$parname]['defaultvalue'] ;
 		}
 
@@ -3309,6 +3547,37 @@ class Plugin
 		// Name of the setting in the blog settings:
 		$blog_setting_name = 'plugin'.$this->ID.'_'.$parname;
 		$Blog->delete_setting( $blog_setting_name );
+	}
+
+	/**
+	 * Get a message specific param value
+	 *
+	 * @param string Setting name
+	 * @return string Setting value
+	 */
+	function get_msg_setting( $parname )
+	{
+		if( empty( $this->Settings ) )
+		{
+			global $Plugins;
+			$Plugins->instantiate_Settings( $this, 'Settings' );
+		}
+
+		$value = $this->Settings->get( $parname );
+
+		if( ! is_null( $value ) )
+		{ // We have a value for this param:
+			return $value;
+		}
+
+		// Try default values:
+		$params = $this->get_msg_setting_definitions( $tmp_params = array( 'for_editing' => true ) );
+		if( isset( $params[$parname]['defaultvalue'] ) )
+		{ // We have a default value:
+			return $params[$parname]['defaultvalue'] ;
+		}
+
+		return NULL;
 	}
 
 

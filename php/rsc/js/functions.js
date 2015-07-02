@@ -2,8 +2,7 @@
  * This file is DEPRECATED. It is left here only so that old plugins can load the functions they need for their toolbars
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
- * @version $Id: functions.js 7913 2014-12-29 11:32:47Z yura $
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  */
 
 
@@ -14,9 +13,6 @@
  *  - _cronjob_list.view.php: ctrl=crontab, to execute cronjob in new window
  *  - _file.class.php: for url of file view
  *  - _file_list.inc.php: to open directory
- *  - _item.class.php: to open feedbacks ( FRONT-office only in skin "Photoblog" 
- *                                         when skin setting "Comments display" == "In a popup window"(by default)
- *                                         or it may be used by 3rd party skin)
  *  - system.ctrl.php: to view phpinfo
  */
 function pop_up_window( href, target, width, height, params )
@@ -272,26 +268,28 @@ function textarea_str_replace( myField, search, replace, target_document )
 function toggle_filter_area( filter_name )
 {
 	// Find objects to toggle:
-	if( !( clickdiv = document.getElementById( 'clickdiv_'+filter_name ) )
-			|| !( clickimg = document.getElementById( 'clickimg_'+filter_name ) ) )
+	var clickdiv = jQuery( '#clickdiv_'+filter_name );
+	var clickimg = jQuery( '#clickimg_'+filter_name );
+	if( clickdiv.length == 0 || clickimg.length == 0 )
 	{
 		alert( 'ID '+filter_name+' not found!' );
 		return false;
 	}
 
-	// Determine if we want to show or to hide (based on current state).
-	hide = document.getElementById( 'clickdiv_'+filter_name ).style.display != 'none';
+	var xy = clickimg.css( 'background-position' ).match( /-*\d+/g );
 
-	if( hide )
+	if( !clickdiv.is( ':hidden' ) )
 	{	// Hide/collapse filters:
-		clickdiv.style.display = 'none';
-		clickimg.style.backgroundPosition = bgxy_expand;
+		clickdiv.slideUp( 500 );
+		// Shift background position to the right to the one icon in the sprite
+		clickimg.css( 'background-position', ( parseInt( xy[0] ) + 16 ) + 'px ' + parseInt( xy[1] ) + 'px' );
 		jQuery.post( htsrv_url+'anon_async.php?action=collapse_filter&target='+filter_name );
 	}
 	else
 	{	// Show/expand filters
-		clickdiv.style.display = 'block';
-		clickimg.style.backgroundPosition = bgxy_collapse;
+		clickdiv.slideDown( 500 );
+		// Shift background position to the left to the one icon in the sprite
+		clickimg.css( 'background-position', ( parseInt( xy[0] ) - 16 ) + 'px ' + parseInt( xy[1] ) + 'px' );
 		jQuery.post( htsrv_url+'anon_async.php?action=expand_filter&target='+filter_name );
 	}
 
@@ -382,6 +380,42 @@ var b2evo_Callbacks = new b2evo_Callbacks();
 
 
 /**
+ * Display alert message in top-right corner
+ *
+ * Used on FRONT-office and BACK-office in the following file:
+ *  - _comment_js.funcs.php
+ *
+ * @param string Message
+ */
+function evoAlert( message )
+{
+	var previous_alerts = jQuery( '.b2evo_alert' );
+	if( previous_alerts.length > 0 )
+	{ // Clear previous alerts
+		previous_alerts.remove();
+	}
+
+	jQuery( 'body' ).append( '<div class="b2evo_alert">' + message + '</div>' );
+	setTimeout( function()
+	{ // Hide alert after 3 seconds
+		jQuery( '.b2evo_alert' ).fadeOut(
+		{
+			complete: function() { jQuery( this ).remove(); }
+		} );
+	}, 3000 );
+
+	if( !evo_alert_events_initialized )
+	{ // Initialize events only one time
+		evo_alert_events_initialized = true;
+		jQuery( document ).on( 'click', '.b2evo_alert', function(){
+			jQuery( this ).remove();
+		} );
+	}
+}
+evo_alert_events_initialized = false;
+
+
+/**
  * Initialize onclick event for each button with attribute "data-func"
  *
  * Used only by plugins for toolbar buttons. FRONT-office and BACK-office.
@@ -390,7 +424,7 @@ jQuery( document ).ready( function()
 {
 	jQuery( '[data-func]' ).each( function()
 	{
-		var func_args = jQuery( this ).data( 'func' ).match( /([^\|]|\\\|)+/g );
+		var func_args = jQuery( this ).data( 'func' ).match( /([^\\|]|\\\|)+/g );
 		var func_name = func_args[0];
 		func_args.splice( 0, 1 );
 		for( var i = 0; i < func_args.length; i++ )

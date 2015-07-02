@@ -3,14 +3,12 @@
  * This is the footer include template.
  *
  * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://b2evolution.net/man/skin-structure}
+ * {@link http://b2evolution.net/man/skin-development-primer}
  *
  * This is meant to be included in a page template.
  *
  * @package evoskins
- * @subpackage photoalbum
- *
- * @version $Id: _body_footer.inc.php 7043 2014-07-02 08:35:45Z yura $
+ * @subpackage photoalbums
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -18,8 +16,15 @@ if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.'
 
 <!-- =================================== START OF FOOTER =================================== -->
 <div id="pageFooter">
-
-	<p class="baseline">
+	<div class="footer_container">
+	<?php
+		// ------------------------- "Footer" CONTAINER EMBEDDED HERE --------------------------
+		// Display container and contents:
+		skin_container( NT_('Footer') );
+		// ----------------------------- END OF "Footer" CONTAINER -----------------------------
+	?>
+	</div>
+	<p class="baseline" style="padding-top:0">
 		<?php
 			// Display a link to contact the owner of this blog (if owner accepts messages):
 			$Blog->contact_link( array(
@@ -57,19 +62,22 @@ if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.'
 				) );
 		?>
 
-		Powered by <a href="http://b2evolution.net/" title="Content &amp; Community Management System" target="_blank">b2evolution CCMS</a>
-
 		<?php
 			// Display additional credits:
- 			// If you can add your own credits without removing the defaults, you'll be very cool :))
-		 	// Please leave this at the bottom of the page to make sure your blog gets listed on b2evolution.net
-			credits( array(
-					'list_start'  => ' | ',
+			// If you can add your own credits without removing the defaults, you'll be very cool :))
+			// Please leave this at the bottom of the page to make sure your blog gets listed on b2evolution.net
+			if( ! credits( array(
+					'list_start'  => '',
 					'list_end'    => '',
 					'separator'   => ' | ',
 					'item_start'  => ' ',
 					'item_end'    => ' ',
-				) );
+				) ) )
+			{	// We're not dipslaying credits, display "Powered by"
+				?>
+		Powered by <a href="http://b2evolution.net/" title="Content &amp; Community Management System" target="_blank">b2evolution CMS</a>
+				<?php
+			}
 		?>
 	</p>
 

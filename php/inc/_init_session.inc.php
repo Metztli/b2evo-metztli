@@ -6,34 +6,15 @@
  * It is also called by more complete initializers.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- *
- * Matt FOLLETT grants Francois PLANQUE the right to license
- * Matt FOLLETT's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package evocore
- *
- * @version $Id: _init_session.inc.php 6239 2014-03-17 15:51:10Z yura $
  */
 if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page directly.' );
 
@@ -74,8 +55,10 @@ register_shutdown_function( 'shutdown' );
 /**
  * Handle fatal error in order to display info message when debug is OFF
  */
-set_error_handler( 'evo_error_handler' );
-
+// set_error_handler( 'evo_error_handler' );
+// fp> I disabled the above because it kills display of warnings like the following
+// fp> see function evo_error_handler() for more comments
+// echo $fddfdjshfjkdfsd;
 
 // NOTE: it might be faster (though more bandwidth intensive) to spit cached pages (CachePageContent event) than to look into blocking the request (SessionLoaded event).
 $Plugins->trigger_event( 'SessionLoaded' );
@@ -127,6 +110,10 @@ $Timer->resume( '_init_session' );
 /*
  * User locale selection. Only override it if not set from REQUEST.
  */
+if( is_logged_in() )
+{
+	$Debuglog->add( 'Login: locale from user profile: '.$current_User->get('locale'), 'locale' );
+}
 if( is_logged_in() && $current_User->get('locale') != $current_locale && ! $locale_from_get )
 { // change locale to users preference
 	/*
@@ -137,7 +124,7 @@ if( is_logged_in() && $current_User->get('locale') != $current_locale && ! $loca
 	if( $current_locale == $current_User->get('locale') )
 	{
 		$default_locale = $current_locale;
-		$Debuglog->add( 'Login: default_locale from user profile: '.$default_locale, 'locale' );
+		$Debuglog->add( 'Login: changing default_locale to: '.$default_locale, 'locale' );
 	}
 	else
 	{

@@ -3,35 +3,16 @@
  * This file implements the UI controller for settings management.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
- *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
  *
  * @package admin
  *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE
- * @author blueyed: Daniel HAHLER
- *
  * @todo separate object inits and permission checks
- *
- * @version $Id: users.ctrl.php 6911 2014-06-17 15:35:37Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -190,13 +171,8 @@ if( !$Messages->has_errors() )
 				break;
 			}
 
-			if( param( 'deltype', 'string', '', true ) == 'spammer' )
-			{ // If we delete user as spammer we also should remove the comments and the messages
-				$edited_User->delete_cascades = array_merge( $edited_User->delete_cascades, array(
-						array( 'table'=>'T_comments', 'fk'=>'comment_author_user_ID', 'msg'=>T_('%d comments by this user') ),
-						array( 'table'=>'T_messaging__message', 'fk'=>'msg_author_user_ID', 'msg'=>T_('%d private messages sent by this user') ),
-					) );
-			}
+			// Init cascade relations: If we delete user as spammer we also should remove the comments and the messages
+			$edited_User->init_relations( param( 'deltype', 'string', '', true ) == 'spammer' );
 
 			$fullname = $edited_User->dget( 'fullname' );
 			if( param( 'confirm', 'integer', 0 ) )
@@ -210,18 +186,32 @@ if( !$Messages->has_errors() )
 					$msg = sprintf( T_('User &laquo;%s&raquo; deleted.'), $edited_User->dget( 'login' ) );
 				}
 
+				$send_reportpm = param( 'send_reportpm', 'integer' );
+				if( $send_reportpm )
+				{ // Get all user IDs who reported for the deleted user
+					$report_user_IDs = get_user_reported_user_IDs( $edited_User->ID );
+				}
+
 				$deleted_user_ID = $edited_User->ID;
 				$deleted_user_email = $edited_User->get( 'email' );
-				$edited_User->dbdelete( $Messages );
-				unset($edited_User);
-				forget_param('user_ID');
-				$Messages->add( $msg, 'success' );
+				$deleted_user_login = $edited_User->get( 'login' );
+				if( $edited_User->dbdelete( $Messages ) !== false )
+				{ // User has been deleted successfully
+					unset( $edited_User );
+					forget_param( 'user_ID' );
+					$Messages->add( $msg, 'success' );
 
-				// Find other users with the same email address
-				$message_same_email_users = find_users_with_same_email( $deleted_user_ID, $deleted_user_email, T_('Note: the same email address (%s) is still in use by: %s') );
-				if( $message_same_email_users !== false )
-				{
-					$Messages->add( $message_same_email_users, 'note' );
+					// Find other users with the same email address
+					$message_same_email_users = find_users_with_same_email( $deleted_user_ID, $deleted_user_email, T_('Note: the same email address (%s) is still in use by: %s') );
+					if( $message_same_email_users !== false )
+					{
+						$Messages->add( $message_same_email_users, 'note' );
+					}
+
+					if( $send_reportpm )
+					{ // Send an info message to users who reported this deleted user
+						user_send_report_message( $report_user_IDs, $deleted_user_login );
+					}
 				}
 
 				$action = 'list';
@@ -367,12 +357,14 @@ $AdminUI->breadcrumbpath_add( T_('Users'), '?ctrl=users' );
 if( $tab == 'stats' )
 {	// Users stats
 	$AdminUI->breadcrumbpath_add( T_('Stats'), '?ctrl=users&amp;tab=stats' );
+	// Init jqPlot charts
+	init_jqplot_js();
 }
 else
 {	// Users list
 	$AdminUI->breadcrumbpath_add( T_('List'), '?ctrl=users' );
 	$AdminUI->top_block = get_user_quick_search_form();
-	if( $current_User->check_perm( 'users', 'edit', false ) )
+	if( $current_User->check_perm( 'users', 'moderate', false ) )
 	{	// Include to edit user level
 		require_js( 'jquery/jquery.jeditable.js', 'rsc_url' );
 	}
@@ -425,7 +417,21 @@ switch( $action )
 			$confirm_messages[] = array( $message_same_email_users, 'note' );
 		}
 
-		$edited_User->confirm_delete( $msg, 'user', $action, get_memorized( 'action' ), $confirm_messages );
+		// Add a checkbox on deletion form
+		$delete_form_params = array();
+		if( $Settings->get( 'reportpm_enabled' ) )
+		{ // If this feature is enabled
+			$user_count_reports = count( get_user_reported_user_IDs( $edited_User->ID ) );
+			if( $user_count_reports > 0 )
+			{ // If the user has been reported at least one time
+				$delete_form_params['before_submit_button'] = '<p><label>'
+						.'<input type="checkbox" id="send_reportpm" name="send_reportpm" value="1"'.( $deltype == 'spammer' ? ' checked="checked"' : '' ).' /> '
+						.sprintf( T_('Send an info message to %s users who reported this account.'), $user_count_reports )
+					.'</label></p>';
+			}
+		}
+
+		$edited_User->confirm_delete( $msg, 'user', $action, get_memorized( 'action' ), $confirm_messages, $delete_form_params );
 
 		// Display user identity form:
 		$AdminUI->disp_view( 'users/views/_user_identity.form.php' );

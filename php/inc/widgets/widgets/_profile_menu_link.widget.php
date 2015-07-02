@@ -3,25 +3,13 @@
  * This file implements the profile_menu_link_Widget class.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: _profile_menu_link.widget.php 8229 2015-02-11 09:41:33Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -43,6 +31,17 @@ class profile_menu_link_Widget extends ComponentWidget
 	{
 		// Call parent constructor:
 		parent::ComponentWidget( $db_row, 'core', 'profile_menu_link' );
+	}
+
+
+	/**
+	 * Get help URL
+	 *
+	 * @return string URL
+	 */
+	function get_help_url()
+	{
+		return get_manual_url( 'my-profile-menu-link-widget' );
 	}
 
 
@@ -69,7 +68,7 @@ class profile_menu_link_Widget extends ComponentWidget
 	 */
 	function get_desc()
 	{
-		return T_('Current user profile menu link with picture');
+		return T_('Link to current user profile, including profile picture');
 	}
 
 
@@ -92,8 +91,8 @@ class profile_menu_link_Widget extends ComponentWidget
 					'defaultvalue' => 'crop-top-15x15',
 				),
 				'blog_ID' => array(
-					'label' => T_('Blog ID'),
-					'note' => T_('Leave empty for current blog.'),
+					'label' => T_('Collection ID'),
+					'note' => T_('Leave empty for current collection.'),
 					'type' => 'integer',
 					'allow_empty' => true,
 					'size' => 5,

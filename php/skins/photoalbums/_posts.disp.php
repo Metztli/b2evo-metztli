@@ -8,13 +8,11 @@
  * For example: /blogs/index.php?disp=posts
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
- * @subpackage photoalbum
- *
- * @version $Id: _posts.disp.php 7043 2014-07-02 08:35:45Z yura $
+ * @subpackage photoalbums
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -28,7 +26,7 @@ $params_no_content = array(
 if( ! is_logged_in() )
 { // fp> the following is kind of a hack. It's not really correct.
 	$url = get_login_url( 'no public ocntent' );
-	$params_no_content['msg_empty'] = '<p>This site has no public contents.</p><p><a href="'.$url.'">Log in now!</a></p>';
+	$params_no_content['msg_empty'] = '<p>'.T_('This site has no public contents.').'</p><p><a href="'.$url.'">'.T_('Log in now!').'</a></p>';
 }
 $list_is_empty = display_if_empty( $params_no_content );
 
@@ -57,11 +55,11 @@ if( ! $list_is_empty )
 				'image_link_to'       => 'single',
 				'image_desc'          => '',
 				'limit'                      => 1,
-				'restrict_to_image_position' => 'albumart,teaser,aftermore,inline',
+				'restrict_to_image_position' => 'cover,teaser,aftermore,inline',
 				'get_rendered_attachments'   => false,
-				// Sort the attachments to get firstly "Album Art", then "Teaser", and "After more" as last order
+				// Sort the attachments to get firstly "Cover", then "Teaser", and "After more" as last order
 				'links_sql_select'           => ', CASE '
-						.'WHEN link_position = "albumart"  THEN "1" '
+						.'WHEN link_position = "cover"     THEN "1" '
 						.'WHEN link_position = "teaser"    THEN "2" '
 						.'WHEN link_position = "aftermore" THEN "3" '
 						.'WHEN link_position = "inline"    THEN "4" '

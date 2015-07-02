@@ -3,16 +3,13 @@
  * This file implements the slugs control.
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author evfy-asimo: Attila Simo.
- *
- * @version $Id: slugs.ctrl.php 6135 2014-03-08 07:54:05Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -26,7 +23,7 @@ global $current_User;
 // Check minimum permission:
 $current_User->check_perm( 'slugs', 'view', true );
 
-$AdminUI->set_path( 'options', 'slugs' );
+$AdminUI->set_path( 'site', 'slugs' );
 
 param_action( 'list' );
 
@@ -60,7 +57,7 @@ switch( $action )
 		// Make sure we got a slug_ID:
 		param( 'slug_ID', 'string', true );
  		break;
- 
+
 	case 'create':
 		// Create new slug...
 		$edited_Slug = new Slug();
@@ -87,7 +84,7 @@ switch( $action )
 
 	case 'update':
 		// Update slug...
-		
+
 		// Check that this action request is not a CSRF hacked request:
 		$Session->assert_received_crumb( 'slug' );
 
@@ -126,7 +123,7 @@ switch( $action )
 		if( param( 'confirm', 'integer', 0 ) )
 		{ // confirmed, Delete from DB:
 			$msg = sprintf( T_('Slug &laquo;%s&raquo; deleted.'), $edited_Slug->dget('title') );
-			$edited_Slug->dbdelete( true );
+			$edited_Slug->dbdelete();
 			unset( $edited_Slug );
 			forget_param( 'slug_ID' );
 			$Messages->add( $msg, 'success' );
@@ -146,8 +143,8 @@ switch( $action )
 
 
 $AdminUI->breadcrumbpath_init( false );
-$AdminUI->breadcrumbpath_add( T_('System'), '?ctrl=system' );
-$AdminUI->breadcrumbpath_add( T_('Slugs'), '?ctrl=slugs' );
+$AdminUI->breadcrumbpath_add( T_('Site'), $admin_url.'?ctrl=dashboard' );
+$AdminUI->breadcrumbpath_add( T_('Slugs'), $admin_url.'?ctrl=slugs' );
 
 // Display <html><head>...</head> section! (Note: should be done early if actions do not redirect)
 $AdminUI->disp_html_head();

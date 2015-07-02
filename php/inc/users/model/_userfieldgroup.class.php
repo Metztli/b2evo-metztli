@@ -1,31 +1,14 @@
 <?php
 /**
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2009-2014 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2009-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2009 by The Evo Factory - {@link http://www.evofactory.com/}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * The Evo Factory grants Francois PLANQUE the right to license
- * The Evo Factory's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author evofactory-test
- * @author fplanque: Francois Planque.
  *
  * @version _userfieldgroup.class.php,v 1.5 2009/09/16 18:11:51 fplanque Exp
  */
@@ -53,12 +36,6 @@ class UserfieldGroup extends DataObject
 		// Call parent constructor:
 		parent::DataObject( 'T_users__fieldgroups', 'ufgp_', 'ufgp_ID' );
 
-		$this->delete_restrictions = array(
-			array( 'table'=>'T_users__fielddefs', 'fk'=>'ufdf_ufgp_ID', 'msg'=>T_('%d user fields in this group') ),
-		);
-
-		$this->delete_cascades = array();
-
 		if( $db_row != NULL )
 		{
 			$this->ID   = $db_row->ufgp_ID;
@@ -69,6 +46,20 @@ class UserfieldGroup extends DataObject
 		{	// Create a new user field group:
 		}
 	}
+
+
+	/**
+	 * Get delete restriction settings
+	 *
+	 * @return array
+	 */
+	static function get_delete_restrictions()
+	{
+		return array(
+				array( 'table'=>'T_users__fielddefs', 'fk'=>'ufdf_ufgp_ID', 'msg'=>T_('%d user fields in this group') ),
+			);
+	}
+
 
 	/**
 	 * Load data from Request form fields.

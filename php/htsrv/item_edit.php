@@ -110,7 +110,7 @@ switch( $action )
 		{ // the main cat is not in the list of categories; this happens, if the user switches blogs during editing:
 			$edited_Item->set('main_cat_ID', $Blog->get_default_cat_ID());
 		}
-		$post_extracats = param( 'post_extracats', 'array/integer', $post_extracats );
+		$post_extracats = param( 'post_extracats', 'array:integer', $post_extracats );
 
 		param( 'item_tags', 'string', '' );
 
@@ -145,7 +145,7 @@ switch( $action )
 		{ // the main cat is not in the list of categories; this happens, if the user switches blogs during editing:
 			$edited_Item->set('main_cat_ID', $Blog->get_default_cat_ID());
 		}
-		$post_extracats = param( 'post_extracats', 'array/integer', $post_extracats );
+		$post_extracats = param( 'post_extracats', 'array:integer', $post_extracats );
 
 		param( 'item_tags', 'string', '' );
 
@@ -212,12 +212,6 @@ switch( $action )
 		else
 		{	// INSERT NEW POST INTO DB:
 			$edited_Item->dbinsert();
-		}
-
-		param( 'is_attachments', 'string' );
-		if( !empty( $is_attachments ) && $is_attachments === 'true' )
-		{ // Set session variable to dynamically create js popup:
-			$Session->set('create_edit_attachment', true);
 		}
 
 		// post post-publishing operations:
@@ -327,7 +321,7 @@ switch( $action )
 		}
 		else
 		{ // User can see this post in the Front-office
-			if( $edited_Item->ptyp_ID == 1520 )
+			if( $edited_Item->ityp_ID == 1520 )
 			{ // If post is category intro we should redirect to page of that category
 				$main_Chapter = & $edited_Item->get_main_Chapter();
 				$redirect_to = $main_Chapter->get_permanent_url();
@@ -344,17 +338,19 @@ switch( $action )
 		break;
 }
 
-// Require results.css to display attachments as a result table
-require_css( 'results.css' );
-
-init_tokeninput_js();
-
 // Display a 'In-skin editing' form
 $SkinCache = & get_SkinCache();
 $Skin = & $SkinCache->get_by_ID( $Blog->get_skin_ID() );
 $skin = $Skin->folder;
 $disp = 'edit';
 $ads_current_skin_path = $skins_path.$skin.'/';
-require $ads_current_skin_path.'index.main.php';
+if( file_exists( $ads_current_skin_path.'edit.main.php' ) )
+{	// Include template file from current skin folder
+	require $ads_current_skin_path.'edit.main.php';
+}
+else
+{	// Include default main template
+	require $ads_current_skin_path.'index.main.php';
+}
 
 ?>

@@ -3,28 +3,13 @@
  * This file implements the UI view for the site settings.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: _coll_settings_site.form.php 7043 2014-07-02 08:35:45Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -66,7 +51,7 @@ if( $current_User->check_perm( 'users', 'edit' ) )
 
 // --------------------------------------------
 
-$Form->begin_fieldset( T_('Site Settings').get_manual_link('site-settings') );
+$Form->begin_fieldset( T_('Global Site Settings').get_manual_link('site-settings') );
 
 	$Form->text_input( 'site_code', $Settings->get( 'site_code' ), 10, T_('Site code'), '$instance_name = '.$instance_name, array( 'maxlength' => 20 ) );
 	$Form->color_input( 'site_color', $Settings->get( 'site_color' ), T_('Site color'), T_('E-g: #ff0000 for red') );
@@ -77,29 +62,47 @@ $Form->begin_fieldset( T_('Site Settings').get_manual_link('site-settings') );
 	$Form->text_input( 'site_footer_text', $Settings->get( 'site_footer_text' ), 50, T_('Site footer text'), '', array( 'maxlength' => 5000 ) );
 	$Form->checkbox_input( 'site_skins_enabled', $Settings->get( 'site_skins_enabled' ), T_('Enable site skins'), array( 'note' => T_('Enables a sitewide header and footer') ) );
 
+$Form->end_fieldset();
+
+// --------------------------------------------
+
+$Form->begin_fieldset( T_('Default collections').get_manual_link('default-collections') );
+
 	$BlogCache = & get_BlogCache();
 
-	$Form->select_input_object( 'info_blog_ID', $Settings->get( 'info_blog_ID' ), $BlogCache, T_('Blog for info pages'), array(
-		'note' => '<a href="'.$admin_url.'?ctrl=collections&action=new">'.T_('Create new blog').' &raquo;</a>',
+	$create_new_blog_link = ' <a href="'.$admin_url.'?ctrl=collections&action=new">'.T_('Create new collection').' &raquo;</a>';
+
+	$Form->select_input_object( 'default_blog_ID', $Settings->get( 'default_blog_ID' ), $BlogCache, get_icon( 'coll_default' ).' '.T_('Default collection to display'), array(
+			'note' => T_('This collection will be displayed on index.php.').$create_new_blog_link,
+			'allow_none' => true,
+			'loop_object_method' => 'get_maxlen_name' ) );
+
+	$Form->select_input_object( 'info_blog_ID', $Settings->get( 'info_blog_ID' ), $BlogCache, get_icon( 'coll_info' ).' '.T_('Collection for info pages'), array(
+		'note' => T_('The pages in this collection will be added to the site menu.').$create_new_blog_link,
 		'allow_none' => true,
 		'loop_object_method' => 'get_maxlen_name' ) );
 
-	$Form->select_input_object( 'default_blog_ID', $Settings->get('default_blog_ID'), $BlogCache, T_('Default blog to display'), array(
-			'note' => T_('This blog will be displayed on index.php.').' <a href="'.$admin_url.'?ctrl=collections&action=new">'.T_('Create new blog').' &raquo;</a>',
-			'allow_none' => true,
-			'loop_object_method' => 'get_maxlen_name' ) );
+	$Form->select_input_object( 'login_blog_ID', $Settings->get( 'login_blog_ID' ), $BlogCache, get_icon( 'coll_login' ).' '.T_('Collection for login/registration'), array(
+		'note' => T_('This collection will be used for all login/registration functions.').$create_new_blog_link,
+		'allow_none' => true,
+		'loop_object_method' => 'get_maxlen_name' ) );
+
+	$Form->select_input_object( 'msg_blog_ID', $Settings->get( 'msg_blog_ID' ), $BlogCache, get_icon( 'coll_message' ).' '.T_('Collection for profiles/messaging'), array(
+		'note' => T_('This collection will be used for all messaging, profile viewing and profile editing functions.').$create_new_blog_link,
+		'allow_none' => true,
+		'loop_object_method' => 'get_maxlen_name' ) );
 
 $Form->end_fieldset();
 
 // --------------------------------------------
 
-$Form->begin_fieldset( T_('Advanced Site Settings').get_manual_link('advanced-site-settings') );
+$Form->begin_fieldset( T_('Technical Site Settings').get_manual_link('technical-site-settings') );
 
 	$Form->duration_input( 'reloadpage_timeout', (int)$Settings->get('reloadpage_timeout'), T_('Reload-page timeout'), 'minutes', 'seconds', array( 'minutes_step' => 1, 'required' => true ) );
 	// $Form->text_input( 'reloadpage_timeout', (int)$Settings->get('reloadpage_timeout'), 5,
 	// T_('Reload-page timeout'), T_('Time (in seconds) that must pass before a request to the same URI from the same IP and useragent is considered as a new hit.'), array( 'maxlength'=>5, 'required'=>true ) );
 
-	$Form->checkbox_input( 'general_cache_enabled', $Settings->get('general_cache_enabled'), T_('Enable general cache'), array( 'note'=>T_('Cache rendered pages that are not controlled by a skin. See Blog Settings for skin output caching.') ) );
+	$Form->checkbox_input( 'general_cache_enabled', $Settings->get('general_cache_enabled'), get_icon( 'page_cache_on' ).' '.T_('Enable general cache'), array( 'note'=>T_('Cache rendered pages that are not controlled by a skin. See Blog Settings for skin output caching.') ) );
 
 $Form->end_fieldset();
 

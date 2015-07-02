@@ -3,30 +3,14 @@
  * This file implements trackback functions.
  *
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2004-2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
- * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author cafelog (team)
- * @author blueyed: Daniel HAHLER.
- * @author fplanque: Francois PLANQUE.
- * @author jmuto: Jun MUTO
- * @author sakichan: Nobuo SAKIYAMA.
- * @author vegarg: Vegar BERG GULDAL.
- *
- * @version $Id: _trackback.funcs.php 6225 2014-03-16 10:01:05Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -71,7 +55,7 @@ function trackback(
 {
 	global $app_name, $app_version, $Blog, $Messages;
 
-	$trackback_message = T_('Sending trackback to:').' '.evo_htmlspecialchars($trackback_url).' ';
+	$trackback_message = T_('Sending trackback to:').' '.htmlspecialchars($trackback_url).' ';
 
 	$title = rawurlencode($title);
 	$excerpt = rawurlencode($excerpt);

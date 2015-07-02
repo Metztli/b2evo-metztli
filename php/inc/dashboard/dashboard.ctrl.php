@@ -3,23 +3,21 @@
  * This file implements the UI controller for the dashboard.
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * @copyright (c)2003-2007 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal Open Source relicensing agreement:
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
  *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- *
  * @todo add 5 plugin hooks. Will be widgetized later (same as SkinTag became Widgets)
- *
- * @version $Id: dashboard.ctrl.php 7434 2014-10-15 07:18:30Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
+
+
+// load dashboard functions
+load_funcs( 'dashboard/model/_dashboard.funcs.php' );
 
 /**
  * @var User
@@ -28,29 +26,61 @@ global $current_User;
 
 global $dispatcher, $allow_evo_stats, $blog;
 
+
+if( empty( $_GET['blog'] ) )
+{ // Use dashboard for selected blog only from GET request
+	$blog = 0;
+	unset( $Blog );
+}
+
 if( $blog )
-{
+{ // Collection dashboard
 	if( ! $current_User->check_perm( 'blog_ismember', 'view', false, $blog ) )
-	{	// We don't have permission for the requested blog (may happen if we come to admin from a link on a different blog)
+	{ // We don't have permission for the requested blog (may happen if we come to admin from a link on a different blog)
 		set_working_blog( 0 );
 		unset( $Blog );
 	}
+
+	$AdminUI->set_path( 'collections', 'dashboard' );
+
+	// Init params to display a panel with blog selectors
+	$AdminUI->set_coll_list_params( 'blog_ismember', 'view', array( 'ctrl' => 'dashboard' ) );
+
+	$AdminUI->breadcrumbpath_init( true, array( 'text' => T_('Collections'), 'url' => $admin_url.'?ctrl=dashboard&amp;blog=$blog$' ) );
+	$AdminUI->breadcrumbpath_add( T_('Collection Dashboard'), $admin_url.'?ctrl=dashboard&amp;blog=$blog$' );
+
+	// We should activate toolbar menu items for this controller and action
+	$activate_collection_toolbar = true;
 }
+else
+{ // Site dashboard
+	$AdminUI->set_path( 'site', 'dashboard' );
 
-$AdminUI->set_coll_list_params( 'blog_ismember', 'view', array(), T_('Global'), '?blog=0' );
-
-$AdminUI->set_path( 'dashboard' );
+	$AdminUI->breadcrumbpath_init( false );
+	$AdminUI->breadcrumbpath_add( T_('Site'), $admin_url.'?ctrl=dashboard' );
+	$AdminUI->breadcrumbpath_add( T_('Site Dashboard'), $admin_url.'?ctrl=dashboard' );
+}
 
 // Load jquery UI to animate background color on change comment status and to transfer a comment to recycle bin
 require_js( '#jqueryUI#' );
 
 require_js( 'communication.js' ); // auto requires jQuery
 // Load the appropriate blog navigation styles (including calendar, comment forms...):
-require_css( 'blog_base.css' ); // Default styles for the blog navigation
+require_css( $AdminUI->get_template( 'blog_base.css' ) ); // Default styles for the blog navigation
 // Colorbox (a lightweight Lightbox alternative) allows to zoom on images and do slideshows with groups of images:
 require_js_helper( 'colorbox' );
 
-$AdminUI->breadcrumbpath_init( true, array( 'text' => T_('Dashboard'), 'url' => '?ctrl=dashboard' ) );
+// Include files to work with charts
+require_js( '#easypiechart#' );
+require_css( 'jquery/jquery.easy-pie-chart.css' );
+
+if( empty( $blog ) )
+{ // Init JS to quick edit an order of the blogs in the table cell by AJAX
+	init_field_editor_js( array(
+			'field_prefix' => 'order-blog-',
+			'action_url' => $admin_url.'?ctrl=dashboard&order_action=update&order_data=',
+		) );
+}
 
 // Display <html><head>...</head> section! (Note: should be done early if actions do not redirect)
 $AdminUI->disp_html_head();
@@ -59,10 +89,7 @@ $AdminUI->disp_html_head();
 $AdminUI->disp_body_top();
 
 if( $blog )
-{	// We want to look at a specific blog:
-
-	// load dashboard functions
-	load_funcs( 'dashboard/model/_dashboard.funcs.php' );
+{ // We want to look at a specific blog:
 
 	// Begin payload block:
 	// This div is to know where to display the message after overlay close:
@@ -70,7 +97,7 @@ if( $blog )
 
 	$AdminUI->disp_payload_begin();
 
-	echo '<h2>'.$Blog->dget( 'name' ).'</h2>';
+	echo '<h2 class="page-title">'.$Blog->dget( 'name' ).'</h2>';
 
 	echo '<div class="row browse"><div class="col-lg-9 col-xs-12 floatleft">';
 
@@ -107,7 +134,7 @@ if( $blog )
 				'user_perm' => 'moderate',
 				'post_statuses' => array( 'published', 'community', 'protected' ),
 				'order' => 'DESC',
-				'comments' => 5,
+				'comments' => 30,
 			) );
 
 		// Set param prefix for URLs
@@ -122,314 +149,24 @@ if( $blog )
 	}
 
 	if( $user_perm_moderate_cmt && $CommentList->result_num_rows )
-	{	// We have comments awaiting moderation
+	{ // We have comments awaiting moderation
 
-		global $htsrv_url;
-
-		?>
-
-		<script type="text/javascript">
-			<!--
-			// currently midified comments id and status. After update is done, the appropiate item will be removed.
-			var modifieds = new Array();
-
-			// Process result after publish/deprecate/delete action has been completed
-			function processResult(result, modifiedlist)
-			{
-				jQuery('#comments_container').html(result);
-				for(var id in modifiedlist)
-				{
-					switch(modifiedlist[id])
-					{
-						case 'published':
-							jQuery('#' + id).css( 'backgroundColor', '#339900' );
-							break;
-						case 'deprecated':
-							jQuery('#' + id).css( 'backgroundColor', '#656565' );
-							break;
-						case 'deleted':
-							jQuery('#' + id).css( 'backgroundColor', '#fcc' );
-							break;
-					}
-				}
-
-				var comments_number = jQuery('#new_badge').val();
-				if(comments_number == '0')
-				{
-					var options = {};
-					jQuery('#comments_block').effect('blind', options, 200);
-					jQuery('#comments_block').remove();
-				}
-				else
-				{
-					jQuery('#badge').text(comments_number);
-				}
-			}
-
-			// Set comments status
-			function setCommentStatus(id, status)
-			{
-				var divid = 'comment_' + id;
-				switch(status)
-				{
-					case 'published':
-						fadeIn(divid, '#339900');
-						break;
-					case 'deprecated':
-						fadeIn(divid, '#656565');
-						break;
-				};
-
-				modifieds[divid] = status;
-
-				jQuery.ajax({
-				type: 'POST',
-				url: '<?php echo $htsrv_url; ?>async.php',
-				data: 'blogid=' + <?php echo $Blog->ID; ?> + '&commentid=' + id + '&status=' + status + '&action=set_comment_status&' + <?php echo '\''.url_crumb('comment').'\''; ?>,
-				success: function(result)
-					{
-						// var divid = 'comment_' + id;
-						delete modifieds[divid];
-						processResult( ajax_debug_clear( result ), modifieds);
-					}
-				});
-			}
-
-			// Display voting tool when JS is enable
-			jQuery( 'document' ).ready( function() { jQuery( '.vote_spam' ).show(); } );
-			// Set comments vote
-			function setCommentVote(id, type, vote)
-			{
-				var divid = 'comment_' + id;
-				var highlight_class = '';
-				var color = '';
-				switch(vote)
-				{
-					case 'spam':
-						color = fadeIn(divid, '#ffc9c9');
-						highlight_class = 'roundbutton_red';
-						break;
-					case 'notsure':
-						color = fadeIn(divid, '#bbbbbb');
-						break;
-					case 'ok':
-						color = fadeIn(divid, '#bcffb5');
-						highlight_class = 'roundbutton_green';
-						break;
-				};
-
-				if( highlight_class != '' )
-				{
-					jQuery( '#vote_'+type+'_'+id ).find( 'a.roundbutton, span.roundbutton' ).addClass( highlight_class );
-				}
-
-				jQuery.ajax({
-				type: 'POST',
-				url: '<?php echo $htsrv_url; ?>anon_async.php',
-				data:
-					{ 'blogid': <?php echo '\''.$Blog->ID.'\''; ?>,
-						'commentid': id,
-						'type': type,
-						'vote': vote,
-						'action': 'set_comment_vote',
-						'crumb_comment': <?php echo '\''.get_crumb('comment').'\''; ?>,
-					},
-				success: function(result)
-					{
-						if( color != '' )
-						{ // Revert back color
-							fadeIn( divid, color );
-						}
-						jQuery('#vote_'+type+'_'+id).after( ajax_debug_clear( result ) );
-						jQuery('#vote_'+type+'_'+id).remove();
-					}
-				});
-			}
-
-			// Delete comment
-			function deleteComment(id)
-			{
-				var divid = 'comment_' + id;
-				fadeIn(divid, '#fcc');
-
-				modifieds[divid] = 'deleted';
-
-				jQuery.ajax({
-				type: 'POST',
-				url: '<?php echo $htsrv_url; ?>async.php',
-				data: 'action=get_opentrash_link&' + <?php echo '\''.url_crumb('comment').'\''; ?>,
-				success: function(result)
-					{
-						var recycle_bin = jQuery('#recycle_bin');
-						if( recycle_bin.length )
-						{
-							recycle_bin.replaceWith( ajax_debug_clear( result ) );
-						}
-					}
-				});
-
-				jQuery.ajax({
-				type: 'POST',
-				url: '<?php echo $htsrv_url; ?>async.php',
-				data: 'blogid=' + <?php echo $Blog->ID; ?> + '&commentid=' + id + '&action=delete_comment&' + <?php echo '\''.url_crumb('comment').'\''; ?>,
-				success: function(result)
-					{
-						jQuery('#' + divid).effect('transfer', { to: jQuery('#recycle_bin') }, 700, function() {
-							delete modifieds[divid];
-							processResult( ajax_debug_clear( result ), modifieds);
-						});
-					}
-				});
-			}
-
-			// Fade in background color
-			function fadeIn(id, color)
-			{
-				var bg_color = jQuery('#' + id).css( 'backgroundColor' );
-				jQuery('#' + id).animate({ backgroundColor: color }, 200);
-				return bg_color;
-			}
-
-			// Delete comment author_url
-			function delete_comment_url(id)
-			{
-				var divid = 'commenturl_' + id;
-				fadeIn(divid, '#fcc');
-
-				jQuery.ajax({
-					type: 'POST',
-					url: '<?php echo $htsrv_url; ?>async.php',
-					data: 'blogid=' + <?php echo $Blog->ID; ?> + '&commentid=' + id + '&action=delete_comment_url' + '&' + <?php echo '\''.url_crumb('comment').'\''; ?>,
-					success: function(result) { jQuery('#' + divid).remove(); }
-				});
-			}
-
-			// This is called when we get the response from the server:
-			function antispamSettings( the_html )
-			{
-				// add placeholder for antispam settings form:
-				jQuery( 'body' ).append( '<div id="screen_mask" onclick="closeAntispamSettings()"></div><div id="overlay_page"></div>' );
-				var evobar_height = jQuery( '#evo_toolbar' ).height();
-				jQuery( '#screen_mask' ).css({ top: evobar_height });
-				jQuery( '#screen_mask' ).fadeTo(1,0.5).fadeIn(200);
-				jQuery( '#overlay_page' ).html( the_html ).addClass( 'overlay_page_active' );
-				AttachServerRequest( 'antispam_ban' ); // send form via hidden iframe
-				jQuery( '#close_button' ).bind( 'click', closeAntispamSettings );
-				jQuery( '.SaveButton' ).bind( 'click', refresh_overlay );
-
-				// Close antispam popup if Escape key is pressed:
-				var keycode_esc = 27;
-				jQuery(document).keyup(function(e)
-				{
-					if( e.keyCode == keycode_esc )
-					{
-						closeAntispamSettings();
-					}
-				});
-			}
-
-			// This is called to close the antispam ban overlay page
-			function closeAntispamSettings()
-			{
-				jQuery( '#overlay_page' ).hide();
-				jQuery( '.action_messages').remove();
-				jQuery( '#server_messages' ).insertBefore( '.first_payload_block' );
-				jQuery( '#overlay_page' ).remove();
-				jQuery( '#screen_mask' ).remove();
-				return false;
-			}
-
-			// Ban comment url
-			function ban_url(authorurl)
-			{
-				<?php global $rsc_url; ?>
-				antispamSettings( '<img src="<?php echo $rsc_url; ?>img/ajax-loader2.gif" alt="<?php echo T_('Loading...'); ?>" title="<?php echo T_('Loading...'); ?>" style="display:block;margin:auto;position:absolute;top:0;bottom:0;left:0;right:0;" />' );
-				jQuery.ajax({
-					type: 'POST',
-					url: '<?php echo $admin_url; ?>',
-					data: 'ctrl=antispam&action=ban&display_mode=js&mode=iframe&request=checkban&keyword=' + authorurl +
-						  '&' + <?php echo '\''.url_crumb('antispam').'\''; ?>,
-					success: function(result)
-					{
-						antispamSettings( result );
-					}
-				});
-			}
-
-			// Refresh overlay page after Check&ban button click
-			function refresh_overlay()
-			{
-				var parameters = jQuery( '#antispam_add' ).serialize();
-
-				jQuery.ajax({
-					type: 'POST',
-					url: '<?php echo $admin_url; ?>',
-					data: 'action=ban&display_mode=js&mode=iframe&request=checkban&' + parameters,
-					success: function(result)
-					{
-						antispamSettings( result );
-					}
-				});
-				return false;
-			}
-
-			// Refresh comments on dashboard after ban url -> delete comment
-			function refreshAfterBan(deleted_ids)
-			{
-				var comment_ids = String(deleted_ids).split(',');
-				for( var i=0;i<comment_ids.length; ++i )
-				{
-					var divid = 'comment_' + comment_ids[i];
-					fadeIn(divid, '#fcc');
-				}
-
-				jQuery.ajax({
-					type: 'POST',
-					url: '<?php echo $htsrv_url; ?>async.php',
-					data: 'blogid=' + <?php echo $Blog->ID; ?> + '&action=refresh_comments&' + <?php echo '\''.url_crumb('comment').'\''; ?>,
-					success: function(result)
-					{
-						processResult( ajax_debug_clear( result ), modifieds);
-					}
-				});
-			}
-
-			function startRefreshComments()
-			{
-				jQuery('#comments_container').slideUp('fast', refreshComments());
-			}
-
-			// Absolute refresh comment list
-			function refreshComments()
-			{
-				jQuery.ajax({
-					type: 'POST',
-					url: '<?php echo $htsrv_url; ?>async.php',
-					data: 'blogid=' + <?php echo $Blog->ID; ?> + '&action=refresh_comments&' + <?php echo '\''.url_crumb('comment').'\''; ?>,
-					success: function(result)
-					{
-						processResult( ajax_debug_clear( result ), modifieds);
-						jQuery('#comments_container').slideDown('fast');
-					}
-				});
-			}
-
-			-->
-		</script>
-		<?php
+		load_funcs( 'comments/model/_comment_js.funcs.php' );
 
 		$nb_blocks_displayed++;
 
-		$opentrash_link = get_opentrash_link();
-		$refresh_link = '<span class="floatright">'.action_icon( T_('Refresh comment list'), 'refresh', 'javascript:startRefreshComments()' ).'</span> ';
+		$opentrash_link = get_opentrash_link( true, false, array(
+				'class' => 'btn btn-default'
+			) );
+		$refresh_link = '<span class="floatright">'.action_icon( T_('Refresh comment list'), 'refresh', $admin_url.'?blog='.$blog, ' '.T_('Refresh'), 3, 4, array( 'onclick' => 'startRefreshComments( \''.request_from().'\' ); return false;', 'class' => 'btn btn-default' ) ).'</span> ';
 
 		$show_statuses_param = $param_prefix.'show_statuses[]='.implode( '&amp;'.$param_prefix.'show_statuses[]=', $user_modeartion_statuses );
 		$block_item_Widget->title = $refresh_link.$opentrash_link.T_('Comments awaiting moderation').
 			' <a href="'.$admin_url.'?ctrl=comments&amp;blog='.$Blog->ID.'&amp;'.$show_statuses_param.'" style="text-decoration:none">'.
 			'<span id="badge" class="badge badge-important">'.$CommentList->get_total_rows().'</span></a>';
 
-		echo '<div id="styled_content_block">';
-		echo '<div id="comments_block">';
+		echo '<div id="styled_content_block" class="evo_content_block">';
+		echo '<div id="comments_block" class="dashboard_comments_block">';
 
 		$block_item_Widget->disp_template_replaced( 'block_start' );
 
@@ -462,7 +199,7 @@ if( $blog )
 	ob_clean();
 	if( ! empty( $posts_awaiting_moderation_content ) )
 	{
-		echo '<div id="styled_content_block" class="items_container">';
+		echo '<div id="styled_content_block" class="items_container evo_content_block">';
 		echo $posts_awaiting_moderation_content;
 		echo '</div>';
 	}
@@ -494,7 +231,7 @@ if( $blog )
 			$block_item_Widget->global_icon( T_('Write a new post...'), 'new', '?ctrl=items&amp;action=new&amp;blog='.$Blog->ID, T_('New post').' &raquo;', 3, 4 );
 		}
 
-		echo '<div id="styled_content_block" class="items_container">';
+		echo '<div id="styled_content_block" class="items_container evo_content_block">';
 
 		$block_item_Widget->title = T_('Recently edited');
 		$block_item_Widget->disp_template_replaced( 'block_start' );
@@ -506,19 +243,52 @@ if( $blog )
 			// Load item's creator user:
 			$Item->get_creator_User();
 
+/* OLD:
 			$Item->status( array(
 					'before' => '<div class="floatright"><span class="note status_'.$Item->status.'"><span>',
 					'after'  => '</span></span></div>',
+				) );
+	NEW:
+*/
+			$Item->format_status( array(
+					'template' => '<div class="floatright"><span class="note status_$status$"><span>$status_title$</span></span></div>',
 				) );
 
 			echo '<div class="dashboard_float_actions">';
 			$Item->edit_link( array( // Link to backoffice for editing
 					'before'    => ' ',
 					'after'     => ' ',
-					'class'     => 'ActionButton btn btn-default',
+					'class'     => 'ActionButton btn btn-primary w80px',
 					'text'      => get_icon( 'edit_button' ).' '.T_('Edit')
 				) );
+
+			// Display images that are linked to this post:
+			$Item->images( array(
+					'before'              => '<div class="dashboard_thumbnails">',
+					'before_image'        => '',
+					'before_image_legend' => NULL,	// No legend
+					'after_image_legend'  => NULL,
+					'after_image'         => '',
+					'after'               => '</div>',
+					'image_size'          => 'crop-80x80',
+					'limit'               => 1,
+					// Optionally restrict to files/images linked to specific position: 'teaser'|'teaserperm'|'teaserlink'|'aftermore'|'inline'|'fallback'|'cover'
+					'restrict_to_image_position' => 'cover,teaser,teaserperm,teaserlink,aftermore,inline',
+					// Sort the attachments to get firstly "Cover", then "Teaser", and "After more" as last order
+					'links_sql_select'    => ', CASE '
+							.'WHEN link_position = "cover"      THEN "1" '
+							.'WHEN link_position = "teaser"     THEN "2" '
+							.'WHEN link_position = "teaserperm" THEN "3" '
+							.'WHEN link_position = "teaserlink" THEN "4" '
+							.'WHEN link_position = "aftermore"  THEN "5" '
+							.'WHEN link_position = "inline"     THEN "6" '
+							// .'ELSE "99999999"' // Use this line only if you want to put the other position types at the end
+						.'END AS position_order',
+					'links_sql_orderby'   => 'position_order, link_order',
+				) );
 			echo '</div>';
+
+			echo '<div class="dashboard_content">';
 
 			echo '<h3 class="dashboard_post_title">';
 			$item_title = $Item->dget('title');
@@ -529,21 +299,11 @@ if( $blog )
 			echo '<a href="?ctrl=items&amp;blog='.$Blog->ID.'&amp;p='.$Item->ID.'">'.$item_title.'</a>';
 			echo '</h3>';
 
-			// Display images that are linked to this post:
-			$Item->images( array(
-					'before' =>              '<div class="dashboard_thumbnails">',
-					'before_image' =>        '',
-					'before_image_legend' => NULL,	// No legend
-					'after_image_legend' =>  NULL,
-					'after_image' =>         '',
-					'after' =>               '</div>',
-					'image_size' =>          'fit-80x80',
-					'restrict_to_image_position' => 'teaser',	// Optionally restrict to files/images linked to specific position: 'teaser'|'aftermore'
-				) );
+			echo htmlspecialchars( $Item->get_content_excerpt( 150 ), NULL, $evo_charset );
 
-			echo '<span class="small">'.evo_htmlspecialchars( $Item->get_content_excerpt( 150 ), NULL, $evo_charset ).'</span>';
+			echo '</div>';
 
-			echo '<div style="clear:left;">'.get_icon('pixel').'</div>'; // IE crap
+			echo '<div class="clear"></div>';
 			echo '</div>';
 		}
 
@@ -587,9 +347,25 @@ if( $blog )
 
 	$side_item_Widget = new Widget( 'side_item' );
 
-	echo '<div class="row dashboard_sidebar_panels"><div class="col-lg-12 col-sm-6 col-xs-12">';
+	$perm_options_edit = $current_User->check_perm( 'options', 'edit' );
+	$perm_blog_properties = $current_User->check_perm( 'blog_properties', 'edit', false, $Blog->ID );
+	// Set column size of the right blocks for bootstrap skin depending on current user permissions
+	if( $perm_options_edit && $perm_blog_properties )
+	{
+		$right_block_col_size = '4';
+	}
+	elseif( $perm_options_edit || $perm_blog_properties )
+	{
+		$right_block_col_size = '6';
+	}
+	else
+	{
+		$right_block_col_size = '12';
+	}
 
-	$side_item_Widget->title = T_('Manage your blog');
+	echo '<div class="row dashboard_sidebar_panels"><div class="col-lg-12 col-sm-'.$right_block_col_size.' col-xs-12">';
+
+	$side_item_Widget->title = T_('Manage this collection');
 	$side_item_Widget->disp_template_replaced( 'block_start' );
 
 	echo '<div class="dashboard_sidebar">';
@@ -601,7 +377,7 @@ if( $blog )
 
  		echo '<li>'.T_('Browse').':<ul>';
 		echo '<li><a href="'.$dispatcher.'?ctrl=items&tab=full&filter=restore&blog='.$Blog->ID.'">'.T_('Posts (full)').' &raquo;</a></li>';
-		echo '<li><a href="'.$dispatcher.'?ctrl=items&tab=list&filter=restore&blog='.$Blog->ID.'">'.T_('Posts (list)').' &raquo;</a></li>';
+		echo '<li><a href="'.$dispatcher.'?ctrl=items&tab=type&tab_type=posts&filter=restore&blog='.$Blog->ID.'">'.T_('Posts (list)').' &raquo;</a></li>';
 		if( $current_User->check_perm( 'blog_comments', 'edit', false, $Blog->ID ) )
 		{
 			echo '<li><a href="'.$dispatcher.'?ctrl=comments&amp;filter=restore&amp;blog='.$Blog->ID.'">'.T_('Comments').' &raquo;</a></li>';
@@ -613,17 +389,19 @@ if( $blog )
 			echo '<li><a href="'.$dispatcher.'?ctrl=chapters&blog='.$Blog->ID.'">'.T_('Edit categories').' &raquo;</a></li>';
 		}
 
-		echo '<li><a href="'.$Blog->get('url').'">'.T_('View this blog').'</a></li>';
+		echo '<li><a href="'.$Blog->get('url').'">'.T_('View this collection').'</a></li>';
 	echo '</ul>';
 	echo '</div>';
 
 	$side_item_Widget->disp_template_raw( 'block_end' );
 
-	echo '</div><div class="col-lg-12 col-sm-6 col-xs-12">';
+	echo '</div>';
 
-	if( $current_User->check_perm( 'blog_properties', 'edit', false, $Blog->ID ) )
+	if( $perm_blog_properties )
 	{
-		$side_item_Widget->title = T_('Customize your blog');
+		echo '<div class="col-lg-12 col-sm-'.$right_block_col_size.' col-xs-12">';
+
+		$side_item_Widget->title = T_('Customize this collection');
 		$side_item_Widget->disp_template_replaced( 'block_start' );
 
 		echo '<div class="dashboard_sidebar">';
@@ -639,9 +417,54 @@ if( $blog )
 		echo '</div>';
 
 		$side_item_Widget->disp_template_raw( 'block_end' );
+
+		echo '</div>';
 	}
 
-	echo '</div></div>';
+	if( $perm_options_edit )
+	{ // We have some serious admin privilege:
+
+		// -- Collection stats -- //{
+		$chart_data = array();
+
+		// Posts
+		$posts_sql_from = 'INNER JOIN T_categories ON cat_ID = post_main_cat_ID';
+		$posts_sql_where = 'cat_blog_ID = '.$DB->quote( $blog );
+		$chart_data[] = array(
+				'title' => T_('Posts'),
+				'value' => $post_all_counter = get_table_count( 'T_items__item', $posts_sql_where, $posts_sql_from ),
+				'type'  => 'number',
+			);
+		// Slugs
+		$slugs_sql_from = 'INNER JOIN T_items__item ON post_ID = slug_itm_ID '.$posts_sql_from;
+		$slugs_sql_where = 'slug_type = "item" AND '.$posts_sql_where;
+		$chart_data[] = array(
+				'title' => T_('Slugs'),
+				'value' => get_table_count( 'T_slug', $slugs_sql_where, $slugs_sql_from ),
+				'type'  => 'number',
+			);
+		// Comments
+		$comments_sql_from = 'INNER JOIN T_items__item ON post_ID = comment_item_ID '.$posts_sql_from;
+		$comments_sql_where = $posts_sql_where;
+		$chart_data[] = array(
+				'title' => T_('Comments'),
+				'value' => get_table_count( 'T_comments', $comments_sql_where, $comments_sql_from ),
+				'type'  => 'number',
+			);
+
+		echo '<div class="col-lg-12 col-sm-'.$right_block_col_size.' col-xs-12">';
+
+		$side_item_Widget->title = T_('Collection metrics');
+		$side_item_Widget->disp_template_replaced( 'block_start' );
+
+		display_charts( $chart_data );
+
+		$side_item_Widget->disp_template_raw( 'block_end' );
+
+		echo '</div>';
+	}
+
+	echo '</div>';
 
 	/*
 	 * DashboardBlogSide to be added here (anyone?)
@@ -657,10 +480,8 @@ if( $blog )
 	echo '</div>'."\n";
 }
 else
-{	// We're on the GLOBAL tab...
-
+{ // We're on the GLOBAL tab...
 	$AdminUI->disp_payload_begin();
-	echo '<h2>'.T_('Select a blog').'</h2>';
 	// Display blog list VIEW:
 	$AdminUI->disp_view( 'collections/views/_coll_list.view.php' );
 	$AdminUI->disp_payload_end();
@@ -677,8 +498,7 @@ else
  */
 
 if( $current_User->check_perm( 'options', 'edit' ) )
-{	// We have some serious admin privilege:
-
+{ // We have some serious admin privilege:
 	/**
 	 * @var AbstractSettings
 	 */
@@ -687,7 +507,78 @@ if( $current_User->check_perm( 'options', 'edit' ) )
 	// Begin payload block:
 	$AdminUI->disp_payload_begin();
 
-	echo '<div class="row browse"><div class="col-lg-9 col-xs-12 floatleft">';
+	echo '<div class="row browse"><div class="col-lg-12">';
+
+	if( empty( $blog ) )
+	{ // -- System stats -- //
+
+		$chart_data = array();
+		// Users
+		$chart_data[] = array(
+				'title' => T_('Users'),
+				'value' => get_table_count( 'T_users' ),
+				'type'  => 'number',
+			);
+		// Blogs
+		$chart_data[] = array(
+				'title' => T_('Blogs'),
+				'value' => get_table_count( 'T_blogs' ),
+				'type'  => 'number',
+			);
+		$post_all_counter = get_table_count( 'T_items__item' );
+		if( empty( $blog ) )
+		{
+			// Posts
+			$chart_data[] = array(
+					'title' => T_('Posts'),
+					'value' => $post_all_counter,
+					'type'  => 'number',
+				);
+		}
+		if( empty( $blog ) )
+		{
+			// Slugs
+			$chart_data[] = array(
+					'title' => T_('Slugs'),
+					'value' => get_table_count( 'T_slug' ),
+					'type'  => 'number',
+				);
+			// Comments
+			$chart_data[] = array(
+					'title' => T_('Comments'),
+					'value' => get_table_count( 'T_comments' ),
+					'type'  => 'number',
+				);
+		}
+		// Files
+		$chart_data[] = array(
+				'title' => T_('Files'),
+				'value' => get_table_count( 'T_files' ),
+				'type'  => 'number',
+			);
+		// Conversations
+		$chart_data[] = array(
+				'title' => T_('Conversations'),
+				'value' => get_table_count( 'T_messaging__thread' ),
+				'type'  => 'number',
+			);
+		// Messages
+		$chart_data[] = array(
+				'title' => T_('Messages'),
+				'value' => get_table_count( 'T_messaging__message' ),
+				'type'  => 'number',
+			);
+
+		$stat_item_Widget = new Widget( 'block_item' );
+
+		$stat_item_Widget->title = T_('System metrics');
+		$stat_item_Widget->disp_template_replaced( 'block_start' );
+
+		display_charts( $chart_data );
+
+		$stat_item_Widget->disp_template_raw( 'block_end' );
+
+	} //---- END OF - System stats ----//
 
 	$block_item_Widget = new Widget( 'block_item' );
 
@@ -697,7 +588,7 @@ if( $current_User->check_perm( 'options', 'edit' ) )
 
 	// Note: hopefully, the updates will have been downloaded in the shutdown function of a previous page (including the login screen)
 	// However if we have outdated info, we will load updates here.
-	load_funcs( 'dashboard/model/_dashboard.funcs.php' );
+
 	// Let's clear any remaining messages that should already have been displayed before...
 	$Messages->clear();
 
@@ -705,7 +596,7 @@ if( $current_User->check_perm( 'options', 'edit' ) )
 	{	// Updates are allowed, display them:
 
 		// Display info & error messages
-		echo $Messages->display( NULL, NULL, false, 'action_messages' );
+		$Messages->display();
 
 		$version_status_msg = $global_Cache->get( 'version_status_msg' );
 		if( !empty($version_status_msg) )
@@ -740,51 +631,71 @@ if( $current_User->check_perm( 'options', 'edit' ) )
 		$UserSettings->dbupdate();
 	}
 
-	echo '</div><div class="col-lg-3 col-xs-12 floatright">';
-
-	/*
-	 * RIGHT COL
-	 */
-	$side_item_Widget = new Widget( 'side_item' );
-
-	$side_item_Widget->title = T_('System stats');
-	$side_item_Widget->disp_template_replaced( 'block_start' );
-
-	$post_all_counter = intval( get_table_count( 'T_items__item' ) );
-	$post_through_admin = limit_number_by_interval( $global_Cache->get( 'post_through_admin' ), 0, $post_all_counter );
-	$post_through_xmlrpc = limit_number_by_interval( $global_Cache->get( 'post_through_xmlrpc' ), 0, $post_all_counter );
-	$post_through_email = limit_number_by_interval( $global_Cache->get( 'post_through_email' ), 0, $post_all_counter );
-	$post_through_unknown = limit_number_by_interval( ( $post_all_counter - $post_through_admin - $post_through_xmlrpc - $post_through_email ), 0, $post_all_counter );
-
-	echo '<div class="dashboard_sidebar">';
-	echo '<ul>';
-		echo '<li>'.sprintf( T_('%s Users'), get_table_count( 'T_users' ) ).'</li>';
-		echo '<li>'.sprintf( T_('%s Blogs'), get_table_count( 'T_blogs' ) ).'</li>';
-		echo '<li>'.sprintf( T_('%s Posts'), $post_all_counter ).'</li>';
-		echo '<ul>';
-			echo '<li>'.sprintf( T_('%s on web'), $post_through_admin ).'</li>';
-			echo '<li>'.sprintf( T_('%s by XMLRPC'), $post_through_xmlrpc ).'</li>';
-			echo '<li>'.sprintf( T_('%s by email'), $post_through_email ).'</li>';
-			echo '<li>'.sprintf( T_('%s unknown'), $post_through_unknown ).'</li>';
-		echo '</ul>';
-		echo '<li>'.sprintf( T_('%s Slugs'), get_table_count( 'T_slug' ) ).'</li>';
-		echo '<li>'.sprintf( T_('%s Comments'), get_table_count( 'T_comments' ) ).'</li>';
-		echo '<li>'.sprintf( T_('%s Files'), get_table_count( 'T_files' ) ).'</li>';
-		echo '<li>'.sprintf( T_('%s Conversations'), get_table_count( 'T_messaging__thread' ) ).'</li>';
-		echo '<li>'.sprintf( T_('%s Messages'), get_table_count( 'T_messaging__message' ) ).'</li>';
-	echo '</ul>';
-	echo '</div>';
-
-	$side_item_Widget->disp_template_raw( 'block_end' );
 
 	/*
 	 * DashboardAdminSide to be added here (anyone?)
 	 */
 
-	echo '</div><div class="clear"></div></div>';
+	echo '</div></div>';
 
 	// End payload block:
 	$AdminUI->disp_payload_end();
+}
+
+if( ! empty( $chart_data ) )
+{ // JavaScript to initialize charts
+?>
+<script type="text/javascript">
+jQuery( 'document' ).ready( function()
+{
+	var chart_params = {
+		barColor: function(percent)
+		{
+			return get_color_by_percent( {r:97, g:189, b:79}, {r:242, g:214, b:0}, {r:255, g:171, b:74}, percent );
+		},
+		size: 75,
+		trackColor: '#eee',
+		scaleColor: false,
+		lineCap: 'round',
+		lineWidth: 6,
+		animate: 700
+	}
+	jQuery( '.chart .number' ).easyPieChart( chart_params );
+} );
+
+function get_color_by_percent( color_from, color_middle, color_to, percent )
+{
+	function get_color_hex( start_color, end_color )
+	{
+		num = start_color + Math.round( ( end_color - start_color ) * ( percent / 100 ) );
+		num = Math.min( num, 255 ); // not more than 255
+		num = Math.max( num, 0 ); // not less than 0
+		var str = num.toString( 16 );
+		if( str.length < 2 )
+		{
+			str = "0" + str;
+		}
+		return str;
+	}
+
+	if( percent < 50 )
+	{
+		color_to = color_middle;
+		percent *= 2;
+	}
+	else
+	{
+		color_from = color_middle;
+		percent = ( percent - 50 ) * 2;
+	}
+
+	return "#" +
+		get_color_hex( color_from.r, color_to.r ) +
+		get_color_hex( color_from.g, color_to.g ) +
+		get_color_hex( color_from.b, color_to.b );
+}
+</script>
+<?php
 }
 
 // Display body bottom, debug info and close </html>:

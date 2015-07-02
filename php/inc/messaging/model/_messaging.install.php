@@ -1,26 +1,16 @@
 <?php
 /**
  * This file is part of b2evolution - {@link http://b2evolution.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2009-2014 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2009-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2009 by The Evo Factory - {@link http://www.evofactory.com/}.
  *
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- *
- * {@internal Open Source relicensing agreement:
- * The Evo Factory grants Francois PLANQUE the right to license
- * The Evo Factory's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
  * @package messaging
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author efy-maxim: Evo Factory / Maxim.
- * @author fplanque: Francois Planque.
- *
- * @version $Id: _messaging.install.php 6135 2014-03-08 07:54:05Z manuel $
  */
 if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page directly.' );
 
@@ -53,7 +43,19 @@ $schema_queries['T_messaging__message'] = array(
 			msg_datetime datetime NOT NULL,
 			msg_thread_ID int(10) unsigned NOT NULL,
 			msg_text text,
+			msg_renderers VARCHAR(255) COLLATE ascii_general_ci NOT NULL,"/* Do NOT change this field back to TEXT without a very good reason. */."
 			PRIMARY KEY msg_ID (msg_ID)
+		) ENGINE = innodb DEFAULT CHARSET = $db_storage_charset" );
+
+$schema_queries['T_messaging__prerendering'] = array(
+		'Creating message prerendering cache table',
+		"CREATE TABLE T_messaging__prerendering(
+			mspr_msg_ID              INT(11) UNSIGNED NOT NULL,
+			mspr_format              ENUM('htmlbody','entityencoded','xml','text') COLLATE ascii_general_ci NOT NULL,
+			mspr_renderers           VARCHAR(255) COLLATE ascii_general_ci NOT NULL,"/* Do NOT change this field back to TEXT without a very good reason. */."
+			mspr_content_prerendered MEDIUMTEXT NULL,
+			mspr_datemodified        TIMESTAMP NOT NULL,
+			PRIMARY KEY (mspr_msg_ID, mspr_format)
 		) ENGINE = innodb DEFAULT CHARSET = $db_storage_charset" );
 
 // index on tsta_user_ID field

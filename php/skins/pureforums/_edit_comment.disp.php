@@ -5,16 +5,14 @@
  * Note: don't code this URL by hand, use the template functions to generate it!
  *
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}.
  *
  * @package evoskins
  * @subpackage pureforums
- *
- * @version $Id: _edit_comment.disp.php 7644 2014-11-14 08:12:53Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -55,7 +53,7 @@ $disp_params = array_merge( array(
 $comment_Item = & $edited_Comment->get_Item();
 $main_Chapter = & $comment_Item->get_main_Chapter();
 $cat = $main_Chapter->ID;
-$Skin->display_breadcrumbs( $main_Chapter->ID );
+$Skin->display_breadcrumbs( $cat );
 
 $Form = new Form( $form_action, 'comment_edit', 'post' );
 
@@ -68,7 +66,7 @@ $Form->begin_form( 'inskin', '', $display_params );
 	$Form->hidden( 'mname', 'collections' );
 	$Form->hidden( 'action_type', 'comment' );
 	$Form->hidden( 'comment_ID', $edited_Comment->ID );
-	$Form->hidden( 'redirect_to', url_add_tail( $comment_Item->get_permanent_url(), '#c'.$edited_Comment->ID ) );
+	$Form->hidden( 'redirect_to', $edited_Comment->get_permanent_url() );
 
 	$Form->info( T_('In response to'), $comment_Item->get_title() );
 

@@ -3,16 +3,13 @@
  * This file implements the LinkItem class, which is a wrapper class for Item class to handle linked files.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author efy-asimo: Attila Simo.
- *
- * @version $Id: $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -38,16 +35,16 @@ class LinkItem extends LinkOwner
 		$this->Item = & $this->link_Object;
 
 		$this->_trans = array(
-			'Link this image to your owner' => NT_( 'Link this image to your item.' ),
-			'Link this file to your owner' => NT_( 'Link this file to your item.'),
-			'The file will be linked for download at the end of the owner' => NT_( 'The file will be appended for linked at the end of the item.' ),
-			'Insert the following code snippet into your owner' => NT_( 'Insert the following code snippet into your item.' ),
-			'View this owner...' => NT_( 'View this item...' ),
-			'Edit this owner...' => NT_( 'Edit this item...' ),
-			'Click on link %s icons below to link additional files to $ownerTitle$.' => NT_( 'Click on link %s icons below to link additional files to <strong>item</strong>.' ),
-			'Link files to current owner' => NT_( 'Link files to current item' ),
-			'Selected files have been linked to owner.' => NT_( 'Selected files have been linked to item.' ),
-			'Link has been deleted from $ownerTitle$.' => NT_( 'Link has been deleted from &laquo;item&raquo;.' ),
+			'Link this image to your xxx' => NT_( 'Link this image to your item.' ),
+			'Link this file to your xxx' => NT_( 'Link this file to your item.'),
+			'The file will be linked for download at the end of the xxx' => NT_( 'The file will be appended for linked at the end of the item.' ),
+			'Insert the following code snippet into your xxx' => NT_( 'Insert the following code snippet into your item.' ),
+			'View this xxx...' => NT_( 'View this item...' ),
+			'Edit this xxx...' => NT_( 'Edit this item...' ),
+			'Click on link %s icons below to link additional files to $xxx$.' => NT_( 'Click on link %s icons below to link additional files to <strong>item</strong>.' ),
+			'Link files to current xxx' => NT_( 'Link files to current item' ),
+			'Selected files have been linked to xxx.' => NT_( 'Selected files have been linked to item.' ),
+			'Link has been deleted from $xxx$.' => NT_( 'Link has been deleted from &laquo;item&raquo;.' ),
 		);
 	}
 
@@ -71,23 +68,63 @@ class LinkItem extends LinkOwner
 	 */
 	function get_positions( $file_ID = NULL )
 	{
-		$additional_positions = array();
+		$positions = array(
+				// TRANS: Noun - we're talking about a teaser image i-e: an image that appears before content
+				'teaser'     => T_('Teaser'),
+				// TRANS: Noun - we're talking about a teaser image i-e: an image that appears before content and with image url linked to permalink
+				'teaserperm' => T_('Teaser-Permalink'),
+				// TRANS: Noun - we're talking about a teaser image i-e: an image that appears before content and with image url linked to external link
+				'teaserlink' => T_('Teaser-Ext Link'),
+				// TRANS: Noun - we're talking about a footer image i-e: an image that appears after "more" content separator
+				'aftermore'  => T_('After "more"'),
+				// TRANS: noun - we're talking about an inline image i-e: an image that appears in the middle of some text
+				'inline'     => T_('Inline'),
+				// TRANS: Noun - we're talking about a fallback image i-e: an image that used as fallback for video file
+				'fallback'   => T_('Fallback'),
+			);
 
-		if( $this->Item && ( $item_Blog = & $this->Item->get_Blog() ) !== NULL && $item_Blog->get( 'type' ) == 'photo' )
-		{ // Only images of the photo blogs can have this position
-
-			$FileCache = & get_FileCache();
-			if( ( $File = $FileCache->get_by_ID( $file_ID, false, false ) ) && $File->is_image() )
-			{ // Must be image
-				$additional_positions['albumart'] = T_('Album Art');
-			}
+		$FileCache = & get_FileCache();
+		if( ( $File = $FileCache->get_by_ID( $file_ID, false, false ) ) && $File->is_image() )
+		{ // Only images can have this position
+			// TRANS: Noun - we're talking about a cover image i-e: an image that used as cover for a post
+			$positions['cover'] = T_('Cover');
 		}
 
-		return array_merge( array(
-				'teaser'    => /* TRANS: Noun - we're talking about a teaser image i-e: an image that appears before content */ T_( 'Teaser' ),
-				'aftermore' => /* TRANS: Noun - we're talking about a footer image i-e: an image that appears after "more" content separator */ T_( 'After "more"' ), T_( 'After "more"' ),
-				'inline'    => /* TRANS: noun - we're talking about an inline image i-e: an image that appears in the middle of some text */ T_( 'Inline' ),
-			), $additional_positions );
+		return $positions;
+	}
+
+	/**
+	 * Get default position for a new link
+	 *
+	 * @param integer File ID
+	 * @return string Position
+	 */
+	function get_default_position( $file_ID )
+	{
+		$FileCache = & get_FileCache();
+		$File = & $FileCache->get_by_ID( $file_ID, false, false );
+		if( empty( $File ) )
+		{ // If file is broken then get simple default position as "aftermore"
+			return 'aftermore';
+		}
+
+		if( $File->is_image() )
+		{ // If file is image then get position depending on order
+			$this->load_Links();
+
+			if( $this->Links )
+			{ // There's only one file attached yet, the second becomes "aftermore"
+				return 'aftermore';
+			}
+			else
+			{ // No attachment yet
+				return 'teaser';
+			}
+		}
+		else
+		{ // If file is not image then always use "aftermore"
+			return 'aftermore';
+		}
 	}
 
 	/**
@@ -106,11 +143,18 @@ class LinkItem extends LinkOwner
 	 * Add new link to owner Item
 	 *
 	 * @param integer file ID
-	 * @param integer link position ( 'teaser', 'aftermore' )
+	 * @param integer link position ( 'teaser', 'teaserperm', 'teaserlink', 'aftermore', 'inline', 'fallback' )
 	 * @param int order of the link
+	 * @param boolean true to update owner last touched timestamp after link was created, false otherwise
+	 * @return integer|boolean Link ID on success, false otherwise
 	 */
-	function add_link( $file_ID, $position, $order = 1 )
+	function add_link( $file_ID, $position = NULL, $order = 1, $update_owner = true )
 	{
+		if( is_null( $position ) )
+		{ // Use default link position
+			$position = $this->get_default_position( $file_ID );
+		}
+
 		$edited_Link = new Link();
 		$edited_Link->set( 'itm_ID', $this->Item->ID );
 		$edited_Link->set( 'file_ID', $file_ID );
@@ -121,14 +165,21 @@ class LinkItem extends LinkOwner
 			// New link was added to the item, invalidate blog's media BlockCache
 			BlockCache::invalidate_key( 'media_coll_ID', $this->Item->get_blog_ID() );
 
-			// Update last touched date of the Item
-			$this->update_last_touched_date();
+			$FileCache = & get_FileCache();
+			$File = $FileCache->get_by_ID( $file_ID, false, false );
+			$file_name = empty( $File ) ? '' : $File->get_name();
+			syslog_insert( sprintf( 'File %s was linked to %s with ID=%s', '<b>'.$file_name.'</b>', $this->type, $this->link_Object->ID ), 'info', 'file', $file_ID );
+
+			if( $update_owner )
+			{ // Update last touched date of the Item
+				$this->update_last_touched_date();
+			}
 
 			// Reset the Links
 			$this->Links = NULL;
 			$this->load_Links();
 
-			return true;
+			return $edited_Link->ID;
 		}
 
 		return false;
@@ -211,7 +262,7 @@ class LinkItem extends LinkOwner
 
 		if( ! empty( $link_ID ) )
 		{ // Find inline image placeholders if link ID is defined
-			preg_match_all( '/\[image:'.$link_ID.':?[^\]]*\]/i', $this->Item->content, $inline_images );
+			preg_match_all( '/\[(image|file|inline):'.$link_ID.':?[^\]]*\]/i', $this->Item->content, $inline_images );
 			if( ! empty( $inline_images[0] ) )
 			{ // There are inline image placeholders in the post content
 				$this->Item->set( 'content', str_replace( $inline_images[0], '', $this->Item->content ) );

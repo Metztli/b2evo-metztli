@@ -3,16 +3,13 @@
  * This file implements the file moderation.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: file_moderation.ctrl.php 849 2012-02-16 09:09:09Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -24,7 +21,7 @@ $current_User->check_perm( 'options', 'edit', true );
 
 
 //param( 'action', 'string' );
-param( 'tab', 'string', 'suspicious', true );
+param( 'tab', 'string', 'likes', true );
 
 
 /**
@@ -43,6 +40,10 @@ $AdminUI->breadcrumbpath_add( T_('Files'), '?ctrl=files&amp;blog=$blog$' );
 $AdminUI->breadcrumbpath_add( T_('Moderation'), '?ctrl=filemod' );
 switch( $tab )
 {
+	case 'likes':
+		$AdminUI->breadcrumbpath_add( T_('Likes'), '?ctrl=filemod&amp;tab='.$tab );
+		break;
+
 	case 'suspicious':
 		$AdminUI->breadcrumbpath_add( T_('Suspicious'), '?ctrl=filemod&amp;tab='.$tab );
 		break;
@@ -73,8 +74,12 @@ switch( $tab )
 		break;
 
 	case 'suspicious':
-	default:
 		$AdminUI->disp_view( 'files/views/_file_suspicious.view.php' );
+		break;
+
+	case 'likes':
+	default:
+		$AdminUI->disp_view( 'files/views/_file_likes.view.php' );
 		break;
 }
 $AdminUI->disp_payload_end();

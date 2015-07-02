@@ -2,8 +2,8 @@
  * Backoffice main Cascading Style Sheets definitions for Desert style.
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2005 by Francois PLANQUE - {@link http://fplanque.net/}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2005 by Francois PLANQUE - {@link http://fplanque.com/}
  *
  * @package admin
  */
@@ -16,7 +16,7 @@ body {
 	margin: 0;
 	background-color: #F5F5F5;
 	color: #000;
-	font-family: Verdana, Geneva, Arial, Helvetica, sans-serif;
+	-webkit-font-smoothing: subpixel-antialiased;
 }
 
 div.log_container {
@@ -28,17 +28,11 @@ div.log_container {
 	height: 100%;
 	min-height: 100%;
 	padding: 0 40px;
-	position: relative;
+	display: table;
 }
 .wrap {
-	width: 400px;
-	margin: 0 auto;
-	position: absolute;
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	margin: auto;
+	display: table-cell;
+	vertical-align: middle;
 }
 
 .panel {
@@ -47,18 +41,21 @@ div.log_container {
 .panel-body {
 	padding: 20px 30px 0;
 }
-.form-login-links {
+.evo_form__login_links {
 	padding: 0 5px;
 	font-size: 92%;
 }
 
-.form-login {
+.evo_form__login {
 	padding: 10px 0;
 }
-.form-login fieldset {
+.evo_form__login fieldset {
 	margin-bottom: 20px;
 }
-.form-login input[type=text], .form-login input[type=password] {
+.evo_form__login fieldset:last-child {
+	margin-bottom: 0;
+}
+.evo_form__login input[type=text], .evo_form__login input[type=password] {
 	width: 100%;
 }
 
@@ -70,39 +67,26 @@ span.help-inline {
 	color: #999;
 	font-size: 84%;
 }
-div#ffield_m {
-	margin-bottom: 4px;
-}
-div#p-status {
-	margin-left: 5px;
-}
-#pass2_status .icon {
-	margin-top: -2px;
-}
 
-.form-horizontal .form-actions {
-	background: none;
-	border: none;
-	text-align: center;
-	padding: 0;
-	margin-bottom: 0;
-}
 .control-label .label_field_required {
 	display: none;
 }
+.form-horizontal fieldset div.input .btn {
+	margin-bottom: 20px;
+}
 
-.form-lostpass .controls {
+.evo_form__lostpass .controls {
 	margin-left: 0;
 	padding: 0;
 	width: 100%;
 }
-.form-lostpass .controls input.form-control {
+.evo_form__lostpass .controls input.form-control {
 	width: 100%;
 }
-.form-lostpass .control-label {
+.evo_form__lostpass .control-label {
 	display: none;
 }
-.form-lostpass .control-buttons {
+.evo_form__lostpass .control-buttons {
 	margin: 0;
 	padding: 0;
 	text-align: center;
@@ -132,4 +116,45 @@ div#p-status {
 }
 .footer a:hover {
 	color: #005580;
+}
+
+@media only screen and (max-width: 414px) {
+	.container {
+		padding: 0;
+	}
+	.control-buttons {
+		width: 100%;
+		padding-right: 0;
+		text-align: center;
+	}
+	#password_form .control-label,
+	#password_form .controls {
+		width: 100%;
+		padding-left: 0;
+		padding-right: 0;
+	}
+	#password_form .input_text,
+	#password_form .form-control {
+		width: 100% !important;
+	}
+	div#p-status {
+		position: initial;
+		margin: 0;
+		float: left;
+	}
+}
+@media only screen and (max-width: 320px) {
+	.btn {
+		white-space: normal;
+	}
+	#register_form .control-label,
+	#register_form .controls {
+		width: 100%;
+		padding-left: 0;
+		padding-right: 0;
+	}
+	#register_form .input_text,
+	#register_form .form-control {
+		width: 100% !important;
+	}
 }

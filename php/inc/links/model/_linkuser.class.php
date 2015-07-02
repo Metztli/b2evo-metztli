@@ -3,16 +3,13 @@
  * This file implements the LinkUser class, which is a wrapper class for User class to handle linked files.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author efy-asimo: Attila Simo.
- *
- * @version $Id: $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -38,13 +35,13 @@ class LinkUser extends LinkOwner
 		$this->User = & $this->link_Object;
 
 		$this->_trans = array(
-			'Link this image to your owner' => NT_( 'Link this image to the user.' ),
-			'Link this file to your owner' => NT_( 'Link this file to the user.'),
-			'View this owner...' => NT_( 'View this user...' ),
-			'Edit this owner...' => NT_( 'Edit this user...' ),
-			'Click on link %s icons below to link additional files to $ownerTitle$.' => NT_( 'Click on link %s icons below to link additional files to <strong>user</strong>.' ),
-			'Link files to current owner' => NT_( 'Link files to current user' ),
-			'Link has been deleted from $ownerTitle$.' => NT_( 'Link has been deleted from &laquo;user&raquo;.' ),
+			'Link this image to your xxx' => NT_( 'Link this image to the user.' ),
+			'Link this file to your xxx' => NT_( 'Link this file to the user.'),
+			'View this xxx...' => NT_( 'View this user...' ),
+			'Edit this xxx...' => NT_( 'Edit this user...' ),
+			'Click on link %s icons below to link additional files to $xxx$.' => NT_( 'Click on link %s icons below to link additional files to <strong>user</strong>.' ),
+			'Link files to current xxx' => NT_( 'Link files to current user' ),
+			'Link has been deleted from $xxx$.' => NT_( 'Link has been deleted from &laquo;user&raquo;.' ),
 		);
 	}
 
@@ -101,10 +98,16 @@ class LinkUser extends LinkOwner
 	 * @param integer file ID
 	 * @param integer link position ( 'teaser', 'aftermore' )
 	 * @param int order of the link
+	 * @return integer|boolean Link ID on success, false otherwise
 	 */
-	function add_link( $file_ID, $position, $order = 1 )
+	function add_link( $file_ID, $position = NULL, $order = 1 )
 	{
 		global $current_User;
+
+		if( is_null( $position ) )
+		{ // Use default link position
+			$position = $this->get_default_position( $file_ID );
+		}
 
 		$edited_Link = new Link();
 		$edited_Link->set( 'usr_ID', $this->User->ID );
@@ -117,10 +120,21 @@ class LinkUser extends LinkOwner
 			$edited_Link->set( 'creator_user_ID', $this->User->ID );
 			$edited_Link->set( 'lastedit_user_ID', $this->User->ID );
 		}
-		if( $edited_Link->dbinsert() && ( ! is_null( $this->Links ) ) )
-		{ // If user Links were already loaded update its content 
-			$this->Links[$edited_Link->ID] = & $edited_Link;
+		if( $edited_Link->dbinsert() )
+		{
+			if( ! is_null( $this->Links ) )
+			{ // If user Links were already loaded update its content 
+				$this->Links[$edited_Link->ID] = & $edited_Link;
+			}
+			$FileCache = & get_FileCache();
+			$File = $FileCache->get_by_ID( $file_ID, false, false );
+			$file_name = empty( $File ) ? '' : $File->get_name();
+			syslog_insert( sprintf( 'File %s was linked to %s with ID=%s', '<b>'.$file_name.'</b>', $this->type, $this->link_Object->ID ), 'info', 'file', $file_ID );
+
+			return $edited_Link->ID;
 		}
+
+		return false;
 	}
 
 	/**

@@ -3,24 +3,15 @@
  * This file implements the Slug class.
  *
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}.
 *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
  *
- * {@internal Open Source relicensing agreement:
- * EVO FACTORY grants Francois PLANQUE the right to license
- * EVO FACTORY contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author asimo: Evo Factory / Attila Simo
- *
- * @version $Id: _slug.class.php 6225 2014-03-16 10:01:05Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -50,11 +41,6 @@ class Slug extends DataObject
 		// Call parent constructor:
 		parent::DataObject( 'T_slug', 'slug_', 'slug_ID' );
 
-		$this->delete_restrictions = array(
-				array( 'table'=>'T_items__item', 'fk'=>'post_canonical_slug_ID', 'fk_short'=>'canonical_slug_ID', 'msg'=>T_('%d related post') ),
-				array( 'table'=>'T_items__item', 'fk'=>'post_tiny_slug_ID', 'fk_short'=>'tiny_slug_ID', 'msg'=>T_('%d related post') ),
-			);
-
 		if( $db_row != NULL )
 		{
 			$this->ID = $db_row->slug_ID;
@@ -62,6 +48,20 @@ class Slug extends DataObject
 			$this->type = $db_row->slug_type;
 			$this->itm_ID = $db_row->slug_itm_ID;
 		}
+	}
+
+
+	/**
+	 * Get delete restriction settings
+	 *
+	 * @return array
+	 */
+	static function get_delete_restrictions()
+	{
+		return array(
+				array( 'table'=>'T_items__item', 'fk'=>'post_canonical_slug_ID', 'fk_short'=>'canonical_slug_ID', 'msg'=>T_('%d related post') ),
+				array( 'table'=>'T_items__item', 'fk'=>'post_tiny_slug_ID', 'fk_short'=>'tiny_slug_ID', 'msg'=>T_('%d related post') ),
+			);
 	}
 
 
@@ -250,7 +250,7 @@ class Slug extends DataObject
 
 			default:
 				// not defined restriction
-				debug_die('Slug::get_object: Unhandled object type: '.evo_htmlspecialchars($this->type));
+				debug_die('Slug::get_object: Unhandled object type: '.htmlspecialchars($this->type));
 		}
 	}
 

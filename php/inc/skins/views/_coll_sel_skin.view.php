@@ -3,15 +3,13 @@
  * This file implements the UI view for the skin selection when creating a blog.
  *
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}.
  *
  * @package admin
- *
- * @version $Id: _coll_sel_skin.view.php 8265 2015-02-15 04:34:35Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -19,9 +17,9 @@ global $kind, $admin_url, $action, $AdminUI;
 
 $kind_title = get_collection_kinds( $kind );
 
-echo action_icon( T_('Abort creating new collection'), 'close', $admin_url.'?ctrl=collections&amp;tab=list', ' '.sprintf( T_('Abort New %s'), $kind_title ), 3, 3, array( 'class' => 'action_icon floatright' ) );
+echo action_icon( T_('Abort creating new collection'), 'close', $admin_url.'?ctrl=dashboard', ' '.sprintf( T_('Abort new "%s" collection'), $kind_title ), 3, 3, array( 'class' => 'action_icon floatright' ) );
 
-echo '<h2>'.sprintf( T_('New %s'), $kind_title ).':</h2>';
+echo '<h2 class="page-title">'.sprintf( T_('New %s'), $kind_title ).':</h2>';
 
 if( $action == 'new-selskin' )
 { // Select an existing skin

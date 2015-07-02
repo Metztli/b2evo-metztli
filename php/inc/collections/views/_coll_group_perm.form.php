@@ -3,14 +3,12 @@
  * This file implements the UI view (+more :/) for the blogs permission management.
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
  *
  * @todo move user rights queries to object (fplanque)
- *
- * @version $Id: _coll_group_perm.form.php 6894 2014-06-13 09:56:09Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -45,7 +43,7 @@ $Form->hidden_ctrl();
 $Form->hidden( 'tab', 'permgroup' );
 $Form->hidden( 'blog', $edited_Blog->ID );
 
-$Form->begin_fieldset( T_('Group permissions').get_manual_link('group_permissions') );
+$Form->begin_fieldset( T_('Group permissions').get_manual_link('advanced-user-permissions') );
 
 
 /*
@@ -64,7 +62,7 @@ else
 
 
 $SQL = new SQL();
-$SQL->SELECT( 'grp_ID, grp_name, bloggroup_perm_poststatuses + 0 as perm_poststatuses, bloggroup_perm_edit, bloggroup_ismember, bloggroup_can_be_assignee,'
+$SQL->SELECT( 'grp_ID, grp_name, grp_level, bloggroup_perm_poststatuses + 0 as perm_poststatuses, bloggroup_perm_edit, bloggroup_ismember, bloggroup_can_be_assignee,'
 	. 'bloggroup_perm_delcmts, bloggroup_perm_recycle_owncmts, bloggroup_perm_vote_spam_cmts, bloggroup_perm_cmtstatuses + 0 as perm_cmtstatuses, bloggroup_perm_edit_cmt,'
 	. 'bloggroup_perm_delpost, bloggroup_perm_edit_ts, bloggroup_perm_cats,'
 	. 'bloggroup_perm_properties, bloggroup_perm_admin, bloggroup_perm_media_upload,'
@@ -131,7 +129,7 @@ $Results->cols[] = array(
 $Results->cols[] = array(
 						'th' => T_('Group'),
 						'order' => 'grp_name',
-						'td' => '<a href="?ctrl=users&amp;filter=new&amp;group=$grp_ID$">$grp_name$</a>',
+						'td' => '<a href="?ctrl=users&amp;filter=new&amp;group=$grp_ID$">$grp_name$ ($grp_level$)</a>',
 					);
 
 $Results->cols[] = array(
@@ -143,7 +141,7 @@ $Results->cols[] = array(
 					);
 
 $Results->cols[] = array(
-						'th' => T_('Post statuses'),
+						'th' => T_('Post Statuses'),
 						'th_class' => 'checkright',
 						'td' => '%coll_perm_status_checkbox( {row}, \'bloggroup_\', \'published\', \''.format_to_output( TS_('Permission to post into this blog with published status'), 'htmlattr' ).'\', \'post\' )%'.
 								'%coll_perm_status_checkbox( {row}, \'bloggroup_\', \'community\', \''.format_to_output( TS_('Permission to post into this blog with community status'), 'htmlattr' ).'\', \'post\' )%'.
@@ -157,7 +155,7 @@ $Results->cols[] = array(
 					);
 
 $Results->cols[] = array(
-						'th' => T_('Post types'),
+						'th' => T_('Post Types'),
 						'th_class' => 'checkright',
 						'td' => '%coll_perm_checkbox( {row}, \'bloggroup_\', \'perm_page\', \''.format_to_output( TS_('Permission to create pages'), 'htmlattr' ).'\' )%'.
 								'%coll_perm_checkbox( {row}, \'bloggroup_\', \'perm_intro\', \''.format_to_output( TS_('Permission to create intro posts (Intro-* post types)'), 'htmlattr' ).'\' )%'.

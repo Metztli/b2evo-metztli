@@ -1,26 +1,16 @@
 <?php
 /**
  * This file is part of b2evolution - {@link http://b2evolution.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2009-2014 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2009-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2009 by The Evo Factory - {@link http://www.evofactory.com/}.
  *
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- *
- * {@internal Open Source relicensing agreement:
- * The Evo Factory grants Francois PLANQUE the right to license
- * The Evo Factory's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
  * @package messaging
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author efy-maxim: Evo Factory / Maxim.
- * @author fplanque: Francois Planque.
- *
- * @version $Id: messages.ctrl.php 6291 2014-03-21 11:03:32Z yura $
  */
 
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -60,18 +50,18 @@ else
 	$perm_abuse_management = false;
 }
 
-if( param( 'thrd_ID', 'integer', '', true) )
-{// Load thread from cache:
+if( param( 'thrd_ID', 'integer', '', true ) )
+{ // Load thread from cache:
 	$ThreadCache = & get_ThreadCache();
-	if( ($edited_Thread = & $ThreadCache->get_by_ID( $thrd_ID, false )) === false )
-	{	// Thread doesn't exists with this ID
+	if( ( $edited_Thread = & $ThreadCache->get_by_ID( $thrd_ID, false ) ) === false )
+	{ // Thread doesn't exists with this ID
 		unset( $edited_Thread );
 		forget_param( 'thrd_ID' );
 		$Messages->add( T_('The requested thread does not exist any longer.'), 'error' );
 		$action = 'nil';
 	}
 	else if( ! $edited_Thread->check_thread_recipient( $current_User->ID ) && ! $perm_abuse_management )
-	{	// Current user is not recipient of this thread and he is not abuse manager
+	{ // Current user is not recipient of this thread and he is not abuse manager
 		unset( $edited_Thread );
 		forget_param( 'thrd_ID' );
 		$Messages->add( T_('You are not allowed to view this thread.'), 'error' );
@@ -79,19 +69,20 @@ if( param( 'thrd_ID', 'integer', '', true) )
 	}
 }
 
-if( param( 'msg_ID', 'integer', '', true) )
-{// Load message from cache:
+if( param( 'msg_ID', 'integer', '', true ) )
+{ // Load message from cache:
 	$MessageCache = & get_MessageCache();
-	if( ($edited_Message = & $MessageCache->get_by_ID( $msg_ID, false )) === false )
-	{	unset( $edited_Message );
+	if( ( $edited_Message = & $MessageCache->get_by_ID( $msg_ID, false ) ) === false )
+	{
+		unset( $edited_Message );
 		forget_param( 'msg_ID' );
 		$Messages->add( T_('The requested message does not exist any longer.'), 'error' );
 		$action = 'nil';
 	}
 }
 
-if( empty( $thrd_ID ) )
-{
+if( ! $Messages->has_errors() && ( empty( $thrd_ID ) || empty( $edited_Thread ) ) )
+{ // Display this error only when no error above
 	$Messages->add( T_( 'Can\'t show messages without thread!' ), 'error' );
 	$action = 'nil';
 }
@@ -124,6 +115,17 @@ switch( $action )
 			header_redirect( '?ctrl=messages&thrd_ID='.$thrd_ID.$param_tab, 303 ); // Will EXIT
 			// We have EXITed already at this point!!
 		}
+		break;
+
+	case 'preview': // Preview new message
+		// Stop a request from the blocked IP addresses or Domains
+		antispam_block_request();
+
+		// Check that this action request is not a CSRF hacked request:
+		$Session->assert_received_crumb( 'messaging_messages' );
+
+		// Try to create the new message object without inserting in DB
+		$creating_success = create_new_message( $thrd_ID, 'preview' );
 		break;
 
 	case 'delete':
@@ -185,6 +187,7 @@ else
 	$AdminUI->set_path( 'messaging', 'threads' );
 }
 
+init_plugins_js( 'rsc_url', $AdminUI->get_template( 'tooltip_plugin' ) );
 
 // Display messages depending on user email status
 display_user_email_status_message();
@@ -219,8 +222,13 @@ switch( $action )
 		// Cleanup context:
 		forget_param( 'msg_ID' );
 		// Display messages list:
-		$action = 'create';
-		$AdminUI->disp_view( 'messaging/views/_message_list.view.php' );
+		$action = $action == 'preview' ? $action : 'create';
+		$AdminUI->disp_view( 'messaging/views/_message_list.view.php', array(
+				'messages_list_title_start' => '',
+				'messages_list_title_end'   => '',
+				'messages_list_form_start'  => '',
+				'messages_list_form_end'    => '',
+			) );
 		break;
 }
 

@@ -5,8 +5,8 @@
  * This file is not meant to be called directly.
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  * @subpackage touch
@@ -51,18 +51,23 @@ $Comment = & $params['Comment'];
 				'link_to'		   => $params['link_to'],		// 'userpage' or 'userurl' or 'userurl>userpage' or 'userpage>userurl'
 				'link_text'    => $params['author_link_text'],
 			) );
-		$Comment->msgform_link( $Blog->get('msgformurl') );
+		if( ! $Comment->get_author_User() )
+		{ // Display action icon to message only if this comment is from a visitor
+			$Comment->msgform_link( $Blog->get( 'msgformurl' ) );
+		}
 		echo '</div>';
 	?>
 		<div class="comdater">
-			<?php $Comment->date() ?> @ <?php $Comment->time( 'H:i' ) ?>
+			<?php $Comment->date() ?> @ <?php $Comment->time( '#short_time' ) ?>
 		</div>
 	</div>
 	<div class="combody">
 		<?php
 			if( $Comment->status != 'published' )
 			{
-				$Comment->status( 'styled' );
+				$Comment->format_status( array(
+						'template' => '<div class="floatright"><span class="note status_$status$"><span>$status_title$</span></span></div>',
+					) );
 			}
 			$Comment->rating();
 			$Comment->content( 'htmlbody', false, true, $params );

@@ -3,8 +3,6 @@
  * This file implements the test Cron controller
  *
  * @author fplanque: Francois PLANQUE
- *
- * @version $Id: _light_db_maintenance.job.php 9 2011-10-24 22:32:00Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 

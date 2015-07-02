@@ -3,8 +3,6 @@
  * This file implements the posts moderation reminder cron job
  *
  * @author yura: Yura Bakhtin
- *
- * @version $Id: _post_moderation_reminder.job.php 7967 2015-01-14 03:44:19Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 

@@ -3,25 +3,13 @@
  * This file implements the user_login_Widget class.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: _coll_search_form.widget.php 9 2011-10-24 22:32:00Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -44,6 +32,17 @@ class user_login_Widget extends ComponentWidget
 	{
 		// Call parent constructor:
 		parent::ComponentWidget( $db_row, 'core', 'user_login' );
+	}
+
+
+	/**
+	 * Get help URL
+	 *
+	 * @return string URL
+	 */
+	function get_help_url()
+	{
+		return get_manual_url( 'user-log-in-widget' );
 	}
 
 
@@ -200,7 +199,7 @@ class user_login_Widget extends ComponentWidget
 	 */
 	function display( $params )
 	{
-		global $Blog, $redirect_to, $skins_path;
+		global $Blog, $redirect_to;
 
 		if( get_param( 'disp' ) == 'login' )
 		{	// No display a duplicate form for inskin login mode
@@ -232,7 +231,7 @@ class user_login_Widget extends ComponentWidget
 			echo $this->disp_params['block_body_start'];
 
 			// display widget login form
-			require $skins_path.'_widget_login.form.php';
+			require skin_template_path( '_widget_login.form.php' );
 
 			echo $this->disp_params['block_body_end'];
 		}
@@ -249,7 +248,7 @@ class user_login_Widget extends ComponentWidget
 
 			if( $this->get_param('greeting_show') )
 			{	// Display greeting text
-				$user_login = $current_User->get_identity_link( array( 'link_text' => 'login', 'display_bubbletip' => false ) );
+				$user_login = $current_User->get_identity_link( array( 'link_text' => 'name', 'display_bubbletip' => false ) );
 				echo ' <strong class="greeting">'.str_replace( '$login$', $user_login, $this->get_param('greeting_text') ).'</strong>';
 			}
 

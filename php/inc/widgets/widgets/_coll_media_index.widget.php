@@ -3,26 +3,13 @@
  * This file implements the Media Index Widget class.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- * @author Yabba	- {@link http://www.astonishme.co.uk/}
- *
- * @version $Id: _coll_media_index.widget.php 8265 2015-02-15 04:34:35Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -74,8 +61,18 @@ class coll_media_index_Widget extends ComponentWidget
 				'size' => 40,
 				'defaultvalue' => T_('Recent photos'),
 			),
+			'item_visibility' => array(
+				'label' => T_('Item visibility'),
+				'note' => T_('What post statuses should be included in the list?'),
+				'type' => 'radio',
+				'field_lines' => true,
+				'options' => array(
+						array( 'public', T_('show public images (cacheable)') ),
+						array( 'all', T_('show all images the current user is allowed to see (not cacheable)') ) ),
+				'defaultvalue' => 'all',
+			),
 			'item_type' => array(
-				'label' => T_('Item type'),
+				'label' => T_('Post type'),
 				'note' => T_('What kind of items do you want to list?'),
 				'type' => 'select',
 				'options' => $item_type_options,
@@ -92,8 +89,12 @@ class coll_media_index_Widget extends ComponentWidget
 				'label' => T_('Layout'),
 				'note' => T_('How to lay out the thumbnails'),
 				'type' => 'select',
-				'options' => array( 'grid' => T_( 'Grid' ), 'list' => T_( 'List' ) ),
-				'defaultvalue' => 'grid',
+				'options' => array(
+						'grid' => T_('Grid'),
+						'list' => T_('List'),
+						'flow' => T_('Flowing Blocks')
+					),
+				'defaultvalue' => 'flow',
 			),
 			'disp_image_title' => array(
 				'label' => T_( 'Display image title' ),
@@ -129,8 +130,8 @@ class coll_media_index_Widget extends ComponentWidget
 				'defaultvalue' => 'DESC',
 			),
 			'blog_ID' => array(
-				'label' => T_('Blog'),
-				'note' => T_('ID of the blog to use, leave empty for the current blog.'),
+				'label' => T_('Collection'),
+				'note' => T_('ID of the collection to use, leave empty for the current collection.'),
 				'size' => 4,
 				'type' => 'integer',
 				'allow_empty' => true,
@@ -138,6 +139,17 @@ class coll_media_index_Widget extends ComponentWidget
 		), parent::get_param_definitions( $params )	);
 
 		return $r;
+	}
+
+
+	/**
+	 * Get help URL
+	 *
+	 * @return string URL
+	 */
+	function get_help_url()
+	{
+		return get_manual_url( 'photo-index-widget' );
 	}
 
 
@@ -169,6 +181,22 @@ class coll_media_index_Widget extends ComponentWidget
 
 
 	/**
+	 * Prepare display params
+	 *
+	 * @param array MUST contain at least the basic display params
+	 */
+	function init_display( $params )
+	{
+		parent::init_display( $params );
+
+		if( $this->disp_params['item_visibility'] == 'all' )
+		{ // Don't cache the widget when we display the images of posts with ALL statuses
+			$this->disp_params[ 'allow_blockcache' ] = 0;
+		}
+	}
+
+
+	/**
 	 * Display the widget!
 	 *
 	 * @param array MUST contain at least the basic display params
@@ -184,7 +212,12 @@ class coll_media_index_Widget extends ComponentWidget
 		{ // Use current blog by default
 			$blog_ID = $Blog->ID;
 		}
-		//pre_dump( $blog_ID );
+
+		$BlogCache = & get_BlogCache();
+		if( ! $BlogCache->get_by_ID( $blog_ID, false, false ) )
+		{ // No blog exists
+			return;
+		}
 
 		// Display photos:
 		// TODO: permissions, complete statuses...
@@ -192,26 +225,40 @@ class coll_media_index_Widget extends ComponentWidget
 		//          overriding ItemListLigth::query() for starters ;)
 
 		// Init caches
-		$ItemCache = & get_ItemCache();
 		$FileCache = & get_FileCache();
+		$ItemCache = & get_ItemCache();
 
-		// Query list of files:
+		// Query list of files and posts fields:
 		// Note: We use ItemQuery to get attachments from all posts which should be visible ( even in case of aggregate blogs )
 		$ItemQuery = new ItemQuery( $ItemCache->dbtablename, $ItemCache->dbprefix, $ItemCache->dbIDname );
 		$ItemQuery->SELECT( 'post_ID, post_datestart, post_datemodified, post_main_cat_ID, post_urltitle, post_canonical_slug_ID,
-									post_tiny_slug_ID, post_ptyp_ID, post_title, post_excerpt, post_url, file_ID,
+									post_tiny_slug_ID, post_ityp_ID, post_title, post_excerpt, post_url, file_ID, file_type,
 									file_title, file_root_type, file_root_ID, file_path, file_alt, file_desc, file_path_hash' );
 		$ItemQuery->FROM_add( 'INNER JOIN T_links ON post_ID = link_itm_ID' );
 		$ItemQuery->FROM_add( 'INNER JOIN T_files ON link_file_ID = file_ID' );
 		$ItemQuery->where_chapter( $blog_ID );
-		$ItemQuery->where_visibility( NULL );
+		if( $this->disp_params['item_visibility'] == 'public' )
+		{ // Get images only of the public items
+			$ItemQuery->where_visibility( array( 'published' ) );
+		}
+		else
+		{ // Get image of all available posts for current user
+			$ItemQuery->where_visibility( NULL );
+		}
+		$ItemQuery->WHERE_and( '( file_type = "image" ) OR ( file_type IS NULL )' );
 		$ItemQuery->WHERE_and( 'post_datestart <= \''.remove_seconds( $localtimenow ).'\'' );
-		if( !empty( $this->disp_params[ 'item_type' ] ) )
+		$ItemQuery->WHERE_and( 'link_position != "cover"' );
+		if( !empty( $this->disp_params['item_type'] ) )
 		{ // Get items only with specified type
-			$ItemQuery->WHERE_and( 'post_ptyp_ID = '.intval( $this->disp_params[ 'item_type' ] ) );
+			$ItemQuery->WHERE_and( 'post_ityp_ID = '.intval( $this->disp_params['item_type'] ) );
 		}
 		$ItemQuery->GROUP_BY( 'link_ID' );
-		$ItemQuery->LIMIT( intval( $this->disp_params[ 'limit' ] ) * 4 ); // fp> TODO: because no way of getting images only, we get 4 times more data than requested and hope that 25% at least will be images :/
+
+		// fp> TODO: because no way of getting images only, we get 4 times more data than requested and hope that 25% at least will be images :/
+		// asimo> This was updated and we get images and those files where we don't know the file type yet. Now we get 2 times more data than requested.
+		// Maybe it would be good to get only the requested amount of files, because after a very short period the file types will be set for all images.
+		$ItemQuery->LIMIT( intval( $this->disp_params['limit'] ) * 2 );
+
 		$ItemQuery->ORDER_BY(	gen_order_clause( $this->disp_params['order_by'], $this->disp_params['order_dir'],
 											'post_', 'post_ID '.$this->disp_params['order_dir'].', link_ID' ) );
 
@@ -221,9 +268,9 @@ class coll_media_index_Widget extends ComponentWidget
 
 		$FileList->query( false, false, false, 'Media index widget' );
 
-		$layout = $this->disp_params[ 'thumb_layout' ];
+		$layout = $this->disp_params['thumb_layout'];
 
-		$nb_cols = $this->disp_params[ 'grid_nb_cols' ];
+		$nb_cols = $this->disp_params['grid_nb_cols'];
 		$count = 0;
 		$r = '';
 		/**
@@ -231,7 +278,7 @@ class coll_media_index_Widget extends ComponentWidget
 		 */
 		while( $File = & $FileList->get_next() )
 		{
-			if( $count >= $this->disp_params[ 'limit' ] )
+			if( $count >= $this->disp_params['limit'] )
 			{	// We have enough images already!
 				break;
 			}
@@ -244,16 +291,20 @@ class coll_media_index_Widget extends ComponentWidget
 			}
 
 			if( $layout == 'grid' )
-			{
+			{ // Grid layout
 				if( $count % $nb_cols == 0 )
 				{
-					$r .= $this->disp_params[ 'grid_colstart' ];
+					$r .= $this->disp_params['grid_colstart'];
 				}
-				$r .= $this->disp_params[ 'grid_cellstart' ];
+				$r .= $this->disp_params['grid_cellstart'];
+			}
+			elseif( $layout == 'flow' )
+			{ // Flow block layout
+				$r .= $this->disp_params['flow_block_start'];
 			}
 			else
-			{
-				$r .= $this->disp_params[ 'item_start' ];
+			{ // List layout
+				$r .= $this->disp_params['item_start'];
 			}
 
 			// 1/ Hack a dirty permalink( will redirect to canonical):
@@ -269,7 +320,7 @@ class coll_media_index_Widget extends ComponentWidget
 			// Generate the IMG THUMBNAIL tag with all the alt, title and desc if available
 			$r .= $File->get_thumb_imgtag( $this->disp_params['thumb_size'], '', '', $ItemLight->title );
 			$r .= '</a>';
-			if( $this->disp_params[ 'disp_image_title' ] )
+			if( $this->disp_params['disp_image_title'] )
 			{ // Dislay title of image or item
 				$title = ( $File->get( 'title' ) ) ? $File->get( 'title' ) : $ItemLight->title;
 				if( ! empty( $title ) )
@@ -281,16 +332,20 @@ class coll_media_index_Widget extends ComponentWidget
 			++$count;
 
 			if( $layout == 'grid' )
-			{
-				$r .= $this->disp_params[ 'grid_cellend' ];
+			{ // Grid layout
+				$r .= $this->disp_params['grid_cellend'];
 				if( $count % $nb_cols == 0 )
 				{
-					$r .= $this->disp_params[ 'grid_colend' ];
+					$r .= $this->disp_params['grid_colend'];
 				}
 			}
+			elseif( $layout == 'flow' )
+			{ // Flow block layout
+				$r .= $this->disp_params['flow_block_end'];
+			}
 			else
-			{
-				$r .= $this->disp_params[ 'item_end' ];
+			{ // List layout
+				$r .= $this->disp_params['item_end'];
 			}
 		}
 
@@ -305,33 +360,41 @@ class coll_media_index_Widget extends ComponentWidget
 		echo $this->disp_params['block_body_start'];
 
 		if( $layout == 'grid' )
-		{
-			echo $this->disp_params[ 'grid_start' ];
+		{ // Grid layout
+			echo $this->disp_params['grid_start'];
+		}
+		elseif( $layout == 'flow' )
+		{ // Flow block layout
+			echo $this->disp_params['flow_start'];
 		}
 		else
-		{
-			echo $this->disp_params[ 'list_start' ];
+		{ // List layout
+			echo $this->disp_params['list_start'];
 		}
 
 		echo $r;
 
 		if( $layout == 'grid' )
-		{
+		{ // Grid layout
 			if( $count && ( $count % $nb_cols != 0 ) )
 			{
-				echo $this->disp_params[ 'grid_colend' ];
+				echo $this->disp_params['grid_colend'];
 			}
 
-			echo $this->disp_params[ 'grid_end' ];
+			echo $this->disp_params['grid_end'];
+		}
+		elseif( $layout == 'flow' )
+		{ // Flow block layout
+			echo $this->disp_params['flow_end'];
 		}
 		else
-		{
-			echo $this->disp_params[ 'list_end' ];
+		{ // List layout
+			echo $this->disp_params['list_end'];
 		}
 
 		echo $this->disp_params['block_body_end'];
 
-		echo $this->disp_params[ 'block_end' ];
+		echo $this->disp_params['block_end'];
 
 		return true;
 	}

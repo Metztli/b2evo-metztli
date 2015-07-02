@@ -3,29 +3,55 @@
  * This file implements the UI controller for the antispam management.
  *
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
- *
- * {@internal Open Source relicensing agreement:
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}.
  *
  * @package admin
  *
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  *
  * @todo Allow applying / re-checking of the known data, not just after an update!
- *
- * @version $Id: _antispam_ban.form.php 6225 2014-03-16 10:01:05Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
-global $Settings, $current_User;
+global $Settings, $current_User, $display_mode;
 global $keyword;
 
 global $row_stats;	// for hit functions
+
+
+$Form = new Form( NULL, 'antispam_add', 'post', 'compact' );
+$Form->begin_form( 'fform', $display_mode == 'js' ? '' : T_('Add a banned keyword') );
+	$Form->add_crumb('antispam');
+	$Form->hidden_ctrl();
+	$Form->hidden( 'action', 'ban' );
+
+	$button = array( 'submit', 'submit', T_('Check & ban...'), 'SaveButton' );
+	if( $display_mode == 'js' )
+	{
+		$Form->output = false;
+		$button_html = $Form->button( $button );
+		$Form->output = true;
+	}
+	else
+	{
+		$button_html = '';
+	}
+
+	$Form->text_input( 'keyword', $keyword, 50, T_('Keyword/phrase to ban'), '', array( 'maxlength' => 80, 'input_suffix' => $button_html ) ); // TODO: add note
+	/*
+	 * TODO: explicitly add a domain?
+	 * $add_Form->text( 'domain', $domain, 30, T_('Add a banned domain'), 'note..', 80 ); // TODO: add note
+	 */
+	if( $display_mode != 'js' )
+	{
+		$Form->buttons( array( $button ) );
+	}
+$Form->end_form( );
+
 
 $Form = new Form( NULL, 'antispam_ban', 'post', 'compact' );
 
@@ -37,7 +63,7 @@ if( $redirect_to == NULL )
 
 $Form->global_icon( T_('Cancel!'), 'close', $redirect_to, '', 3, 2, array( 'class'=>'action_icon', 'id'=>'close_button' ) );
 
-$Form->begin_form( 'fform',  T_('Confirm ban & delete') );
+$Form->begin_form( 'fform', $display_mode == 'js' ? '' : T_('Confirm ban & delete') );
 
 	$Form->add_crumb( 'antispam' );
 	$Form->hidden_ctrl();
@@ -57,7 +83,7 @@ $Form->begin_form( 'fform',  T_('Confirm ban & delete') );
 	$res_affected_hits = $DB->get_results( $sql, ARRAY_A );
 	if( $DB->num_rows == 0 )
 	{ // No matching hits.
-		printf( '<p>'.T_('No <strong>log-hits</strong> match the keyword [%s].').'</p>', evo_htmlspecialchars($keyword) );
+		printf( '<p>'.T_('No <strong>log-hits</strong> match the keyword [%s].').'</p>', htmlspecialchars($keyword) );
 	}
 	else
 	{
@@ -104,7 +130,7 @@ $Form->begin_form( 'fform',  T_('Confirm ban & delete') );
 	$sql = 'SELECT *
 			  FROM T_comments
 			 WHERE comment_author LIKE '.$DB->quote('%'.$keyword.'%').'
-			    OR comment_author_email LIKE '.$DB->quote('%'.evo_strtolower( $keyword ).'%').'
+			    OR comment_author_email LIKE '.$DB->quote('%'.utf8_strtolower( $keyword ).'%').'
 			    OR comment_author_url LIKE '.$DB->quote('%'.$keyword.'%').'
 			    OR comment_content LIKE '.$DB->quote('%'.$keyword.'%').'
 			 ORDER BY comment_date ASC
@@ -112,7 +138,7 @@ $Form->begin_form( 'fform',  T_('Confirm ban & delete') );
 	$res_affected_comments = $DB->get_results( $sql, OBJECT, 'Find matching comments' );
 	if( $DB->num_rows == 0 )
 	{ // No matching hits.
-		printf( '<p>'.T_('No <strong>comments</strong> match the keyword [%s].').'</p>', evo_htmlspecialchars($keyword) );
+		printf( '<p>'.T_('No <strong>comments</strong> match the keyword [%s].').'</p>', htmlspecialchars($keyword) );
 	}
 	else
 	{ // create comment arrays
@@ -219,7 +245,7 @@ $Form->begin_form( 'fform',  T_('Confirm ban & delete') );
 	// Check if the string is already in the blacklist:
 	if( antispam_check($keyword) )
 	{ // Already there:
-		printf( '<p>'.T_('The keyword [%s] is <strong>already handled</strong> by the blacklist.').'</p>', evo_htmlspecialchars($keyword) );
+		printf( '<p>'.T_('The keyword [%s] is <strong>already handled</strong> by the blacklist.').'</p>', htmlspecialchars($keyword) );
 	}
 	else
 	{ // Not in blacklist
@@ -227,7 +253,7 @@ $Form->begin_form( 'fform',  T_('Confirm ban & delete') );
 		<p>
 		<input type="checkbox" name="blacklist_locally" id="blacklist_locally_cb" value="1" checked="checked" />
 		<label for="blacklist_locally_cb">
-			<?php printf ( T_('<strong>Blacklist</strong> the keyword [%s] locally.'), evo_htmlspecialchars($keyword) ) ?>
+			<?php printf ( T_('<strong>Blacklist</strong> the keyword [%s] locally.'), htmlspecialchars($keyword) ) ?>
 		</label>
 		</p>
 
@@ -238,7 +264,7 @@ $Form->begin_form( 'fform',  T_('Confirm ban & delete') );
 			<p>
 			<input type="checkbox" name="report" id="report_cb" value="1" checked="checked" />
 			<label for="report_cb">
-				<?php printf ( T_('<strong>Report</strong> the keyword [%s] as abuse to b2evolution.net.'), evo_htmlspecialchars($keyword) ) ?>
+				<?php printf ( T_('<strong>Report</strong> the keyword [%s] as abuse to b2evolution.net.'), htmlspecialchars($keyword) ) ?>
 			</label>
 			[<a href="http://b2evolution.net/about/terms.html"><?php echo T_('Terms of service') ?></a>]
 			</p>
@@ -246,23 +272,16 @@ $Form->begin_form( 'fform',  T_('Confirm ban & delete') );
 		}
 	}
 
-	$Form->buttons( array(
-		array( '', 'actionArray[ban]', T_('Perform selected operations'), 'DeleteButton' ),
-	) );
+	$button = array( '', 'actionArray[ban]', T_('Perform selected operations'), 'DeleteButton btn-danger' );
+	if( $display_mode == 'js' )
+	{
+		$Form->button( $button );
+	}
+	else
+	{
+		$Form->buttons( array( $button ) );
+	}
 
 $Form->end_form();
-
-
-$Form = new Form( NULL, 'antispam_add', 'post', 'compact' );
-$Form->begin_form( 'fform', T_('Add a banned keyword') );
-	$Form->add_crumb('antispam');
-	$Form->hidden_ctrl();
-	$Form->hidden( 'action', 'ban' );
-	$Form->text( 'keyword', $keyword, 50, T_('Keyword/phrase to ban'), '', 80 ); // TODO: add note
-	/*
-	 * TODO: explicitly add a domain?
-	 * $add_Form->text( 'domain', $domain, 30, T_('Add a banned domain'), 'note..', 80 ); // TODO: add note
-	 */
-$Form->end_form( array( array( 'submit', 'submit', T_('Check & ban...'), 'SaveButton' ) ) );
 
 ?>

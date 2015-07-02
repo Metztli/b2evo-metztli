@@ -3,26 +3,14 @@
  * This file implements Template tags for use withing skins.
  *
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2004-2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
- * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author blueyed: Daniel HAHLER.
- * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: _skin.funcs.php 8150 2015-02-03 15:12:38Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -81,6 +69,8 @@ function skin_init( $disp )
 
 	global $Session;
 
+	global $search_result_loaded;
+
 	$Timer->resume( 'skin_init' );
 
 	if( empty($disp_detail) )
@@ -88,7 +78,7 @@ function skin_init( $disp )
 		$disp_detail = $disp;
 	}
 
-	$Debuglog->add('skin_init: '.$disp, 'skins' );
+	$Debuglog->add('skin_init: $disp='.$disp, 'skins' );
 
 	// This is the main template; it may be used to display very different things.
 	// Do inits depending on current $disp:
@@ -100,7 +90,6 @@ function skin_init( $disp )
 		case 'page':
 		case 'download':
 		case 'feedback-popup':
-		case 'search':
 			// We need to load posts for this display:
 
 			// Note: even if we request the same post as $Item above, the following will do more restrictions (dates, etc.)
@@ -112,6 +101,25 @@ function skin_init( $disp )
 			if( empty( $post_navigation ) )
 			{
 				$post_navigation = $Blog->get_setting( 'post_navigation' );
+			}
+			break;
+
+		case 'search':
+			// Searching post, comments and categories
+			load_funcs( 'collections/_search.funcs.php' );
+
+			$search_keywords = param( 's', 'string', '', true );
+			$search_params = $Session->get( 'search_params' );
+			$search_result = $Session->get( 'search_result' );
+			$search_result_loaded = false;
+			if( empty( $search_params ) || ( $search_params['search_keywords'] != $search_keywords )
+				|| ( $search_params['search_blog'] != $Blog->ID ) || ( $search_result === NULL ) )
+			{ // this is a new search
+				$search_params = array( 'search_keywords' => $search_keywords, 'search_blog' => $Blog->ID );
+				$search_result = score_search_result( $search_keywords );
+				$Session->set( 'search_params', $search_params );
+				$Session->set( 'search_result', $search_result );
+				$search_result_loaded = true;
 			}
 			break;
 	}
@@ -131,6 +139,8 @@ function skin_init( $disp )
 			init_ajax_forms( 'blog' ); // auto requires jQuery
 			init_ratings_js( 'blog' );
 			init_voting_comment_js( 'blog' );
+			init_plugins_js( 'blog', $Skin->get_template( 'tooltip_plugin' ) );
+			init_autocomplete_usernames_js( 'blog' );
 			if( $Blog->get_setting( 'allow_rating_comment_helpfulness' ) )
 			{ // Load jquery UI to animate background color on change comment status or on vote
 				require_js( '#jqueryUI#', 'blog' );
@@ -143,6 +153,11 @@ function skin_init( $disp )
 			else
 			{
 				$seo_page_type = '"Page" page';
+			}
+
+			if( ! $preview )
+			{ // Check if item has a goal to insert a hit into DB
+				$Item->check_goal();
 			}
 
 			// Check if the post has 'redirected' status:
@@ -181,11 +196,26 @@ function skin_init( $disp )
 						if( ( $post_navigation == 'same_category' ) && ( isset( $cat_param[1] ) ) )
 						{ // navigatie through posts from the same category
 							$category_ids = postcats_get_byID( $Item->ID );
-							if( in_array($cat_param[1], $category_ids ) )
+							if( in_array( $cat_param[1], $category_ids ) )
 							{ // cat param is one of this Item categories
 								$extended_url = $Item->add_navigation_param( $canonical_url, $post_navigation, $cat_param[1], '&' );
 								// Set MainList navigation target to the requested category
 								$MainList->nav_target = $cat_param[1];
+							}
+						}
+						$url_resolved = is_same_url( $ReqURL, $extended_url );
+					}
+					if( preg_match( '|[&?]tag=([^&A-Z]+)|', $ReqURI, $tag_param ) )
+					{ // A tag post navigation param is set
+						$extended_url = '';
+						if( ( $post_navigation == 'same_tag' ) && ( isset( $tag_param[1] ) ) )
+						{ // navigatie through posts from the same tag
+							$tag_names = $Item->get_tags();
+							if( in_array( $tag_param[1], $tag_names ) )
+							{ // tag param is one of this Item tags
+								$extended_url = $Item->add_navigation_param( $canonical_url, $post_navigation, $tag_param[1], '&' );
+								// Set MainList navigation target to the requested tag
+								$MainList->nav_target = $tag_param[1];
 							}
 						}
 						$url_resolved = is_same_url( $ReqURL, $extended_url );
@@ -381,6 +411,12 @@ var downloadInterval = setInterval( function()
 							}
 						}
 					}
+
+					$tag = $MainList->get_active_filter('tags');
+					if( $post_navigation == 'same_tag' && !empty( $tag ) )
+					{ // Tag is set and post navigation should go through the same tag, set navigation target param
+						$MainList->nav_target = $tag;
+					}
 				}
 				elseif( array_diff( $active_filters, array( 'ymdhms', 'week', 'posts', 'page' ) ) == array() ) // fp> added 'posts' 2009-05-19; can't remember why it's not in there
 				{ // This is an archive page
@@ -466,6 +502,11 @@ var downloadInterval = setInterval( function()
 			break;
 
 		case 'msgform':
+			if( $msg_Blog = & get_setting_Blog( 'msg_blog_ID' ) && $Blog->ID != $msg_Blog->ID )
+			{ // Redirect to special blog for messaging actions if it is defined in general settings
+				header_redirect( $msg_Blog->get( 'msgformurl', array( 'glue' => '&' ) ) );
+			}
+
 			init_ajax_forms( 'blog' ); // auto requires jQuery
 
 			$seo_page_type = 'Contact form';
@@ -478,6 +519,11 @@ var downloadInterval = setInterval( function()
 		case 'messages':
 		case 'contacts':
 		case 'threads':
+			if( $msg_Blog = & get_setting_Blog( 'msg_blog_ID' ) && $Blog->ID != $msg_Blog->ID )
+			{ // Redirect to special blog for messaging actions if it is defined in general settings
+				header_redirect( $msg_Blog->get( $disp.'url', array( 'glue' => '&' ) ) );
+			}
+
 			init_results_js( 'blog' ); // Add functions to work with Results tables
 			// just in case some robot would be logged in:
 			$seo_page_type = 'Messaging module';
@@ -489,6 +535,11 @@ var downloadInterval = setInterval( function()
 
 		case 'login':
 			global $Plugins, $transmit_hashed_password;
+
+			if( $login_Blog = & get_setting_Blog( 'login_blog_ID' ) && $Blog->ID != $login_Blog->ID )
+			{ // Redirect to special blog for login/register actions if it is defined in general settings
+				header_redirect( $login_Blog->get( 'loginurl', array( 'glue' => '&' ) ) );
+			}
 
 			$seo_page_type = 'Login form';
 			$robots_index = false;
@@ -507,8 +558,18 @@ var downloadInterval = setInterval( function()
 				$Messages->add( T_( 'You are already logged in.' ), 'note' );
 				header_redirect( $Blog->gen_blogurl(), false );
 			}
+
+			if( $login_Blog = & get_setting_Blog( 'login_blog_ID' ) && $Blog->ID != $login_Blog->ID )
+			{ // Redirect to special blog for login/register actions if it is defined in general settings
+				header_redirect( $login_Blog->get( 'registerurl', array( 'glue' => '&' ) ) );
+			}
+
 			$seo_page_type = 'Register form';
 			$robots_index = false;
+
+			// Check invitation code if it exists and registration is enabled
+			global $display_invitation;
+			$display_invitation = check_invitation_code();
 			break;
 
 		case 'lostpassword':
@@ -517,13 +578,42 @@ var downloadInterval = setInterval( function()
 				$Messages->add( T_( 'You are already logged in.' ), 'note' );
 				header_redirect( $Blog->gen_blogurl(), false );
 			}
+
+			if( $login_Blog = & get_setting_Blog( 'login_blog_ID' ) && $Blog->ID != $login_Blog->ID )
+			{ // Redirect to special blog for login/register actions if it is defined in general settings
+				header_redirect( $login_Blog->get( 'lostpasswordurl', array( 'glue' => '&' ) ) );
+			}
+
 			$seo_page_type = 'Lost password form';
 			$robots_index = false;
+			break;
+
+		case 'activateinfo':
+			if( $login_Blog = & get_setting_Blog( 'login_blog_ID' ) && $Blog->ID != $login_Blog->ID )
+			{ // Redirect to special blog for login/register actions if it is defined in general settings
+				header_redirect( $login_Blog->get( 'activateinfourl', array( 'glue' => '&' ) ) );
+			}
 			break;
 
 		case 'profile':
 			init_userfields_js( 'blog', $Skin->get_template( 'tooltip_plugin' ) );
 		case 'avatar':
+			$action = param_action();
+			if( $action == 'crop' && is_logged_in() )
+			{ // Initialize data for crop action
+				global $current_User, $cropped_File;
+				$file_ID = param( 'file_ID', 'integer' );
+				if( $cropped_File = $current_User->get_File_by_ID( $file_ID, $error_code ) )
+				{ // Current user can crops this file
+					require_js( '#jquery#', 'blog' );
+					require_js( '#jcrop#', 'blog' );
+					require_css( '#jcrop_css#', 'blog' );
+				}
+				else
+				{ // Wrong file for cropping
+					unset( $action );
+				}
+			}
 		case 'pwdchange':
 		case 'userprefs':
 		case 'subs':
@@ -551,6 +641,8 @@ var downloadInterval = setInterval( function()
 			{	// Used for combo_box contacts groups
 				require_js( 'form_extensions.js', 'blog' );
 			}
+			// Load javascript function to open popup windows fro contacts, report and etc.
+			//load_funcs( 'users/model/_user.funcs.php' );
 			break;
 
 		case 'edit':
@@ -606,6 +698,7 @@ var downloadInterval = setInterval( function()
 			init_plugins_js( 'blog', $Skin->get_template( 'tooltip_plugin' ) );
 			require_js( 'backoffice.js', 'blog' );
 			require_js( 'extracats.js', 'blog' );
+			init_autocomplete_usernames_js( 'blog' );
 
 			init_inskin_editing();
 			break;
@@ -676,6 +769,7 @@ var downloadInterval = setInterval( function()
 			init_ratings_js( 'blog' );
 			init_datepicker_js( 'blog' );
 			init_plugins_js( 'blog', $Skin->get_template( 'tooltip_plugin' ) );
+			init_autocomplete_usernames_js( 'blog' );
 			break;
 
 		case 'useritems':
@@ -940,7 +1034,7 @@ function is_default_page()
 function skin_include( $template_name, $params = array() )
 {
 	if( is_ajax_content( $template_name ) )
-	{	// When we request ajax content for results table we need to hide wrapper data (header, footer & etc)
+	{ // When we request ajax content for results table we need to hide wrapper data (header, footer & etc)
 		return;
 	}
 
@@ -961,6 +1055,22 @@ function skin_include( $template_name, $params = array() )
 
 	$timer_name = 'skin_include('.$template_name.')';
 	$Timer->resume( $timer_name );
+
+	if( ! empty( $disp ) && ( $disp == 'single' || $disp == 'page' ) &&
+	    $template_name == '$disp$' &&
+	    ! empty( $Item ) && ( $ItemType = & $Item->get_ItemType() ) )
+	{ // Get template name for the current Item if it is defined by Item Type
+		$item_type_template_name = $ItemType->get( 'template_name' );
+		if( ! empty( $item_type_template_name ) )
+		{ // The item type has a specific template for this display:
+			$item_type_template_name = '_'.$item_type_template_name.'.disp.php';
+			if( file_exists( $ads_current_skin_path.$item_type_template_name ) ||
+			    skin_fallback_path( $item_type_template_name ) )
+			{ // Use template file name of the Item Type only if it exists
+				$template_name = $item_type_template_name;
+			}
+		}
+	}
 
 	if( $template_name == '$disp$' )
 	{ // This is a special case.
@@ -1005,6 +1115,8 @@ function skin_include( $template_name, $params = array() )
 				'disp_useritems'      => '_useritems.disp.php',
 				'disp_usercomments'   => '_usercomments.disp.php',
 				'disp_download'       => '_download.disp.php',
+				'disp_access_denied'  => '_access_denied.disp.php',
+				'disp_access_requires_login' => '_access_requires_login.disp.php',
 			);
 
 		// Add plugin disp handlers:
@@ -1028,7 +1140,7 @@ function skin_include( $template_name, $params = array() )
 		if( !isset( $disp_handlers['disp_'.$disp] ) )
 		{
 			global $Messages;
-			$Messages->add( sprintf( 'Unhandled disp type [%s]', evo_htmlspecialchars( $disp ) ) );
+			$Messages->add( sprintf( 'Unhandled disp type [%s]', htmlspecialchars( $disp ) ) );
 			$Messages->display();
 			$Timer->pause( $timer_name );
 			$disp = '404';
@@ -1044,32 +1156,68 @@ function skin_include( $template_name, $params = array() )
 
 	}
 
-	$disp_handled = false;
 
+	// DECIDE WHAT TO INCLUDE:
 	if( $template_name[0] == '#' )
-	{	// This disp mode is handled by a plugin:
-		$plug_ID = substr( $template_name, 1 );
-		$disp_params = array( 'disp' => $disp );
-		$Plugins->call_method( $plug_ID, 'HandleDispMode', $disp_params );
-		$disp_handled = true;
+	{ // This disp mode is handled by a plugin:
+		$debug_info = 'Call plugin';
+		$disp_handled = 'plugin';
 	}
-
 	elseif( file_exists( $ads_current_skin_path.$template_name ) )
-	{	// The skin has a customized handler, use that one instead:
-
+	{ // The skin has a customized handler, use that one instead:
 		$file = $ads_current_skin_path.$template_name;
-		$Debuglog->add('skin_include ('.($Item ? 'Item #'.$Item->ID : '-').'): '.rel_path_to_base($file), 'skins');
-		require $file;
-		$disp_handled = true;
+		$debug_info = '<b>Skin template</b>: '.rel_path_to_base( $file );
+		$disp_handled = 'custom';
+	}
+	elseif( $fallback_template_path = skin_fallback_path( $template_name ) )
+	{ // Use the default/fallback template:
+		$file = $fallback_template_path;
+		$debug_info = '<b>Fallback to</b>: '.rel_path_to_base( $file );
+		$disp_handled = 'fallback';
+	}
+	else
+	{
+		$disp_handled = false;
 	}
 
-	elseif( file_exists( $skins_path.$template_name ) )
-	{	// Use the default template:
-		global $Debuglog;
-		$file = $skins_path.$template_name;
-		$Debuglog->add('skin_include ('.($Item ? 'Item #'.$Item->ID : '-').'): '.rel_path_to_base($file), 'skins');
-		require $file;
-		$disp_handled = true;
+	// Do we want a visible container for DEBUG/DEV ?:
+	if( strpos( $template_name, '_html_' ) !== false )
+	{	// We're outside of the page body: NEVER display wrap this include with a <div>
+		$display_includes = false;
+	}
+	else
+	{	// We may wrap with a <div>:
+		$display_includes = $Session->get( 'display_includes_'.$Blog->ID ) == 1;
+	}
+	if( $display_includes )
+	{ // Wrap the include with a visible div:
+		echo '<div class="dev-blocks dev-blocks--include">';
+		echo '<div class="dev-blocks-name">';
+		if( empty( $item_type_template_name ) )
+		{ // Default template
+			echo 'skin_include( <b>'.$template_name.'</b> )';
+		}
+		else
+		{ // Custom template
+			echo '<b>CUSTOM</b> skin_include( <b>'.$item_type_template_name.'</b> )';
+		}
+		echo ' -> '.$debug_info.'</div>';
+	}
+
+	switch( $disp_handled )
+	{
+		case 'plugin':
+			// This disp mode is handled by a plugin:
+			$plug_ID = substr( $template_name, 1 );
+			$disp_params = array( 'disp' => $disp );
+			$Plugins->call_method( $plug_ID, 'HandleDispMode', $disp_params );
+			break;
+
+		case 'custom':			// The skin has a customized handler, use that one instead:
+		case 'fallback':		// Use the default/fallback template:
+			$Debuglog->add('skin_include ('.($Item ? 'Item #'.$Item->ID : '-').'): '.$file, 'skins');
+			require $file;
+			break;
 	}
 
 	if( ! $disp_handled )
@@ -1081,20 +1229,86 @@ function skin_include( $template_name, $params = array() )
 		}
 	}
 
+	if( $display_includes )
+	{ // End of visible container:
+		// echo get_icon( 'pixel', 'imgtag', array( 'class' => 'clear' ) );
+		echo '</div>';
+	}
+
 	$Timer->pause( $timer_name );
+}
+
+
+/**
+ * Get file path to fallback file depending on skin API version
+ *
+ * @param string Template name
+ * @param integer Skin API version, NULL - to get API version of the current Skin
+ * @return string|FALSE File path OR FALSE if fallback file doesn't exist
+ */
+function skin_fallback_path( $template_name, $skin_api_version = NULL )
+{
+	global $Skin, $basepath;
+
+	if( $skin_api_version === NULL && ! empty( $Skin ) )
+	{ // Get API version of the current skin
+		$skin_api_version = $Skin->get_api_version();
+	}
+
+	if( $skin_api_version == 6 )
+	{ // Check fallback file for v6 API skin
+		$fallback_path = $basepath.'skins_fallback_v6/'.$template_name;
+		if( file_exists( $fallback_path ) )
+		{
+			return $fallback_path;
+		}
+	}
+
+	// Check fallback file for v5 API skin
+	$fallback_path = $basepath.'skins_fallback_v5/'.$template_name;
+	if( file_exists( $fallback_path ) )
+	{
+		return $fallback_path;
+	}
+
+	// No fallback file
+	return false;
+}
+
+
+/**
+ * Get file path to template file
+ *
+ * @param string Template name
+ * @return string|FALSE File path OR FALSE if fallback file doesn't exist
+ */
+function skin_template_path( $template_name )
+{
+	global $Skin, $ads_current_skin_path;
+
+	if( ! empty( $Skin ) && file_exists( $ads_current_skin_path.$template_name ) )
+	{ // Template file exists for the current skin
+		return $ads_current_skin_path.$template_name;
+	}
+	elseif( $fallback_path = skin_fallback_path( $template_name ) )
+	{ // Falback file exists
+		return $fallback_path;
+	}
+
+	return false;
 }
 
 
 /**
  * Template tag.
  *
- * @param 
- * @param 
- * @param boolean force include even if sitewide header/footer not enabled 
+ * @param string Template name
+ * @param array Params
+ * @param boolean force include even if sitewide header/footer not enabled
  */
 function siteskin_include( $template_name, $params = array(), $force = false )
 {
-	global $Settings, $siteskins_path;
+	global $Settings, $siteskins_path, $Blog;
 
 	if( !$Settings->get( 'site_skins_enabled' ) && !$force )
 	{ // Site skins are not enabled and we don't want to force either
@@ -1120,39 +1334,61 @@ function siteskin_include( $template_name, $params = array(), $force = false )
 	$timer_name = 'siteskin_include('.$template_name.')';
 	$Timer->resume( $timer_name );
 
-	$is_customized = false;
-
 	if( file_exists( $siteskins_path.'custom/'.$template_name ) )
-	{ // Use the default template:
-		global $Debuglog;
+	{ // Use the custom template:
 		$file = $siteskins_path.'custom/'.$template_name;
+		$debug_info = '<b>Custom template</b>: '.rel_path_to_base($file);
+		$disp_handled = 'custom';
+	}
+	elseif( file_exists( $siteskins_path.$template_name ) ) // Try to include standard template only if custom template doesn't exist
+	{ // Use the default/fallback template:
+		$file = $siteskins_path.$template_name;
+		$debug_info = '<b>Fallback to</b>: '.rel_path_to_base($file);
+		$disp_handled = 'fallback';
+	}
+	else
+	{
+		$disp_handled = false;
+	}
+
+
+	// Do we want a visible container for DEBUG/DEV ?:
+	if( strpos( $template_name, '_html_' ) !== false ||  strpos( $template_name, '_init.' ) !== false )
+	{	// We're outside of the page body: NEVER display wrap this include with a <div>
+		$display_includes = false;
+	}
+	else
+	{	// We may wrap with a <div>:
+		$display_includes = $Session->get( 'display_includes_'.$Blog->ID ) == 1;
+	}
+	if( $display_includes )
+	{ // Wrap the include with a visible div:
+		echo '<div class="dev-blocks dev-blocks--siteinclude">';
+		echo '<div class="dev-blocks-name">siteskin_include( <b>'.$template_name.'</b> ) -> '.$debug_info.'</div>';
+	}
+
+
+	if($disp_handled)
+	{
 		$Debuglog->add('siteskin_include: '.rel_path_to_base($file), 'skins');
 		require $file;
-		$disp_handled = true;
-		// This template is customized, Don't include standard template
-		$is_customized = true;
 	}
-
-	if( !$is_customized )
-	{ // Try to include standard template only if custom template doesn't exist
-		if( file_exists( $siteskins_path.$template_name ) )
-		{ // Use the default template:
-			global $Debuglog;
-			$file = $siteskins_path.$template_name;
-			$Debuglog->add('siteskin_include: '.rel_path_to_base($file), 'skins');
-			require $file;
-			$disp_handled = true;
-		}
-	}
-
-	if( ! $disp_handled )
-	{ // nothing handled the display
+	else
+	{	// nothing handled the display
 		printf( '<div class="skin_error">Site template [%s] not found.</div>', $template_name );
 		if( !empty($current_User) && $current_User->level == 10 )
 		{
 			printf( '<div class="skin_error">User level 10 help info: [%s]</div>', $siteskins_path.$template_name );
 		}
 	}
+
+
+	if( $display_includes )
+	{ // End of visible container:
+		// echo get_icon( 'pixel', 'imgtag', array( 'class' => 'clear' ) );
+		echo '</div>';
+	}
+
 
 	$Timer->pause( $timer_name );
 }
@@ -1269,7 +1505,7 @@ function skin_keywords_tag()
 			return;
 		}
 
-		$r = $Item->get_custom_headers();
+		$r = $Item->get_metakeywords();
 
 
 		if( empty( $r ) && $Blog->get_setting( 'tags_meta_keywords' ) )
@@ -1603,19 +1839,31 @@ function display_skin_fieldset( & $Form, $skin_ID, $display_params )
 		$SkinCache = & get_SkinCache();
 		$edited_Skin = $SkinCache->get_by_ID( $skin_ID );
 
-		echo '<div class="skin_settings">';
+		echo '<div class="skin_settings well">';
 		$disp_params = array( 'skinshot_class' => 'coll_settings_skinshot' );
 		Skin::disp_skinshot( $edited_Skin->folder, $edited_Skin->name, $disp_params );
 
-		$Form->info( T_('Skin name'), $edited_Skin->name );
+		// Skin name
+		echo '<div class="skin_setting_row">';
+			echo '<label>'.T_('Skin name').':</label>';
+			echo '<span>'.$edited_Skin->name.'</span>';
+		echo '</div>';
 
-		if( isset($edited_Skin->version) )
-		{
-				$Form->info( T_('Skin version'), $edited_Skin->version );
+		if( isset( $edited_Skin->version ) )
+		{ // Skin version
+			echo '<div class="skin_setting_row">';
+				echo '<label>'.T_('Skin version').':</label>';
+				echo '<span>'.$edited_Skin->version.'</span>';
+			echo '</div>';
 		}
 
-		$Form->info( T_('Skin type'), $edited_Skin->type );
+		// Skin type
+		echo '<div class="skin_setting_row">';
+			echo '<label>'.T_('Skin type').':</label>';
+			echo '<span>'.$edited_Skin->type.'</span>';
+		echo '</div>';
 
+		// Containers
 		if( $skin_containers = $edited_Skin->get_containers() )
 		{
 			$container_ul = '<ul><li>'.implode( '</li><li>', $skin_containers ).'</li></ul>';
@@ -1624,20 +1872,45 @@ function display_skin_fieldset( & $Form, $skin_ID, $display_params )
 		{
 			$container_ul = '-';
 		}
-		$Form->info( T_('Containers'), $container_ul );
+		echo '<div class="skin_setting_row">';
+			echo '<label>'.T_('Containers').':</label>';
+			echo '<span>'.$container_ul.'</span>';
+		echo '</div>';
 
 		echo '</div>';
-		echo '<div class="floatleft">';
+		echo '<div class="skin_settings_form">';
 
-		$skin_params = $edited_Skin->get_param_definitions( $tmp_params = array('for_editing'=>true) );
+		$skin_params = $edited_Skin->get_param_definitions( $tmp_params = array( 'for_editing' => true ) );
 
-		if( empty($skin_params) )
-		{	// Advertise this feature!!
+		if( empty( $skin_params ) )
+		{ // Advertise this feature!!
 			echo '<p>'.T_('This skin does not provide any configurable settings.').'</p>';
 		}
 		else
 		{
 			load_funcs( 'plugins/_plugin.funcs.php' );
+
+			// Check if skin settings contain at least one fieldset
+			$skin_fieldsets_exist = false;
+			foreach( $skin_params as $l_name => $l_meta )
+			{
+				if( isset( $l_meta['layout'] ) && $l_meta['layout'] == 'begin_fieldset' )
+				{
+					$skin_fieldsets_exist = true;
+					break;
+				}
+			}
+
+			if( ! $skin_fieldsets_exist )
+			{ // Enclose all skin settings in single group if no group on the skin
+				array_unshift( $skin_params, array(
+						'layout' => 'begin_fieldset',
+						'label'  => T_('Skin settings')
+					) );
+				array_push( $skin_params, array(
+						'layout' => 'end_fieldset'
+					) );
+			}
 
 			// Loop through all widget params:
 			foreach( $skin_params as $l_name => $l_meta )
@@ -1666,6 +1939,9 @@ function skin_body_attrs( $params = array() )
 		), $params );
 
 	global $PageCache, $Blog, $disp, $disp_detail, $Item, $current_User;
+
+	// WARNING: Caching! We're not supposed to have Session dependent stuff in here. This is for debugging only!
+	global $Session;
 
 	$classes = array();
 
@@ -1717,6 +1993,19 @@ function skin_body_attrs( $params = array() )
 
 	// User Group class:
 	$classes[] = 'usergroup_'.( ! is_logged_in() && empty( $current_User->grp_ID ) ? 'none' : $current_User->grp_ID );
+
+	// WARNING: Caching! We're not supposed to have Session dependent stuff in here. This is for debugging only!
+	if ( ! empty($Blog) )
+	{
+		if( $Session->get( 'display_includes_'.$Blog->ID ) ) 
+		{
+			$classes[] = 'dev_show_includes';
+		}
+		if( $Session->get( 'display_containers_'.$Blog->ID ) ) 
+		{
+			$classes[] = 'dev_show_containers';
+		}
+	}
 
 	if( ! empty( $classes ) )
 	{ // Print attr "class"

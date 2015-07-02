@@ -1,33 +1,14 @@
 <?php
 /**
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2009-2014 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2009-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2009 by The Evo Factory - {@link http://www.evofactory.com/}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * The Evo Factory grants Francois PLANQUE the right to license
- * The Evo Factory's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author efy-bogdan: Evo Factory / Bogdan.
- * @author fplanque: Francois PLANQUE
- *
- * @version $Id: registration.ctrl.php 7408 2014-10-10 05:32:26Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -51,8 +32,9 @@ switch ( $action )
 		$old_newusers_canregister = $Settings->get( 'newusers_canregister' );
 
 		// UPDATE general settings:
-		param( 'newusers_canregister', 'integer', 0 );
+		param( 'newusers_canregister', 'string', 'no' );
 		param( 'registration_is_public', 'integer', 0 );
+		param( 'quick_registration', 'integer', 0 );
 		param( 'newusers_grp_ID', 'integer', true );
 
 		param_integer_range( 'newusers_level', 0, 9, T_('User level must be between %d and %d.') );
@@ -64,6 +46,7 @@ switch ( $action )
 		param( 'notify_unread_messages', 'integer', 0 );
 		param( 'notify_published_comments', 'integer', 0 );
 		param( 'notify_comment_moderation', 'integer', 0 );
+		param( 'notify_meta_comments', 'integer', 0 );
 		param( 'notify_post_moderation', 'integer', 0 );
 		param( 'newsletter_news', 'integer', 0 );
 		param( 'newsletter_ads', 'integer', 0 );
@@ -124,6 +107,7 @@ switch ( $action )
 		$Settings->set_array( array(
 					 array( 'newusers_canregister', $newusers_canregister ),
 					 array( 'registration_is_public', $registration_is_public ),
+					 array( 'quick_registration', $quick_registration ),
 					 array( 'newusers_grp_ID', $newusers_grp_ID ),
 					 array( 'newusers_level', $newusers_level ),
 					 array( 'def_enable_PM', $enable_PM ),
@@ -132,6 +116,7 @@ switch ( $action )
 					 array( 'def_notify_unread_messages', $notify_unread_messages ),
 					 array( 'def_notify_published_comments', $notify_published_comments ),
 					 array( 'def_notify_comment_moderation', $notify_comment_moderation ),
+					 array( 'def_notify_meta_comments', $notify_meta_comments ),
 					 array( 'def_notify_post_moderation', $notify_post_moderation ),
 					 array( 'def_newsletter_news', $newsletter_news ),
 					 array( 'def_newsletter_ads', $newsletter_ads ),

@@ -3,33 +3,14 @@
  * This file implements the Widget class.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE
- * @author blueyed: Daniel HAHLER
- *
- * @version $Id: _uiwidget.class.php 6972 2014-06-24 19:12:29Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -96,8 +77,12 @@ class Widget
 	 * @param integer 1-5: weight of the word. the word will be displayed only if its weight is >= than the user setting threshold
 	 * @param array Additional attributes to the A tag. See {@link action_icon()}.
 	 */
-	function global_icon( $title, $icon, $url, $word = '', $icon_weight = 3, $word_weight = 2, $link_attribs = array( 'class'=>'action_icon' ) )
+	function global_icon( $title, $icon, $url, $word = '', $icon_weight = 3, $word_weight = 2, $link_attribs = array() )
 	{
+		$link_attribs = array_merge( array(
+				'class' => 'action_icon'
+			), $link_attribs );
+
 		$this->global_icons[] = array(
 			'title' => $title,
 			'icon'  => $icon,
@@ -235,6 +220,18 @@ class Widget
 
 		foreach( $this->global_icons as $icon_params )
 		{
+			if( isset( $this->params, $this->params['global_icons_class'] ) )
+			{ // Append a link class from global params
+				if( strpos( $icon_params['link_attribs']['class'], 'btn-' ) !== false )
+				{
+					$global_icons_class = str_replace( 'btn-default', '', $this->params['global_icons_class'] );
+				}
+				else
+				{
+					$global_icons_class = $this->params['global_icons_class'];
+				}
+				$icon_params['link_attribs']['class'] = ( empty( $icon_params['link_attribs']['class'] ) ? '' : $icon_params['link_attribs']['class'].' ' ).$global_icons_class;
+			}
 			$r .= action_icon( $icon_params['title'], $icon_params['icon'], $icon_params['url'], $icon_params['word'],
 						$icon_params['icon_weight'], $icon_params['word_weight'], $icon_params['link_attribs'] );
 		}
@@ -346,6 +343,14 @@ class Table extends Widget
 			}
 		}
 
+		if( ! empty( $this->params ) )
+		{ // Initialize default params
+			$this->params = array_merge( array(
+					'filter_button_class'  => 'filter',
+					'filter_button_before' => '',
+					'filter_button_after'  => '',
+				), $this->params );
+		}
 
 		if( $fadeout == 'session' )
 		{	// Get fadeout_array from session:
@@ -398,13 +403,13 @@ class Table extends Widget
 		{
 			echo '<a class="filters_title" href="'.regenerate_url( 'action,target', 'action=expand_filter&target='.$option_name ).'"
 								onclick="return toggle_filter_area(\''.$option_name.'\');" >'
-						.get_icon( 'expand', 'imgtag', array( 'id' => 'clickimg_'.$option_name ) );
+						.get_icon( 'filters_show', 'imgtag', array( 'id' => 'clickimg_'.$option_name ) );
 		}
 		else
 		{
 			echo '<a class="filters_title" href="'.regenerate_url( 'action,target', 'action=collapse_filter&target='.$option_name ).'"
 								onclick="return toggle_filter_area(\''.$option_name.'\');" >'
-						.get_icon( 'collapse', 'imgtag', array( 'id' => 'clickimg_'.$option_name ) );
+						.get_icon( 'filters_hide', 'imgtag', array( 'id' => 'clickimg_'.$option_name ) );
 		}
 		echo $option_title.'</a>:';
 
@@ -476,14 +481,26 @@ class Table extends Widget
 				$this->Form->begin_form( '' );
 			}
 
+			echo $this->params['filter_button_before'];
 			$submit_name = empty( $this->{$area_name}['submit'] ) ? 'colselect_submit' : $this->{$area_name}['submit'];
-			$this->Form->submit( array( $submit_name, $submit_title, 'filter' ) );
+			$this->Form->button_input( array(
+					'tag'   => 'button',
+					'name'  => $submit_name,
+					'value' => get_icon( 'filter' ).' '.$submit_title,
+					'class' => $this->params['filter_button_class']
+				) );
+			echo $this->params['filter_button_after'];
+
+			if( ! empty( $this->force_checkboxes_to_inline ) )
+			{ // Set this to TRUE in order to display all checkboxes before labels
+				$this->Form->force_checkboxes_to_inline = true;
+			}
 
 			$func = $this->{$area_name}['callback'];
 			$func( $this->Form );
 
 			if( $create_new_form )
-			{	// We do not already have a form surrounding the whole result list:
+			{ // We do not already have a form surrounding the whole result list:
 				$this->Form->end_form( '' );
 				unset( $this->Form );	// forget about this temporary form
 			}
@@ -542,12 +559,14 @@ class Table extends Widget
 	function display_list_start()
 	{
 		if( $this->total_pages == 0 )
-		{	// There are no results! Nothing to display!
+		{ // There are no results! Nothing to display!
 			echo $this->replace_vars( $this->params['no_results_start'] );
 		}
 		else
-		{	// We have rows to display:
-			echo $this->params['list_start'];
+		{ // We have rows to display:
+			$list_class = empty( $this->params['list_class'] ) ? '' : ' '.$this->params['list_class'];
+			$list_attrs = empty( $this->params['list_attrib'] ) ? '' : ' '.$this->params['list_attrib'];
+			echo str_replace( array( ' $list_class$', ' $list_attrib$' ), array( $list_class, $list_attrs ), $this->params['list_start'] );
 		}
 	}
 

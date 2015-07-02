@@ -3,25 +3,24 @@
  * This is the main/default page template.
  *
  * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://b2evolution.net/man/skin-structure}
+ * {@link http://b2evolution.net/man/skin-development-primer}
  *
  * It is used to display the blog when no specific page template is available to handle the request.
  *
  * @package evoskins
  * @subpackage dating_mood
- *
- * @version $Id: index.main.php 6473 2014-04-15 11:33:37Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
+
+
+global $Hit;
 
 // This is the main template; it may be used to display very different things.
 // Do inits depending on current $disp:
 skin_init( $disp );
 
 // -------------------------- HTML HEADER INCLUDED HERE --------------------------
-skin_include( '_html_header.inc.php' );
-// Note: You can customize the default HTML header by copying the
-// _html_header.inc.php file into the current skin folder.
+skin_include( '_html_header.inc.php', array() );
 // -------------------------------- END OF HEADER --------------------------------
 
 
@@ -44,7 +43,7 @@ siteskin_include( '_site_body_header.inc.php' );
 			// Display container and contents:
 			skin_container( NT_('Page Top'), array(
 					// The following params will be used as defaults for widgets included in this container:
-					'block_start' => '<div class="$wi_class$">',
+					'block_start' => '<div class="widget $wi_class$">',
 					'block_end' => '</div>',
 					'block_display_title' => false,
 					'list_start' => '<ul>',
@@ -62,7 +61,7 @@ siteskin_include( '_site_body_header.inc.php' );
 			// Display container and contents:
 			skin_container( NT_('Header'), array(
 					// The following params will be used as defaults for widgets included in this container:
-					'block_start' => '<div class="$wi_class$">',
+					'block_start' => '<div class="widget $wi_class$">',
 					'block_end' => '</div>',
 					'block_title_start' => '<h1>',
 					'block_title_end' => '</h1>',
@@ -91,13 +90,15 @@ siteskin_include( '_site_body_header.inc.php' );
 		// Note: this container is designed to be a single <ul> list
 		skin_container( NT_('Menu'), array(
 				// The following params will be used as defaults for widgets included in this container:
-				'block_start' => '',
-				'block_end' => '',
+				'block_start'         => '',
+				'block_end'           => '',
 				'block_display_title' => false,
-				'list_start' => '',
-				'list_end' => '',
-				'item_start' => '<li>',
-				'item_end' => '</li>',
+				'list_start'          => '',
+				'list_end'            => '',
+				'item_start'          => '<li>',
+				'item_end'            => '</li>',
+				'item_title_before'   => '',
+				'item_title_after'    => '',
 			) );
 		// ----------------------------- END OF "Menu" CONTAINER -----------------------------
 	?>
@@ -136,6 +137,7 @@ siteskin_include( '_site_body_header.inc.php' );
 			'glue'        => ' - ',
 			'title_single_disp' => true,
 			'format'      => 'htmlbody',
+			'user_text'   => '',
 		) );
 	// ------------------------------ END OF REQUEST TITLE -----------------------------
 ?>
@@ -158,142 +160,27 @@ if( $disp != 'front' && $disp != 'download' )
 
 	echo '<div id="styled_content_block">'; // Beginning of posts display
 	while( $Item = & mainlist_get_item() )
-	{	// For each blog post, do everything below up to the closing curly brace "}"
-	?>
+	{ // For each blog post, do everything below up to the closing curly brace "}"
 
-	<div id="<?php $Item->anchor_id() ?>" lang="<?php $Item->lang() ?>">
-
-	<?php
-		$Item->locale_temp_switch(); // Temporarily switch to post locale (useful for multilingual blogs)
-	?>
-	<!-- google_ad_section_start -->
-	<div class="bTitle"><h3 class="bTitle"><?php
-		$Item->title( array(
-				'link_type' => 'permalink'
+		// ---------------------- ITEM BLOCK INCLUDED HERE ------------------------
+		skin_include( '_item_block.inc.php', array(
+				'content_mode' => 'auto',		// 'auto' will auto select depending on $disp-detail
+				'image_size'   => 'fit-400x320',
 			) );
-	?></h3></div>
-	<!-- google_ad_section_end -->
-	<div class="bPost">
-		<div class="bSmallHead">
-			<?php
-			if( $Item->status != 'published' )
-			{
-				$Item->status( array( 'format' => 'styled' ) );
-			}
-			$Item->permanent_link( array(
-					'text' => '#icon#',
-				) );
-			$Item->author( array(
-					'before'       => ' '.T_('by').' <strong>',
-					'after'        => '</strong>',
-					'link_to'		   => 'userpage',
-					'link_text'    => 'preferredname',
-				) );
-			$Item->msgform_link( array(
-					'before'    => ' ',
-					'after'     => '',
-				) );
-			$Item->issue_time( array(
-					'before'    => ', ',
-					'after'     => '',
-					'date_format' => 'l j F Y � H:i',
-				) );
-			$Item->categories( array(
-					'before'          => ', '.T_('Categories').': ',
-					'after'           => ' ',
-					'include_main'    => true,
-					'include_other'   => true,
-					'include_external'=> true,
-					'link_categories' => true,
-				) );
-			?>
-		</div>
+		// ----------------------------END ITEM BLOCK  ----------------------------
 
-		<!-- google_ad_section_start -->
-		<?php
-			// ---------------------- POST CONTENT INCLUDED HERE ----------------------
-			skin_include( '_item_content.inc.php', array(
-					'image_size'	=>	'fit-400x320',
-				) );
-			// Note: You can customize the default item feedback by copying the generic
-			// /skins/_item_feedback.inc.php file into the current skin folder.
-			// -------------------------- END OF POST CONTENT -------------------------
-		?>
-		<?php
-			// List all tags attached to this post:
-			$Item->tags( array(
-					'before' =>         '<div class="bSmallPrint">'.T_('Tags').': ',
-					'after' =>          '</div>',
-					'separator' =>      ', ',
-				) );
-		?>
-		<!-- google_ad_section_end -->
-
-		<div class="bSmallPrint">
-			<?php
-				$Item->edit_link( array( // Link to backoffice for editing
-						'before'    => '',
-						'after'     => '',
-						'class'     => 'permalink_right'
-					) );
-			?>
-
-			<?php
-				// Link to comments, trackbacks, etc.:
-				$Item->feedback_link( array(
-								'type' => 'comments',
-								'link_before' => ' <span class="bCommentLink">',
-								'link_after' => '</span> ',
-								'link_text_zero' => '#',
-								'link_text_one' => '#',
-								'link_text_more' => '#',
-								'link_title' => '#',
-								'use_popup' => false,
-							) );
-			?>
-			<?php
-				// Link to comments, trackbacks, etc.:
-				$Item->feedback_link( array(
-								'type' => 'trackbacks',
-								'link_before' => ' <span class="bCommentLink">',
-								'link_after' => '</span> ',
-								'link_text_zero' => '#',
-								'link_text_one' => '#',
-								'link_text_more' => '#',
-								'link_title' => '#',
-								'use_popup' => false,
-							) );
-			?>
-		</div>
-
-		<?php
-			// ------------------ FEEDBACK (COMMENTS/TRACKBACKS) INCLUDED HERE ------------------
-			skin_include( '_item_feedback.inc.php', array(
-					'before_section_title' => '<h4>',
-					'after_section_title'  => '</h4>',
-					'link_to'              => 'userpage>userurl',
-					'author_link_text'     => 'preferredname',
-				) );
-			// Note: You can customize the default item feedback by copying the generic
-			// /skins/_item_feedback.inc.php file into the current skin folder.
-			// ---------------------- END OF FEEDBACK (COMMENTS/TRACKBACKS) ---------------------
-		?>
-	</div>
-	</div>
-	<?php
-	locale_restore_previous();	// Restore previous locale (Blog locale)
 	} // ---------------------------------- END OF POSTS ------------------------------------
 	echo '</div>'; // End of posts display
 
 ?>
 
 	<?php
-    // -------------------- PREV/NEXT PAGE LINKS (POST LIST MODE) --------------------
-    mainlist_page_links( array(
-            'block_start' => '<p class="center">'.T_('Pages:').' <strong>',
-            'block_end' => '</strong></p>',
-        ) );
-    // ------------------------- END OF PREV/NEXT PAGE LINKS -------------------------
+	// -------------------- PREV/NEXT PAGE LINKS (POST LIST MODE) --------------------
+	mainlist_page_links( array(
+			'block_start' => '<p class="center">'.T_('Pages:').' <strong>',
+			'block_end' => '</strong></p>',
+		) );
+	// ------------------------- END OF PREV/NEXT PAGE LINKS -------------------------
 }
 	?>
 
@@ -323,7 +210,7 @@ if( $disp != 'front' && $disp != 'download' )
 		skin_container( NT_('Sidebar'), array(
 				// The following (optional) params will be used as defaults for widgets included in this container:
 				// This will enclose each widget in a block:
-				'block_start' => '<div class="bSideItem $wi_class$">',
+				'block_start' => '<div class="bSideItem wigdet $wi_class$">',
 				'block_end' => '</div>',
 				// This will enclose the title of each widget:
 				'block_title_start' => '<h3>',

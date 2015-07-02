@@ -1,26 +1,16 @@
 <?php
 /**
  * This file is part of b2evolution - {@link http://b2evolution.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2009-2014 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2009-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2009 by The Evo Factory - {@link http://www.evofactory.com/}.
  *
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- *
- * {@internal Open Source relicensing agreement:
- * The Evo Factory grants Francois PLANQUE the right to license
- * The Evo Factory's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
  * @package messaging
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author efy-maxim: Evo Factory / Maxim.
- * @author fplanque: Francois Planque.
- *
- * @version $Id: _message.class.php 6135 2014-03-08 07:54:05Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -49,10 +39,16 @@ class Message extends DataObject
 	/**
 	 * The content of the message
 	 * WARNING: It may contains MALICIOUS HTML and javascript snippets. They must ALWAYS be ESCAPED prior to display!
-	 * 
+	 *
 	 * @var string
 	 */
 	var $text = '';
+	var $original_text = '';
+
+	/**
+	 * @var string
+	 */
+	var $renderers;
 
 	/**
 	 * Thread lazy filled
@@ -72,17 +68,56 @@ class Message extends DataObject
 		// Call parent constructor:
 		parent::DataObject( 'T_messaging__message', 'msg_', 'msg_ID', 'datetime', '', 'author_user_ID' );
 
-  		$this->delete_cascades = array();
-  		$this->delete_restrictions = array();
-
- 		if( $db_row != NULL )
+		if( $db_row == NULL )
+		{
+			$this->set_renderers( array( 'default' ) );
+		}
+		else
 		{
 			$this->ID                = $db_row->msg_ID;
 			$this->thread_ID         = $db_row->msg_thread_ID;
 			$this->author_user_ID    = $db_row->msg_author_user_ID;
 			$this->datetime          = $db_row->msg_datetime;
 			$this->text              = $db_row->msg_text;
+			$this->renderers         = $db_row->msg_renderers;
 		}
+	}
+
+
+	/**
+	 * Get this class db table config params
+	 *
+	 * @return array
+	 */
+	static function get_class_db_config()
+	{
+		static $message_db_config;
+
+		if( !isset( $message_db_config ) )
+		{
+			$message_db_config = array_merge( parent::get_class_db_config(),
+				array(
+					'dbtablename'        => 'T_messaging__message',
+					'dbprefix'           => 'msg_',
+					'dbIDname'           => 'msg_ID',
+				)
+			);
+		}
+
+		return $message_db_config;
+	}
+
+
+	/**
+	 * Get delete cascade settings
+	 *
+	 * @return array
+	 */
+	static function get_delete_cascades()
+	{
+		return array(
+				array( 'table'=>'T_messaging__prerendering', 'fk'=>'mspr_msg_ID', 'msg'=>T_('%d prerendered content') )
+			);
 	}
 
 
@@ -93,14 +128,43 @@ class Message extends DataObject
 	 */
 	function load_from_Request()
 	{
-		$new_thread = empty($this->thread_ID);
+		global $Plugins, $msg_text, $Settings;
+
+		$new_thread = empty( $this->thread_ID );
+
+		// Renderers:
+		if( param( 'renderers_displayed', 'integer', 0 ) )
+		{ // use "renderers" value only if it has been displayed (may be empty)
+			$renderers = $Plugins->validate_renderer_list( param( 'renderers', 'array:string', array() ), array( 'Message' => & $this ) );
+			$this->set_renderers( $renderers );
+		}
 
 		// Text
-		// WARNING: the messages may contain MALICIOUS HTML and javascript snippets. They must ALWAYS be ESCAPED prior to display!
-		param( 'msg_text', 'html' );
+		if( $Settings->get( 'allow_html_message' ) )
+		{ // HTML is allowed for messages
+			$text_format = 'html';
+		}
+		else
+		{ // HTML is disallowed for messages
+			$text_format = 'htmlspecialchars';
+		}
+		$msg_text = param( 'msg_text', $text_format );
+		$this->original_text = html_entity_decode( $msg_text );
+
+		// This must get triggered before any internal validation and must pass all relevant params.
+		$Plugins->trigger_event( 'MessageThreadFormSent', array(
+				'content' => & $msg_text,
+				'dont_remove_pre' => true,
+				'renderers' => $this->get_renderers_validated(),
+			) );
+
 		if( ! $new_thread )
 		{
 			param_check_not_empty( 'msg_text' );
+		}
+		if( $text_format == 'html' )
+		{ // message text may contain html, check the html sanity
+			param_check_html( 'msg_text', T_('Invalid message content.') );
 		}
 		$this->set( 'text', get_param( 'msg_text' ) );
 
@@ -112,7 +176,24 @@ class Message extends DataObject
 		else
 		{ // this is a reply to an existing conversation, check if current User is allowed to reply
 			$this->get_Thread();
-			$this->Thread->check_allow_reply();
+			if( $this->Thread->check_allow_reply() )
+			{ // If reply is allowed we should check if this message is not a duplicate
+				global $DB, $current_User;
+
+				// Get last message of current user in this thread
+				$SQL = new SQL();
+				$SQL->SELECT( 'msg_text' );
+				$SQL->FROM( 'T_messaging__message' );
+				$SQL->WHERE( 'msg_thread_ID = '.$this->Thread->ID );
+				$SQL->WHERE_and( 'msg_author_user_ID = '.$current_User->ID );
+				$SQL->ORDER_BY( 'msg_ID DESC' );
+				$last_message = $DB->get_var( $SQL->get() );
+
+				if( $last_message == $msg_text )
+				{
+					param_error( 'msg_text', T_('It seems you tried to send the same message twice. We only kept one copy.') );
+				}
+			}
 		}
 
 		return ! param_errors_detected();
@@ -321,7 +402,7 @@ class Message extends DataObject
 		$reverse_contact_list = array_diff( $recipients, $reverse_contact_list );
 
 		if( !empty( $contact_list ) || !empty( $reverse_contact_list ) )
-		{	// insert users/recipients which are not in contact list
+		{ // insert users/recipients which are not in contact list
 
 			$sql = 'INSERT INTO T_messaging__contact (mct_from_user_ID, mct_to_user_ID, mct_last_contact_datetime)
 								VALUES';
@@ -331,15 +412,25 @@ class Message extends DataObject
 			$statements = array();
 			foreach ( $contact_list as $contact_ID )
 			{
-				$statements[] = ' ('.$this->author_user_ID.', '.$contact_ID.', \''.$datetime.'\')';
+				if( $contact_ID != $this->author_user_ID )
+				{ // Don't insert a contact from the same user
+					$statements[] = ' ('.$this->author_user_ID.', '.$contact_ID.', \''.$datetime.'\')';
+				}
 			}
 			foreach ( $reverse_contact_list as $contact_ID )
 			{
-				$statements[] = ' ('.$contact_ID.', '.$this->author_user_ID.', \''.$datetime.'\')';
+				if( $contact_ID != $this->author_user_ID )
+				{ // Don't insert a contact from the same user
+					$statements[] = ' ('.$contact_ID.', '.$this->author_user_ID.', \''.$datetime.'\')';
+				}
 			}
-			$sql .= implode( ', ', $statements );
 
-			return $DB->query( $sql, 'Insert contacts' );
+			if( ! empty( $statements ) )
+			{ // Do insert sql only when data exist
+				$sql .= implode( ', ', $statements );
+
+				return $DB->query( $sql, 'Insert contacts' );
+			}
 		}
 
 		return true;
@@ -390,6 +481,7 @@ class Message extends DataObject
 	{
 		$new_Message = new Message();
 		$new_Message->set( 'text', $message->text );
+		$new_Message->set( 'renderers', $message->renderers );
 		if( !empty( $message->author_user_ID ) )
 		{
 			$new_Message->set( 'author_user_ID', $message->author_user_ID );
@@ -409,58 +501,94 @@ class Message extends DataObject
 
 
 	/**
+	 * Delete those messages from the database which corresponds to the given condition or to the given ids array
+	 * Note: the delete cascade arrays are handled!
+	 *
+	 * @param string the name of this class
+	 *   Note: This is required until min phpversion will be 5.3. Since PHP 5.3 we can use static::function_name to achieve late static bindings
+	 * @param string where condition
+	 * @param array object ids
+	 * @return mixed # of rows affected or false if error
+	 */
+	static function db_delete_where( $class_name, $sql_where, $object_ids = NULL, $params = NULL )
+	{
+		global $DB;
+
+		$DB->begin();
+
+		if( ! empty( $sql_where ) )
+		{
+			$messages_to_delete = $DB->get_assoc( 'SELECT msg_ID, msg_thread_ID FROM T_messaging__message WHERE '.$sql_where );
+			$object_ids = array_keys( $messages_to_delete );
+			$thread_ids_to_delete = array_unique( $messages_to_delete );
+		}
+
+		if( ! $object_ids )
+		{ // There is no comment to delete
+			$DB->commit();
+			return;
+		}
+
+		$message_ids_to_delete = implode( ', ', $object_ids );
+		if( empty( $thread_ids_to_delete ) )
+		{ // Make sure thread ids of the messages are collected
+			$thread_ids_to_delete = $DB->get_col( 'SELECT msg_thread_ID FROM T_messaging__message WHERE msg_ID IN ( '.$message_ids_to_delete.' )' );
+		}
+
+		// Update thread statuses first unread message IDs
+		$result = $DB->query( 'UPDATE T_messaging__threadstatus
+				SET tsta_first_unread_msg_ID =
+				( SELECT message1.msg_ID
+					FROM T_messaging__message as message1
+					WHERE message1.msg_thread_ID = tsta_thread_ID
+						AND message1.msg_datetime > ( SELECT MAX( message2.msg_datetime)
+							FROM T_messaging__message as message2
+							WHERE message2.msg_ID IN ( '.$message_ids_to_delete.' )
+								AND message2.msg_thread_ID = tsta_thread_ID
+						)
+					ORDER BY message1.msg_datetime ASC
+					LIMIT 1
+				)
+				WHERE tsta_first_unread_msg_ID IN ( '.$message_ids_to_delete.')' ) !== false;
+
+		if( $result )
+		{ // Remove messages with all of its delete cascade relations
+			$result = parent::db_delete_where( $class_name, $sql_where, $object_ids );
+		}
+
+		if( $result !== false )
+		{ // Delete those threads where all of the messages were deleted
+			load_class( 'messaging/model/_thread.class.php', 'Thread' );
+			$orphan_thread_ids = $DB->get_col( '
+				SELECT msg_thread_ID FROM T_messaging__message
+				WHERE msg_thread_ID IN ( '.implode( ', ', $thread_ids_to_delete ).' )
+				GROUP BY msg_thread_ID
+					HAVING COUNT(*) < 1' );
+
+			// Delete orphan threads if there are any
+			if( ( ! empty( $orphan_thread_ids ) ) && ( Thread::db_delete_where( 'Thread', NULL, $orphan_thread_ids ) === false ) )
+			{ // Deleting threads was unsuccessful
+				$result = false;
+			}
+		}
+
+		// Commit or rollback the transaction
+		( $result !== false ) ? $DB->commit() : $DB->rollback();
+
+		return $result;
+	}
+
+
+	/**
 	 * Delete message and dependencies from database
 	 *
 	 * @param Log Log object where output gets added (by reference).
 	 */
 	function dbdelete()
 	{
-		global $DB;
-
 		if( $this->ID == 0 ) debug_die( 'Non persistant object cannot be deleted!' );
 
-		// Remember ID, because parent method resets it to 0
-		$thread_ID = $this->thread_ID;
-
-		$DB->begin();
-
-		// UPDATE last unread msg_ID on this thread statuses from this message ID to the next message ID or NULL if there is no next message
-		$DB->query( 'UPDATE T_messaging__threadstatus
-						SET tsta_first_unread_msg_ID =
-							( SELECT msg_ID
-								FROM T_messaging__message
-								WHERE msg_thread_ID = '.$thread_ID.' AND msg_datetime > '.$DB->quote( $this->datetime ).'
-								ORDER BY msg_datetime ASC
-								LIMIT 1
-							)
-						WHERE tsta_first_unread_msg_ID = '.$this->ID );
-
-		// Delete Message
-		if( ! parent::dbdelete() )
-		{
-			$DB->rollback();
-
-			return false;
-		}
-
-		// Get a count of the messages in the current thread
-		$SQL = new SQL();
-		$SQL->SELECT( 'COUNT( msg_ID )' );
-		$SQL->FROM( $this->dbtablename );
-		$SQL->WHERE( 'msg_thread_ID = '.$DB->quote( $thread_ID ) );
-		$msg_count = $DB->get_var( $SQL->get() );
-
-		if( $msg_count == 0 )
-		{	// Last message was deleted from thread now, We should also delete this thread
-			load_class( 'messaging/model/_thread.class.php', 'Thread' );
-			$ThreadCache = & get_ThreadCache();
-			$Thread = & $ThreadCache->get_by_ID( $thread_ID );
-			$Thread->dbdelete();
-		}
-
-		$DB->commit();
-
-		return true;
+		return parent::dbdelete();
 	}
 
 
@@ -564,6 +692,172 @@ class Message extends DataObject
 		// update reminder timestamp changes
 		$UserSettings->dbupdate();
 		return $ret;
+	}
+
+
+	/**
+	 * Get the list of validated renderers for this Message. This includes stealth plugins etc.
+	 * @return array List of validated renderer codes
+	 */
+	function get_renderers_validated()
+	{
+		if( ! isset( $this->renderers_validated ) )
+		{
+			global $Plugins;
+			$this->renderers_validated = $Plugins->validate_renderer_list( $this->get_renderers(), array( 'Message' => & $this ) );
+		}
+		return $this->renderers_validated;
+	}
+
+
+	/**
+	 * Get the list of renderers for this Message.
+	 * @return array
+	 */
+	function get_renderers()
+	{
+		return explode( '.', $this->renderers );
+	}
+
+
+	/**
+	 * Set the renderers of the Message.
+	 *
+	 * @param array List of renderer codes.
+	 * @return boolean true, if it has been set; false if it has not changed
+	 */
+	function set_renderers( $renderers )
+	{
+		return $this->set_param( 'renderers', 'string', implode( '.', $renderers ) );
+	}
+
+
+	/**
+	 * Get the prerendered content. If it has not been generated yet, it will.
+	 *
+	 * NOTE: This calls {@link Message::dbupdate()}, if renderers get changed (from Plugin hook).
+	 *       (not for preview though)
+	 *
+	 * @param string Format, see {@link format_to_output()}.
+	 *        Only "htmlbody", "entityencoded", "xml" and "text" get cached.
+	 * @return string
+	 */
+	function get_prerendered_content( $format  = 'htmlbody' )
+	{
+		global $Plugins, $DB;
+
+		$use_cache = $this->ID && in_array( $format, array('htmlbody', 'entityencoded', 'xml', 'text') );
+		if( $use_cache )
+		{ // the format/comment can be cached:
+			$this->get_Thread();
+			$message_renderers = $this->get_renderers_validated();
+			if( empty( $message_renderers ) )
+			{
+				return format_to_output( $this->text, $format );
+			}
+			$message_renderers = implode( '.', $message_renderers );
+			$cache_key = $format.'/'.$message_renderers;
+
+			$MessagePrerenderingCache = & get_MessagePrerenderingCache();
+
+			if( isset( $MessagePrerenderingCache[$format][$this->ID][$cache_key] ) )
+			{ // already in PHP cache.
+				$r = $MessagePrerenderingCache[$format][$this->ID][$cache_key];
+				// Save memory, typically only accessed once.
+				unset( $MessagePrerenderingCache[$format][$this->ID][$cache_key] );
+			}
+			else
+			{ // try loading into Cache
+				if( ! isset( $MessagePrerenderingCache[$format] ) )
+				{ // only do the prefetch loading once.
+					$MessagePrerenderingCache[$format] = array();
+
+					$SQL = new SQL();
+					$SQL->SELECT( 'mspr_msg_ID, mspr_format, mspr_renderers, mspr_content_prerendered' );
+					$SQL->FROM( 'T_messaging__prerendering' );
+					// load prerendered cache for each message which belongs to this messages Thread
+					$SQL->FROM_add( 'INNER JOIN T_messaging__message ON mspr_msg_ID = msg_ID' );
+					$SQL->WHERE( 'msg_thread_ID = '.$this->Thread->ID );
+					$SQL->WHERE_and( 'mspr_format = '.$DB->quote( $format ) );
+					$rows = $DB->get_results( $SQL->get(), OBJECT, 'Preload prerendered messages content ('.$format.')' );
+					foreach( $rows as $row )
+					{
+						$row_cache_key = $row->mspr_format.'/'.$row->mspr_renderers;
+
+						if( ! isset( $MessagePrerenderingCache[$format][$row->mspr_msg_ID] ) )
+						{ // init list
+							$MessagePrerenderingCache[$format][$row->mspr_msg_ID] = array();
+						}
+
+						$MessagePrerenderingCache[$format][$row->mspr_msg_ID][$row_cache_key] = $row->mspr_content_prerendered;
+					}
+
+					// Get the value for current Comment.
+					if( isset( $MessagePrerenderingCache[$format][$this->ID][$cache_key] ) )
+					{
+						$r = $MessagePrerenderingCache[$format][$this->ID][$cache_key];
+						// Save memory, typically only accessed once.
+						unset( $MessagePrerenderingCache[$format][$this->ID][$cache_key] );
+					}
+				}
+			}
+		}
+
+		if( !isset( $r ) )
+		{
+			$data = $this->text;
+			$Plugins->trigger_event( 'FilterMsgContent', array( 'data' => & $data, 'Message' => $this ) );
+			$r = format_to_output( $data, $format );
+
+			if( $use_cache )
+			{ // save into DB (using REPLACE INTO because it may have been pre-rendered by another thread since the SELECT above)
+				global $servertimenow;
+				$DB->query( 'REPLACE INTO T_messaging__prerendering ( mspr_msg_ID, mspr_format, mspr_renderers, mspr_content_prerendered, mspr_datemodified )
+					 VALUES ( '.$this->ID.', '.$DB->quote( $format ).', '.$DB->quote( $message_renderers ).', '.$DB->quote( $r ).', '.$DB->quote( date2mysql( $servertimenow ) ).' )', 'Cache prerendered message content' );
+			}
+		}
+
+		return $r;
+	}
+
+
+	/**
+	 * Unset any prerendered content for this message (in PHP cache).
+	 */
+	function delete_prerendered_content()
+	{
+		global $DB;
+
+		// Delete DB rows.
+		$DB->query( 'DELETE FROM T_messaging__prerendering WHERE mspr_msg_ID = '.$this->ID );
+
+		// Delete cache.
+		$MessagePrerenderingCache = & get_MessagePrerenderingCache();
+		foreach( array_keys( $MessagePrerenderingCache ) as $format )
+		{
+			unset( $MessagePrerenderingCache[$format][$this->ID] );
+		}
+	}
+
+
+	/**
+	 * Template function: get content of message
+	 *
+	 * @param string Output format, see {@link format_to_output()}
+	 * @return string
+	 */
+	function get_content( $format = 'htmlbody' )
+	{
+		/* yura> This code was commented after we added new setting 'Allow html in messages content'
+		         The preparing of message content is in Message::load_from_Request()
+
+		global $evo_charset;
+
+		// WARNING: the messages may contain MALICIOUS HTML and javascript snippets. They must ALWAYS be ESCAPED prior to display!
+		$this->text = htmlentities( $this->text, ENT_COMPAT, $evo_charset );
+		*/
+
+		return $this->get_prerendered_content( $format );
 	}
 }
 

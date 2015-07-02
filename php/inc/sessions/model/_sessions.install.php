@@ -3,28 +3,13 @@
  * This is the install file for the core modules
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: _sessions.install.php 6919 2014-06-18 06:53:52Z yura $
  */
 if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page directly.' );
 
@@ -61,7 +46,7 @@ $schema_queries['T_basedomains'] = array(
 		'Creating table for base domains',
 		"CREATE TABLE T_basedomains (
 			dom_ID     INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
-			dom_name   VARCHAR(250) NOT NULL DEFAULT '',
+			dom_name   VARCHAR(250)  COLLATE utf8_bin NOT NULL DEFAULT '',
 			dom_status ENUM('unknown','trusted','suspect','blocked') COLLATE ascii_general_ci NOT NULL DEFAULT 'unknown',
 			dom_type   ENUM('unknown','normal','searcheng','aggregator','email') COLLATE ascii_general_ci NOT NULL DEFAULT 'unknown',
 			PRIMARY KEY     (dom_ID),
@@ -69,10 +54,10 @@ $schema_queries['T_basedomains'] = array(
 		) ENGINE = myisam DEFAULT CHARACTER SET = $db_storage_charset" );
 
 $schema_queries['T_track__keyphrase'] = array(
-		'Creating table for Hit-Logs',
+		'Creating table for Hit-Logs keyphrases',
 		"CREATE TABLE T_track__keyphrase (
 			keyp_ID      INT UNSIGNED NOT NULL AUTO_INCREMENT,
-			keyp_phrase  VARCHAR( 255 ) NOT NULL,
+			keyp_phrase  VARCHAR( 255 ) COLLATE utf8_bin NOT NULL,
 			keyp_count_refered_searches INT UNSIGNED DEFAULT 0,
 			keyp_count_internal_searches INT UNSIGNED DEFAULT 0,
 			PRIMARY KEY        ( keyp_ID ),

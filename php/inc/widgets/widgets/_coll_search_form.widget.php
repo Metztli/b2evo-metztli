@@ -3,25 +3,13 @@
  * This file implements the xyz Widget class.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: _coll_search_form.widget.php 8229 2015-02-11 09:41:33Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -43,6 +31,17 @@ class coll_search_form_Widget extends ComponentWidget
 	{
 		// Call parent constructor:
 		parent::ComponentWidget( $db_row, 'core', 'coll_search_form' );
+	}
+
+
+	/**
+	 * Get help URL
+	 *
+	 * @return string URL
+	 */
+	function get_help_url()
+	{
+		return get_manual_url( 'search-form-widget' );
 	}
 
 
@@ -121,17 +120,30 @@ class coll_search_form_Widget extends ComponentWidget
 
 
 	/**
+	 * Prepare display params
+	 *
+	 * @param array MUST contain at least the basic display params
+	 */
+	function init_display( $params )
+	{
+		$params = array_merge( array(
+				'search_input_before'  => '',
+				'search_input_after'   => '',
+				'search_submit_before' => '',
+				'search_submit_after'  => '',
+			), $params );
+
+		parent::init_display( $params );
+	}
+
+
+	/**
 	 * Display the widget!
 	 *
 	 * @param array MUST contain at least the basic display params
 	 */
 	function display( $params )
 	{
-		$params = array_merge( array(
-				'search_submit_before' => '',
-				'search_submit_after'  => '',
-			), $params );
-
 		$this->init_display( $params );
 
 		$blog_ID = intval( $this->disp_params['blog_ID'] );
@@ -155,7 +167,7 @@ class coll_search_form_Widget extends ComponentWidget
 
 		form_formstart( $widget_Blog->gen_blogurl(), 'search', 'SearchForm' );
 
-		if( empty( $this->disp_params[ 'search_class' ] ) )
+		if( empty( $this->disp_params['search_class'] ) )
 		{ // Class name is not defined, Use class depend on serach options
 			$search_form_class = $this->disp_params[ 'disp_search_options' ] ? 'extended_search_form' : 'compact_search_form';
 		}
@@ -166,8 +178,16 @@ class coll_search_form_Widget extends ComponentWidget
 
 		echo '<div class="'.$search_form_class.'">';
 
+		echo $this->disp_params['search_input_before'];
+		echo '<input type="text" name="s" size="25" value="'.htmlspecialchars( get_param( 's' ) ).'" class="search_field SearchField form-control" title="'.format_to_output( T_('Enter text to search for'), 'htmlattr' ).'" />';
+		echo $this->disp_params['search_input_after'];
+
+		echo $this->disp_params['search_submit_before'];
+		echo '<input type="submit" name="submit" class="search_submit submit btn btn-primary" value="'.format_to_output( $this->disp_params['button'], 'htmlattr' ).'" />';
+		echo $this->disp_params['search_submit_after'];
+
 		if( $this->disp_params['disp_search_options'] )
-		{
+		{ // Display the search options
 			$sentence = get_param( 'sentence' );
 			echo '<div class="search_options">';
 			echo '<div class="search_option"><input type="radio" name="sentence" value="AND" id="sentAND" '.( $sentence=='AND' ? 'checked="checked" ' : '' ).'/><label for="sentAND">'.T_('All words').'</label></div>';
@@ -176,14 +196,8 @@ class coll_search_form_Widget extends ComponentWidget
 			echo '</div>';
 		}
 
-		$s = get_param( 's' );
-		echo '<input type="text" name="s" size="25" value="'.evo_htmlspecialchars( $s ).'" class="search_field SearchField form-control" title="'.format_to_output( T_('Enter text to search for'), 'htmlattr' ).'" />';
-
-		echo $this->disp_params['search_submit_before'];
-		echo '<input type="submit" name="submit" class="search_submit submit btn btn-primary" value="'.format_to_output( $this->disp_params['button'], 'htmlattr' ).'" />';
-		echo $this->disp_params['search_submit_after'];
-
 		echo '</div>';
+
 		if( $this->disp_params['use_search_disp'] )
 		{
 			echo '<input type="hidden" name="disp" value="search" />';

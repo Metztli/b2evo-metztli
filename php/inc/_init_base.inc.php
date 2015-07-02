@@ -6,40 +6,15 @@
  * It is also called by more complete initializers.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- *
- * Matt FOLLETT grants Francois PLANQUE the right to license
- * Matt FOLLETT's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE
- * @author blueyed: Daniel HAHLER
- * @author mfollett: Matt FOLLETT
- * @author mbruneau: Marc BRUNEAU / PROGIDISTRI
- *
- * @version $Id: _init_base.inc.php 6135 2014-03-08 07:54:05Z manuel $
  */
 if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page directly.' );
 
@@ -100,10 +75,12 @@ $request_transaction_name = '';
 
 if( !$config_is_done )
 { // base config is not done!
+	$error_title = 'Base configuration is not done!';
 	$error_message = 'Base configuration is not done! (see /conf/_basic_config.php)';
 }
 elseif( !isset( $locales[$default_locale] ) )
 {
+	$error_title = 'The default locale does not exist!';
 	$error_message = 'The default locale '.var_export( $default_locale, true ).' does not exist! (see /conf/_locales.php)';
 }
 if( isset( $error_message ) )
@@ -148,6 +125,12 @@ else
 
 
 /**
+ * System log
+ */
+load_class( 'tools/model/_syslog.class.php', 'Syslog' );
+
+
+/**
  * Info & error message log for end user (initialized here)
  * @global Log $Messages
  */
@@ -161,6 +144,7 @@ $Messages = new Messages();
 load_class( '_core/model/_timer.class.php', 'Timer' );
 $Timer = new Timer('total');
 $Timer->resume( '_init_base' );
+$Timer->resume( 'first_flush' );
 $Timer->resume( '_MAIN.inc' );
 
 

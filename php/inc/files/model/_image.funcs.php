@@ -3,28 +3,13 @@
  * This file implements various Image File handling functions.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: _image.funcs.php 6444 2014-04-10 13:01:00Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -334,10 +319,62 @@ function output_image( $imh, $mimetype )
 
 
 /**
+ * Check and fix thumbnail sizes depending on original image sizes
+ * It is useful to fix thumbnail sizes for images less than requested thumbnail
+ *
+ * @param string Thumbnail type ('crop'|'crop-top'|'fit')
+ * @param integer Thumbnail width
+ * @param integer Thumbnail height
+ * @param integer Original image width
+ * @param integer Original image height
+ * @return boolean TRUE if no need to resample
+ */
+function check_thumbnail_sizes( $thumb_type, & $thumb_width, & $thumb_height, $src_width, $src_height )
+{
+	if( $src_width <= $thumb_width && $src_height <= $thumb_height )
+	{ // If original image sizes are less than thumbnail sizes
+		if( $thumb_type == 'fit' )
+		{ // There is no need to resample, use original!
+			return true;
+		}
+		else
+		{ // crop & crop-top
+			$src_ratio = number_format( $src_width / $src_height, 4, '.', '' );
+			$thumb_ratio = number_format( $thumb_width / $thumb_height, 4, '.', '' );
+			if( $src_ratio == $thumb_ratio )
+			{ // If original image has the same ratio then no need to resample
+				return true;
+			}
+			else
+			{ // Set new thumb sizes depending on thumbnail ratio
+				if( $thumb_ratio == 1 )
+				{ // Use min size for square size
+					$thumb_width = ( $src_width > $src_height ) ? $src_height : $src_width;
+					$thumb_height = $thumb_width;
+				}
+				elseif( $thumb_ratio > $src_ratio )
+				{ // If thumbnail ratio > original image ratio
+					$thumb_width = $src_width;
+					$thumb_height = round( $src_width / $thumb_ratio );
+				}
+				else//if( $thumb_ratio < $src_ratio )
+				{ // If thumbnail ratio < original image ratio
+					$thumb_width = round( $src_height * $thumb_ratio );
+					$thumb_height = $src_height;
+				}
+			}
+		}
+	}
+
+	return false;
+}
+
+
+/**
  * Generate a thumbnail
  *
  * @param resource Image resource
- * @param string Thumbnail type ('crop'|'fit')
+ * @param string Thumbnail type ('crop'|'crop-top'|'fit')
  * @param int Thumbnail width
  * @param int Thumbnail height
  * @param int Thumbnail percent of blur effect (0 - No blur, 1% - Max blur effect, 99% - Min blur effect)
@@ -356,7 +393,7 @@ function generate_thumb( $src_imh, $thumb_type, $thumb_width, $thumb_height, $th
 		$thumb_height = $thumb_height * $size_x;
 	}
 
-	if( $src_width <= $thumb_width && $src_height <= $thumb_height )
+	if( check_thumbnail_sizes( $thumb_type, $thumb_width, $thumb_height, $src_width, $src_height ) )
 	{ // There is no need to resample, use original!
 		return array( NULL, $src_imh );
 	}
@@ -465,6 +502,80 @@ function rotate_image( $File, $degrees )
 
 	// Save image
 	save_image( $imh, $File->get_full_path(), $Filetype->mimetype );
+
+	// Remove the old thumbnails
+	$File->rm_cache();
+
+	return true;
+}
+
+
+/**
+ * Crop image
+ *
+ * @param object File
+ * @param integer X coordinate (in percents)
+ * @param integer Y coordinate (in percents)
+ * @param integer Width (in percents)
+ * @param integer Height (in percents)
+ * @param integer Min size of width or height (in pixels), 0 - to don't limit
+ * @param integer Max size of width or height (in pixels), 0 - to don't limit
+ * @return boolean TRUE if cropping is successful
+ */
+function crop_image( $File, $x, $y, $width, $height, $min_size = 0, $max_size = 0 )
+{
+	$Filetype = & $File->get_Filetype();
+	if( ! $Filetype )
+	{ // Error
+		return false;
+	}
+
+	// Load image
+	list( $err, $src_imh ) = load_image( $File->get_full_path(), $Filetype->mimetype );
+	if( ! empty( $err ) )
+	{ // Error
+		return false;
+	}
+
+	$src_width = imagesx( $src_imh );
+	$src_height = imagesy( $src_imh );
+	$x = $src_width * ( $x / 100 );
+	$y = $src_height * ( $y / 100 );
+	$width = $src_width * ( $width / 100 );
+	$height = $src_height * ( $height / 100 );
+	$dest_width = $width;
+	$dest_height = $height;
+
+	if( $max_size > 0 )
+	{ // Check if we should limit by max size
+		$dest_width = $dest_width > $max_size ? $max_size : $dest_width;
+		$dest_height = $dest_height > $max_size ? $max_size : $dest_height;
+	}
+	if( $min_size > 0 )
+	{ // Check if we should limit by min size
+		$width = $width < $min_size ? $min_size : $width;
+		$height = $height < $min_size ? $min_size : $height;
+	}
+
+	if( $x + $width > $src_width )
+	{ // Shift a crop X position to the left if the crop width is over image width
+		$x = $src_width - $width;
+	}
+	if( $y + $height > $src_height )
+	{ // Shift a crop Y position to the top if the crop height is over image height
+		$y = $src_height - $height;
+	}
+
+	$dst_imh = imagecreatetruecolor( $dest_width, $dest_height );
+
+	// Crop image
+	if( ! @imagecopyresampled( $dst_imh, $src_imh, 0, 0, $x, $y, $dest_width, $dest_height, $width, $height ) )
+	{ // If func imagecopyresampled is not defined for example:
+		return false;
+	}
+
+	// Save image
+	save_image( $dst_imh, $File->get_full_path(), $Filetype->mimetype );
 
 	// Remove the old thumbnails
 	$File->rm_cache();

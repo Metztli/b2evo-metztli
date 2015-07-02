@@ -3,13 +3,13 @@
  * This file implements the UI view for Post by Email settings.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
- *
- * @version $Id: _eblog.form.php 7996 2015-01-15 06:52:23Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -139,7 +139,7 @@ $Form->checkbox( 'eblog_html_enabled', $Settings->get('eblog_html_enabled'), T_(
 
 $Form->checkbox( 'eblog_html_tag_limit', $Settings->get('eblog_html_tag_limit'), T_('Limit allowed tags'),
 				T_('Check this if you want to limit allowed HTML tags to the following list:').
-				'<br /><b>'.evo_htmlspecialchars(str_replace( '>', '> ', $comment_allowed_tags )).'</b>' );
+				'<br /><b>'.htmlspecialchars(str_replace( '>', '> ', $comment_allowed_tags )).'</b>' );
 
 $Form->end_fieldset();
 

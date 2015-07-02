@@ -8,8 +8,8 @@
  * For example: /blogs/index.php?disp=comments
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  */
@@ -38,7 +38,7 @@ $CommentList->display_if_empty( array(
 if( $CommentList->result_num_rows > 0 )
 {
 ?>
-<table id="styled_content_block" class="bForums fixed_layout" width="100%" cellspacing="1" cellpadding="2" border="0">
+<table id="styled_content_block" class="bForums fixed_layout evo_content_block" width="100%" cellspacing="1" cellpadding="2" border="0">
 	<tr>
 		<th class="col1"><?php echo T_('Author'); ?></th>
 		<th><?php echo T_('Message'); ?></th>

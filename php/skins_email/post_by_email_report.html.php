@@ -5,10 +5,8 @@
  * For more info about email skins, see: http://b2evolution.net/man/themes-templates-skins/email-skins/
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
- *
- * @version $Id: post_by_email_report.html.php 849 2012-02-16 09:09:09Z yura $
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -24,12 +22,12 @@ $params = array_merge( array(
 
 $Items = $params['Items'];
 
-echo '<p>'.T_('You just created the following posts:').'</p>';
+echo '<p'.emailskin_style( '.p' ).'>'.T_('You just created the following posts:').'</p>';
 
 foreach( $Items as $Item )
 {
 	echo format_to_output( $Item->title );
-	echo '<p>'.get_link_tag( $Item->get_permanent_url() ).'</p>';
+	echo '<p'.emailskin_style( '.p' ).'>'.get_link_tag( $Item->get_permanent_url(), '', '.a' ).'</p>';
 }
 
 // ---------------------------- EMAIL FOOTER INCLUDED HERE ----------------------------

@@ -3,33 +3,14 @@
  * Functions for Plugin handling.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE
- * @author blueyed: Daniel HAHLER
- *
- * @version $Id: _plugin.funcs.php 8229 2015-02-11 09:41:33Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -153,7 +134,7 @@ function autoform_display_field( $parname, $parmeta, & $Form, $set_type, $Obj, $
 				if( ! isset($parmeta['value']) )
 				{
 					$parmeta['value'] = '<div class="error">HTML layout usage:<pre>'.
-							evo_htmlentities("'layout' => 'html',\n'value' => '<em>My HTML code</em>',").'</pre></div>';
+							htmlentities("'layout' => 'html',\n'value' => '<em>My HTML code</em>',").'</pre></div>';
 				}
 				echo $parmeta['value'];
 				break;
@@ -183,6 +164,11 @@ function autoform_display_field( $parname, $parmeta, & $Form, $set_type, $Obj, $
 		{
 			case 'CollSettings':
 				$set_value = $Obj->get_coll_setting( $parname, $set_target );
+				$error_value = NULL;
+				break;
+
+			case 'MsgSettings':
+				$set_value = $Obj->get_msg_setting( $parname );
 				$error_value = NULL;
 				break;
 
@@ -248,6 +234,18 @@ function autoform_display_field( $parname, $parmeta, & $Form, $set_type, $Obj, $
 			$Form->checkbox_input( $input_name, $set_value, $set_label, $params );
 			break;
 
+		case 'checklist':
+			$options = array();
+			foreach( $parmeta['options'] as $meta_option )
+			{
+				$meta_option_checked = $set_value === NULL ?
+					/* default value */ $meta_option[2] :
+					/* saved value */   ! empty( $set_value[ $meta_option[0] ] );
+				$options[] = array( $input_name.'['.$meta_option[0].']', 1, $meta_option[1], $meta_option_checked );
+			}
+			$Form->checklist( $options, $input_name, $set_label, false, false, $params );
+			break;
+
 		case 'textarea':
 			$textarea_rows = isset($parmeta['rows']) ? $parmeta['rows'] : 3;
 			$Form->textarea_input( $input_name, $set_value, $textarea_rows, $set_label, $params );
@@ -270,8 +268,11 @@ function autoform_display_field( $parname, $parmeta, & $Form, $set_type, $Obj, $
 
 		case 'select_user':
 			$UserCache = & get_UserCache();
-			$UserCache->load_all();
-			if( ! isset($params['loop_object_method']) )
+			$UserCache->clear();
+			$users_SQL = $UserCache->get_SQL_object();
+			$users_SQL->LIMIT( isset( $parmeta['users_limit'] ) ? intval( $parmeta['users_limit'] ) : 20 );
+			$UserCache->load_by_sql( $users_SQL );
+			if( ! isset( $params['loop_object_method'] ) )
 			{
 				$params['loop_object_method'] = 'get_preferred_name';
 			}
@@ -647,16 +648,18 @@ function get_plugin_settings_node_by_path( & $Plugin, $set_type, $path, $create 
  * @param Plugin|Widget
  * @param string Type of Settings (either 'Settings' or 'UserSettings').
  * @param mixed Target (User object for 'UserSettings')
+ * @param mixed NULL to use value from request, OR set value what you want to force
  */
-function autoform_set_param_from_request( $parname, $parmeta, & $Obj, $set_type, $set_target = NULL )
+function autoform_set_param_from_request( $parname, $parmeta, & $Obj, $set_type, $set_target = NULL, $set_value = NULL )
 {
 	if( isset($parmeta['layout']) )
 	{ // a layout "setting"
 		return;
 	}
 
-	if( ! empty($parmeta['disabled']) || ! empty($parmeta['no_edit']) )
-	{ // the setting is disabled
+	if( ( ! empty( $parmeta['disabled'] ) || ! empty( $parmeta['no_edit'] ) )
+	    && $set_value === NULL )
+	{ // the setting is disabled, but allow to update the value when it is forced by $set_value
 		return;
 	}
 
@@ -680,6 +683,11 @@ function autoform_set_param_from_request( $parname, $parmeta, & $Obj, $set_type,
 				$l_param_default = 0;
 				break;
 
+			case 'checklist':
+				$l_param_type = 'array';
+				$l_param_default = array();
+				break;
+
 			case 'html_input':
 			case 'html_textarea':
 				$l_param_type = 'html';
@@ -689,9 +697,14 @@ function autoform_set_param_from_request( $parname, $parmeta, & $Obj, $set_type,
 		}
 	}
 
-	// Get the value:
-	$l_value = param( 'edit_plugin_'.$Obj->ID.'_set_'.$parname, $l_param_type, $l_param_default );
-	// pre_dump( $parname, $l_value );
+	if( $set_value === NULL )
+	{ // Get the value from request:
+		$l_value = param( 'edit_plugin_'.$Obj->ID.'_set_'.$parname, $l_param_type, $l_param_default );
+	}
+	else
+	{ // Force value
+		$l_value = $set_value;
+	}
 
 	if( isset($parmeta['type']) && $parmeta['type'] == 'array' )
 	{ // make keys (__key__) in arrays unique and remove them
@@ -943,7 +956,7 @@ function autoform_validate_param_value( $param_name, $value, $meta )
 	// Check maxlength:
 	if( isset($meta['maxlength']) )
 	{
-		if( evo_strlen($value) > $meta['maxlength'] )
+		if( utf8_strlen($value) > $meta['maxlength'] )
 		{
 			param_error( $param_name, sprintf( T_('The value is too long.'), $value ) );
 		}

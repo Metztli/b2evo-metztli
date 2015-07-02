@@ -1,15 +1,15 @@
 <?php
 /**
  * This file is part of b2evolution - {@link http://b2evolution.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2009-2014 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
+ * @copyright (c)2009-2015 by Francois Planque - {@link http://fplanque.com/}
+ *
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
  * @package maintenance
- *
- * @version $Id: _upgrade_export.form.php 7341 2014-09-30 09:47:23Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -39,7 +39,7 @@ if( empty( $revision_is_exported ) )
 else
 { // Init the buttons to select next action
 	$form_buttons[] = array( 'submit', 'actionArray[ready_svn]', T_( 'Skip Export' ), 'SaveButton' );
-	$form_buttons[] = array( 'submit', 'actionArray[force_export_svn]', T_( 'Force New Export' ), 'SaveButton' );
+	$form_buttons[] = array( 'submit', 'actionArray[force_export_svn]', T_( 'Force New Export' ), 'SaveButton btn-warning' );
 }
 
 $Form->end_form( $form_buttons );

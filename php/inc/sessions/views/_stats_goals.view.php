@@ -3,13 +3,13 @@
  * This file implements the UI view for the Goal Hit list.
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
- *
- * @version $Id: _stats_goals.view.php 6398 2014-04-04 04:43:31Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -87,7 +87,7 @@ function filter_goals( & $Form )
 	$Form->checkbox_basic_input( 'final', get_param('final'), /* TODO: please add context for translators.. */ T_('Final only').' &bull;' );
 	$Form->text( 's', get_param('s'), 30, T_('Search'), '', 255 );
 
-	$GoalCategoryCache = & get_GoalCategoryCache( T_('All') );
+	$GoalCategoryCache = & get_GoalCategoryCache( NT_('All') );
 	$GoalCategoryCache->load_all();
 	$Form->select_input_object( 'cat', get_param('cat'), $GoalCategoryCache, T_('Category'), array( 'allow_none' => true ) );
 }
@@ -95,8 +95,8 @@ $Results->filter_area = array(
 	'callback' => 'filter_goals',
 	'url_ignore' => 'results_goals_page,final',
 	'presets' => array(
-		'all' => array( T_('All'), '?ctrl=goals&amp;final=0&amp;s=&amp;cat=0' ),
-		'final' => array( T_('Final'), '?ctrl=goals&amp;final=1' ),
+		'all' => array( T_('All'), '?ctrl=goals&amp;blog='.$blog.'&amp;final=0&amp;s=&amp;cat=0' ),
+		'final' => array( T_('Final'), '?ctrl=goals&amp;blog='.$blog.'&amp;final=1' ),
 		)
 	);
 
@@ -111,7 +111,7 @@ $Results->cols[] = array(
 		'th' => T_('Name'),
 		'order' => 'goal_name',
 		'td' => $perm_options_edit ?
-			'<a href="'.$admin_url.'?ctrl=goals&amp;action=edit&amp;goal_ID=$goal_ID$" style="color:$gcat_color$~conditional( #gcat_color# == "", "", ";font-weight:bold" )~">$goal_name$</a>' :
+			'<a href="'.$admin_url.'?ctrl=goals&amp;action=edit&amp;blog='.$blog.'&amp;goal_ID=$goal_ID$" style="color:$gcat_color$~conditional( #gcat_color# == "", "", ";font-weight:bold" )~">$goal_name$</a>' :
 			'<span style="color:$gcat_color$~conditional( #gcat_color# == "", "", ";font-weight:bold" )~">$goal_name$</span>',
 	);
 
@@ -119,7 +119,7 @@ $Results->cols[] = array(
 		'th' => T_('Category'),
 		'order' => 'gcat_name',
 		'td' => $perm_options_edit ?
-			'<a href="'.$admin_url.'?ctrl=goals&amp;tab3=cats&amp;action=cat_edit&amp;gcat_ID=$goal_gcat_ID$" style="color:$gcat_color$">$gcat_name$</a>' :
+			'<a href="'.$admin_url.'?ctrl=goals&amp;tab3=cats&amp;action=cat_edit&amp;blog='.$blog.'&amp;gcat_ID=$goal_gcat_ID$" style="color:$gcat_color$">$gcat_name$</a>' :
 			'<span style="color:$gcat_color$">$gcat_name$</span>',
 		'extra' => array( 'style' => 'color:#gcat_color#' )
 	);

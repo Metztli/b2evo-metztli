@@ -3,33 +3,14 @@
  * This file implements the UI for file browsing.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package admin
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author blueyed: Daniel HAHLER.
- * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: _file_browse.view.php 6411 2014-04-07 15:17:33Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -86,21 +67,37 @@ if( isset( $edited_User ) )
 		$Widget->global_icon( /* TRANS: verb */ T_('Advanced Upload...'), '', regenerate_url( 'ctrl', 'ctrl=upload' ), /* TRANS: verb */ T_('Advanced Upload').' &raquo;', 1, 5 );
 	}
 
-	if( ! empty( $LinkOwner ) )
-	{ // Display a link to close file browser and return to post editing:
-		$close_link_params = array();
-		if( $ajax_request )
-		{ // Initialize JavaScript function to close popup window
-			echo '<script type="text/javascript">
-			function close_popup_window()
-			{
-				window.close();
-			}
-			</script>';
-			$close_link_params['onclick'] = 'return close_popup_window()';
+	$close_link_params = array();
+	if( $ajax_request )
+	{ // Initialize JavaScript functions to work with modal window
+		echo '<script type="text/javascript">';
+		echo_modalwindow_js();
+		echo '</script>';
+		$close_link_params['onclick'] = 'return closeModalWindow( window.parent.document )';
+	}
+
+	global $mode, $AdminUI;
+
+	if( $mode != 'upload' || $AdminUI->skin_name != 'bootstrap' )
+	{ // Don't display a close icon, because it is already displayed on bootstrap modal window header
+		if( ! empty( $LinkOwner ) )
+		{ // Get an url to return to owner(post/comment) editing
+			$icon_close_url = $LinkOwner->get_edit_url();
+		}
+		elseif( $mode == 'import' )
+		{ // Get an url to return to WordPress Import page
+			global $admin_url;
+			$icon_close_url = $admin_url.'?ctrl=wpimportxml';
+		}
+		else
+		{ // Unknown case, leave empty url
+			$icon_close_url = '';
 		}
 
-		$Widget->global_icon( T_('Close file manager'), 'close', $LinkOwner->get_edit_url(), '', 3, 2, $close_link_params );
+		if( ! empty( $icon_close_url ) || ! empty( $close_link_params ) )
+		{ // Display a link to close file browser
+			$Widget->global_icon( T_('Close file manager'), 'close', $icon_close_url, '', 3, 2, $close_link_params );
+		}
 	}
 
 	$Widget->title = T_('File browser').get_manual_link('file_browser');
@@ -141,7 +138,7 @@ if( isset( $edited_User ) )
 						}
 					?>
 
-					<input type="submit" name="actionArray[filter]" class="SmallButton btn btn-default btn-sm"
+					<input type="submit" name="actionArray[filter]" class="SmallButton btn btn-warning btn-sm"
 						value="<?php echo format_to_output( T_('Apply'), 'formvalue' ) ?>" />
 
 					<?php
@@ -166,7 +163,7 @@ if( isset( $edited_User ) )
 				// $Form->hidden_ctrl();
 				$Form->hiddens_by_key( get_memorized() );
 
-				$rootlist = $FileRootCache->get_available_FileRoots();
+				$rootlist = $FileRootCache->get_available_FileRoots( get_param( 'root' ) );
 				if( count($rootlist) > 1 )
 				{ // provide list of roots to choose from
 					?>
@@ -350,7 +347,7 @@ if( isset( $edited_User ) )
 						else
 						{	// We can create both files and directories:
 							echo T_('New').': ';
-							echo '<select name="create_type" class="form-control input-sm">';
+							echo '<select name="create_type" class="form-control">';
 							echo '<option value="dir"';
 							if( isset($create_type) &&  $create_type == 'dir' )
 							{
@@ -371,7 +368,7 @@ if( isset( $edited_User ) )
 						if( isset( $create_name ) )
 						{
 							echo $create_name;
-						} ?>" size="15" class="form-control input-sm" />
+						} ?>" size="15" class="form-control" />
 					<input class="ActionButton btn btn-default" type="submit" value="<?php echo format_to_output( T_('Create!'), 'formvalue' ) ?>" />
 					<?php
 					$Form->end_form();
@@ -395,8 +392,11 @@ if( isset( $edited_User ) )
 						$Form->hidden( 'MAX_FILE_SIZE', $Settings->get( 'upload_maxkb' )*1024 );
 						$Form->hiddens_by_key( get_memorized('ctrl') );
 						echo '<div>';
-						echo '<input name="uploadfile[]" type="file" size="10" />';
-						echo '<input class="ActionButton btn btn-primary" type="submit" value="&gt; '.T_('Quick upload!').'" />';
+						echo '<span class="btn btn-default btn-file">';
+						echo T_('Choose File').'<input name="uploadfile[]" type="file" size="10" />';
+						echo '</span> ';
+						echo '<span>'.T_('No file selected').'</span> &nbsp; ';
+						echo '<input class="ActionButton btn btn-default" type="submit" value="&gt; '.T_('Quick upload!').'" />';
 						echo '</div>';
 					$Form->end_form();
 					echo '</div>';
@@ -418,4 +418,7 @@ if( typeof file_uploader_note_text != 'undefined' )
 </script>
 <?php
 	$Widget->disp_template_raw( 'block_end' );
+
+	// Print JS function to allow edit file properties on modal window
+	echo_file_properties();
 ?>

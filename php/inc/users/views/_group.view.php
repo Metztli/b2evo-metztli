@@ -3,25 +3,13 @@
  * This file implements the UI view for Users > Groups
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
- *
- * @version $Id: _group.view.php 349 2011-11-18 11:18:14Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -35,16 +23,17 @@ $usedgroups = $DB->get_col( 'SELECT grp_ID
 
 // Create result set:
 $SQL = new SQL();
-$SQL->SELECT( 'SQL_NO_CACHE grp_ID, grp_name' );
+$SQL->SELECT( 'SQL_NO_CACHE grp_ID, grp_name, grp_level, gset_value' );
 $SQL->FROM( 'T_groups' );
+$SQL->FROM_add( 'LEFT JOIN T_groups__groupsettings ON gset_grp_ID = grp_ID AND gset_name = "perm_admin"' );
 
 $count_SQL = new SQL();
 $count_SQL->SELECT( 'SQL_NO_CACHE COUNT(grp_ID)' );
 $count_SQL->FROM( 'T_groups' );
 
-$Results = new Results( $SQL->get(), 'grp_', 'A', $UserSettings->get( 'results_per_page' ), $count_SQL->get() );
+$Results = new Results( $SQL->get(), 'grp_', '---D', $UserSettings->get( 'results_per_page' ), $count_SQL->get() );
 
-$Results->title = T_('User groups');
+$Results->title = T_('Groups (for setting permissions)').get_manual_link( 'user-groups-tab' );
 
 /*
  * Table icons:
@@ -62,22 +51,50 @@ $Results->cols[] = array(
 		'td' => '$grp_ID$',
 	);
 
-if( $current_User->check_perm( 'users', 'edit', false ) )
-{	// User can edit this group
-	$Results->cols[] = array(
-			'th' => T_('Name'),
-			'order' => 'grp_name',
-			'td' => '<a href="'.$admin_url.'?ctrl=groups&amp;action=edit&amp;grp_ID=$grp_ID$"><b>$grp_name$</b></a>',
-		);
+// Check if user can edit users
+$has_perm_users_edit = $current_User->check_perm( 'users', 'edit', false );
+
+$Results->cols[] = array(
+		'th' => T_('Name'),
+		'order' => 'grp_name',
+		'td' => $has_perm_users_edit ?
+				'<a href="'.$admin_url.'?ctrl=groups&amp;action=edit&amp;grp_ID=$grp_ID$"><b>$grp_name$</b></a>' :
+				'$grp_name$',
+	);
+
+function grp_row_backoffice( $value )
+{
+	switch( $value )
+	{
+		case 'normal':
+			return T_( 'Normal' );
+		case 'restricted':
+			return T_( 'Restricted' );
+		case 'none':
+			return T_( 'No Access' );
+		case 'no_toolbar':
+		default:
+			return T_( 'No Toolbar' );
+	}
 }
-else
-{	// No permission to edit group
-	$Results->cols[] = array(
-			'th' => T_('Name'),
-			'order' => 'grp_name',
-			'td' => '$grp_name$',
-		);
-}
+$Results->cols[] = array(
+		'th' => T_('Back-office access'),
+		'order' => 'gset_value',
+		'td' => '%grp_row_backoffice( #gset_value# )%',
+		'th_class' => 'shrinkwrap',
+		'td_class' => 'shrinkwrap',
+	);
+
+$Results->cols[] = array(
+		'th' => T_('Level'),
+		'th_class' => 'shrinkwrap small',
+		'td_class' => 'shrinkwrap small'.( $has_perm_users_edit ? ' group_level_edit' : '' ),
+		'order' => 'grp_level',
+		'default_dir' => 'D',
+		'td' => $has_perm_users_edit ?
+				'<a href="#" rel="$grp_level$">$grp_level$</a>' :
+				'$grp_level$',
+	);
 
 function grp_actions( & $row )
 {
@@ -111,4 +128,20 @@ $Results->cols[] = array(
 // Display results:
 $Results->display();
 
+if( $current_User->check_perm( 'users', 'edit', false ) )
+{ // If user can edit the users - Init js to edit group level by AJAX
+	$group_levels = array();
+	for( $l = 0; $l <= 10; $l++ )
+	{
+		$group_levels[ $l ] = $l;
+	}
+	// Print JS to edit a group level
+	echo_editable_column_js( array(
+		'column_selector' => '.group_level_edit',
+		'ajax_url'        => get_secure_htsrv_url().'async.php?action=group_level_edit&'.url_crumb( 'grouplevel' ),
+		'options'         => $group_levels,
+		'new_field_name'  => 'new_group_level',
+		'ID_value'        => 'jQuery( ":first", jQuery( this ).parent() ).text()',
+		'ID_name'         => 'group_ID' ) );
+}
 ?>

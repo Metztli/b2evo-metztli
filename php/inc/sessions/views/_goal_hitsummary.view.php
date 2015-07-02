@@ -3,17 +3,17 @@
  * This file implements the UI view for the Goal Hit list.
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
- *
- * @version $Id: _goal_hitsummary.view.php 7368 2014-10-06 11:16:43Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
-global $blog, $admin_url, $AdminUI;
+global $blog, $admin_url;
 
 $final = param( 'final', 'integer', 0, true );
 $goal_name = param( 'goal_name', 'string', NULL, true );
@@ -71,9 +71,11 @@ if( count( $goal_rows ) && count( $hitgroup_array ) )
 
 	// Column mapping and colors
 	$col_mapping = array();
+	$chart['series_color'] = array();
 	foreach( $goal_rows as $g => $goal_row )
 	{
 		$col_mapping[ $goal_row->goal_ID ] = $g+1;
+		$chart['series_color'][ $g ] = str_replace( '#', '', $goal_row->gcat_color );
 		$chart['chart_data'][ $g+1 ] = array();
 		$chart['link_data']['params'][ $g+1 ] = array( $goal_row->goal_name );
 	}
@@ -100,20 +102,13 @@ if( count( $goal_rows ) && count( $hitgroup_array ) )
 		array_unshift( $chart['chart_data'][ $g+1 ], $goal_row->goal_name );
 	}
 
-	// Include common chart properties:
-	require dirname(__FILE__).'/inc/_bar_chart.inc.php';
-
-	// Colors
-	$chart['series_color'] = array();
-	foreach( $goal_rows as $g => $goal_row )
-	{
-		$chart['series_color'][ $g ] = str_replace( '#', '', $goal_row->gcat_color );
-	}
+	// Chart params
+	$chart['canvas_bg'] = array( 'width' => 780, 'height' => 355 );
 
 	// Print out chart
 	echo '<div class="center">';
-	load_funcs('_ext/_swfcharts.php');
-	DrawChart( $chart );
+	load_funcs('_ext/_canvascharts.php');
+	CanvasBarsChart( $chart );
 	echo '</div>';
 }
 
@@ -154,7 +149,7 @@ function filter_goal_hitsummary( & $Form )
 	$Form->checkbox_basic_input( 'final', get_param('final'), T_('Final') );
 	$Form->text_input( 'goal_name', get_param('goal_name'), 20, T_('Goal names starting with'), '', array( 'maxlength'=>50 ) );
 
-	$GoalCategoryCache = & get_GoalCategoryCache( T_('All') );
+	$GoalCategoryCache = & get_GoalCategoryCache( NT_('All') );
 	$GoalCategoryCache->load_all();
 	$Form->select_input_object( 'goal_cat', get_param('goal_cat'), $GoalCategoryCache, T_('Goal category'), array( 'allow_none' => true ) );
 }
@@ -162,110 +157,113 @@ $Table->filter_area = array(
 	'callback' => 'filter_goal_hitsummary',
 	'url_ignore' => 'final,goal_name',
 	'presets' => array(
-		'all' => array( T_('All'), '?ctrl=goals&amp;tab3=stats' ),
-		'final' => array( T_('Final'), '?ctrl=goals&amp;tab3=stats&amp;final=1' ),
+		'all' => array( T_('All'), '?ctrl=goals&amp;tab3=stats&amp;blog='.$blog ),
+		'final' => array( T_('Final'), '?ctrl=goals&amp;tab3=stats&amp;final=1&amp;blog='.$blog ),
 		)
 	);
 
 
-echo '<div class="results">';;
+global $AdminUI;
+$results_template= $AdminUI->get_template( 'Results' );
+
+echo $results_template['before'];
 
 $Table->display_init();
 
 // TITLE / COLUMN HEADERS:
 $Table->display_head();
 
-// START OF LIST/TABLE:
-$Table->display_list_start();
-
 if( empty( $hitgroup_array ) )
 { // No records
 	$Table->total_pages = 0;
 }
-else
+
+// START OF LIST/TABLE:
+$Table->display_list_start();
+
+if( $Table->total_pages > 0 )
 { // Display table
 
-// DISPLAY COLUMN HEADERS:
-$Table->display_col_headers();
+	// DISPLAY COLUMN HEADERS:
+	$Table->display_col_headers();
 
-// BODY START:
-$Table->display_body_start();
+	// BODY START:
+	$Table->display_body_start();
 
-$goal_total = array();
-foreach( $hitgroup_array as $day => $hitday_array )
-{
-	$Table->display_line_start();
+	$goal_total = array();
+	foreach( $hitgroup_array as $day => $hitday_array )
+	{
+		$Table->display_line_start();
 
-	$Table->display_col_start();
-	echo $day;
-	$Table->display_col_end();
-
-	$date_param = rawurlencode( date( locale_datefmt(), strtotime( $day ) ) );
-
-	$line_total = 0;
-	foreach( $goal_rows as $goal_row )
-	{ // For each named goal, display count:
-		if( ! isset( $goal_total[ $goal_row->goal_ID ] ) )
-		{
-			$goal_total[ $goal_row->goal_ID ] = 0;
-		}
 		$Table->display_col_start();
-		if( isset( $hitday_array[ $goal_row->goal_ID ] ) )
+		echo $day;
+		$Table->display_col_end();
+
+		$date_param = rawurlencode( date( locale_datefmt(), strtotime( $day ) ) );
+
+		$line_total = 0;
+		foreach( $goal_rows as $goal_row )
+		{ // For each named goal, display count:
+			if( ! isset( $goal_total[ $goal_row->goal_ID ] ) )
+			{
+				$goal_total[ $goal_row->goal_ID ] = 0;
+			}
+			$Table->display_col_start();
+			if( isset( $hitday_array[ $goal_row->goal_ID ] ) )
+			{
+				echo '<a href="'.$admin_url.'?blog='.$blog.'&amp;ctrl=stats&amp;tab=goals&amp;tab3=hits&amp;datestartinput='.$date_param.'&amp;datestopinput='.$date_param.'&amp;goal_name='.rawurlencode( $goal_row->goal_name ).'">'.$hitday_array[ $goal_row->goal_ID ].'</a>';
+				$line_total += $hitday_array[ $goal_row->goal_ID ];
+				$goal_total[ $goal_row->goal_ID ] += $hitday_array[ $goal_row->goal_ID ];
+			}
+			else
+			{
+				echo '&nbsp;';
+			}
+			$Table->display_col_end();
+		}
+
+		$Table->display_col_start();
+		echo $line_total;
+		$Table->display_col_end();
+
+		$Table->display_line_end();
+	}
+
+	// Totals row:
+	echo $Table->params['total_line_start'];
+
+	echo str_replace( '$class$', '', $Table->params['total_col_start_first'] );
+	echo T_('Total');
+	echo $Table->params['total_col_end'];
+
+	$all_total = 0;
+	foreach( $goal_rows as $goal_row )
+	{ // For each named goal, display total of count:
+		echo str_replace( '$class_attrib$', 'class="right"', $Table->params['total_col_start'] );
+		if( ! empty( $goal_total[ $goal_row->goal_ID ] ) )
 		{
-			echo '<a href="'.$admin_url.'?blog='.$blog.'&amp;ctrl=stats&amp;tab=goals&amp;tab3=hits&amp;datestartinput='.$date_param.'&amp;datestopinput='.$date_param.'&amp;goal_name='.rawurlencode( $goal_row->goal_name ).'">'.$hitday_array[ $goal_row->goal_ID ].'</a>';
-			$line_total += $hitday_array[ $goal_row->goal_ID ];
-			$goal_total[ $goal_row->goal_ID ] += $hitday_array[ $goal_row->goal_ID ];
+			echo '<a href="?blog=0&amp;ctrl=stats&amp;tab=goals&amp;tab3=hits&amp;goal_name='.rawurlencode( $goal_row->goal_name ).'">'.$goal_total[ $goal_row->goal_ID ].'</a>';
+			$all_total += $goal_total[ $goal_row->goal_ID ];
 		}
 		else
 		{
 			echo '&nbsp;';
 		}
-		$Table->display_col_end();
+		echo $Table->params['total_col_end'];
 	}
 
-	$Table->display_col_start();
-	echo $line_total;
-	$Table->display_col_end();
-
-	$Table->display_line_end();
-}
-
-// Totals row:
-echo $Table->params['total_line_start'];
-
-echo str_replace( '$class$', '', $Table->params['total_col_start_first'] );
-echo T_('Total');
-echo $Table->params['total_col_end'];
-
-$all_total = 0;
-foreach( $goal_rows as $goal_row )
-{ // For each named goal, display total of count:
-	echo str_replace( '$class_attrib$', 'class="right"', $Table->params['total_col_start'] );
-	if( ! empty( $goal_total[ $goal_row->goal_ID ] ) )
-	{
-		echo '<a href="?blog=0&amp;ctrl=stats&amp;tab=goals&amp;tab3=hits&amp;goal_name='.rawurlencode( $goal_row->goal_name ).'">'.$goal_total[ $goal_row->goal_ID ].'</a>';
-		$all_total += $goal_total[ $goal_row->goal_ID ];
-	}
-	else
-	{
-		echo '&nbsp;';
-	}
+	echo str_replace( '$class$', 'right', $Table->params['total_col_start_last'] );
+	echo $all_total;
 	echo $Table->params['total_col_end'];
-}
 
-echo str_replace( '$class$', 'right', $Table->params['total_col_start_last'] );
-echo $all_total;
-echo $Table->params['total_col_end'];
+	echo $this->params['total_line_end'];
 
-echo $this->params['total_line_end'];
-
-// BODY END:
-$Table->display_body_end();
-
+	// BODY END:
+	$Table->display_body_end();
 }
 
 $Table->display_list_end();
 
-echo '</div>';
+echo $results_template['after'];
 
 ?>

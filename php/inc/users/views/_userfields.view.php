@@ -1,33 +1,16 @@
 <?php
 /**
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2009-2014 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2009-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2009 by The Evo Factory - {@link http://www.evofactory.com/}.
- *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * The Evo Factory grants Francois PLANQUE the right to license
- * The Evo Factory's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
  *
  * @package evocore
  *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author evofactory-test
- * @author fplanque: Francois Planque.
- *
- * @version  $Id: _userfields.view.php 6135 2014-03-08 07:54:05Z manuel $
+ * @version  $Id: _userfields.view.php 8881 2015-05-06 10:26:02Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -144,9 +127,17 @@ $Results->ID_col = 'ufdf_ID';
  * Group columns:
  */
 $group_td_colspan = $current_User->check_perm( 'users', 'edit', false ) ? -2 : 0;
+if( $current_User->check_perm( 'users', 'edit' ) )
+{ // We have permission to modify:
+	$td_group_name = '<a href="?ctrl=userfieldsgroups&amp;action=edit&amp;ufgp_ID=$ufgp_ID$">$ufgp_name$</a>';
+}
+else
+{
+	$td_group_name = '$ufgp_name$';
+}
 $Results->grp_cols[] = array(
 						'td_colspan' => $group_td_colspan,
-						'td' => '<a href="?ctrl=userfieldsgroups&amp;action=edit&amp;ufgp_ID=$ufgp_ID$">$ufgp_name$</a>',
+						'td' => '<b>'.$td_group_name.'</b>',
 					);
 if( $current_User->check_perm( 'users', 'edit', false ) )
 {	// We have permission to modify:
@@ -186,9 +177,26 @@ if( $current_User->check_perm( 'users', 'edit', false ) )
 /*
  * Data columns:
  */
+function ufdf_td_name( $ufdf_ID, $ufdf_name, $ufdf_icon_name, $ufdf_code )
+{
+	global $current_User;
+
+	$field_icon = '<span class="uf_icon_block ufld_'.$ufdf_code.' ufld__textcolor">'
+			.( empty( $ufdf_icon_name ) ? '' : '<span class="'.$ufdf_icon_name.'"></span>' )
+		.'</span>';
+
+	if( $current_User->check_perm( 'users', 'edit' ) )
+	{ // We have permission to modify:
+		return $field_icon.'<a href="'.regenerate_url( 'action', 'ufdf_ID='.$ufdf_ID.'&amp;action=edit' ).'"><strong>'.T_( $ufdf_name ).'</strong></a>';
+	}
+	else
+	{
+		return $field_icon.'<strong>'.T_( $ufdf_name ).'</strong>';
+	}
+}
 $Results->cols[] = array(
 		'th' => T_('Name'),
-		'td' => '<a href="%regenerate_url( \'action\', \'ufdf_ID=$ufdf_ID$&amp;action=edit\' )%"><strong>%T_(#ufdf_name#)%</strong></a>',
+		'td' => '%ufdf_td_name( #ufdf_ID#, #ufdf_name#, #ufdf_icon_name#, #ufdf_code# )%',
 	);
 
 $Results->cols[] = array(
@@ -208,7 +216,7 @@ $Results->cols[] = array(
 		'td_class' => 'center',
 	);
 
-if( $current_User->check_perm( 'users', 'edit', false ) )
+if( $current_User->check_perm( 'users', 'edit' ) )
 {	// We have permission to modify:
 	function order_actions( & $row )
 	{

@@ -4,26 +4,15 @@
  * Alternate admin skins should derive from this class.
  *
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
- *
- * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
  *
  * @package admin-skin
  * @subpackage evo
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author blueyed: Daniel HAHLER
- *
- * @version $Id: _adminUI.class.php 6429 2014-04-09 04:11:21Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -46,7 +35,7 @@ class AdminUI extends AdminUI_general
 	 */
 	function init_templates()
 	{
-		global $Hit;
+		global $Hit, $Messages;
 
 		// This is included before controller specifc require_css() calls:
 		require_css( 'basic_styles.css', 'rsc_url' ); // the REAL basic styles
@@ -68,6 +57,11 @@ class AdminUI extends AdminUI_general
 
 		require_js( '#jquery#', 'rsc_url' );
 		require_js( 'jquery/jquery.raty.min.js', 'rsc_url' );
+
+		// Set css classes for messages
+		$Messages->set_params( array(
+				'class_outerdiv' => 'action_messages',
+			) );
 	}
 
 
@@ -81,8 +75,9 @@ class AdminUI extends AdminUI_general
 		global $UserSettings, $current_User;
 
 		$r = '';
-		if( $UserSettings->get( 'show_breadcrumbs', $current_User->ID ) ) {
-			$r = $this->breadcrumbpath_get_html();
+		if( $UserSettings->get( 'show_breadcrumbs', $current_User->ID ) )
+		{
+			$r .= $this->breadcrumbpath_get_html();
 		}
 
 		if( $UserSettings->get( 'show_menu', $current_User->ID) )
@@ -118,7 +113,7 @@ class AdminUI extends AdminUI_general
 			."\n\n";
 
 		// Display info & error messages
-		$r .= $Messages->display( NULL, NULL, false, 'action_messages' );
+		$r .= $Messages->display( NULL, NULL, false );
 
 		return $r;
 	}
@@ -173,9 +168,10 @@ class AdminUI extends AdminUI_general
 	 *
 	 * @param string Name of the template ('main', 'sub')
 	 * @param integer Nesting level (start at 0)
+	 * @param boolean TRUE to die on unknown template name
 	 * @return array Associative array which defines layout and optionally properties.
 	 */
-	function get_template( $name, $depth = 0 )
+	function get_template( $name, $depth = 0, $die_on_unknown = false )
 	{
 		global $rsc_url;
 
@@ -198,7 +194,7 @@ class AdminUI extends AdminUI_general
 							."</tr></table>\n"
 							.$pb_begin2,
 
-						'empty' => $pb_begin1.$pb_begin2,
+						'empty' => $pb_begin1.'<span style="float:right;margin-bottom:6px">$global_icons$</span>'.$pb_begin2,
 
 						'beforeEach' => '<td class="option">',
 						'afterEach'  => '</td>',
@@ -232,8 +228,11 @@ class AdminUI extends AdminUI_general
 														</div></div></div>'."\n",
 					'filters_start' => '<div class="filters">',
 					'filters_end' => '</div>',
+					'messages_start' => '<div class="messages">',
+					'messages_end' => '</div>',
+					'messages_separator' => '<br />',
 					'list_start' => '<div class="table_scroll">'."\n"
-					               .'<table class="grouped" cellspacing="0">'."\n",
+					               .'<table class="grouped $list_class$" cellspacing="0" $list_attrib$>'."\n",
 						'head_start' => '<thead>'."\n",
 							'line_start_head' => '<tr class="clickable_headers">',  // TODO: fusionner avec colhead_start_first; mettre a jour admin_UI_general; utiliser colspan="$headspan$"
 							'colhead_start' => '<th $class_attrib$ $title_attrib$>',
@@ -319,6 +318,7 @@ class AdminUI extends AdminUI_general
 					'labelempty' => '<div class="label"></div>', // so that IE6 aligns DIV.input correcctly
 					'inputstart' => '<div class="input">',
 					'infostart' => '<div class="info">',
+					'infoend' => "</div>\n",
 					'inputend' => "</div>\n",
 					'fieldend' => "</fieldset>\n\n",
 					'buttonsstart' => '<fieldset><div class="input">',
@@ -348,6 +348,7 @@ class AdminUI extends AdminUI_general
 					'labelempty' => '<div class="label"></div>', // so that IE6 aligns DIV.input correcctly
 					'inputstart' => '<div class="input">',
 					'infostart' => '<div class="info">',
+					'infoend' => "</div>\n",
 					'inputend' => "</div>\n",
 					'fieldend' => "</fieldset>\n\n",
 					'buttonsstart' => '<fieldset><div class="input">',
@@ -396,7 +397,7 @@ class AdminUI extends AdminUI_general
 
 			default:
 				// Delegate to parent class:
-				return parent::get_template( $name, $depth );
+				return parent::get_template( $name, $depth, $die_on_unknown );
 		}
 	}
 

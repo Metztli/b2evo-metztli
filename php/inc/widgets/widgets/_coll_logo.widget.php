@@ -3,25 +3,13 @@
  * This file implements the xyz Widget class.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: _coll_logo.widget.php 6135 2014-03-08 07:54:05Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -47,11 +35,22 @@ class coll_logo_Widget extends ComponentWidget
 
 
 	/**
+	 * Get help URL
+	 *
+	 * @return string URL
+	 */
+	function get_help_url()
+	{
+		return get_manual_url( 'logo-title-widget' );
+	}
+
+
+	/**
 	 * Get name of widget
 	 */
 	function get_name()
 	{
-		return T_('Image / Blog logo');
+		return T_('Logo title');
 	}
 
 
@@ -79,7 +78,7 @@ class coll_logo_Widget extends ComponentWidget
 	 */
 	function get_desc()
 	{
-		return T_('Include an image/logo from the blog\'s file root.');
+		return T_('Include a logo (as a title replacement).');
 	}
 
 
@@ -92,12 +91,42 @@ class coll_logo_Widget extends ComponentWidget
 	function get_param_definitions( $params )
 	{
 		$r = array_merge( array(
+				'image_source' => array(
+					'label' => T_('Image source'),
+					'note' => '',
+					'type' => 'radio',
+					'options' => array(
+							array( 'skin', T_('Skin folder') ),
+							array( 'coll', T_('Collection File Root') ),
+							array( 'shared', T_('Shared File Root') ) ),
+					'defaultvalue' => 'coll',
+				),
 				'logo_file' => array(
 					'label' => T_('Image filename'),
-					'note' => T_('The image/logo file must be uploaded to the root of the Blog\'s media dir'),
+					'note' => T_('Relative to the root of the selected source.'),
 					'defaultvalue' => 'logo.png',
-					'valid_pattern' => array( 'pattern'=>'~^[a-z0-9_\-][a-z0-9_.\-]*$~i',
+					'valid_pattern' => array( 'pattern'=>'~^[a-z0-9_\-/][a-z0-9_.\-/]*$~i',
 																		'error'=>T_('Invalid filename.') ),
+				),
+				'width' => array(
+					'label' => T_('Image width'),
+					'note' => T_('pixels'),
+					'type' => 'integer',
+					'defaultvalue' => '',
+					'allow_empty' => true,
+				),
+				'height' => array(
+					'label' => T_('Image height'),
+					'note' => T_('pixels'),
+					'type' => 'integer',
+					'defaultvalue' => '',
+					'allow_empty' => true,
+				),
+				'check_file' => array(
+					'label' => T_('Check file'),
+					'note' => T_('Check if file exists. If not, no IMG tag will be created.'),
+					'type' => 'checkbox',
+					'defaultvalue' => false,
 				),
 			), parent::get_param_definitions( $params )	);
 
@@ -115,14 +144,53 @@ class coll_logo_Widget extends ComponentWidget
 	{
 		global $Blog;
 
+		switch( $this->disp_params['image_source'] )
+		{
+			case 'skin':
+				global $skins_url, $skins_path;
+				$skin_folder = $Blog->get_skin_folder();
+				$image_url = $skins_url.$skin_folder.'/';
+				$image_path = $skins_path.$skin_folder.'/';
+				break;
+
+			case 'shared':
+				global $media_url, $media_path;
+				$image_url = $media_url.'shared/';
+				$image_path = $media_path.'shared/';
+				break;
+
+			case 'coll':
+			default:
+				$image_url = $Blog->get_media_url();
+				$image_path = $Blog->get_media_dir();
+				break;
+		}
+
+		if( $this->disp_params['check_file'] && ! file_exists( $image_path.$this->disp_params['logo_file'] ) )
+		{ // Logo file doesn't exist, Exit here because of widget setting requires this
+			return true;
+		}
+
 		$this->init_display( $params );
 
 		// Collection logo:
 		echo $this->disp_params['block_start'];
 
-		$title = '<a href="'.$Blog->get( 'url', 'raw' ).'">'
-							.'<img src="'.$Blog->get_media_url().$this->disp_params['logo_file'].'" alt="'.$Blog->dget( 'name', 'htmlattr' ).'" />'
+		$image_attrs = '';
+		if( ! empty( $this->disp_params['width'] ) )
+		{ // Image width
+			$image_attrs .= ' width="'.intval( $this->disp_params['width'] ).'"';
+		}
+		if( ! empty( $this->disp_params['height'] ) )
+		{ // Image height
+			$image_attrs .= ' height="'.intval( $this->disp_params['height'] ).'"';
+		}
+
+		$title = '<a href="'.$Blog->get( 'url' ).'">'
+							.'<img src="'.$image_url.$this->disp_params['logo_file'].'" alt="'.$Blog->dget( 'name', 'htmlattr' ).'"'.$image_attrs.' />'
 							.'</a>';
+
+		// Display as a title:
 		$this->disp_title( $title );
 
 		echo $this->disp_params['block_end'];

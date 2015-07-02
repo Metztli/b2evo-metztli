@@ -3,33 +3,14 @@
  * This file implements various File handling functions.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author blueyed: Daniel HAHLER.
- * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: _file.funcs.php 8181 2015-02-06 07:52:35Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -514,15 +495,44 @@ function fix_filename_length( $filename, $remove_before_index )
  *
  * @param string file name (by reference) - this file name will be processed
  * @param boolean force validation ( replace not valid characters to '_' without warning )
+ * @param boolean Crop long file name to $filename_max_length
+ * @param object FileRoot
+ * @param string Path in the FileRoot
  * @return error message if the file name is not valid, false otherwise
  */
-function process_filename( & $filename, $force_validation = false )
+function process_filename( & $filename, $force_validation = false, $autocrop_long_file = false, $FileRoot = NULL, $path = '' )
 {
-	global $filename_max_length;
-
 	if( empty( $filename ) )
 	{
 		return T_( 'Empty file name is not valid.' );
+	}
+
+	if( $autocrop_long_file && ! empty( $FileRoot ) )
+	{ // Crop long file names
+		global $filename_max_length, $Messages;
+
+		if( ! empty( $filename_max_length ) &&
+				$filename_max_length > 8 &&
+				strlen( $filename ) > $filename_max_length )
+		{ // Limit file name by $filename_max_length
+			$new_file_ext_pos = strrpos( $filename, '.' );
+			$new_file_name = substr( $filename, 0, $new_file_ext_pos );
+			$new_file_name = trim( substr( $new_file_name, 0, $filename_max_length - 8 ) );
+			$new_file_ext = substr( $filename, $new_file_ext_pos - strlen( $filename ) + 1 );
+
+			$fnum = 1;
+			$FileCache = & get_FileCache();
+			do
+			{ // Make file name unique
+				$filename = $new_file_name.'-'.$fnum.'.'.$new_file_ext;
+				$newFile = & $FileCache->get_by_root_and_path( $FileRoot->type, $FileRoot->in_type_ID, trailing_slash( $path ).$filename, true );
+				$fnum++;
+			}
+			while( $newFile->exists() );
+			$filename = $newFile->get( 'name' );
+
+			$Messages->add( T_('The filename was too long. It has been shortened.'), 'warning' );
+		}
 	}
 
 	if( $force_validation )
@@ -534,7 +544,7 @@ function process_filename( & $filename, $force_validation = false )
 	}
 
 	// check if the file name contains consecutive dots, and replace them with one dot without warning ( keep only one dot '.' instead of '...' )
-	$filename = preg_replace( '/\.(\.)+/', '.', evo_strtolower( $filename ) );
+	$filename = preg_replace( '/\.(\.)+/', '.', utf8_strtolower( $filename ) );
 
 	if( $error_filename = validate_filename( $filename ) )
 	{ // invalid file name
@@ -597,7 +607,7 @@ function validate_filename( $filename, $allow_locked_filetypes = NULL )
 			}
 			else
 			{	// Filename hasn't an allowed extension
-				return sprintf( T_('&laquo;%s&raquo; is a locked extension.'), evo_htmlentities($match[1]) );
+				return sprintf( T_('&laquo;%s&raquo; is a locked extension.'), htmlentities($match[1]) );
 			}
 		}
 		else
@@ -672,15 +682,18 @@ function check_rename( & $newname, $is_dir, $dir_path, $allow_locked_filetypes )
 	{
 		if( $error_dirname = validate_dirname( $newname ) )
 		{ // invalid directory name
+			syslog_insert( sprintf( 'Invalid name is detected for folder %s', '<b>'.$newname.'</b>' ), 'warning', 'file' );
 			return $error_dirname;
 		}
 		if( $dirpath_max_length < ( strlen( $dir_path ) + strlen( $newname ) ) )
 		{ // The new path length would be too long
+			syslog_insert( sprintf( 'The renamed file %s is too long for the folder', '<b>'.$newname.'</b>' ), 'warning', 'file' );
 			return T_('The new name is too long for this folder.');
 		}
 	}
 	elseif( $error_filename = validate_filename( $newname, $allow_locked_filetypes ) )
 	{ // Not a file name or not an allowed extension
+		syslog_insert( sprintf( 'The renamed file %s has an unrecognized extension', '<b>'.$newname.'</b>' ), 'warning', 'file' );
 		return $error_filename;
 	}
 
@@ -690,9 +703,21 @@ function check_rename( & $newname, $is_dir, $dir_path, $allow_locked_filetypes )
 
 /**
  * Return a string with upload restrictions ( allowed extensions, max file size )
+ *
+ * @param array Params
  */
-function get_upload_restriction()
+function get_upload_restriction( $params = array() )
 {
+	$params = array_merge( array(
+			'block_before'       => '',
+			'block_after'        => '<br />',
+			'block_separator'    => '<br />',
+			'title_before'       => '<strong>',
+			'title_after'        => '</strong>: ',
+			'ext_separator'      => ', ',
+			'ext_last_separator' => ' &amp; ',
+		), $params );
+
 	global $DB, $Settings, $current_User;
 	$restrictNotes = array();
 
@@ -717,16 +742,16 @@ function get_upload_restriction()
 	// into array:
 	$allowed_extensions = preg_split( '~\s+~', $allowed_extensions, -1, PREG_SPLIT_NO_EMPTY );
 	// readable:
-	$allowed_extensions = implode_with_and($allowed_extensions);
+	$allowed_extensions = implode_with_and( $allowed_extensions, $params['ext_separator'], $params['ext_last_separator'] );
 
-	$restrictNotes[] = '<strong>'.T_('Allowed file extensions').'</strong>: '.$allowed_extensions;
+	$restrictNotes[] = $params['title_before'].T_('Allowed file extensions').$params['title_after'].$allowed_extensions;
 
 	if( $Settings->get( 'upload_maxkb' ) )
 	{ // We want to restrict on file size:
-		$restrictNotes[] = '<strong>'.T_('Maximum allowed file size').'</strong>: '.bytesreadable( $Settings->get( 'upload_maxkb' )*1024 );
+		$restrictNotes[] = $params['title_before'].T_('Maximum allowed file size').$params['title_after'].bytesreadable( $Settings->get( 'upload_maxkb' ) * 1024 );
 	}
 
-	return implode( '<br />', $restrictNotes ).'<br />';
+	return $params['block_before'].implode( $params['block_separator'], $restrictNotes ).$params['block_after'];
 }
 
 
@@ -754,11 +779,13 @@ function rel_path_to_base( $path )
 		$r = basename($path).( is_dir($path) ? '/' : '' );
 	}
 
+	/* fp> The following MUST be moved to the caller if needed:
 	if( $debug )
 	{
 		$r .= ' [DEBUG: '.$path.']';
 	}
-
+	*/
+	
 	return $r;
 }
 
@@ -836,14 +863,14 @@ function get_directory_tree( $Root = NULL, $ads_full_path = NULL, $ads_selected_
 		$r['string'] = '<span class="folder_in_tree"';
 
 		if( $ads_full_path == $ads_selected_full_path )
-		{	// This is the current open path
-	 		$r['opened'] = true;
+		{ // This is the current open path
+			$r['opened'] = true;
 
-	 		if( $fm_highlight && $fm_highlight == substr($rds_rel_path, 0, -1) )
-	 		{
-	 			$r['string'] .= ' id="fm_highlighted"';
-	 			unset($fm_highlight);
-	 		}
+			if( $fm_highlight && $fm_highlight == substr($rds_rel_path, 0, -1) )
+			{
+				$r['string'] .= ' id="fm_highlighted"';
+				unset($fm_highlight);
+			}
 		}
 		else
 		{
@@ -987,20 +1014,27 @@ function evo_mkdir( $dir_path, $chmod = NULL, $recursive = false )
 /**
  * Copy directory recursively or one file
  *
- * @param mixed Source path
- * @param mixed Destination path
+ * @param string Source path
+ * @param string Destination path
+ * @param string Name of folder name for the copied folder, Use NULL to get a folder name from source
+ * @param array What directories should be excluded
+ * @return boolean TRUE on success, FALSE when no permission
  */
-function copy_r( $source, $dest )
+function copy_r( $source, $dest, $new_folder_name = NULL, $exclude_dirs = array() )
 {
 	$result = true;
 
 	if( is_dir( $source ) )
 	{ // Copy directory recusively
+		if( in_array( basename( $source ), $exclude_dirs ) )
+		{ // Don't copy this folder
+			return true;
+		}
 		if( ! ( $dir_handle = @opendir( $source ) ) )
 		{ // Unable to open dir
 			return false;
 		}
-		$source_folder = basename( $source );
+		$source_folder = is_null( $new_folder_name ) ? basename( $source ) : $new_folder_name;
 		if( ! mkdir_r( $dest.'/'.$source_folder ) )
 		{ // No rights to create a dir
 			return false;
@@ -1011,7 +1045,7 @@ function copy_r( $source, $dest )
 			{
 				if( is_dir( $source.'/'.$file ) )
 				{ // Copy the files of subdirectory
-					$result = copy_r( $source.'/'.$file, $dest.'/'.$source_folder ) && $result;
+					$result = copy_r( $source.'/'.$file, $dest.'/'.$source_folder, NULL, $exclude_dirs ) && $result;
 				}
 				else
 				{ // Copy one file of the directory
@@ -1091,14 +1125,14 @@ if ( !function_exists('sys_get_temp_dir'))
  */
 function file_controller_build_tabs()
 {
-	global $AdminUI, $current_User, $blog;
+	global $AdminUI, $current_User, $blog, $admin_url;
 
 	$AdminUI->add_menu_entries(
 			'files',
 			array(
 					'browse' => array(
 						'text' => T_('Browse'),
-						'href' => regenerate_url( 'ctrl', 'ctrl=files' ) ),
+						'href' => $admin_url.'?ctrl=files' ),
 					)
 				);
 
@@ -1109,7 +1143,7 @@ function file_controller_build_tabs()
 				array(
 						'upload' => array(
 							'text' => /* TRANS: verb */ T_('Advanced Upload'),
-							'href' => regenerate_url( 'ctrl', 'ctrl=upload' ) ),
+							'href' => $admin_url.'?ctrl=upload' ),
 					)
 			);
 	}
@@ -1121,7 +1155,7 @@ function file_controller_build_tabs()
 			array(
 				'settings' => array(
 					'text' => T_('Settings'),
-					'href' => '?ctrl=fileset',
+					'href' => $admin_url.'?ctrl=fileset',
 					)
 				)
 			);
@@ -1131,29 +1165,32 @@ function file_controller_build_tabs()
 			array(
 					'settings' => array(
 						'text' => T_('Settings'),
-						'href' => '?ctrl=fileset' ),
+						'href' => $admin_url.'?ctrl=fileset' ),
 					'filetypes' => array(
 						'text' => T_('File types'),
-						'href' => '?ctrl=filetypes' ),
+						'href' => $admin_url.'?ctrl=filetypes' ),
 				)
 			);
 	}
 
 	if( $current_User->check_perm( 'options', 'edit' ) )
-	{	// Permission to edit settings:
+	{ // Permission to edit settings:
 		$AdminUI->add_menu_entries(
 			'files',
 			array(
 				'moderation' => array(
 					'text' => T_('Moderation'),
-					'href' => '?ctrl=filemod',
+					'href' => $admin_url.'?ctrl=filemod',
 					'entries' => array(
+						'likes' => array(
+							'text' => T_('Likes'),
+							'href' => $admin_url.'?ctrl=filemod&amp;tab=likes' ),
 						'suspicious' => array(
 							'text' => T_('Suspicious'),
-							'href' => '?ctrl=filemod&amp;tab=suspicious' ),
+							'href' => $admin_url.'?ctrl=filemod&amp;tab=suspicious' ),
 						'duplicates' => array(
 							'text' => T_('Duplicates'),
-							'href' => '?ctrl=filemod&amp;tab=duplicates' ),
+							'href' => $admin_url.'?ctrl=filemod&amp;tab=duplicates' ),
 						)
 					)
 				)
@@ -1217,6 +1254,11 @@ function rename_cachefolders( $oldname, $newname )
 function delete_cachefolders( $Log = NULL )
 {
 	global $media_path, $Settings;
+
+	if( !isset( $Settings ) )
+	{	// This function can be called on install process before initialization of $Settings, Exit here
+		return false;
+	}
 
 	// Get this, just in case someone comes up with a different naming:
 	$evocache_foldername = $Settings->get( 'evocache_foldername' );
@@ -1340,10 +1382,10 @@ function process_upload( $root_ID, $path, $create_path_dirs = false, $check_perm
 	}
 
 	// Get param arrays for all uploaded files:
-	$uploadfile_title = param( 'uploadfile_title', 'array/string', array() );
-	$uploadfile_alt = param( 'uploadfile_alt', 'array/string', array() );
-	$uploadfile_desc = param( 'uploadfile_desc', 'array/string', array() );
-	$uploadfile_name = param( 'uploadfile_name', 'array/string', array() );
+	$uploadfile_title = param( 'uploadfile_title', 'array:string', array() );
+	$uploadfile_alt = param( 'uploadfile_alt', 'array:string', array() );
+	$uploadfile_desc = param( 'uploadfile_desc', 'array:string', array() );
+	$uploadfile_name = param( 'uploadfile_name', 'array:string', array() );
 
 	// LOOP THROUGH ALL UPLOADED FILES AND PROCCESS EACH ONE:
 	foreach( $_FILES['uploadfile']['name'] as $lKey => $lName )
@@ -1437,9 +1479,10 @@ function process_upload( $root_ID, $path, $create_path_dirs = false, $check_perm
 		// Use new name on server if specified:
 		$newName = !empty( $uploadfile_name[ $lKey ] ) ? $uploadfile_name[ $lKey ] : $lName;
 		// validate file name
-		if( $error_filename = process_filename( $newName, !$warn_invalid_filenames ) )
+		if( $error_filename = process_filename( $newName, !$warn_invalid_filenames, true, $fm_FileRoot, $path ) )
 		{ // Not a valid file name or not an allowed extension:
 			$failedFiles[$lKey] = $error_filename;
+			syslog_insert( sprintf( 'The uploaded file %s has an unrecognized extension', '<b>'.$newName.'</b>' ), 'warning', 'file' );
 			// Abort upload for this file:
 			continue;
 		}
@@ -1508,6 +1551,7 @@ function process_upload( $root_ID, $path, $create_path_dirs = false, $check_perm
 		}
 		elseif( ! move_uploaded_file( $_FILES['uploadfile']['tmp_name'][$lKey], $newFile->get_full_path() ) )
 		{
+			syslog_insert( sprintf( 'File %s could not be uploaded', '<b>'.$newFile->get_name().'</b>' ), 'warning', 'file', $newFile->ID );
 			$failedFiles[$lKey] = T_('An unknown error occurred when moving the uploaded file on the server.');
 			// Abort upload for this file:
 			continue;
@@ -1557,6 +1601,7 @@ function process_upload( $root_ID, $path, $create_path_dirs = false, $check_perm
 
 		// Store File object into DB:
 		$newFile->dbsave();
+		syslog_insert( sprintf( 'File %s was uploaded', '<b>'.$newFile->get_name().'</b>' ), 'info', 'file', $newFile->ID );
 		$uploadedFiles[] = $newFile;
 	}
 
@@ -1788,6 +1833,7 @@ function check_file_exists( $fm_FileRoot, $path, $newName, $image_info = NULL )
 			$newName = fix_filename_length( $newName, strrpos( $newName, '-' ) );
 			if( $error_filename = process_filename( $newName, true ) )
 			{ // The file name is still not valid
+				syslog_insert( sprintf( 'Invalid file name %s has found during file exists check', '<b>'.$newName.'</b>' ), 'warning', 'file' );
 				debug_die( 'Invalid file name has found during file exists check: '.$error_filename );
 			}
 		}
@@ -1805,7 +1851,7 @@ function check_file_exists( $fm_FileRoot, $path, $newName, $image_info = NULL )
  * @param integer remove files older than the given hour, default NULL will remove all
  * @return integer the number of removed files
  */
-function remove_orphan_files( $file_ids = NULL, $older_than = NULL )
+function remove_orphan_files( $file_ids = NULL, $older_than = NULL, $remove_empty_comment_folders = false )
 {
 	global $DB, $localtimenow;
 	// asimo> This SQL query should use file class delete_restrictions array (currently T_links and T_users is explicitly used)
@@ -1827,6 +1873,11 @@ function remove_orphan_files( $file_ids = NULL, $older_than = NULL )
 		$sql .= ' AND ( file_path LIKE "comments/p%" OR file_path LIKE "anonymous_comments/p%" )';
 	}
 
+	if( $remove_empty_comment_folders )
+	{ // init "folders to delete" array
+		$delete_folders = array();
+	}
+
 	$result = $DB->get_col( $sql );
 	$FileCache = & get_FileCache();
 	$FileCache->load_list( $result );
@@ -1842,12 +1893,37 @@ function remove_orphan_files( $file_ids = NULL, $older_than = NULL )
 				continue;
 			}
 		}
+
+		if( $remove_empty_comment_folders )
+		{
+			$rel_path = $File->get_rdfp_rel_path();
+			$folder_path = dirname( $File->get_full_path() );
+		}
+
 		// delete the file
 		if( $File->unlink() )
 		{
 			$count++;
+			if( $remove_empty_comment_folders && ! in_array( $folder_path, $delete_folders )
+				&& preg_match( '/^(anonymous_)?comments\/p(\d+)\/.*$/', $rel_path ) )
+			{ // Collect comment attachments folders to delete the empty folders later
+				$delete_folders[] = $folder_path;
+			}
 		}
 	}
+
+	// Delete the empty folders
+	if( $remove_empty_comment_folders && count( $delete_folders ) )
+	{
+		foreach( $delete_folders as $delete_folder )
+		{
+			if( file_exists( $delete_folder ) )
+			{ // Delete folder only if it is empty, Hide an error if folder is not empty
+				@rmdir( $delete_folder );
+			}
+		}
+	}
+
 	// Clear FileCache to save memory
 	$FileCache->clear();
 
@@ -1931,6 +2007,7 @@ function copy_file( $file_path, $root_ID, $path, $check_perms = true )
 	// validate file name
 	if( $error_filename = process_filename( $newName, true ) )
 	{	// Not a valid file name or not an allowed extension:
+		syslog_insert( sprintf( 'File %s is not valid or not an allowed extension', '<b>'.$newName.'</b>' ), 'warning', 'file' );
 		// Abort import for this file:
 		return NULL;
 	}
@@ -2050,6 +2127,7 @@ function create_profile_picture_links()
 					$fileName = $lFile->get_name();
 					if( process_filename( $fileName ) )
 					{ // The file has invalid file name, don't create in the database
+						syslog_insert( sprintf( 'Invalid file name %s has been found in a user folder', '<b>'.$fileName.'</b>' ), 'info', 'user', $iterator_User->ID );
 						// TODO: asimo> we should collect each invalid file name here, and send an email to the admin
 						continue;
 					}
@@ -2123,13 +2201,13 @@ function create_htaccess_deny( $dir )
  */
 function display_dragdrop_upload_button( $params = array() )
 {
-	global $htsrv_url;
+	global $htsrv_url, $blog;
 
 	$params = array_merge( array(
-			'fileroot_ID' => 0, // Root type and ID, e.g. collection_1
-			'path'        => '', // Subpath for the file/folder
-			'list_style'  => 'list',  // 'list' or 'table'
-			'template_button' => '<div class="qq-uploader">'
+			'fileroot_ID'      => 0, // Root type and ID, e.g. collection_1
+			'path'             => '', // Subpath for the file/folder
+			'list_style'       => 'list',  // 'list' or 'table'
+			'template_button'  => '<div class="qq-uploader">'
 					.'<div class="qq-upload-drop-area"><span>'.TS_('Drop files here to upload').'</span></div>'
 					.'<div class="qq-upload-button">#button_text#</div>'
 					.'<ul class="qq-upload-list"></ul>'
@@ -2141,14 +2219,22 @@ function display_dragdrop_upload_button( $params = array() )
 					.'<a class="qq-upload-cancel" href="#">'.TS_('Cancel').'</a>'
 					.'<span class="qq-upload-failed-text">'.TS_('Failed').'</span>'
 				.'</li>',
-			'display_support_msg' => true, // Display info under button about that current supports drag&drop
-			'additional_dropzone' => '', // jQuery selector of additional drop zone
-			'filename_before'     => '', // Append this text before file name on success uploading of new file,
+			'display_support_msg'    => true, // Display info under button about that current supports drag&drop
+			'additional_dropzone'    => '', // jQuery selector of additional drop zone
+			'filename_before'        => '', // Append this text before file name on success uploading of new file,
 			                             // Used a mask $file_path$ to replace it with File->get_rdfp_rel_path()
+			'LinkOwner'              => NULL, // Use it if you want to link a file to Item/Comment right after uploading
+			'display_status_success' => true, // Display status text about successful uploading
+			'status_conflict_place'  => 'default', // Where we should write a message about conflict:
+																						 //    'default' - in the element ".qq-upload-status"
+																						 //    'before_button' - before button to solve a conflict
+			'conflict_file_format'   => 'simple', // 'simple' - file name text, 'full_path_link' - a link with text as full file path
+			'resize_frame'           => false, // Resize frame on upload new image
+			'table_headers'          => '', // Use this html text as table headers when first file is loaded
 		), $params );
 
 	$root_and_path = $params['fileroot_ID'].'::'.$params['path'];
-	$quick_upload_url = $htsrv_url.'quick_upload.php?upload=true';
+	$quick_upload_url = $htsrv_url.'quick_upload.php?upload=true'.( empty( $blog ) ? '' : '&blog='.$blog );
 
 	?>
 	<div id="file-uploader" style="width:100%">
@@ -2179,6 +2265,16 @@ function display_dragdrop_upload_button( $params = array() )
 			uploader.setParams({root_and_path: root_and_path});
 		} );
 
+		<?php
+		if( $params['LinkOwner'] !== NULL )
+		{ // Add params to link a file right after uploading
+			global $b2evo_icons_type;
+			$link_owner_type = $params['LinkOwner']->type;
+			$link_owner_ID = ( $link_owner_type == 'item' ? $params['LinkOwner']->Item->ID : $params['LinkOwner']->Comment->ID );
+			echo 'url += "&link_owner='.$link_owner_type.'_'.$link_owner_ID.'&b2evo_icons_type='.$b2evo_icons_type.'"';
+		}
+		?>
+
 		jQuery( document ).ready( function()
 		{
 			uploader = new qq.FileUploader(
@@ -2188,6 +2284,20 @@ function display_dragdrop_upload_button( $params = array() )
 				additional_dropzone: '<?php echo $params['additional_dropzone']; ?>',
 				action: url,
 				debug: true,
+				onSubmit: function( id, fileName )
+				{
+					var noresults_row = jQuery( 'tr.noresults' );
+					if( noresults_row.length )
+					{ // Add table headers and remove "No results" row
+						<?php
+						if( $params['table_headers'] != '' )
+						{ // Append table headers if they are defined
+						?>
+						noresults_row.parent().parent().prepend( '<?php echo str_replace( array( "'", "\n" ), array( "\'", '' ), $params['table_headers'] ); ?>' );
+						<?php } ?>
+						noresults_row.remove();
+					}
+				},
 				onComplete: function( id, fileName, responseJSON )
 				{
 					if( responseJSON.success != undefined )
@@ -2221,18 +2331,21 @@ function display_dragdrop_upload_button( $params = array() )
 					{ // Table view
 					?>
 					var this_row = jQuery( 'tr[rel=file_upload_' + id + ']' );
+
 					if( responseJSON.success == undefined || responseJSON.success.status == 'error' || responseJSON.success.status == 'fatal' )
 					{ // Failed
-						this_row.find( '.qq-upload-status' ).html( '<span class="red"><?php echo TS_('Upload ERROR'); ?></span>' )
-						this_row.find( '.qq-upload-file' ).append( text );
-						this_row.find( '.qq-upload-image, td.size' ).prepend( '<?php echo get_icon( 'warning_yellow' ); ?>' );
-						if( responseJSON != '' )
-						{ // Disppay the fatal errors
-							this_row.find( '.qq-upload-file' ).append( responseJSON );
+						this_row.find( '.qq-upload-status' ).html( '<span class="red"><?php echo TS_('Upload ERROR'); ?></span>' );
+						if( typeof( text ) == 'undefined' || text == '' )
+						{ // Message for unknown error
+							text = '<?php echo TS_('Server dropped the connection.'); ?>';
 						}
+						this_row.find( '.qq-upload-file' ).append( ' <span class="result_error">' + text + '</span>' );
+						this_row.find( '.qq-upload-image, td.size' ).prepend( '<?php echo get_icon( 'warning_yellow' ); ?>' );
 					}
 					else
-					{ // Success
+					{ // Success/Conflict
+						var table_view = typeof( responseJSON.success.link_ID ) != 'undefined' ? 'link' : 'file';
+
 						var filename_before = '<?php echo str_replace( "'", "\'", $params['filename_before'] ); ?>';
 						if( filename_before != '' )
 						{
@@ -2245,31 +2358,60 @@ function display_dragdrop_upload_button( $params = array() )
 							warning = '<div class="orange">' + responseJSON.success.warning + '</div>';
 						}
 
+						// File name or url to view file
+						var file_name = ( typeof( responseJSON.success.link_url ) != 'undefined' ) ? responseJSON.success.link_url : responseJSON.success.newname;
+
 						if( responseJSON.success.status == 'success' )
-						{
+						{ // Success upload
+							<?php
+							if( $params['display_status_success'] )
+							{ // Display this message only if it is enabled
+							?>
 							this_row.find( '.qq-upload-status' ).html( '<span class="green"><?php echo TS_('Upload OK'); ?></span>' );
+							<?php } else { ?>
+							this_row.find( '.qq-upload-status' ).html( '' );
+							<?php } ?>
 							this_row.find( '.qq-upload-image' ).html( text );
-							this_row.find( '.qq-upload-file' ).html( filename_before + '<span class="fname">' + responseJSON.success.newname + '</span>' + warning );
+							this_row.find( '.qq-upload-file' ).html( filename_before
+								+ '<input type="hidden" value="' + responseJSON.success.newpath + '" />'
+								+ '<span class="fname">' + file_name + '</span>' + warning );
 						}
 						else if( responseJSON.success.status == 'rename' )
-						{
-							this_row.find( '.qq-upload-status' ).html( '<span class="orange"><?php echo TS_('Upload Conflict'); ?></span>' )
+						{ // Conflict on upload
+							<?php
+							$status_conflict_message = '<span class="orange">'.TS_('Upload Conflict').'</span>';
+							if( $params['status_conflict_place'] == 'default' )
+							{ // Default place for a conflict message
+							?>
+							this_row.find( '.qq-upload-status' ).html( '<?php echo $status_conflict_message; ?>' );
+							<?php } else { ?>
+							this_row.find( '.qq-upload-status' ).html( '' );
+							<?php } ?>
 							this_row.find( '.qq-upload-image' ).append( htmlspecialchars_decode( responseJSON.success.file ) );
-							this_row.find( '.qq-upload-file' ).html( filename_before + '<span class="fname">' + responseJSON.success.newname + '</span> - '
-								+ '<a href="#" '
-								+ 'class="roundbutton_text roundbutton_text_noicon qq-conflict-replace" '
-								+ 'old="' + responseJSON.success.oldname + '" '
-								+ 'new="' + responseJSON.success.newname + '">'
+							this_row.find( '.qq-upload-file' ).html( filename_before
+								+ '<input type="hidden" value="' + responseJSON.success.newpath + '" />'
+								+ '<span class="fname">' + file_name + '</span>'
+								<?php echo ( $params['status_conflict_place'] == 'before_button' ) ? "+ ' - ".$status_conflict_message."'" : ''; ?>
+								+ ' - <a href="#" '
+								+ 'class="<?php echo button_class( 'text' ); ?> roundbutton_text_noicon qq-conflict-replace" '
+								+ 'old="' + responseJSON.success.oldpath + '" '
+								+ 'new="' + responseJSON.success.newpath + '">'
 								+ '<div><?php echo TS_('Use this new file to replace the old file'); ?></div>'
 								+ '<div style="display:none"><?php echo TS_('Revert'); ?></div>'
 								+ '</a>'
 								+ warning );
-							this_row.find( '.qq-upload-file' ).removeAttr( 'rel' );
-							var old_file_obj = jQuery( 'td.fm_filename[rel="' + responseJSON.success.oldname + '"]' );
+							var old_file_obj = jQuery( 'input[type=hidden][value="' + responseJSON.success.oldpath + '"]' );
 							if( old_file_obj.length > 0 )
 							{
-								old_file_obj.append( ' <span class="orange"><?php echo TS_('(Old File)'); ?></span>' );
+								old_file_obj.parent().append( ' <span class="orange"><?php echo TS_('(Old File)'); ?></span>' );
 							}
+						}
+
+						if( table_view == 'link' )
+						{ // Update the cells for link view, because these data exist in response
+							this_row.find( '.qq-upload-link-id' ).html( responseJSON.success.link_ID );
+							this_row.find( '.qq-upload-link-actions' ).prepend( responseJSON.success.link_actions );
+							this_row.find( '.qq-upload-link-position' ).html( responseJSON.success.link_position );
 						}
 					}
 					<?php
@@ -2284,13 +2426,30 @@ function display_dragdrop_upload_button( $params = array() )
 						}
 					<?php
 					}
+
+					if( $params['resize_frame'] )
+					{ // Resize frame after upload new image
 					?>
+					update_iframe_height();
+					jQuery( 'img' ).on( 'load', function() { update_iframe_height(); } );
+					<?php } ?>
 				},
 				template: '<?php echo str_replace( '#button_text#', "' + button_text + '", $params['template_button'] ); ?>',
 				fileTemplate: '<?php echo $params['template_filerow']; ?>',
 				params: { root_and_path: root_and_path }
 			} );
 		} );
+
+		<?php
+		if( $params['resize_frame'] )
+		{ // Resize frame after upload new image
+		?>
+		function update_iframe_height()
+		{
+			var wrapper_height = jQuery( 'body' ).height();
+			jQuery( 'div#attachmentframe_wrapper', window.parent.document ).css( { 'height': wrapper_height, 'max-height': wrapper_height } );
+		}
+		<?php } ?>
 
 		<?php
 		if( $params['list_style'] == 'table' )
@@ -2304,17 +2463,17 @@ function display_dragdrop_upload_button( $params = array() )
 			var is_replace = this_obj.children( 'div:first' ).is( ':visible' );
 
 			var old_file_name = this_obj.attr( 'old' );
-			var old_file_obj = jQuery( 'td.fm_filename[rel="' + old_file_name + '"]' );
-			if( old_file_obj.length == 0 )
-			{ // No element found with old file name
-				alert( '<?php echo TS_('The old file is not found on the page!') ?>' );
-				return false;
-			}
+			var old_file_obj = jQuery( 'input[type=hidden][value="' + old_file_name + '"]' );
+			// Element found with old file name on the page
+			var old_file_exists = ( old_file_obj.length > 0 );
 			this_obj.hide();
 
 			// Highlight the rows with new and old files
-			var tr_rows = old_file_obj.parent().children( 'td' );
-			tr_rows = tr_rows.add( this_obj.parent().parent().children( 'td' ) );
+			var tr_rows = this_obj.parent().parent().children( 'td' );
+			if( old_file_exists )
+			{
+				tr_rows = tr_rows.add( old_file_obj.parent().parent().children( 'td' ) );
+			}
 			tr_rows.css( 'background', '#FFFF00' );
 			// Remove previous errors
 			tr_rows.find( 'span.error' ).remove();
@@ -2328,8 +2487,9 @@ function display_dragdrop_upload_button( $params = array() )
 					action: 'conflict_files',
 					fileroot_ID: '<?php echo $params['fileroot_ID']; ?>',
 					path: '<?php echo $params['path']; ?>',
-					oldfile: old_file_name,
-					newfile: this_obj.attr( 'new' ),
+					oldfile: old_file_name.replace( /^(.+\/)?([^\/]+)$/, '$2' ),
+					newfile: this_obj.attr( 'new' ).replace( /^(.+\/)?([^\/]+)$/, '$2' ),
+					format: '<?php echo $params['conflict_file_format']; ?>',
 					crumb_conflictfiles: '<?php echo get_crumb( 'conflictfiles' ); ?>'
 				},
 				success: function( result )
@@ -2338,32 +2498,40 @@ function display_dragdrop_upload_button( $params = array() )
 					if( typeof data.error == 'undefined' )
 					{ // Success
 						this_obj.show();
-						var old_filename_obj = old_file_obj.find( 'span.fname' );
 						var new_filename_obj = this_obj.parent().find( 'span.fname' );
 						if( is_replace )
 						{ // The replacing was executed, Change data of html elements
 							this_obj.children( 'div:first' ).hide();
 							this_obj.children( 'div:last' ).show();
-							old_filename_obj.html( data.new );
-							new_filename_obj.html( data.old );
 						}
 						else
 						{ // The replacing was reverting, Put back the data of html elements
 							this_obj.children( 'div:first' ).show();
 							this_obj.children( 'div:last' ).hide();
-							old_filename_obj.html( data.old );
-							new_filename_obj.html( data.new );
 						}
-						var old_icon_link = old_filename_obj.prev();
-						if( old_icon_link.length == 0 || old_icon_link.get(0).tagName != 'A' )
-						{
-							old_icon_link = old_filename_obj.parent().prev();
+						if( old_file_exists )
+						{ // If old file element exists on the page, we can:
+							// Swap old and new names
+							var old_filename_obj = old_file_obj.parent().find( 'span.fname' );
+							var old_filename_obj_html = old_filename_obj.html();
+							old_filename_obj.html( new_filename_obj.html() );
+							new_filename_obj.html( old_filename_obj_html );
+
+							var old_icon_link = old_filename_obj.prev();
+							if( old_icon_link.length == 0 || old_icon_link.get(0).tagName != 'A' )
+							{
+								old_icon_link = old_filename_obj.parent().prev();
+							}
+							if( old_icon_link.length > 0 && old_icon_link.get(0).tagName == 'A' )
+							{ // The icons exist to link files, We should swap them
+								var old_href = old_icon_link.attr( 'href' );
+								old_icon_link.attr( 'href', new_filename_obj.prev().attr( 'href' ) );
+								new_filename_obj.prev().attr( 'href', old_href );
+							}
 						}
-						if( old_icon_link.length > 0 && old_icon_link.get(0).tagName == 'A' )
-						{ // The icons exist to link files, We should swap them
-							var old_href = old_icon_link.attr( 'href' );
-							old_icon_link.attr( 'href', new_filename_obj.prev().attr( 'href' ) );
-							new_filename_obj.prev().attr( 'href', old_href );
+						else
+						{ // No old file element, Get data from request
+							new_filename_obj.html( is_replace ? data.old : data.new );
 						}
 					}
 					else
@@ -2470,7 +2638,7 @@ function replace_old_file_with_new( $root_type, $root_in_type_ID, $path, $new_na
 
 /**
  * Check if directory is empty
- * 
+ *
  * @param string Directory path
  * @param boolean TRUE - to decide when dir is not empty if at least one file exists in subdirectories,
  *                FALSE - to decide - if dir contains even only empty subdirectories
@@ -2563,5 +2731,56 @@ function open_temp_file( & $temp_file_name )
 
 	// File handle
 	return $temp_handle;
+}
+
+
+/**
+ * Initialize JavaScript for AJAX loading of popup window to report user
+ *
+ * @param array Params
+ */
+function echo_file_properties()
+{
+	global $admin_url;
+?>
+<script type="text/javascript">
+	//<![CDATA[
+<?php
+// Initialize JavaScript to build and open window
+echo_modalwindow_js();
+?>
+	// Window to edit file
+	function file_properties( root, path, file )
+	{
+		openModalWindow( '<span class="loader_img loader_file_edit absolute_center" title="<?php echo T_('Loading...'); ?>"></span>',
+			'80%', '', true,
+			'<?php echo TS_('File properties'); ?>',
+			'<?php echo TS_('Save Changes!'); ?>', true, true );
+		jQuery.ajax(
+		{
+			type: 'POST',
+			url: '<?php echo $admin_url; ?>',
+			data:
+			{
+				'ctrl': 'files',
+				'action': 'edit_properties',
+				'root': root,
+				'path': path,
+				'fm_selected': [ file ],
+				'mode': 'modal',
+				'crumb_file': '<?php echo get_crumb( 'file' ); ?>',
+			},
+			success: function( result )
+			{
+				openModalWindow( result, '80%', '',true,
+					'<?php echo TS_('File properties'); ?>',
+					'<?php echo TS_('Save Changes!'); ?>', false, true );
+			}
+		} );
+		return false;
+	}
+	//]]>
+</script>
+<?php
 }
 ?>

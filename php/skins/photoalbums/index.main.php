@@ -3,14 +3,12 @@
  * This is the main/default page template.
  *
  * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://b2evolution.net/man/skin-structure}
+ * {@link http://b2evolution.net/man/skin-development-primer}
  *
  * It is used to display the blog when no specific page template is available to handle the request.
  *
  * @package evoskins
- * @subpackage photoalbum
- *
- * @version $Id: index.main.php 7828 2014-12-17 07:45:33Z yura $
+ * @subpackage photoalbums
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -18,6 +16,8 @@ if( version_compare( $app_version, '3.0' ) < 0 )
 { // Older skins (versions 2.x and above) should work on newer b2evo versions, but newer skins may not work on older b2evo versions.
 	die( 'This skin is designed for b2evolution 3.0 and above. Please <a href="http://b2evolution.net/downloads/index.html">upgrade your b2evolution</a>.' );
 }
+
+global $Skin;
 
 // This is the main template; it may be used to display very different things.
 // Do inits depending on current $disp:
@@ -27,16 +27,13 @@ require_js( 'functions.js', 'blog' );	// for opening popup window (comments)
 
 // -------------------------- HTML HEADER INCLUDED HERE --------------------------
 skin_include( '_html_header.inc.php', array(
-		'auto_pilot'      => 'seo_title',
+		'viewport_tag'    => '#responsive#',
 		'arcdir_text'     => T_('Index'),
 		'catdir_text'     => T_('Galleries'),
 		'category_text'   => T_('Gallery').': ',
 		'categories_text' => T_('Galleries').': ',
 	) );
-// Note: You can customize the default HTML header by copying the
-// _html_header.inc.php file into the current skin folder.
 // -------------------------------- END OF HEADER --------------------------------
-
 
 
 // ---------------------------- SITE HEADER INCLUDED HERE ----------------------------
@@ -50,7 +47,7 @@ siteskin_include( '_site_body_header.inc.php' );
 		// Display container and contents:
 		skin_container( NT_('Page Top'), array(
 				// The following params will be used as defaults for widgets included in this container:
-				'block_start' => '<div class="$wi_class$">',
+				'block_start' => '<div class="widget $wi_class$">',
 				'block_end' => '</div>',
 				'block_display_title' => false,
 				'list_start' => '<ul>',
@@ -63,28 +60,41 @@ siteskin_include( '_site_body_header.inc.php' );
 
 <div class="pageHeader">
 
+	<h1 id="pageTitle"><a href="<?php $Blog->disp( 'url', 'raw' ) ?>"><?php $Blog->disp( 'name', 'htmlbody' ) ?></a></h1>
+
+	<?php
+		skin_widget( array(
+			// CODE for the widget:
+			'widget' => 'member_count',
+			// Optional display params
+			'before' => '(',
+			'after'  => ')',
+		) );
+	?>
+
 	<div class="top_menu floatright">
 		<?php
 			// ------------------------- "Menu" CONTAINER EMBEDDED HERE --------------------------
 			// Display container and contents:
 			skin_container( NT_('Menu'), array(
 					// The following params will be used as defaults for widgets included in this container:
-					'block_start' => '',
-					'block_end' => '',
+					'block_start'         => '',
+					'block_end'           => '',
 					'block_display_title' => false,
-					'list_start' => '',
-					'list_end' => '',
-					'item_start' => ' <span class="menu_link">',
-					'item_end' => '</span> ',
+					'list_start'          => '',
+					'list_end'            => '',
+					'item_start'          => ' <span class="menu_link">',
+					'item_end'            => '</span> ',
 					'item_selected_start' => ' <span class="menu_link">',
-					'item_selected_end' => '</span>',
+					'item_selected_end'   => '</span>',
+					'item_title_before'   => '',
+					'item_title_after'    => '',
 				) );
 			// ----------------------------- END OF "Menu" CONTAINER -----------------------------
 		?>
 	</div>
 
-	<h1 id="pageTitle"><a href="<?php $Blog->disp( 'url', 'raw' ) ?>"><?php $Blog->disp( 'name', 'htmlbody' ) ?></a></h1>
-
+	<div class="clear"></div>
 </div>
 
 <?php
@@ -108,6 +118,12 @@ if( $disp == 'single' )
 				'text'      => get_icon( 'edit' ),
 				'title'     => T_('Edit title/description...'),
 			) );
+		if( $Skin->enabled_status_banner( $single_Item->status ) )
+		{ // Status banner
+			$single_Item->format_status( array(
+					'template' => '<div class="post_status"><div class="floatright"><span class="note status_$status$"><span>$status_title$</span></span></div></div>',
+				) );
+		}
 	?>
 	</span>
 
@@ -140,7 +156,7 @@ if( $disp == 'single' )
 	}
 } // ------------------- END OF NAVIGATION BAR FOR ALBUM(POST) ------------------- ?>
 
-<div class="bPosts<?php echo in_array( $disp, array( 'front', 'posts', 'single', 'page', 'mediaidx' ) ) ? ' full_width' : '' ?>">
+<div class="bPosts<?php echo in_array( $disp, array( 'catdir', 'posts', 'single', 'page', 'mediaidx' ) ) ? ' full_width' : '' ?>">
 
 <!-- =================================== START OF MAIN AREA =================================== -->
 
@@ -154,20 +170,21 @@ if( $disp == 'single' )
 	?>
 
 	<?php
-		// ------------------------- TITLE FOR THE CURRENT REQUEST -------------------------
-		request_title( array(
-				'title_before'=> '<h2>',
-				'title_after' => '</h2>',
-				'title_none'  => '',
-				'glue'        => ' - ',
-				'title_single_disp' => false,
-				'format'      => 'htmlbody',
-				'arcdir_text' => T_('Index'),
-				'catdir_text' => T_('Galleries'),
-				'category_text' => T_('Gallery').': ',
-				'categories_text' => T_('Galleries').': ',
-			) );
-		// ------------------------------ END OF REQUEST TITLE -----------------------------
+	// ------------------------- TITLE FOR THE CURRENT REQUEST -------------------------
+	request_title( array(
+			'title_before'      => '<h2>',
+			'title_after'       => '</h2>',
+			'title_none'        => '',
+			'glue'              => ' - ',
+			'title_single_disp' => false,
+			'format'            => 'htmlbody',
+			'arcdir_text'       => T_('Index'),
+			'catdir_text'       => '',
+			'category_text'     => T_('Gallery').': ',
+			'categories_text'   => T_('Galleries').': ',
+			'user_text'         => '',
+		) );
+	// ------------------------------ END OF REQUEST TITLE -----------------------------
 	?>
 
 	<?php
@@ -203,13 +220,11 @@ if( $disp == 'single' )
 
 		if( $Item )
 		{
-			echo '<div id="styled_content_block">';
 			// ---------------------- ITEM BLOCK INCLUDED HERE ------------------------
 			skin_include( '_item_block.inc.php', array(
 					'content_mode'  => 'full', // We want regular "full" content, even in category browsing: i-e no excerpt or thumbnail
 				) );
 			// ----------------------------END ITEM BLOCK  ----------------------------
-			echo '</div>';
 		}
 	} // ---------------------------------- END OF A POST ------------------------------------
 	?>
@@ -218,10 +233,15 @@ if( $disp == 'single' )
 	<?php
 		// -------------- MAIN CONTENT TEMPLATE INCLUDED HERE (Based on $disp) --------------
 		skin_include( '$disp$', array(
-				'disp_single' => '',		// We already handled this case above
-				'disp_page'   => '',		// We already handled this case above
-				'mediaidx_thumb_size' => $Skin->get_setting( 'mediaidx_thumb_size' ),
-				'author_link_text' => 'preferredname',
+				'disp_single' => '', // We already handled this case above
+				'disp_page'   => '', // We already handled this case above
+				'mediaidx_thumb_size'  => $Skin->get_setting( 'mediaidx_thumb_size' ),
+				'author_link_text'     => 'preferredname',
+				'login_page_before'    => '<div class="login_block"><div class="bDetails">',
+				'login_page_after'     => '</div></div>',
+				'register_page_before' => '<div class="login_block"><div class="bDetails">',
+				'register_page_after'  => '</div></div>',
+				'display_abort_link'   => ( $Blog->get_setting( 'allow_access' ) == 'public' ), // Display link to abort login only when it is really possible
 			) );
 		// Note: you can customize any of the sub templates included here by
 		// copying the matching php file into your skin directory.
@@ -230,6 +250,8 @@ if( $disp == 'single' )
 </div>
 
 <?php
+if( $disp != 'catdir' )
+{ // Don't display the pages on disp=catdir because we don't have a limit by page there
 	// -------------------- PREV/NEXT PAGE LINKS (POST LIST MODE) --------------------
 	mainlist_page_links( array(
 			'block_start' => '<div class="nav_pages">',
@@ -238,6 +260,7 @@ if( $disp == 'single' )
 			'next_text' => '&gt;&gt;',
 		) );
 	// ------------------------- END OF PREV/NEXT PAGE LINKS -------------------------
+}
 ?>
 
 <?php

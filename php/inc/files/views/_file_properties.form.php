@@ -3,28 +3,13 @@
  * This file implements the UI controller for file upload.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE
- *
- * @version $Id: _file_properties.form.php 6135 2014-03-08 07:54:05Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -37,9 +22,12 @@ global $blog, $filename_max_length;
 
 $Form = new Form( NULL, 'fm_properties_checkchanges' );
 
-$Form->global_icon( T_('Close properties!'), 'close', regenerate_url() );
+if( get_param( 'mode' ) != 'modal' )
+{
+	$Form->global_icon( T_('Close properties!'), 'close', regenerate_url() );
+}
 
-$Form->begin_form( 'fform', T_('File properties') );
+$Form->begin_form( 'fform', ( get_param( 'mode' ) == 'modal' ? '' : T_('File properties') ) );
 
 	$Form->add_crumb( 'file' );
 	$Form->hidden_ctrl();
@@ -71,6 +59,13 @@ $Form->begin_form( 'fform', T_('File properties') );
 			$Form->info( T_('Alternative text'), $edited_File->dget('alt'), T_('This is useful for images') );
 			$Form->info( T_('Caption/Description'), $edited_File->dget('desc') );
 		}
+	$Form->end_fieldset();
+
+	$Form->begin_fieldset( T_('Social votes') );
+		$Form->info( T_('Liked'), $edited_File->get_votes_count_info( 'like' ) );
+		$Form->info( T_('Disliked'), $edited_File->get_votes_count_info( 'dislike' ) );
+		$Form->info( T_('Reported as inappropriate'), $edited_File->get_votes_count_info( 'inappropriate' ) );
+		$Form->info( T_('Reported as spam'), $edited_File->get_votes_count_info( 'spam' ) );
 	$Form->end_fieldset();
 
 if( $current_User->check_perm( 'files', 'edit', false, $blog ? $blog : NULL ) )

@@ -3,15 +3,13 @@
  * This is the main/default page template.
  *
  * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://b2evolution.net/man/skin-structure}
+ * {@link http://b2evolution.net/man/skin-development-primer}
  *
  * The main page template is used to display the blog when no specific page template is available
  * to handle the request (based on $disp).
  *
  * @package evoskins
  * @subpackage evocamp
- *
- * @version $Id: posts.main.php 3157 2013-03-06 04:34:44Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -26,9 +24,7 @@ skin_init( $disp );
 
 
 // -------------------------- HTML HEADER INCLUDED HERE --------------------------
-skin_include( '_html_header.inc.php' );
-// Note: You can customize the default HTML header by copying the generic
-// /skins/_html_header.inc.php file into the current skin folder.
+skin_include( '_html_header.inc.php', array() );
 // -------------------------------- END OF HEADER --------------------------------
 ?>
 
@@ -37,7 +33,7 @@ skin_include( '_html_header.inc.php' );
 // ------------------------- BODY HEADER INCLUDED HERE --------------------------
 skin_include( '_body_header.inc.php' );
 // Note: You can customize the default BODY header by copying the generic
-// /skins/_body_footer.inc.php file into the current skin folder.
+// /skins/_body_header.inc.php file into the current skin folder.
 // ------------------------------- END OF FOOTER --------------------------------
 ?>
 
@@ -64,8 +60,8 @@ skin_include( '_body_header.inc.php' );
 	<?php
 	// ------------------------- SIDEBAR INCLUDED HERE --------------------------
 	skin_include( '_sidebar_left.inc.php' );
-	// Note: You can customize the default BODY footer by copying the
-	// _body_footer.inc.php file into the current skin folder.
+	// Note: You can customize the left sidebar by copying the
+	// _sidebar_left.inc.php file into the current skin folder.
 	// ----------------------------- END OF SIDEBAR -----------------------------
 	?>
 
@@ -107,8 +103,6 @@ skin_include( '_body_header.inc.php' );
 					'content_mode' => 'auto',		// 'auto' will auto select depending on $disp-detail
 					'image_size'	 =>	'fit-400x320',
 				) );
-			// Note: You can customize the default item feedback by copying the generic
-			// /skins/_item_feedback.inc.php file into the current skin folder.
 			// ----------------------------END ITEM BLOCK  ----------------------------
 		}
 		echo '</div>'; // End of posts display
@@ -132,8 +126,8 @@ skin_include( '_body_header.inc.php' );
 <?php
 // ------------------------- SIDEBAR INCLUDED HERE --------------------------
 skin_include( '_sidebar_right.inc.php' );
-// Note: You can customize the default BODY footer by copying the
-// _body_footer.inc.php file into the current skin folder.
+// Note: You can customize the right sidebar by copying the
+// _sidebar_right.inc.php file into the current skin folder.
 // ----------------------------- END OF SIDEBAR -----------------------------
 ?>
 

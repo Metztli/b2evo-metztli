@@ -15,6 +15,7 @@ $locale_defs['de-DE'] = array(
 		'charset' => 'utf-8',
 		'datefmt' => 'j.m.Y',
 		'timefmt' => 'H:i:s',
+		'shorttimefmt' => 'H:i',
 		'startofweek' => 1,
 		'transliteration_map' => array(),
 	);

@@ -6,8 +6,8 @@
  * It is meant to be called by an include in the main.page.php template (or other templates)
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  * @subpackage manual
@@ -27,10 +27,19 @@ $params = array_merge( array(
 		'item_link_type'    => 'permalink',
 	), $params );
 
-echo '<div id="styled_content_block">'; // Beginning of post display
-if( ( $disp == 'single' ) && empty( $cat ) )
-{ // Display breadcrumb, but only if it was not displayed yet. When category is set then breadcrumbs is already displayed.
-	$Skin->display_breadcrumbs( $Item->main_cat_ID );
+if( $disp == 'single' )
+{ // Display the breadcrumb path
+	if( empty( $cat ) )
+	{ // Set a category as main of current Item
+		$cat = $Item->main_cat_ID;
+	}
+	skin_widget( array(
+			// CODE for the widget:
+			'widget' => 'breadcrumb_path',
+			// Optional display params
+			'block_start' => '<div class="breadcrumbs">',
+			'block_end'   => '</div>',
+		) );
 }
 ?>
 
@@ -42,13 +51,15 @@ if( ( $disp == 'single' ) && empty( $cat ) )
 
 	<?php
 		// ------------------- PREV/NEXT POST LINKS (SINGLE POST MODE) -------------------
-		item_prevnext_links( array(
+		// Comment out prev/next links display until it is not correctly implemented to get cats and items
+		// in the same order as they are in the sidebar
+		/*item_prevnext_links( array(
 				'block_start' => '<div class="posts_navigation">',
 				'separator'   => ' :: ',
 				'block_end'   => '</div>',
 				'target_blog' => $Blog->ID,	// this forces to stay in the same blog, should the post be cross posted in multiple blogs
 				'post_navigation' => 'same_category', // force to stay in the same category in this skin
-			) );
+			) );*/
 		// ------------------------- END OF PREV/NEXT POST LINKS -------------------------
 
 	$action_links = $Item->get_edit_link( array( // Link to backoffice for editing
@@ -57,7 +68,7 @@ if( ( $disp == 'single' ) && empty( $cat ) )
 			'text'   => $Item->is_intro() ? get_icon( 'edit' ).' '.T_('Edit Intro') : '#',
 			'class'  => 'roundbutton roundbutton_text',
 		) );
-	if( $Item->is_intro() && $Item->ptyp_ID > 1500 )
+	if( $Item->is_intro() && $Item->ityp_ID > 1500 )
 	{ // Link to edit category
 		$ItemChapter = & $Item->get_main_Chapter();
 		if( !empty( $ItemChapter ) )
@@ -71,7 +82,9 @@ if( ( $disp == 'single' ) && empty( $cat ) )
 	}
 	if( $Item->status != 'published' )
 	{
-		$Item->status( array( 'format' => 'styled' ) );
+		$Item->format_status( array(
+				'template' => '<div class="floatright"><span class="note status_$status$"><span>$status_title$</span></span></div>',
+			) );
 	}
 	$Item->title( array(
 			'link_type'  => $params['item_link_type'],
@@ -82,35 +95,32 @@ if( ( $disp == 'single' ) && empty( $cat ) )
 
 		// ---------------------- POST CONTENT INCLUDED HERE ----------------------
 		skin_include( '_item_content.inc.php', $params );
-		// Note: You can customize the default item feedback by copying the generic
+		// Note: You can customize the default item content by copying the generic
 		// /skins/_item_content.inc.php file into the current skin folder.
 		// -------------------------- END OF POST CONTENT -------------------------
-	?>
 
-	<?php
-		// List all tags attached to this post:
-		$Item->tags( array(
-				'before' =>         '<div class="bSmallPrint">'.T_('Tags').': ',
-				'after' =>          '</div>',
-				'separator' =>      ', ',
-			) );
+		if( ! $Item->is_intro() )
+		{ // Don't display this additional info for intro posts
 
-		echo '<p class="notes">';
-		$Item->author( array(
-				'before'    => T_('Created by '),
-				'after'     => ' &bull; ',
-				'link_text' => 'login',
-			) );
-		$Item->lastedit_user( array(
-				'before'    => T_('Last edit by '),
-				'after'     => T_(' on ').$Item->get_mod_date( 'F jS, Y' ),
-				'link_text' => 'login',
-			) );
-		'</p>';
-		echo $Item->get_history_link( array(
-				'before'    => ' &bull; ',
-				'link_text' => T_('View history')
-			) );
+			// List all tags attached to this post:
+			$Item->tags( array(
+					'before'    => '<div class="bSmallPrint">'.T_('Tags').': ',
+					'after'     => '</div>',
+					'separator' => ', ',
+				) );
+
+			echo '<p class="notes">';
+			$Item->lastedit_user( array(
+					'before'    => T_('Last edit by '),
+					'after'     => T_(' on ').$Item->get_mod_date( 'F jS, Y' ),
+					'link_text' => 'name',
+				) );
+			'</p>';
+			echo $Item->get_history_link( array(
+					'before'    => ' &bull; ',
+					'link_text' => T_('View history')
+				) );
+		}
 
 		// ------------------ FEEDBACK (COMMENTS/TRACKBACKS) INCLUDED HERE ------------------
 		skin_include( '_item_feedback.inc.php', array_merge( $params, array(
@@ -128,6 +138,3 @@ if( ( $disp == 'single' ) && empty( $cat ) )
 		locale_restore_previous();	// Restore previous locale (Blog locale)
 	?>
 </div>
-<?php 
-echo '</div>'; // End of post display
-?>

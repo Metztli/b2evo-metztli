@@ -7,8 +7,6 @@
  *
  * @package skins
  * @subpackage evopress
- *
- * @version $Id: _skin.class.php 7051 2014-07-03 05:20:49Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -78,6 +76,42 @@ class evopress_Skin extends Skin
 					'defaultvalue' => 1,
 					'type' => 'checkbox',
 				),
+				'colorbox_vote_post' => array(
+					'label' => T_('Voting on Post Images'),
+					'note' => T_('Check this to enable AJAX voting buttons in the colorbox zoom view'),
+					'defaultvalue' => 1,
+					'type' => 'checkbox',
+				),
+				'colorbox_vote_post_numbers' => array(
+					'label' => T_('Display Votes'),
+					'note' => T_('Check to display number of likes and dislikes'),
+					'defaultvalue' => 1,
+					'type' => 'checkbox',
+				),
+				'colorbox_vote_comment' => array(
+					'label' => T_('Voting on Comment Images'),
+					'note' => T_('Check this to enable AJAX voting buttons in the colorbox zoom view'),
+					'defaultvalue' => 1,
+					'type' => 'checkbox',
+				),
+				'colorbox_vote_comment_numbers' => array(
+					'label' => T_('Display Votes'),
+					'note' => T_('Check to display number of likes and dislikes'),
+					'defaultvalue' => 1,
+					'type' => 'checkbox',
+				),
+				'colorbox_vote_user' => array(
+					'label' => T_('Voting on User Images'),
+					'note' => T_('Check this to enable AJAX voting buttons in the colorbox zoom view'),
+					'defaultvalue' => 1,
+					'type' => 'checkbox',
+				),
+				'colorbox_vote_user_numbers' => array(
+					'label' => T_('Display Votes'),
+					'note' => T_('Check to display number of likes and dislikes'),
+					'defaultvalue' => 1,
+					'type' => 'checkbox',
+				),
 				'gender_colored' => array(
 					'label' => T_('Display gender'),
 					'note' => T_('Use colored usernames to differentiate men & women.'),
@@ -90,7 +124,13 @@ class evopress_Skin extends Skin
 					'defaultvalue' => 0,
 					'type' => 'checkbox',
 				),
-			), parent::get_param_definitions( $params )	);
+				'autocomplete_usernames' => array(
+					'label' => T_('Autocomplete usernames'),
+					'note' => T_('Check to enable auto-completion of usernames entered after a "@" sign in the comment forms'),
+					'defaultvalue' => 1,
+					'type' => 'checkbox',
+				),
+			), parent::get_param_definitions( $params ) );
 
 		return $r;
 	}

@@ -3,12 +3,10 @@
  * This file implements the UI controller for link objects.
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
- * 
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
+ *
  * @package admin
- * 
- * @version $Id: $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -105,14 +103,18 @@ switch( $action )
 		// Check permission:
 		$LinkOwner->check_perm( 'edit', true );
 
-		// Unlink File from Item:
+		if( $link_File = & $edited_Link->get_File() )
+		{
+			syslog_insert( sprintf( 'File %s was unlinked from %s with ID=%s', '<b>'.$link_File->get_name().'</b>', $LinkOwner->type, $LinkOwner->link_Object->ID ), 'info', 'file', $link_File->ID );
+		}
+		// Unlink File from Item/Comment:
 		$deleted_link_ID = $edited_Link->ID;
-		$edited_Link->dbdelete( true );
+		$edited_Link->dbdelete();
 		unset( $edited_Link );
 
 		$LinkOwner->after_unlink_action( $deleted_link_ID );
 
-		$Messages->add( $LinkOwner->translate( 'Link has been deleted from $ownerTitle$' ), 'success' );
+		$Messages->add( $LinkOwner->translate( 'Link has been deleted from $xxx$.' ), 'success' );
 
 		header_redirect( $redirect_to );
 		break;
@@ -211,6 +213,9 @@ switch( $action )
 
 // require colorbox js
 require_js_helper( 'colorbox' );
+// require File Uploader js and css
+require_js( 'multiupload/fileuploader.js' );
+require_css( 'fileuploader.css' );
 
 $AdminUI->disp_html_head();
 $AdminUI->disp_body_top( false );
@@ -220,6 +225,9 @@ switch( $action )
 	case 'edit_links':
 		// Memorize 'action' for prev/next links
 		memorize_param( 'action', 'string', NULL );
+
+		// Used to get FileRoot ID of the current Blog
+		load_class( '/files/model/_fileroot.class.php', 'FileRoot' );
 
 		// View attachments
 		$AdminUI->disp_view( 'links/views/_link_list.view.php' );

@@ -3,25 +3,13 @@
  * This file implements the UI view for the User Agents stats.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
- *
- * @version $Id: _stats_refdomains.view.php 7641 2014-11-14 05:37:51Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -63,7 +51,7 @@ else
 	$page_title = sprintf( T_('Referring domains for collection %s'), $Blog->get( 'shortname' ) );
 }
 
-echo '<h2>'.$page_title.'</h2>';
+echo '<h2 class="page-title">'.$page_title.'</h2>';
 
 $SQL = new SQL();
 
@@ -118,7 +106,7 @@ if( $current_User->check_perm( 'stats', 'edit' ) )
 { // Current user has a permission to create new domain
 	global $tab_from;
 	$tab_from_param = empty( $tab_from ) ? '' : '&amp;tab_from='.$tab_from;
-	$Results->global_icon( T_('Add domain'), 'new', $admin_url.'?ctrl=stats&amp;tab=domains&amp;tab3='.$tab3.'&amp;action=domain_new'.$tab_from_param, T_('Add domain').' &raquo;', 3, 4 );
+	$Results->global_icon( T_('Add domain'), 'new', $admin_url.'?ctrl=stats&amp;tab=domains&amp;tab3='.$tab3.'&amp;action=domain_new'.$tab_from_param.( empty( $blog ) ? '' : '&amp;blog='.$blog ), T_('Add domain').' &raquo;', 3, 4 );
 }
 
 /**

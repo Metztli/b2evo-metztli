@@ -5,11 +5,11 @@
  * The core functionality was provided by Francois PLANQUE.
  *
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2012-2014 by Francois PLANQUE - {@link http://fplanque.net/}.
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
+ * @copyright (c)2012-2015 by Francois Planque - {@link http://fplanque.com/}.
  * {@internal
  * b2evolution is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,8 +25,6 @@
  * @package plugins
  *
  * @author fplanque: Francois PLANQUE
- *
- * @version $Id: _captcha_qstn.plugin.php 72 2012-03-05 23:35:41Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -58,17 +56,7 @@ class captcha_qstn_plugin extends Plugin
 
 	function GetDefaultSettings()
 	{
-		global $Settings, $test_install_all_features;
-
-		$default_questions = '';
-
-		if( $test_install_all_features )
-		{
-			$default_questions = $this->T_('What is the color of the sky? blue|grey|gray|dark')."\r\n".
-				$this->T_('What animal is Bugs Bunny? rabbit|a rabbit')."\r\n".
-				$this->T_('What color is a carrot? orange|yellow')."\r\n".
-				$this->T_('What color is a tomato? red');
-		}
+		global $Settings;
 
 		return array(
 				'use_for_anonymous_comment' => array(
@@ -91,7 +79,7 @@ class captcha_qstn_plugin extends Plugin
 				),
 				'questions' => array(
 					'label' => $this->T_('Questions'),
-					'defaultvalue' => $default_questions,
+					'defaultvalue' => '',
 					'note' => $this->T_('Type each question in one line with following format:<br />Question text? answer1|answer2|...|answerN'),
 					'cols' => 80,
 					'rows' => 10,
@@ -256,12 +244,16 @@ class captcha_qstn_plugin extends Plugin
 			return;
 		}
 
-		$posted_answer = evo_strtolower( param( 'captcha_qstn_'.$this->ID.'_answer', 'string', '' ) );
+		$posted_answer = utf8_strtolower( param( 'captcha_qstn_'.$this->ID.'_answer', 'string', '' ) );
 
 		if( empty( $posted_answer ) )
 		{
 			$this->debug_log( 'captcha_qstn_'.$this->ID.'_answer' );
 			$params['validate_error'] = $this->T_('Please enter the captcha answer.');
+			if( $form_type == 'comment' && ( $comment_Item = & $params['Comment']->get_Item() ) )
+			{
+				syslog_insert( 'Comment captcha answer is not entered', 'warning', 'item', $comment_Item->ID, 'plugin', $this->ID );
+			}
 			return false;
 		}
 
@@ -269,7 +261,7 @@ class captcha_qstn_plugin extends Plugin
 
 		$posted_answer_is_correct = false;
 
-		$answers = explode( '|', evo_strtolower( $question->cptq_answers ) );
+		$answers = explode( '|', utf8_strtolower( $question->cptq_answers ) );
 		foreach( $answers as $answer )
 		{
 			if( $posted_answer == $answer )
@@ -283,6 +275,10 @@ class captcha_qstn_plugin extends Plugin
 		{
 			$this->debug_log( 'Posted ('.$posted_answer.') and saved ('.$question->cptq_answers.') answer do not match!' );
 			$params['validate_error'] = $this->T_('The entered answer is incorrect.');
+			if( $form_type == 'comment' && ( $comment_Item = & $params['Comment']->get_Item() ) )
+			{
+				syslog_insert( 'Comment captcha answer is incorrect', 'warning', 'item', $comment_Item->ID, 'plugin', $this->ID );
+			}
 			return false;
 		}
 
@@ -446,7 +442,12 @@ class captcha_qstn_plugin extends Plugin
 		}
 
 		$Form->info( $this->T_('Captcha question'), $question->cptq_question );
-		$Form->text_input( 'captcha_qstn_'.$this->ID.'_answer', param( 'captcha_qstn_'.$this->ID.'_answer', 'string', '' ), 10, $this->T_('Captcha answer'), $this->T_('Please answer on question above.') );
+		$Form->text_input( 'captcha_qstn_'.$this->ID.'_answer', param( 'captcha_qstn_'.$this->ID.'_answer', 'string', '' ),
+				10, $this->T_('Captcha answer'), ( empty( $params['use_placeholders'] ) ? $this->T_('Please answer the question above').'.' : '' ),
+				array(
+						'placeholder' => empty( $params['use_placeholders'] ) ? '' : T_('Please answer the question above'),
+					)
+			);
 
 		if( ! isset($params['Form']) )
 		{	// there's no Form where we add to, but our own form:

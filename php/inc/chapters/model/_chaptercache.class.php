@@ -3,24 +3,15 @@
  * This file implements the ChapterCache class.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evocore
  *
  * @author fplanque: Francois PLANQUE
- *
- * @version $Id: _chaptercache.class.php 6135 2014-03-08 07:54:05Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -45,20 +36,7 @@ class ChapterCache extends GenericCategoryCache
 	 */
 	function ChapterCache()
 	{
-		global $Settings;
-
-		if( $Settings->get('chapter_ordering') == 'manual' )
-		{	// Manual order
-			$select_temp_order = 'IF( cat_order IS NULL, 999999999, cat_order ) AS temp_order';
-			$order_by = 'temp_order';
-		}
-		else
-		{	// Alphabetic order
-			$select_temp_order = '';
-			$order_by = 'cat_name';
-		}
-
-		parent::GenericCategoryCache( 'Chapter', false, 'T_categories', 'cat_', 'cat_ID', 'cat_name', 'blog_ID', $order_by, NULL, '', $select_temp_order );
+		parent::GenericCategoryCache( 'Chapter', false, 'T_categories', 'cat_', 'cat_ID', 'cat_name', 'blog_ID' );
 	}
 
 
@@ -145,6 +123,36 @@ class ChapterCache extends GenericCategoryCache
 		return $this->cache[ $req_ID ];
 	}
 
+
+	/**
+	 * Get an array with chapters ID that are located in the given blog from root to the given chapter
+	 *
+	 * @param integer Blog ID
+	 * @param integer Chapter ID
+	 * @return array Chapters ID
+	 */
+	function get_chapter_path( $blog_ID, $chapter_ID )
+	{
+		$this->load_subset( $blog_ID );
+
+		$chapter_path = array( $chapter_ID );
+		if( isset( $this->subset_cache[ $blog_ID ] ) )
+		{
+			$chapters = $this->subset_cache[ $blog_ID ];
+			if( isset( $chapters[ $chapter_ID ] ) )
+			{
+				$Chapter = $chapters[ $chapter_ID ];
+				while( $Chapter->get( 'parent_ID' ) > 0 )
+				{
+					$chapter_path[] = $Chapter->get( 'parent_ID' );
+					// Select a parent chapter
+					$Chapter = $chapters[ $Chapter->get( 'parent_ID' ) ];
+				}
+			}
+		}
+
+		return $chapter_path;
+	}
 
 
 	/**
@@ -237,20 +245,9 @@ class ChapterCache extends GenericCategoryCache
 		$this->clear( true );
 
 		$Debuglog->add( 'ChapterCache - Loading <strong>chapters('.$subset_ID.')</strong> into cache', 'dataobjects' );
-		if( $Settings->get('chapter_ordering') == 'manual' || $force_order_by == 'manual' )
-		{	// Manual order
-			$select_temp_order = ', IF( cat_order IS NULL, 999999999, cat_order ) AS temp_order';
-			$sql_order = ' ORDER BY temp_order';
-		}
-		else
-		{	// Alphabetic order
-			$select_temp_order = '';
-			$sql_order = ' ORDER BY cat_name';
-		}
-		$sql = 'SELECT *'.$select_temp_order.'
-							FROM T_categories
-						 WHERE cat_blog_ID = '.$subset_ID
-						.$sql_order;
+		$sql = 'SELECT *
+					FROM T_categories
+					WHERE cat_blog_ID = '.$subset_ID;
 
 		foreach( $DB->get_results( $sql, OBJECT, 'Loading chapters('.$subset_ID.') into cache' ) as $row )
 		{
@@ -261,6 +258,65 @@ class ChapterCache extends GenericCategoryCache
 		$this->loaded_subsets[$subset_ID] = true;
 
 		return true;
+	}
+
+
+	/**
+	 * Get chapters in the given subset
+	 * Note: This is not ordered and it returns all of chpaters and subchapters
+	 *
+	 * @param integer subset ID
+	 * @return array of Chapters
+	 */
+	function get_chapters_by_subset( $subset_ID )
+	{
+		if( ! isset( $this->loaded_subsets[$subset_ID] ) )
+		{ // Load subset
+			$this->load_subset( $subset_ID );
+		}
+
+		return $this->subset_cache[$subset_ID];
+	}
+
+
+	/**
+	 * Get chapters by collection ID and parent ID
+	 *
+	 * @param integer collection ID
+	 * @param integer parent chapter ID
+	 * @param boolean set to true to sort the result, leave it on false otherwise
+	 *
+	 * @return array set of chapters
+	 */
+	function get_chapters( $coll_ID, $parent_ID = 0, $sorted = false )
+	{
+		$this->reveal_children( $coll_ID, $sorted );
+
+		if( $parent_ID == 0 )
+		{
+			return $this->subset_root_cats[$coll_ID];
+		}
+
+		$parent_Chapter = & $this->get_by_ID( $parent_ID );
+		if( $sorted )
+		{ // Sort chapter
+			$parent_Chapter->sort_children();
+		}
+
+		return $parent_Chapter->children;
+	}
+
+
+	/**
+	 * Check if there are categories in the given subset
+	 *
+	 * @param integer subset ID
+	 * @return boolean true if subset has chapters, false otherwise
+	 */
+	function has_chapters_in_subset( $subset_ID )
+	{
+		$this->load_subset( $subset_ID );
+		return ! empty( $this->subset_cache[$subset_ID] );
 	}
 
 

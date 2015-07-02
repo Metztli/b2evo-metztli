@@ -3,33 +3,14 @@
  * This file implements functions for handling charsets.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://daniel.hahler.de/}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author blueyed: Daniel HAHLER.
- * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: _charset.funcs.php 6225 2014-03-16 10:01:05Z attila $
  *
  * @todo dh> Move this to some other directory?
  */
@@ -115,7 +96,7 @@ function replace_special_chars( $str, $post_locale = NULL )
 
 	// Decode entities to be able to transliterate the associated chars:
 	// Tblue> TODO: Check if this could have side effects.
-	$str = evo_html_entity_decode( $str, ENT_NOQUOTES, $evo_charset );
+	$str = html_entity_decode( $str, ENT_NOQUOTES, $evo_charset );
 
 	$our_locale = $post_locale;
 	if( $our_locale === NULL )
@@ -142,7 +123,7 @@ function replace_special_chars( $str, $post_locale = NULL )
 
 	if( ( $newstr = evo_iconv_transliterate( $str, $post_locale ) ) !== false )
 	{	// iconv allows us to get nice URL titles by transliterating non-ASCII chars.
-		// Tblue> evo_htmlentities() does not know anything about ASCII?! ISO-8859-1 will work too, though.
+		// Tblue> htmlentities() does not know anything about ASCII?! ISO-8859-1 will work too, though.
 		$newstr_charset = 'ISO-8859-1';
 	}
 	// TODO: sam2kb> convert this to 'transliteration_map'
@@ -169,7 +150,7 @@ function replace_special_chars( $str, $post_locale = NULL )
 	}
 
 	// Replace HTML entities
-	$newstr = evo_htmlentities( $newstr, ENT_NOQUOTES, $newstr_charset );
+	$newstr = htmlentities( $newstr, ENT_NOQUOTES, $newstr_charset );
 
 	// Handle special entities (e.g., use "-" instead of "a" for "&"):
 	$newstr = str_replace(

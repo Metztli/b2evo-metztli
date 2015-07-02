@@ -3,30 +3,51 @@
  * This file implements functions to work with DB maintenance.
  *
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}.
  *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: _dbmaintenance.funcs.php 1500 2012-07-10 11:38:31Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
 
 /**
- * Clear pre-renderered item cache (DB)
+ * Clear pre-rendered item cache (DB)
  */
 function dbm_delete_itemprecache()
 {
 	global $DB, $Messages;
 
 	$DB->query('DELETE FROM T_items__prerendering WHERE 1=1');
+
+	$Messages->add( sprintf( T_('Removed %d cached entries.'), $DB->rows_affected ), 'success' );
+}
+
+
+/**
+ * Clear pre-rendered comment cache (DB)
+ */
+function dbm_delete_commentprecache()
+{
+	global $DB, $Messages;
+
+	$DB->query('DELETE FROM T_comments__prerendering WHERE 1=1');
+
+	$Messages->add( sprintf( T_('Removed %d cached entries.'), $DB->rows_affected ), 'success' );
+}
+
+
+/**
+ * Clear pre-rendered message cache (DB)
+ */
+function dbm_delete_messageprecache()
+{
+	global $DB, $Messages;
+
+	$DB->query('DELETE FROM T_messaging__prerendering WHERE 1=1');
 
 	$Messages->add( sprintf( T_('Removed %d cached entries.'), $DB->rows_affected ), 'success' );
 }
@@ -843,8 +864,8 @@ function dbm_convert_item_content_separators()
 	{ // Some separators were updated
 		echo ' '.sprintf( T_('%d items have been updated.'), $item_updated_count );
 
-		// To see the changes we should update the pre-renderered item contents
-		echo '<br />'.T_( 'Clear pre-renderered item cache (DB)' ).'...';
+		// To see the changes we should update the pre-rendered item contents
+		echo '<br />'.T_( 'Clear pre-rendered item cache (DB)' ).'...';
 		dbm_delete_itemprecache();
 		echo ' OK.';
 	}

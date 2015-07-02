@@ -1,30 +1,15 @@
 <?php
 /**
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2009-2014 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2009-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2009 by The Evo Factory - {@link http://www.evofactory.com/}.
- *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * The Evo Factory grants Francois PLANQUE the right to license
- * The Evo Factory's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
  *
  * @package evocore
 
- *
- * @version $Id: _display.form.php 8020 2015-01-19 08:18:22Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -82,9 +67,14 @@ $Form->end_fieldset();
 
 // --------------------------------------------
 
-$Form->begin_fieldset( T_('Back-office display options').get_manual_link('user-backoffice-display-settings') );
+$Form->begin_fieldset( T_('Username display options').get_manual_link('user-username-display-options') );
 
-		$Form->checkbox_input( 'gender_colored', $Settings->get('gender_colored'), T_('Display gender'), array( 'note'=>T_('Use colored usernames to differentiate men & women.') ) );
+	$Form->radio( 'username_display', $Settings->get( 'username_display' ),
+		array( array( 'login', T_('Usernames/Logins'), T_('Secure options') ),
+					array( 'name', T_('Friendly names (Nickname or Firstname if available)'), T_('WARNING: this may allow users to fake their identity') ),
+		), T_('What to display'), true );
+
+		$Form->checkbox_input( 'gender_colored', $Settings->get('gender_colored'), T_('Display gender in back-office'), array( 'note'=>T_('Use colored usernames to differentiate men & women.') ) );
 
 $Form->end_fieldset();
 
@@ -151,6 +141,13 @@ $Form->begin_fieldset( T_('Other permissions for anonymous users').get_manual_li
 
 	$Form->checkbox_input( 'allow_anonymous_user_list', $Settings->get('allow_anonymous_user_list'), T_('Allow to see user list') );
 
+	$user_level_params = array( 'input_prefix' => T_('from').' ' );
+	if( ! $Settings->get('allow_anonymous_user_list') && ! $Settings->get('allow_anonymous_user_profiles') )
+	{ // Disable the user groups levels interval because the users pages are not available for anonymous users
+		$user_level_params['disabled'] = 'disabled';
+	}
+	$Form->interval( 'allow_anonymous_user_level_min', $Settings->get('allow_anonymous_user_level_min'), 'allow_anonymous_user_level_max', $Settings->get('allow_anonymous_user_level_max'), 2, T_('Show only User Groups Levels'), '', $user_level_params );
+
 $Form->end_fieldset();
 
 // --------------------------------------------
@@ -161,3 +158,18 @@ if( $current_User->check_perm( 'users', 'edit' ) )
 }
 
 ?>
+<script type="text/javascript">
+jQuery( '#allow_anonymous_user_list, #allow_anonymous_user_profiles' ).click( function()
+{
+	if( ! jQuery( '#allow_anonymous_user_list' ).is( ':checked' ) && ! jQuery( '#allow_anonymous_user_profiles' ).is( ':checked' ) )
+	{ // Disable the user groups levels interval, If the users pages are not available for anonymous users
+		jQuery( '#allow_anonymous_user_level_min' ).attr( 'disabled', 'disabled' );
+		jQuery( '#allow_anonymous_user_level_max' ).attr( 'disabled', 'disabled' );
+	}
+	else
+	{ // Enable the user groups levels interval
+		jQuery( '#allow_anonymous_user_level_min' ).removeAttr( 'disabled' );
+		jQuery( '#allow_anonymous_user_level_max' ).removeAttr( 'disabled' );
+	}
+} );
+</script>

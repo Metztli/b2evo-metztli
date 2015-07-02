@@ -3,27 +3,14 @@
  * This file implements the CommentList2 class.
  *
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2004-2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
- * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author asimo: Evo Factory - Attila Simo
- * @author blueyed: Daniel HAHLER
- * @author fplanque: Francois PLANQUE
- *
- * @version $Id: _commentlist.class.php 6573 2014-04-29 12:34:14Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -319,17 +306,17 @@ class CommentList2 extends DataObjectList2
 		/*
 		 * Restrict to selected statuses:
 		 */
-		$this->filters['statuses'] = param( $this->param_prefix.'show_statuses', 'array/string', $this->default_filters['statuses'], true );      // List of statuses to restrict to
+		$this->filters['statuses'] = param( $this->param_prefix.'show_statuses', 'array:string', $this->default_filters['statuses'], true );      // List of statuses to restrict to
 
 		/*
 		 * Restrict to active/expired comments:
 		 */
-		$this->filters['expiry_statuses'] = param( $this->param_prefix.'expiry_statuses', 'array/string', $this->default_filters['expiry_statuses'], true );      // List of expiry statuses to restrict to
+		$this->filters['expiry_statuses'] = param( $this->param_prefix.'expiry_statuses', 'array:string', $this->default_filters['expiry_statuses'], true );      // List of expiry statuses to restrict to
 
 		/*
 		 * Restrict to selected types:
 		 */
-		$this->filters['types'] = param( $this->param_prefix.'types', 'array/string', $this->default_filters['types'], true );      // List of types to restrict to
+		$this->filters['types'] = param( $this->param_prefix.'types', 'array:string', $this->default_filters['types'], true );      // List of types to restrict to
 
 		/*
 		 * Restrict to selected user perm:
@@ -346,7 +333,7 @@ class CommentList2 extends DataObjectList2
 		/*
 		 * Restrict to selected rating:
 		 */
-		$this->filters['rating_toshow'] = param( $this->param_prefix.'rating_toshow', 'array/string', $this->default_filters['rating_toshow'], true );      // Rating to restrict to
+		$this->filters['rating_toshow'] = param( $this->param_prefix.'rating_toshow', 'array:string', $this->default_filters['rating_toshow'], true );      // Rating to restrict to
 		$this->filters['rating_turn'] = param( $this->param_prefix.'rating_turn', 'string', $this->default_filters['rating_turn'], true );      // Rating to restrict to
 		$this->filters['rating_limit'] = param( $this->param_prefix.'rating_limit', 'integer', $this->default_filters['rating_limit'], true ); 	// Rating to restrict to
 
@@ -466,8 +453,13 @@ class CommentList2 extends DataObjectList2
 		// Restrict post filters to available statuses. When blog = 0 we will check visibility statuses for each blog separately ( on the same query ).
 		$this->ItemQuery->where_visibility( $post_show_statuses );
 		$sql_item_IDs = 'SELECT DISTINCT post_ID'
-						.$this->ItemQuery->get_from()
-						.$this->ItemQuery->get_where();
+						.$this->ItemQuery->get_from();
+		if( strpos( $this->ItemQuery->get_from(), 'T_categories' ) === false &&
+		    strpos( $this->ItemQuery->get_where(), 'cat_blog_ID' ) !== false )
+		{ // Join categories table because it is required here for the field "cat_blog_ID"
+			$sql_item_IDs .= ' INNER JOIN T_categories ON post_main_cat_ID = cat_ID ';
+		}
+		$sql_item_IDs .= $this->ItemQuery->get_where();
 		$item_IDs = $DB->get_col( $sql_item_IDs, 0, 'Get CommentQuery Item IDs' );
 		if( empty( $item_IDs ) )
 		{ // There is no item which belongs to the given blog and user may view it, so there are no comments either
@@ -623,6 +615,25 @@ class CommentList2 extends DataObjectList2
 		//pre_dump( $Comment );
 
 		return $Comment;
+	}
+
+
+	/**
+	 * Initialize in order to be ready for displaying.
+	 *
+	 * Note it is an overriden method of the Results class. It was overriden only to update read statuses.
+	 * See {@link Result::display_init()} for more details.
+	 */
+	function display_init( $display_params = NULL, $fadeout = NULL )
+	{
+		// Lazy fill $this->params:
+		parent::display_init( $display_params, $fadeout );
+
+		// Check if the comment list is filled with a single post comments
+		if( isset( $this->filters['post_ID'] ) )
+		{ // update comments read status on the given post if required
+			$this->update_read_dates();
+		}
 	}
 
 
@@ -801,7 +812,7 @@ class CommentList2 extends DataObjectList2
 
 		$time_prune_before = $localtimenow - ( $Settings->get('auto_empty_trash') * 86400 ); // 1 day = 86400 seconds
 
-		$rows_affected = comments_delete_where( 'comment_status = "trash"
+		$rows_affected = Comment::db_delete_where( 'Comment', 'comment_status = "trash"
 			AND comment_last_touched_ts < '.$DB->quote( date2mysql( $time_prune_before ) ) );
 		$Debuglog->add( 'CommentList2::dbprune(): autopruned '.$rows_affected.' rows from T_comments.', 'request' );
 
@@ -812,6 +823,90 @@ class CommentList2 extends DataObjectList2
 		$Settings->dbupdate();
 
 		return ''; /* ok */
+	}
+
+
+	/**
+	 * Get next object in list
+	 *
+	 * @param boolean TRUE - to update read date
+	 */
+	function & get_next( $update_read_date = true )
+	{
+		$Comment = & parent::get_next();
+
+		if( empty( $Comment ) )
+		{
+			$r = false;
+			return $r;
+		}
+
+		return $Comment;
+	}
+
+
+	/**
+	 * Update posts read_comment_ts for each displayed comments
+	 *
+	 * Note: This function was implemented generally for all kind of CommentList, but currently it is used only for those cases when we have one single post comments.
+	 */
+	function update_read_dates()
+	{
+		global $DB, $current_User, $user_post_read_statuses, $localtimenow;
+
+		if( !is_logged_in() )
+		{ // User is not logged in no need to update
+			return;
+		}
+
+		$CommentCache = & get_CommentCache();
+		$page_comment_ids = $this->get_page_ID_array();
+		if( empty( $page_comment_ids ) )
+		{ // There are no comments on this page
+			return;
+		}
+
+		// Get the max comment last touched ts for each posts between the displayed comments
+		$posts_last_touched = array();
+		foreach( $page_comment_ids as $comment_ID )
+		{ // Loop through each displayed comment
+			$Comment = $CommentCache->get_by_ID( $comment_ID );
+			if( isset( $posts_last_touched[$Comment->item_ID] ) && ( $posts_last_touched[$Comment->item_ID] >= $Comment->last_touched_ts ) )
+			{ // We already had a comment with higher last_touched_ts value from the same post
+				continue;
+			}
+			// Set new last_touched_ts value
+			$posts_last_touched[$Comment->item_ID] = $Comment->last_touched_ts;
+		}
+
+		// Load current User read statuses fore each post from the list
+		load_user_read_statuses( array_keys( $posts_last_touched ) );
+		// Load comments last touched ts for each post from the list
+		$max_comment_last_touched = load_comments_last_touched( array_keys( $posts_last_touched ) );
+
+		// Set current timestamp
+		$timestamp = date2mysql( $localtimenow );
+
+		// Collect those posts which need to be updated
+		$update_values = array();
+		foreach( $posts_last_touched as $post_ID => $displayed_comment_last_touched )
+		{ // Loop through each post which has at least one comment displayed in the current page
+			// Note: We don't care about those comments where the post was not read yet
+			if( !empty( $max_comment_last_touched[ $post_ID ] ) && ( $max_comment_last_touched[ $post_ID ] == $displayed_comment_last_touched )
+				&& !empty( $user_post_read_statuses[ $post_ID ] ) && ( $user_post_read_statuses[ $post_ID ][ 'post' ] !== 0 ) )
+			{ // We can update uprs_read_comment_ts for current User and the given post_ID because the post's comment with max( comment_last_touched_ts ) is displayed here
+				$update_values[] =  $post_ID;
+			}
+		}
+
+		if( empty( $update_values ) )
+		{ // The last updated comment is not displayed from any post
+			return;
+		}
+
+		$DB->query( 'UPDATE T_users__postreadstatus
+						SET uprs_read_comment_ts = '.$DB->quote( $timestamp ).'
+						WHERE uprs_user_ID = '.$current_User->ID.' AND uprs_post_ID IN ( '.implode( ',', $update_values ).' )' );
 	}
 }
 

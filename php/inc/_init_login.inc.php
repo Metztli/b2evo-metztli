@@ -6,34 +6,15 @@
  * It is also called by more complete initializers.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- *
- * Matt FOLLETT grants Francois PLANQUE the right to license
- * Matt FOLLETT's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package evocore
- *
- * @version $Id: _init_login.inc.php 8003 2015-01-15 11:48:40Z yura $
  */
 if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page directly.' );
 
@@ -126,8 +107,8 @@ if( ! empty($login_action) || (! empty($login) && ! empty($pass)) )
 
 	// Note: login and password cannot include ' or " or > or <
 	// Note: login cannot include @
-	$login = evo_strtolower( strip_tags( remove_magic_quotes( $login ) ) );
-	$pass = strip_tags( remove_magic_quotes( $pass ) );
+	$login = utf8_strtolower( utf8_strip_tags( remove_magic_quotes( $login ) ) );
+	$pass = utf8_strip_tags( remove_magic_quotes( $pass ) );
 	$pass_md5 = md5( $pass );
 
 
@@ -143,11 +124,11 @@ if( ! empty($login_action) || (! empty($login) && ! empty($pass)) )
 	$transmit_hashed_password = (bool)$Settings->get('js_passwd_hashing') && !(bool)$Plugins->trigger_event_first_true('LoginAttemptNeedsRawPassword');
 	if( $transmit_hashed_password )
 	{
-		param( 'pwd_hashed', 'string', '' );
+		param( 'pwd_hashed', 'array:string', array() );
 	}
 	else
 	{ // at least one plugin requests the password un-hashed:
-		$pwd_hashed = '';
+		$pwd_hashed = array();
 	}
 
 	// $Debuglog->add( 'Login: pwd_hashed: '.var_export($pwd_hashed, true).', pass: '.var_export($pass, true), '_init_login' );
@@ -176,7 +157,7 @@ if( ! empty($login_action) || (! empty($login) && ! empty($pass)) )
 		if( is_email( $login ) )
 		{ // we have an email address instead of login name
 			// get user by email and password
-			list( $User, $exists_more ) = $UserCache->get_by_emailAndPwd( $login, $pass_md5, $pwd_hashed, $pwd_salt );
+			list( $User, $exists_more ) = $UserCache->get_by_emailAndPwd( $login, $pass, $pwd_hashed, $pwd_salt_sess );
 			if( $User )
 			{ // user was found
 				$email_login = $User->get( 'login' );
@@ -191,7 +172,21 @@ if( ! empty($login_action) || (! empty($login) && ! empty($pass)) )
 			$User = false;
 		}
 
-		if( $User && ! $pass_ok )
+		if( $User )
+		{ // Check user login attempts
+			$login_attempts = $UserSettings->get( 'login_attempts', $User->ID );
+			$login_attempts = empty( $login_attempts ) ? array() : explode( ';', $login_attempts );
+			if( $failed_logins_lockout > 0 && count( $login_attempts ) == 9 )
+			{ // User already has a maximum value of the attempts
+				$first_attempt = explode( '|', $login_attempts[0] );
+				if( $localtimenow - $first_attempt[0] < $failed_logins_lockout )
+				{ // User has used 9 attempts during X minutes, Display error and Refuse login
+					$login_error = sprintf( T_('There have been too many failed login attempts. This account is temporarily locked. Try again in %s minutes.'), ceil( $failed_logins_lockout / 60 ) );
+				}
+			}
+		}
+
+		if( $User && ! $pass_ok && empty( $login_error ) )
 		{ // check the password, if no plugin has said "it's ok":
 			if( ! empty($pwd_hashed) )
 			{ // password hashed by JavaScript:
@@ -220,14 +215,21 @@ if( ! empty($login_action) || (! empty($login) && ! empty($pass)) )
 				else
 				{ // compare the password, using the salt stored in the Session:
 					#pre_dump( sha1($User->pass.$pwd_salt), $pwd_hashed );
-					$pass_ok = sha1($User->pass.$pwd_salt) == $pwd_hashed;
+					foreach( $pwd_hashed as $encrypted_password )
+					{
+						$pass_ok = ( sha1( bin2hex( $User->pass ).$pwd_salt_sess ) == $encrypted_password );
+						if( $pass_ok )
+						{ // Break after the first matching password
+							break;
+						}
+					}
 					$Session->delete('core.pwd_salt');
 					$Debuglog->add( 'Login: Compared hashed passwords. Result: '.(int)$pass_ok, '_init_login' );
 				}
 			}
 			else
 			{
-				$pass_ok = ( $User->pass == $pass_md5 );
+				$pass_ok = ( $User->pass == md5( $User->salt.$pass, true ) );
 				$Debuglog->add( 'Login: Compared raw passwords. Result: '.(int)$pass_ok, '_init_login' );
 			}
 		}
@@ -257,6 +259,11 @@ if( ! empty($login_action) || (! empty($login) && ! empty($pass)) )
 		{ // save the user for later hits
 			$Session->set_User( $current_User );
 
+			if( empty( $current_User->salt ) )
+			{
+				$Messages->add( sprintf( T_('For best security, we recommend you <a %s>change your password now</a>. This will allow to re-encrypt your password in our database in a more secure way.'), 'href="'.get_user_pwdchange_url().'"' ), 'warning' );
+			}
+
 			$current_user_locale = $current_User->get( 'locale' );
 			if( ( ! isset( $locales[$current_user_locale] ) ) || ( ! $locales[$current_user_locale]['enabled'] ) )
 			{ // Current user locale doesn't exists or it is not enabled, update to the default locale if it is valid
@@ -271,15 +278,63 @@ if( ! empty($login_action) || (! empty($login) && ! empty($pass)) )
 
 			if( $Settings->get('system_lock') && $current_User->check_perm( 'users', 'edit' ) )
 			{ // System is locked for maintenance but current user has permission to log in, Display a message about this mode
-				$system_lock_url = ' href="'.$admin_url.'?ctrl=gensettings"';
+				$system_lock_url = ' href="'.$admin_url.'?ctrl=tools"';
 				$Messages->add( sprintf( T_('The site is currently locked for maintenance. Click <a %s>here</a> to access lock settings.'), $system_lock_url ), 'warning' );
 			}
+		}
+
+		if( ! empty( $login_attempts ) )
+		{ // Display all attempts on success login
+			$current_ip = array_key_exists( 'REMOTE_ADDR', $_SERVER ) ? $_SERVER['REMOTE_ADDR'] : '';
+			if( ! isset( $Plugins ) )
+			{
+				$Plugins = new Plugins();
+			}
+			// Initialize GeoIP plugin
+			$geoip_Plugin = & $Plugins->get_by_code( 'evo_GeoIP' );
+
+			foreach( $login_attempts as $attempt )
+			{
+				$attempt = explode( '|', $attempt );
+				$attempt_ip = $attempt[1];
+
+				$plugin_country_by_IP = '';
+				if( ! empty( $geoip_Plugin ) && $Country = & $geoip_Plugin->get_country_by_IP( $attempt_ip ) )
+				{ // Get country by IP if plugin is enabled
+					$plugin_country_by_IP = ' ('.$Country->get_name().')';
+				}
+
+				if( $attempt_ip != $current_ip )
+				{ // Get DNS by IP if current IP is different from attempt IP
+					$attempt_ip .= ' '.gethostbyaddr( $attempt_ip );
+				}
+
+				$Messages->add( sprintf( T_('Someone tried to log in to your account with a wrong password on %s from %s%s'),
+						date( locale_datefmt().' '.locale_timefmt(), $attempt[0] ),
+						$attempt_ip,
+						$plugin_country_by_IP
+					), 'error' );
+			}
+			// Clear the attempts list
+			$UserSettings->delete( 'login_attempts', $current_User->ID );
+			$UserSettings->dbupdate();
 		}
 	}
 	elseif( empty( $login_error ) )
 	{ // if the login_error wasn't set yet, add the default one:
 		// This will cause the login screen to "popup" (again)
 		$login_error = T_('Wrong login/password.');
+
+		if( isset( $login_attempts ) )
+		{ // Save new login attempt into DB
+			if( count( $login_attempts ) == 9 )
+			{ // Unset first attempt to clear a space for new attempt
+				unset( $login_attempts[0] );
+			}
+			$login_attempts[] = $localtimenow.'|'.( array_key_exists( 'REMOTE_ADDR', $_SERVER ) ? $_SERVER['REMOTE_ADDR'] : '' );
+			$UserSettings->set( 'login_attempts', implode( ';', $login_attempts ), $User->ID );
+			$UserSettings->dbupdate();
+		}
 	}
 
 }
@@ -298,7 +353,7 @@ elseif( $Session->has_User() /* logged in */
 		{ // Current user is a "super admin"
 			if( ! $Messages->count() )
 			{ // If there are no other messages yet, display a warning about the system lock
-				$system_lock_url = ' href="'.$admin_url.'?ctrl=gensettings"';
+				$system_lock_url = ' href="'.$admin_url.'?ctrl=tools"';
 				$Messages->add( sprintf( T_('The site is currently locked for maintenance. Click <a %s>here</a> to access lock settings.'), $system_lock_url ), 'warning' );
 			}
 		}
@@ -358,22 +413,15 @@ if( !empty($login_action) && empty( $login_error ) && ( $action != 'logout' ) )
 	{
 		$Plugins->trigger_event( 'AfterLoginRegisteredUser', array() );
 
-		if( ! empty($login_action) )
+		if( ! empty( $login_action ) )
 		{ // We're coming from the Login form and need to redirect to the requested page:
-			if( $login_action == 'redirect_to_backoffice' )
-			{ // user pressed the "Log into backoffice!" button
-				$redirect_to = $admin_url;
-			}
-			else
-			{
-				$redirect_to = param( 'redirect_to', 'url', $baseurl );
-				if( empty( $redirect_to ) ||
-					preg_match( '#/login.php([&?].*)?$#', $redirect_to ) ||
-					preg_match( '#/register.php([&?].*)?$#', $redirect_to ) ||
-					preg_match( '#disp=(login|register|lostpassword)#', $redirect_to ) )
-				{ // avoid redirect back to login/register screen. This shouldn't occur.
-					$redirect_to = $baseurl;
-				}
+			$redirect_to = param( 'redirect_to', 'url', $baseurl );
+			if( empty( $redirect_to ) ||
+				preg_match( '#/login.php([&?].*)?$#', $redirect_to ) ||
+				preg_match( '#/register.php([&?].*)?$#', $redirect_to ) ||
+				preg_match( '#disp=(login|register|lostpassword)#', $redirect_to ) )
+			{ // avoid redirect back to login/register screen. This shouldn't occur.
+				$redirect_to = $baseurl;
 			}
 
 			if( $email_login )

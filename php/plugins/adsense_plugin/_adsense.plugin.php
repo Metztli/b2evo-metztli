@@ -3,8 +3,8 @@
  * This file implements the AdSense plugin for b2evolution
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package plugins
  */
@@ -227,17 +227,15 @@ class adsense_plugin extends Plugin
 	 */
 	function AdminDisplayToolbar( & $params )
 	{
-		if( $params['edit_layout'] == 'simple' )
-		{	// This is too complex for simple mode, don't display it:
-			return false;
-		}
-
 		// Load js to work with textarea
 		require_js( 'functions.js', 'blog', true, true );
 
-		echo '<div class="edit_toolbar">AdSense: ';
-		echo '<input type="button" id="adsense_default" title="'.T_('Insert AdSense block').'" class="quicktags" data-func="textarea_wrap_selection|b2evoCanvas|[adsense:]| |1" value="'.T_('AdSense').'" />';
-		echo '</div>';
+		echo $this->get_template( 'toolbar_before', array( '$toolbar_class$' => 'adsense_toolbar' ) );
+		echo $this->get_template( 'toolbar_title_before' ).'AdSense: '.$this->get_template( 'toolbar_title_after' );
+		echo $this->get_template( 'toolbar_group_before' );
+		echo '<input type="button" id="adsense_default" title="'.T_('Insert AdSense block').'" class="'.$this->get_template( 'toolbar_button_class' ).'" data-func="textarea_wrap_selection|b2evoCanvas|[adsense:]| |1" value="'.T_('AdSense').'" />';
+		echo $this->get_template( 'toolbar_group_after' );
+		echo $this->get_template( 'toolbar_after' );
 
 		return true;
 	}

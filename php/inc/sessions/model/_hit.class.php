@@ -3,35 +3,16 @@
  * This file implements the Hit class.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
- *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
  *
  * @todo dh> Lazily handle properties through getters (and do not detect/do much in the constructor)!
  *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author blueyed: Daniel HAHLER.
- * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: _hit.class.php 7452 2014-10-17 06:59:39Z yura $
  *
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -743,9 +724,11 @@ class Hit
 	 * It will call {@link Hitlist::dbprune()} to do the automatic pruning of old hits in case
 	 * of auto_prune_stats_mode == "page".
 	 *
+	 * @param boolean Hit saving in the database can be delayed or not because of the hit_ID is required
+	 *
 	 * @return boolean true if the hit gets logged; false if not
 	 */
-	function log()
+	function log( $delayed = false )
 	{
 		global $Plugins;
 
@@ -775,7 +758,7 @@ class Hit
 		}
 
 		// Record the HIT now:
-		$this->record_the_hit();
+		$this->record_the_hit( $delayed );
 
 		return true;
 	}
@@ -817,8 +800,10 @@ class Hit
 	 *
 	 * However, if a Plugin registers the {@link Plugin::AppendHitLog() AppendHitLog event}, it
 	 * could be necessary to call this as a shutdown function.
+	 *
+	 * @param boolean Hit saving in the database can be delayed or not because of the hit_ID is required
 	 */
-	function record_the_hit()
+	function record_the_hit( $delayed = false )
 	{
 		global $DB, $Session, $ReqURI, $Blog, $blog, $localtimenow, $Debuglog, $disp, $ctrl, $http_response_code;
 
@@ -941,7 +926,8 @@ class Hit
 			$sql_insert_fields['hit_action']   = 'NULL';
 		}
 
-		$sql = 'INSERT INTO T_hitlog ( '.implode( ', ', array_keys( $sql_insert_fields ) ).' )'.
+		$sql = $delayed ? 'INSERT DELAYED INTO' : 'INSERT INTO';
+		$sql = $sql.' T_hitlog ( '.implode( ', ', array_keys( $sql_insert_fields ) ).' )'.
 		                    ' VALUES ( '.implode( ', ', $sql_insert_fields ).' )';
 
 		$DB->query( $sql, 'Record the hit' );
@@ -1639,7 +1625,7 @@ class Hit
 		// convert to lower string but keep in evo_charset
 		$saved_charset = $current_charset;
 		$current_charset = $evo_charset;
-		$key = evo_strtolower($key);
+		$key = utf8_strtolower($key);
 		$current_charset = $saved_charset;
 
 		// Extract the "serp rank"

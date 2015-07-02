@@ -3,33 +3,14 @@
  * This file implements the BlogCache class.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author blueyed: Daniel HAHLER.
- * @author fplanque: Francois PLANQUE
- *
- * @version $Id: _blogcache.class.php 6799 2014-05-29 05:08:41Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -62,7 +43,7 @@ class BlogCache extends DataObjectCache
 	function BlogCache( $order_by = 'blog_order' )
 	{
 		parent::DataObjectCache( 'Blog', false, 'T_blogs', 'blog_', 'blog_ID', NULL, $order_by,
-			/* TRANS: "None" select option */ T_('No blog'), 0 );
+			/* TRANS: "None" select option */ NT_('No blog'), 0 );
 	}
 
 
@@ -242,7 +223,18 @@ class BlogCache extends DataObjectCache
 		$SQL = new SQL();
 		$SQL->SELECT( '*' );
 		$SQL->FROM( $this->dbtablename );
-		$SQL->WHERE( 'blog_in_bloglist <> 0' );
+		$sql_where = 'blog_in_bloglist = "public"';
+		if( is_logged_in() )
+		{ // Allow the blogs that available for logged in users
+			$sql_where .= ' OR blog_in_bloglist = "logged"';
+			// Allow the blogs that available for members
+			global $current_User;
+			$sql_where .= ' OR ( blog_in_bloglist = "member" AND (
+					( SELECT bloguser_user_ID FROM T_coll_user_perms WHERE bloguser_blog_ID = blog_ID AND bloguser_ismember = 1 AND bloguser_user_ID = '.$current_User->ID.' ) OR
+					( SELECT bloggroup_group_ID FROM T_coll_group_perms WHERE bloggroup_blog_ID = blog_ID AND bloggroup_ismember = 1 AND bloggroup_group_ID = '.$current_User->grp_ID.' )
+				) )';
+		}
+		$SQL->WHERE( '( '.$sql_where.' )' );
 		$SQL->ORDER_BY( gen_order_clause( $order_by, $order_dir, 'blog_', 'blog_ID' ) );
 
 		foreach( $DB->get_results( $SQL->get(), OBJECT, 'Load public blog list' ) as $row )

@@ -6,15 +6,13 @@
  * It will also rely on default includes for specific dispays (like the comment form).
  *
  * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://b2evolution.net/man/skin-structure}
+ * {@link http://b2evolution.net/man/skin-development-primer}
  *
  * The main page template is used to display the blog when no specific page template is available
  * to handle the request (based on $disp).
  *
  * @package evoskins
  * @subpackage pureforums
- *
- * @version $Id: index.main.php 7106 2014-07-11 11:58:53Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -23,7 +21,7 @@ if( version_compare( $app_version, '4.0.0-dev' ) < 0 )
 	die( 'This skin is designed for b2evolution 4.0.0 and above. Please <a href="http://b2evolution.net/downloads/index.html">upgrade your b2evolution</a>.' );
 }
 
-global $Skin;
+global $Skin, $Settings;
 
 if( $Skin->get_setting( 'width_switcher' ) )
 {
@@ -78,8 +76,6 @@ skin_include( '_html_header.inc.php', array(
 	'usercomments_text' => T_('User\'s replies'),
 	'body_class'        => $Skin->get_setting( 'avatar_style' ) == 'round' ? 'round_avatars' : NULL,
 ) );
-// Note: You can customize the default HTML header by copying the generic
-// /skins/_html_header.inc.php file into the current skin folder.
 // -------------------------------- END OF HEADER --------------------------------
 
 
@@ -102,8 +98,8 @@ siteskin_include( '_site_body_header.inc.php' );
 				'block_display_title' => false,
 				'list_start'          => '',
 				'list_end'            => '',
-				'item_start'          => '<li>',
-				'item_end'            => '</li>',
+				'item_start'          => '',
+				'item_end'            => '',
 			) );
 		// ----------------------------- END OF "Page Top" CONTAINER -----------------------------
 		$page_top_skin_container = ob_get_clean();
@@ -113,7 +109,7 @@ siteskin_include( '_site_body_header.inc.php' );
 	?>
 	<div class="header_top">
 		<div class="layout_width switched_width"<?php echo ( !empty( $cookie_skin_width_value ) ) ? ' style="max-width:'.$cookie_skin_width_value.'"' : ''; ?>>
-			<ul><?php echo $page_top_skin_container; ?></ul>
+			<?php echo $page_top_skin_container; ?>
 		</div>
 	</div>
 	<?php } ?>
@@ -124,13 +120,14 @@ siteskin_include( '_site_body_header.inc.php' );
 			// Display container and contents:
 			skin_container( NT_('Header'), array(
 					// The following params will be used as defaults for widgets included in this container:
-					'block_start'       => '<div class="$wi_class$">',
+					'block_start'       => '<div class="widget $wi_class$">',
 					'block_end'         => '</div>',
 					'block_title_start' => '<h1>',
 					'block_title_end'   => '</h1>',
 				) );
 			// ----------------------------- END OF "Header" CONTAINER -----------------------------
 		?>
+
 			<div class="header_right">
 				<ul class="top_menu">
 		<?php
@@ -146,23 +143,21 @@ siteskin_include( '_site_body_header.inc.php' );
 					'list_end'            => '',
 					'item_start'          => '<li>',
 					'item_end'            => '</li>',
+					'item_title_before'   => '',
+					'item_title_after'    => '',
 				) );
 			// ----------------------------- END OF "Menu" CONTAINER -----------------------------
 
-			// ------------------------- "Menu Top" CONTAINER EMBEDDED HERE --------------------------
-			// Display container and contents:
-			// Note: this container is designed to be a single <ul> list
-			skin_container( NT_('Menu Top'), array(
-					// The following params will be used as defaults for widgets included in this container:
-					'block_start' => '<li><div class="$wi_class$">',
-					'block_end' => '</div></li>',
+			// Widget 'Search form':
+			skin_widget( array(
+					// CODE for the widget:
+					'widget' => 'coll_search_form',
+					// Optional display params
+					'block_start'         => '<li><div class="widget $wi_class$">',
+					'block_end'           => '</div></li>',
 					'block_display_title' => false,
-					'list_start'          => '',
-					'list_end'            => '',
-					'item_start'          => '',
-					'item_end'            => '',
+					'button'              => T_('Search')
 				) );
-			// ----------------------------- END OF "Menu Top" CONTAINER -----------------------------
 		?>
 				</ul>
 			</div>
@@ -208,6 +203,7 @@ siteskin_include( '_site_body_header.inc.php' );
 				'posts_text'        => '',
 				'useritems_text'    => T_('User\'s topics'),
 				'usercomments_text' => T_('User\'s replies'),
+				'user_text'         => '',
 			) );
 		// ----------------------------- END OF REQUEST TITLE ----------------------------
 	?>
@@ -219,28 +215,6 @@ siteskin_include( '_site_body_header.inc.php' );
 			'profile_avatar_before' => '<div class="profile_avatar">',
 			'profile_avatar_after'  => '</div>',
 			'disp_edit_categories'  => false,
-			'skin_form_params'      => array(
-					'formstart'      => '<table class="forums_table" cellspacing="0" cellpadding="0">',
-					'formend'        => '</table>',
-					'fieldset_begin' => '<tr><th colspan="3" $fieldset_attribs$>$fieldset_title$</th></tr>',
-					'fieldset_end'   => '',
-					'fieldstart'     => '<tr $ID$>',
-					'fieldend'       => '</tr>',
-					'labelstart'     => '<td class="form_label">',
-					'labelend'       => '</td>',
-					'inputstart'     => '<td class="form_input">',
-					'inputend'       => '</td>',
-					'infostart'      => '<td class="form_info" colspan="2">',
-					'infoend'        => '</td>',
-					'buttonsstart'   => '<tr><td colspan="2" class="buttons">',
-					'buttonsend'     => '</td></tr>',
-					'inline_labelstart' => '<td class="form_label_inline" colspan="2">',
-					'inline_labelend'   => '</td>',
-					'inline_inputstart' => '',
-					'inline_inputend'   => '',
-					'customstart'       => '<tr><td colspan="2" class="form_custom_content">',
-					'customend'         => '</td></tr>',
-				),
 			'notify_my_text'              => T_( 'Notify me by email whenever a reply is published on one of <strong>my</strong> topics.' ),
 			'notify_moderator_text'       => T_( 'Notify me by email whenever a reply is posted in a forum where I am a moderator.' ),
 			'user_itemlist_title'         => T_('Topics created by %s'),

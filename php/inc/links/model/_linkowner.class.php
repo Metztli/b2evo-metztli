@@ -4,16 +4,13 @@
  * Important: This class is abstract must never be instantiated.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author efy-asimo: Attila Simo.
- *
- * @version $Id: $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -71,7 +68,7 @@ class LinkOwner
 	 * function get_edit_url(); // get link owner edit url
 	 * function get_view_url(); // get link owner view url
 	 * function load_Links(); // load link owner all links
-	 * function add_link( $file_ID, $position, $order ); // add a new link to link owner
+	 * function add_link( $file_ID, $position, $order, $update_owner = true ); // add a new link to link owner
 	 * function load_Blog(); // set Link Owner Blog
 	 */
 
@@ -192,9 +189,9 @@ class LinkOwner
 		/**
 		 * asimo> Replace in select query the link_cmt_ID, link_itm_ID with the following ( it can be used only after MySQL 5.0)
 		 * (CASE
-			WHEN (link_cmt_ID IS NOT NULL) THEN 'comment'
-			WHEN (link_itm_ID IS NOT NULL) THEN 'item'
-			END) as owner_type
+		 *	WHEN (link_cmt_ID IS NOT NULL) THEN 'comment'
+		 *	WHEN (link_itm_ID IS NOT NULL) THEN 'item'
+		 *	END) as owner_type
 		 */
 		if( $order_by == NULL )
 		{
@@ -202,7 +199,7 @@ class LinkOwner
 		}
 
 		// Set links query. Note: Use inner join to make sure that result contains only existing files!
-		$SQL->SELECT( 'link_ID, link_ltype_ID, link_position, link_cmt_ID, link_itm_ID, file_ID, file_title, file_root_type, file_root_ID, file_path, file_alt, file_desc, file_path_hash' );
+		$SQL->SELECT( 'link_ID, link_ltype_ID, link_position, link_cmt_ID, link_itm_ID, file_ID, file_type, file_title, file_root_type, file_root_ID, file_path, file_alt, file_desc, file_path_hash' );
 		$SQL->FROM( 'T_links INNER JOIN T_files ON link_file_ID = file_ID' );
 		$SQL->WHERE( $this->get_where_condition() );
 		$SQL->ORDER_BY( $order_by );
@@ -246,36 +243,14 @@ class LinkOwner
 	/**
 	 * Get default position for a new link
 	 *
-	 * @param boolean new link file is image or not
+	 * @param integer File ID
+	 * @return string Position
 	 */
-	function get_default_position( $is_image = false )
+	function get_default_position( $file_ID )
 	{
-		$this->load_Links();
-
-		if( $this->Links )
-		{
-			$position = NULL;
-			$last_Link = array_pop( $this->Links );
-			$last_File = & $last_Link->get_File();
-
-			if( $last_File && $is_image && $last_File->is_image() && ! count( $this->Links ) )
-			{ // there's only one image attached yet, the second becomes "aftermore"
-				$position = 'aftermore';
-			}
-			else
-			{ // default: use position of previous link/attachment
-				$position = $last_Link->get('position');
-			}
-
-			// Re-add popped link.
-			$this->Links[] = $last_Link;
-		}
-		else
-		{ // no attachment yet
-			$position = $is_image ? 'teaser' : 'aftermore';
-		}
-
-		return $position;
+		// Use by default this position for all simple link owner such as "comment" and "user"
+		// For "item" we set default position depending on file type and order
+		return 'aftermore';
 	}
 
 
@@ -288,15 +263,17 @@ class LinkOwner
 	 * @param string Restrict to files/images linked to a specific position.
 	 *               Position can be 'teaser'|'aftermore'|'inline'
 	 *               Use comma as separator
-	 * @param string order by
+	 * @param string File type: 'image', 'audio', 'other'; NULL - to select all
 	 * @return DataObjectList2 on success or NULL if no linked files found
 	 */
-	function get_attachment_FileList( $limit = 1000, $position = NULL, $order = 'link_ID' )
+	function get_attachment_FileList( $limit = 1000, $position = NULL, $file_type = NULL )
 	{
 		if( ! isset($GLOBALS['files_Module']) )
 		{
 			return NULL;
 		}
+
+		global $DB;
 
 		load_class( '_core/model/dataobjects/_dataobjectlist2.class.php', 'DataObjectList2' );
 
@@ -305,18 +282,21 @@ class LinkOwner
 		$FileList = new DataObjectList2( $FileCache ); // IN FUNC
 
 		$SQL = new SQL();
-		$SQL->SELECT( 'file_ID, file_title, file_root_type, file_root_ID, file_path, file_alt, file_desc, file_path_hash, link_ID' );
+		$SQL->SELECT( 'file_ID, file_type, file_title, file_root_type, file_root_ID, file_path, file_alt, file_desc, file_path_hash, link_ID' );
 		$SQL->FROM( 'T_links INNER JOIN T_files ON link_file_ID = file_ID' );
 		$SQL->WHERE( $this->get_where_condition() );
 		if( !empty($position) )
 		{
-			global $DB;
 			$position = explode( ',', $position );
 			$SQL->WHERE_and( 'link_position IN ( '.$DB->quote( $position ).' )' );
 		}
-		//$SQL->ORDER_BY( $order );
 		$SQL->ORDER_BY( 'link_order' );
 		$SQL->LIMIT( $limit );
+
+		if( ! is_null( $file_type ) )
+		{ // Restrict the Links by File type
+			$SQL->WHERE_and( 'file_type = '.$DB->quote( $file_type ).' OR file_type IS NULL' );
+		}
 
 		$FileList->sql = $SQL->get();
 

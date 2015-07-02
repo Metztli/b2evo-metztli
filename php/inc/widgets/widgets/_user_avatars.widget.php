@@ -3,26 +3,13 @@
  * This file implements the User Avatars Widget class.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- * @author Yabba	- {@link http://www.astonishme.co.uk/}
- *
- * @version $Id: _user_avatars.widget.php 17 2011-10-25 04:22:09Z sam2kb $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -108,9 +95,55 @@ class user_avatars_Widget extends ComponentWidget
 					),
 				'defaultvalue' => 'random',
 			),
+			'style' => array(
+				'label' => T_('Display'),
+				'note' => '',
+				'type' => 'select',
+				'options' => array(
+						'simple' => T_('Pictures only'),
+						'badges' => T_('User badges'),
+					),
+				'defaultvalue' => 'simple',
+			),
+			'gender' => array(
+				'label' => T_('Gender filtering'),
+				'note' => '',
+				'type' => 'select',
+				'options' => array(
+						'any'      => T_('Any'),
+						'same'     => T_('Same gender as User'),
+						'opposite' => T_('Opposite gender as User'),
+					),
+				'defaultvalue' => 'any',
+			),
+			'location' => array(
+				'label' => T_('Location filtering'),
+				'note' => '',
+				'type' => 'select',
+				'options' => array(
+						'any'       => T_('Any'),
+						'country'   => T_('Same country as User'),
+						'region'    => T_('Same region as User'),
+						'subregion' => T_('Same sub-region as User'),
+						'city'      => T_('Same city as User'),
+						'closest'   => T_('Closest users'),
+					),
+				'defaultvalue' => 'any',
+			),
 		), parent::get_param_definitions( $params )	);
 
 		return $r;
+	}
+
+
+	/**
+	 * Get help URL
+	 *
+	 * @return string URL
+	 */
+	function get_help_url()
+	{
+		return get_manual_url( 'users-pictures-widget' );
 	}
 
 
@@ -168,17 +201,109 @@ class user_avatars_Widget extends ComponentWidget
 				break;
 		}
 
-		// Query list of files:
+		// Query list of users with picture and not closed:
 		$SQL = new SQL();
 		$SQL->SELECT( '*' );
 		$SQL->FROM( 'T_users' );
 		$SQL->WHERE( 'user_avatar_file_ID IS NOT NULL' );
+		$SQL->WHERE_and( 'user_status <> "closed"' );
+		if( is_logged_in() )
+		{ // Add filters
+			global $current_User, $DB;
+			switch( $this->disp_params[ 'gender' ] )
+			{ // Filter by gender
+				case 'same':
+					$SQL->WHERE_and( 'user_gender = "'.$current_User->gender.'"' );
+					break;
+				case 'opposite':
+					$SQL->WHERE_and( 'user_gender != "'.$current_User->gender.'"' );
+					break;
+			}
+			switch( $this->disp_params[ 'location' ] )
+			{ // Filter by location
+				case 'city':
+					$SQL->WHERE_and( 'user_city_ID '.( empty( $current_User->city_ID ) ? 'IS NULL' : '= "'.$current_User->city_ID.'"' ) );
+				case 'subregion':
+					$SQL->WHERE_and( 'user_subrg_ID '.( empty( $current_User->subrg_ID  ) ? 'IS NULL' : '= "'.$current_User->subrg_ID .'"' ) );
+				case 'region':
+					$SQL->WHERE_and( 'user_rgn_ID '.( empty( $current_User->rgn_ID  ) ? 'IS NULL' : '= "'.$current_User->rgn_ID .'"' ) );
+				case 'country':
+					$SQL->WHERE_and( 'user_ctry_ID '.( empty( $current_User->ctry_ID ) ? 'IS NULL' : '= "'.$current_User->ctry_ID.'"' ) );
+					break;
+				case 'closest':
+					if( !empty( $current_User->city_ID ) )
+					{ // Check if users exist with same city
+						$user_exists = $DB->get_var( 'SELECT user_ID
+							 FROM T_users
+							WHERE user_city_ID ="'.$current_User->city_ID.'"
+							  AND user_ID != "'.$current_User->ID.'"
+							LIMIT 1' );
+						if( !empty( $user_exists ) )
+						{
+							$SQL->WHERE_and( 'user_city_ID = "'.$current_User->city_ID.'"' );
+							$SQL->WHERE_and( 'user_subrg_ID = "'.$current_User->subrg_ID .'"' );
+							$SQL->WHERE_and( 'user_rgn_ID = "'.$current_User->rgn_ID .'"' );
+							$SQL->WHERE_and( 'user_ctry_ID = "'.$current_User->ctry_ID.'"' );
+							break;
+						}
+					}
+					if( !empty( $current_User->subrg_ID ) && empty( $user_exists ) )
+					{ // Check if users exist with same sub-region
+						$user_exists = $DB->get_var( 'SELECT user_ID
+							 FROM T_users
+							WHERE user_subrg_ID ="'.$current_User->subrg_ID.'"
+							  AND user_ID != "'.$current_User->ID.'"
+							LIMIT 1' );
+						if( !empty( $user_exists ) )
+						{
+							$SQL->WHERE_and( 'user_subrg_ID = "'.$current_User->subrg_ID .'"' );
+							$SQL->WHERE_and( 'user_rgn_ID = "'.$current_User->rgn_ID .'"' );
+							$SQL->WHERE_and( 'user_ctry_ID = "'.$current_User->ctry_ID.'"' );
+							break;
+						}
+					}
+					if( !empty( $current_User->rgn_ID ) && empty( $user_exists ) )
+					{ // Check if users exist with same region
+						$user_exists = $DB->get_var( 'SELECT user_ID
+							 FROM T_users
+							WHERE user_rgn_ID ="'.$current_User->rgn_ID.'"
+							  AND user_ID != "'.$current_User->ID.'"
+							LIMIT 1' );
+						if( !empty( $user_exists ) )
+						{
+							$SQL->WHERE_and( 'user_rgn_ID = "'.$current_User->rgn_ID .'"' );
+							$SQL->WHERE_and( 'user_ctry_ID = "'.$current_User->ctry_ID.'"' );
+							break;
+						}
+					}
+					if( !empty( $current_User->ctry_ID ) && empty( $user_exists ) )
+					{ // Check if users exist with same country
+						$user_exists = $DB->get_var( 'SELECT user_ID
+							 FROM T_users
+							WHERE user_ctry_ID ="'.$current_User->ctry_ID.'"
+							  AND user_ID != "'.$current_User->ID.'"
+							LIMIT 1' );
+						if( !empty( $user_exists ) )
+						{
+							$SQL->WHERE_and( 'user_ctry_ID = "'.$current_User->ctry_ID.'"' );
+						}
+					}
+					break;
+			}
+		}
 		$SQL->ORDER_BY( $sql_order );
 		$SQL->LIMIT( intval( $this->disp_params[ 'limit' ] ) );
 
 		$UserList->sql = $SQL->get();
 
 		$UserList->query( false, false, false, 'User avatars widget' );
+
+		$avatar_link_attrs = '';
+		if( $this->disp_params[ 'style' ] == 'badges' )
+		{ // Remove borders of <td> elements
+			$this->disp_params[ 'grid_cellstart' ] = str_replace( '>', ' style="border:none">', $this->disp_params[ 'grid_cellstart' ] );
+			$avatar_link_attrs = ' class="avatar_rounded"';
+		}
 
 		$layout = $this->disp_params[ 'thumb_layout' ];
 
@@ -214,7 +339,13 @@ class user_avatars_Widget extends ComponentWidget
 
 			if( ! empty( $identity_url ) )
 			{
-				$r .= '<a href="'.$identity_url.'">'.$avatar_tag.'</a>';
+				$r .= '<a href="'.$identity_url.'"'.$avatar_link_attrs.'>';
+				$r .= $avatar_tag;
+				if( $this->disp_params[ 'style' ] == 'badges' )
+				{ // Add user login after picture
+					$r .= '<br >'.$User->get_colored_login();
+				}
+				$r .= '</a>';
 			}
 			else
 			{

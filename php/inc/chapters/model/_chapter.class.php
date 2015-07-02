@@ -3,26 +3,14 @@
  * This file implements the Chapter class.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: _chapter.class.php 6135 2014-03-08 07:54:05Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -60,6 +48,25 @@ class Chapter extends GenericCategory
 	var $parent_Chapter;
 
 	/**
+	 * Date when items or comments were added/edited/deleted for this Chapter last time (timestamp)
+	 * @see Chapter::update_last_touched_date()
+	 * @var integer
+	 */
+	var $last_touched_ts;
+
+	/**
+	 * The sub categories sort order.
+	 *
+	 * Possible values:
+	 *   'parent' - same as in case of parent,
+	 *   'alpha' - sort alphabetically,
+	 *   'manual' - sort manually
+	 *
+	 * @var string
+	 */
+	var $subcat_ordering;
+
+	/**
 	 * Constructor
 	 *
 	 * @param table Database row
@@ -69,15 +76,6 @@ class Chapter extends GenericCategory
 	{
 		// Call parent constructor:
 		parent::GenericCategory( 'T_categories', 'cat_', 'cat_ID', $db_row );
-
-		/**
-		 * Delete restrictions
-		 */
-		$this->delete_restrictions = array(
-				array( 'table'=>'T_categories', 'fk'=>'cat_parent_ID', 'msg'=>T_('%d sub categories') ),
-				array( 'table'=>'T_items__item', 'fk'=>'post_main_cat_ID', 'msg'=>T_('%d posts within category through main cat') ),
-				array( 'table'=>'T_postcats', 'fk'=>'postcat_cat_ID', 'msg'=>T_('%d posts within category through extra cat') ),
-			);
 
 		if( is_null($db_row) )
 		{	// We are creating an object here:
@@ -89,9 +87,160 @@ class Chapter extends GenericCategory
 			$this->urlname = $db_row->cat_urlname;
 			$this->description = $db_row->cat_description;
 			$this->order = $db_row->cat_order;
+			$this->subcat_ordering = $db_row->cat_subcat_ordering;
 			$this->meta = $db_row->cat_meta;
 			$this->lock = $db_row->cat_lock;
+			$this->last_touched_ts = $db_row->cat_last_touched_ts;		// When Chapter received last visible change (edit, item, comment, etc.)
 		}
+	}
+
+
+	/**
+	 * Get this class db table config params
+	 *
+	 * @return array
+	 */
+	static function get_class_db_config()
+	{
+		static $chapter_db_config;
+
+		if( !isset( $chapter_db_config ) )
+		{
+			$chapter_db_config = array_merge( parent::get_class_db_config(),
+				array(
+					'dbtablename'        => 'T_categories',
+					'dbprefix'           => 'cat_',
+					'dbIDname'           => 'cat_ID',
+				)
+			);
+		}
+
+		return $chapter_db_config;
+	}
+
+
+	/**
+	 * Get delete restriction settings
+	 *
+	 * @return array
+	 */
+	static function get_delete_restrictions()
+	{
+		return array(
+				array( 'table'=>'T_categories', 'fk'=>'cat_parent_ID', 'msg'=>T_('%d sub categories'),
+					'class'=>'Chapter', 'class_path'=>'chapters/model/_chapter.class.php' ),
+				array( 'table'=>'T_items__item', 'fk'=>'post_main_cat_ID', 'msg'=>T_('%d posts within category through main cat'),
+					'class'=>'Item', 'class_path'=>'items/model/_item.class.php' ),
+				array( 'table'=>'T_postcats', 'fk'=>'postcat_cat_ID', 'msg'=>T_('%d posts within category through extra cat') ),
+			);
+	}
+
+
+	/**
+	 * Compare two Chapters based on the parent/blog sort category setting
+	 *
+	 * @param Chapter A
+	 * @param Chapter B
+	 * @return number -1 if A < B, 1 if A > B, 0 if A == B
+	 */
+	static function compare_chapters( $a_Chapter, $b_Chapter )
+	{
+		if( $a_Chapter == NULL || $b_Chapter == NULL ) {
+			debug_die('Invalid category objects received to compare.');
+		}
+
+		if( $a_Chapter->ID == $b_Chapter->ID )
+		{ // The two chapters are the same
+			return 0;
+		}
+
+		if( $a_Chapter->blog_ID != $b_Chapter->blog_ID )
+		{ // Sort based on the ordering between different blogs
+			$a_Chapter->load_Blog();
+			$b_Chapter->load_Blog();
+			return Blog::compare_blogs($a_Chapter->Blog, $b_Chapter->Blog);
+		}
+
+		$ChapterCache= & get_ChapterCache();
+		if( $a_Chapter->parent_ID != $b_Chapter->parent_ID )
+		{ // Two chapters from the same blog, but different parrents
+			// Compare those parents of these chapters which have a common parent Chapter or they are both root Chapters.
+			$path_to_root_a = array_reverse( $ChapterCache->get_chapter_path( $a_Chapter->blog_ID, $a_Chapter->ID ) );
+			$path_to_root_b = array_reverse( $ChapterCache->get_chapter_path( $b_Chapter->blog_ID, $b_Chapter->ID ) );
+			$index = 0;
+			while( isset( $path_to_root_a[$index] ) && isset( $path_to_root_b[$index] ) )
+			{
+				if( $path_to_root_a[$index] != $path_to_root_b[$index] )
+				{ // The first different parent on the same level was found, compare parent objects
+					$parent_a_Chapter = $ChapterCache->get_by_ID( $path_to_root_a[$index] );
+					$parent_b_Chapter = $ChapterCache->get_by_ID( $path_to_root_b[$index] );
+					return self::compare_chapters( $parent_a_Chapter, $parent_b_Chapter );
+				}
+				$index++;
+			}
+
+			// One of the chapters is a parent of the other, the parent is considered greater than the other
+			return isset( $path_to_root_a[$index] ) ? 1 : -1;
+		}
+
+		if( empty( $a_Chapter->parent_ID ) )
+		{
+			$a_Chapter->load_Blog();
+			$cat_order = $a_Chapter->Blog->get_setting('category_ordering');
+		}
+		else
+		{
+			$parent_Chapter = $ChapterCache->get_by_ID( $a_Chapter->parent_ID );
+			$cat_order = $parent_Chapter->get_subcat_ordering();
+		}
+
+		switch( $cat_order )
+		{
+			case 'alpha':
+				$result = strcmp( $a_Chapter->name, $b_Chapter->name );
+				break;
+
+			case 'manual':
+				if( $a_Chapter->order === NULL )
+				{ // NULL values are greater than any number
+					$result = ( $b_Chapter->order !== NULL ) ? 1 : 0;
+					break;
+				}
+
+				if( $b_Chapter->order === NULL )
+				{ // NULL values are greater than any number, so a is lower than b
+					$result = -1;
+					break;
+				}
+
+				$result = ( $a_Chapter->order > $b_Chapter->order ) ? 1 : ( ( $a_Chapter->order < $b_Chapter->order ) ? -1 : 0 );
+				break;
+
+			default:
+				debug_die("Invalid category ordering value!");
+		}
+
+		if( $result == 0 )
+		{ // In case if the order fields are equal order by ID
+			$result = $a_Chapter->ID > $b_Chapter->ID ? 1 : -1;
+		}
+
+		return $result;
+	}
+
+
+	/**
+	 * Sort chapter childer
+	 */
+	function sort_children()
+	{
+		if( $this->children_sorted )
+		{ // Category children list is already sorted
+			return;
+		}
+
+		// Sort children list
+		usort( $this->children, array( 'Chapter','compare_chapters' ) );
 	}
 
 
@@ -114,11 +263,16 @@ class Chapter extends GenericCategory
 		param( 'cat_description', 'string' );
 		$this->set_from_Request( 'description' );
 
-		if( $Settings->get('chapter_ordering') == 'manual' )
-		{	// Manual ordering
-			param( 'cat_order', 'integer' );
-			$this->set_from_Request( 'order' );
+		$cat_Blog = & $this->get_Blog();
+		if( $cat_Blog && $cat_Blog->get_setting('category_ordering') == 'manual' )
+		{ // Manual ordering
+			param( 'cat_order', 'integer', NULL );
+			$this->set_from_Request( 'order', 'cat_order', true );
 		}
+
+		// Sort sub-categories
+		param( 'cat_subcat_ordering', 'string' );
+		$this->set_from_Request( 'subcat_ordering' );
 
 		// Meta category
 		$cat_meta = param( 'cat_meta', 'integer', 0 );
@@ -285,13 +439,61 @@ class Chapter extends GenericCategory
 
 
 	/**
+	 * Get sub-category ordering
+	 *
+	 * @param boolean actual ordering - set to false to get raw setting value with default fallback to 'parent'
+	 * @return string
+	 *   - the setting value if actual_ordering param is false
+	 *   - the actual ordering value computed recursively from parents/blog if the actual_ordering param is true
+	 */
+	function get_subcat_ordering( $actual_ordering = true )
+	{
+		$setting_value = empty( $this->subcat_ordering ) ? 'parent' : $this->subcat_ordering;
+		if( ! $actual_ordering )
+		{
+			return $setting_value;
+		}
+
+		switch( $setting_value ) {
+			case 'alpha':
+			case 'manual':
+				return $this->subcat_ordering;
+
+			case 'parent':
+				return $this->get_parent_subcat_ordering();
+
+			default:
+				debug_die('Unhandled sub-category ordering value was detected');
+		}
+	}
+
+
+	/**
+	 * Get blog's category ordering value in case of root categories, parent Chapter subcat ordering otherwise
+	 *
+	 * @return string parent subcat ordering
+	 */
+	function get_parent_subcat_ordering()
+	{
+		if( empty( $this->parent_ID ) )
+		{ // Return the default blog setting
+			$this->load_Blog();
+			return $this->Blog->get_setting( 'category_ordering' );
+		}
+
+		$this->get_parent_Chapter();
+		return $this->parent_Chapter->get_subcat_ordering();
+	}
+
+
+	/**
 	 * Insert object into DB based on previously recorded changes.
 	 *
 	 * @return boolean true on success
 	 */
 	function dbinsert()
 	{
-		global $DB;
+		global $DB, $localtimenow;
 
 		load_funcs( 'items/model/_item.funcs.php' );
 
@@ -302,6 +504,8 @@ class Chapter extends GenericCategory
 
 		// validate url title / slug
 		$this->set( 'urlname', urltitle_validate( $this->urlname, $this->name, $this->ID, false, $this->dbprefix.'urlname', $this->dbIDname, $this->dbtablename) );
+
+		$this->set_param( 'last_touched_ts', 'date', date( 'Y-m-d H:i:s', $localtimenow ) );
 
 		if( parent::dbinsert() )
 		{ // The chapter was inserted successful
@@ -332,6 +536,12 @@ class Chapter extends GenericCategory
 			$this->set( 'urlname', urltitle_validate( $this->urlname, $this->name, $this->ID, false, $this->dbprefix.'urlname', $this->dbIDname, $this->dbtablename) );
 		}
 
+		if( count( $this->dbchanges ) > 0 && !isset( $this->dbchanges['last_touched_ts'] ) )
+		{ // Update last_touched_ts field only if it wasn't updated yet and the datemodified will be updated for sure.
+			global $localtimenow;
+			$this->set_param( 'last_touched_ts', 'date', date( 'Y-m-d H:i:s', $localtimenow ) );
+		}
+
 		if( parent::dbupdate() === false )
 		{ // The update was unsuccessful
 			$DB->rollback();
@@ -345,9 +555,27 @@ class Chapter extends GenericCategory
 
 
 	/**
+	 * Get a member param by its name
+	 *
+	 * @param mixed Name of parameter
+	 * @return mixed Value of parameter
+	 */
+	function get( $parname )
+	{
+		switch( $parname )
+		{
+			case 'subcat_ordering':
+				return $this->get_subcat_ordering( false );
+		}
+
+		return parent::get( $parname );
+	}
+
+
+	/**
 	 * Check if this category has at least one post
 	 *
-	 * @return boolean 
+	 * @return boolean
 	 */
 	function has_posts()
 	{
@@ -369,6 +597,35 @@ class Chapter extends GenericCategory
 		}
 
 		return ( $this->count_posts > 0 );
+	}
+
+
+	/**
+	 * Update field last_touched_ts
+	 */
+	function update_last_touched_date()
+	{
+		global $localtimenow;
+
+		$this->set_param( 'last_touched_ts', 'date', date( 'Y-m-d H:i:s', $localtimenow ) );
+		$this->dbupdate();
+	}
+
+
+	/**
+	 * Get last touched date (datetime) of Chapter
+	 *
+	 * @param string date/time format: leave empty to use locale default date format
+	 * @param boolean true if you want GMT
+	 */
+	function get_last_touched_date( $format = '', $useGM = false )
+	{
+		if( empty( $format ) )
+		{
+			return mysql2date( locale_datefmt(), $this->last_touched_ts, $useGM );
+		}
+
+		return mysql2date( $format, $this->last_touched_ts, $useGM );
 	}
 
 

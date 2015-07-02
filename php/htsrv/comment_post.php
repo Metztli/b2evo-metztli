@@ -3,21 +3,11 @@
  * This file posts a comment!
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package htsrv
  */
@@ -38,8 +28,12 @@ check_post_max_size_exceeded();
 
 // Getting GET or POST parameters:
 param( 'comment_item_ID', 'integer', true ); // required
+param( 'comment_type', 'string', 'feedback' );
 param( 'redirect_to', 'url', '' );
 param( 'reply_ID', 'integer', 0 );
+
+// Only logged in users can post the meta comments
+$comment_type = is_logged_in() ? $comment_type : 'feedback';
 
 $action = param_arrayindex( 'submit_comment_post_'.$comment_item_ID, 'save' );
 
@@ -66,11 +60,22 @@ if( $Settings->get('system_lock') )
 	header_redirect(); // Will save $Messages into Session
 }
 
-if( ! $commented_Item->can_comment( NULL ) )
-{
-	$Messages->add( T_('You cannot leave comments on this post!'), 'error' );
-
-	header_redirect(); // Will save $Messages into Session
+// Check user permissions to post this comment:
+if( $comment_type == 'meta' )
+{ // Meta comment
+	if( ! $current_User->check_perm( 'meta_comment', 'view', false, $commented_Item ) )
+	{ // Current user has no permission to post a meta comment
+		$Messages->add( T_('You cannot leave meta comments on this post!'), 'error' );
+		header_redirect(); // Will save $Messages into Session
+	}
+}
+else // 'feedback'
+{ // Normal/Standard comment
+	if( ! $commented_Item->can_comment( NULL ) )
+	{ // Current user has no permission to post a normal comment
+		$Messages->add( T_('You cannot leave comments on this post!'), 'error' );
+		header_redirect(); // Will save $Messages into Session
+	}
 }
 
 if( $commented_Item->Blog->get_setting( 'allow_html_comment' ) )
@@ -104,7 +109,7 @@ else
 	$User = NULL;
 	// Note: we use funky field names to defeat the most basic guestbook spam bots and/or their most basic authors
 	$author = param( $dummy_fields[ 'name' ], 'string' );
-	$email = evo_strtolower( param( $dummy_fields[ 'email' ], 'string' ) );
+	$email = utf8_strtolower( param( $dummy_fields[ 'email' ], 'string' ) );
 	$url = param( $dummy_fields[ 'url' ], 'string' );
 
 	if( $url != '' && ! $commented_Item->Blog->get_setting( 'allow_anon_url' ) )
@@ -128,7 +133,7 @@ $now = date( 'Y-m-d H:i:s', $localtimenow );
 
 $original_comment = $comment;
 
-$comment_renderers = param( 'renderers', 'array/string', array() );
+$comment_renderers = param( 'renderers', 'array:string', array() );
 
 // Trigger event: a Plugin could add a $category="error" message here..
 // This must get triggered before any internal validation and must pass all relevant params.
@@ -236,7 +241,7 @@ if( $reply_ID > 0 )
 {	// Set parent ID if this comment is reply to other comment
 	$Comment->set( 'in_reply_to_cmt_ID', $reply_ID );
 }
-$Comment->set( 'type', 'comment' );
+$Comment->set( 'type',( $comment_type == 'meta' ? 'meta' : 'comment' ) );
 $Comment->set_Item( $commented_Item );
 if( $User )
 { // User is logged in, we'll use his ID
@@ -267,7 +272,7 @@ if( param( 'renderers_displayed', 'integer', 0 ) )
 }
 
 // Def status will be the highest publish status what the current User ( or anonymous user if there is no current user ) can post
-$def_status = get_highest_publish_status( 'comment', $commented_Item->Blog->ID, false );
+$def_status = $Comment->is_meta() ? 'published' : get_highest_publish_status( 'comment', $commented_Item->Blog->ID, false );
 $Comment->set( 'status', $def_status );
 
 if( $action != 'preview' )
@@ -433,7 +438,7 @@ if( $Messages->has_errors() && $action != 'preview' )
 
 if( $action == 'preview' )
 { // set the Comment into user's session and redirect.
-	$Comment->set( 'original_content', evo_html_entity_decode( $original_comment ) ); // used in the textarea input field again
+	$Comment->set( 'original_content', html_entity_decode( $original_comment ) ); // used in the textarea input field again
 	$Comment->set( 'preview_attachments', $preview_attachments ); // memorize attachments
 	$Comment->set( 'checked_attachments', $checked_attachments ); // memorize checked attachments
 	$Comment->set( 'email_is_detected', $comments_email_is_detected ); // used to change a style of the comment
@@ -449,7 +454,7 @@ if( $action == 'preview' )
 
 	if( $comments_email_is_detected )
 	{ // Comment contains an email address, We should show an error about this
-		if( $Settings->get( 'newusers_canregister' ) && $Settings->get( 'registration_is_public' ) )
+		if( $Settings->get( 'newusers_canregister' ) == 'yes' && $Settings->get( 'registration_is_public' ) )
 		{ // Users can register and we give them a links to log in and registration
 			if( is_null( $commented_Item ) )
 			{ // Initialize the commented Item object
@@ -506,7 +511,7 @@ if( $result && ( !empty( $preview_attachments ) ) )
 	$FileCache = & get_FileCache();
 	$attachments = explode( ',', $preview_attachments );
 	$final_attachments = explode( ',', $checked_attachments );
-	$LinkOnwer = new LinkComment( $Comment );
+	$LinkOwner = new LinkComment( $Comment );
 	$attachment_dir = NULL;
 
 	// No need transaction here, because if one file can't be attached, the rest should be still attached
@@ -514,7 +519,7 @@ if( $result && ( !empty( $preview_attachments ) ) )
 	{ // create links between comment and attached files
 		if( in_array( $file_ID, $final_attachments ) )
 		{ // attachment checkbox was checked, create the link
-			$LinkOnwer->add_link( $file_ID, 'aftermore', $order );
+			$LinkOwner->add_link( $file_ID, 'aftermore', $order, false );
 			$order++;
 		}
 		else
@@ -627,7 +632,7 @@ if( $Comment->ID )
 
 	if( !is_logged_in() )
 	{
-		if( $Settings->get( 'newusers_canregister' ) && $Settings->get( 'registration_is_public' ) && $Comment->Item->Blog->get_setting( 'comments_register' ) )
+		if( $Settings->get( 'newusers_canregister' ) == 'yes' && $Settings->get( 'registration_is_public' ) && $Comment->Item->Blog->get_setting( 'comments_register' ) )
 		{ // Redirect to the registration form
 			$Messages->add( T_('ATTENTION: Create a user account now so that other users can contact you after reading your comment.'), 'error' );
 

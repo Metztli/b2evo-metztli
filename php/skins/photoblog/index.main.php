@@ -3,14 +3,12 @@
  * This is the main/default page template.
  *
  * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://b2evolution.net/man/skin-structure}
+ * {@link http://b2evolution.net/man/skin-development-primer}
  *
  * It is used to display the blog when no specific page template is available to handle the request.
  *
  * @package evoskins
  * @subpackage photoblog
- *
- * @version $Id: index.main.php 6462 2014-04-14 13:28:56Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -23,18 +21,13 @@ if( version_compare( $app_version, '3.0' ) < 0 )
 // Do inits depending on current $disp:
 skin_init( $disp );
 
-require_js( 'functions.js', 'blog' );	// for opening popup window (comments)
-
 // -------------------------- HTML HEADER INCLUDED HERE --------------------------
 skin_include( '_html_header.inc.php', array(
-		'auto_pilot'      => 'seo_title',
 		'arcdir_text'     => T_('Index'),
 		'catdir_text'     => T_('Galleries'),
 		'category_text'   => T_('Gallery').': ',
 		'categories_text' => T_('Galleries').': ',
 	) );
-// Note: You can customize the default HTML header by copying the
-// _html_header.inc.php file into the current skin folder.
 // -------------------------------- END OF HEADER --------------------------------
 
 
@@ -50,7 +43,7 @@ siteskin_include( '_site_body_header.inc.php' );
 		// Display container and contents:
 		skin_container( NT_('Page Top'), array(
 				// The following params will be used as defaults for widgets included in this container:
-				'block_start' => '<div class="$wi_class$">',
+				'block_start' => '<div class="widget $wi_class$">',
 				'block_end' => '</div>',
 				'block_display_title' => false,
 				'list_start' => '<ul>',
@@ -69,15 +62,17 @@ siteskin_include( '_site_body_header.inc.php' );
 			// Display container and contents:
 			skin_container( NT_('Menu'), array(
 					// The following params will be used as defaults for widgets included in this container:
-					'block_start' => '',
-					'block_end' => '',
+					'block_start'         => '',
+					'block_end'           => '',
 					'block_display_title' => false,
-					'list_start' => '',
-					'list_end' => '',
-					'item_start' => ' <span class="menu_link">',
-					'item_end' => '</span> ',
+					'list_start'          => '',
+					'list_end'            => '',
+					'item_start'          => ' <span class="menu_link">',
+					'item_end'            => '</span> ',
 					'item_selected_start' => ' <span class="menu_link">',
-					'item_selected_end' => '</span>',
+					'item_selected_end'   => '</span>',
+					'item_title_before'   => '',
+					'item_title_after'    => '',
 				) );
 			// ----------------------------- END OF "Menu" CONTAINER -----------------------------
 		?>
@@ -134,16 +129,17 @@ siteskin_include( '_site_body_header.inc.php' );
 	<?php
 		// ------------------------- TITLE FOR THE CURRENT REQUEST -------------------------
 		request_title( array(
-				'title_before'=> '<h2>',
-				'title_after' => '</h2>',
-				'title_none'  => '<h2>&nbsp;</h2>',
-				'glue'        => ' - ',
+				'title_before'      => '<h2>',
+				'title_after'       => '</h2>',
+				'title_none'        => '<h2>&nbsp;</h2>',
+				'glue'              => ' - ',
 				'title_single_disp' => false,
-				'format'      => 'htmlbody',
-				'arcdir_text' => T_('Index'),
-				'catdir_text' => T_('Galleries'),
-				'category_text' => T_('Gallery').': ',
-				'categories_text' => T_('Galleries').': ',
+				'format'            => 'htmlbody',
+				'arcdir_text'       => T_('Index'),
+				'catdir_text'       => T_('Galleries'),
+				'category_text'     => T_('Gallery').': ',
+				'categories_text'   => T_('Galleries').': ',
+				'user_text'         => '',
 			) );
 		// ------------------------------ END OF REQUEST TITLE -----------------------------
 	?>

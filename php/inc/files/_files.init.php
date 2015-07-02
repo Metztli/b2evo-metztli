@@ -2,11 +2,11 @@
 /**
  * This is the init file for the files module
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
- *
- * @version $Id: _files.init.php 6135 2014-03-08 07:54:05Z manuel $
  */
 if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page directly.' );
 
@@ -309,7 +309,7 @@ class files_Module extends Module
 				}
 		}
 
-		if( $perm && isset($permtarget) && ( is_a( $permtarget, 'FileRoot' ) ) )
+		if( $perm && isset( $permtarget ) && ( is_a( $permtarget, 'FileRoot' ) ) )
 		{
 			global $current_User;
 			switch( $permtarget->type )
@@ -319,7 +319,14 @@ class files_Module extends Module
 				case 'import':
 					return $current_User->check_perm( 'import_root', $permlevel );
 				case 'user':
-					return $permtarget->in_type_ID == $current_User->ID;
+					if( $current_User->check_perm( 'users', 'moderate' ) && $current_User->check_perm( 'files', 'all' ) )
+					{ // Current user can edits all files of other users
+						return true;
+					}
+					else
+					{ // Allow user to see only own file root
+						return $permtarget->in_type_ID == $current_User->ID;
+					}
 			}
 		}
 

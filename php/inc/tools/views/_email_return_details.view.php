@@ -3,25 +3,13 @@
  * This file implements the UI view for Tools > Email > Sent
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
- *
- * @version $Id: _email_sent_details.view.php 349 2011-11-18 11:18:14Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -37,13 +25,13 @@ $Form->info( T_('Date'), mysql2localedatetime_spans( $MailReturn->emret_timestam
 
 $Form->info( T_('Error Type'), dre_decode_error_type( $MailReturn->emret_errtype ) );
 
-$Form->info( T_('Address'), '<pre class="email_log"><span>'.evo_htmlspecialchars($MailReturn->emret_address).'</span></pre>' );
+$Form->info( T_('Address'), '<pre class="email_log"><span>'.htmlspecialchars($MailReturn->emret_address).'</span></pre>' );
 
-$Form->info( T_('Error'), '<pre class="email_log"><span>'.evo_htmlspecialchars($MailReturn->emret_errormsg).'</span></pre>' );
+$Form->info( T_('Error'), '<pre class="email_log"><span>'.htmlspecialchars($MailReturn->emret_errormsg).'</span></pre>' );
 
-$Form->info( T_('Headers'), '<pre class="email_log_scroll"><span>'.evo_htmlspecialchars($MailReturn->emret_headers).'</span></pre>' );
+$Form->info( T_('Headers'), '<pre class="email_log_scroll"><span>'.htmlspecialchars($MailReturn->emret_headers).'</span></pre>' );
 
-$Form->info( T_('Message'), '<pre class="email_log_scroll"><span>'.evo_htmlspecialchars($MailReturn->emret_message).'</span></pre>' );
+$Form->info( T_('Message'), '<pre class="email_log_scroll"><span>'.htmlspecialchars($MailReturn->emret_message).'</span></pre>' );
 
 $Form->end_form();
 

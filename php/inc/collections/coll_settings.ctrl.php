@@ -3,35 +3,17 @@
  * This file implements the UI controller for blog params management, including permissions.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
- *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
  *
  * @package admin
  *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- *
  * @todo (sessions) When creating a blog, provide "edit options" (3 tabs) instead of a single long "New" form (storing the new Blog object with the session data).
  * @todo Currently if you change the name of a blog it gets not reflected in the blog list buttons!
- *
- * @version $Id: coll_settings.ctrl.php 8225 2015-02-11 07:22:22Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -51,6 +33,9 @@ else if( $tab == 'manage_skins' )
 
 
 param_action( 'edit' );
+
+// We should activate toolbar menu items for this controller
+$activate_collection_toolbar = true;
 
 // Check permissions on requested blog and autoselect an appropriate blog if necessary.
 // This will prevent a fat error when switching tabs and you have restricted perms on blog properties.
@@ -74,12 +59,10 @@ if( $selected = autoselect_blog( 'blog_properties', 'edit' ) ) // Includes perm 
 else
 {	// We could not find a blog we have edit perms on...
 	// Note: we may still have permission to edit categories!!
-	// redirect to blog list:
-	header_redirect( '?ctrl=collections' );
-	// EXITED:
 	$Messages->add( T_('Sorry, you have no permission to edit blog properties.'), 'error' );
-	$action = 'nil';
-	$tab = '';
+	// redirect to blog list:
+	header_redirect( $admin_url.'?ctrl=dashboard' );
+	// EXITED:
 }
 
 memorize_param( 'blog', 'integer', -1 );	// Needed when generating static page for example
@@ -259,6 +242,14 @@ switch( $action )
 				blog_update_perms( $blog, 'group' );
 				$Messages->add( T_('The blog permissions have been updated'), 'success' );
 				break;
+
+			case 'chapters':
+				param( 'category_ordering', 'string' );
+				$edited_Blog->set_setting( 'category_ordering', get_param( 'category_ordering' ) );
+				$edited_Blog->dbupdate();
+				$Messages->add( T_('Category ordering has been changed.'), 'success' );
+				header_redirect( param( 'redirect_to', 'url', '?ctrl=chapters&blog='.$edited_Blog->ID ), 303 ); // Will EXIT
+				break;
 		}
 
 		break;
@@ -306,7 +297,7 @@ switch( $action )
 
 	case 'enable_setting':
 	case 'disable_setting':
-		// Update DB:
+		// Update blog settings:
 
 		// Check that this action request is not a CSRF hacked request:
 		$Session->assert_received_crumb( 'collection' );
@@ -314,19 +305,37 @@ switch( $action )
 		// Check permissions:
 		$current_User->check_perm( 'blog_properties', 'edit', true, $blog );
 
-		$update_redirect_url = '?ctrl=collections&tab=list';
+		$update_redirect_url = $admin_url.'?ctrl=dashboard';
 
 		$setting = param( 'setting', 'string', '' );
+		$setting_value = ( $action == 'enable_setting' ? '1' : '0' );
+
 		switch( $setting )
 		{
-			case 'plist':
-				// Blog in public list
-				$setting_name = 'in_bloglist';
-				break;
-
 			case 'fav':
 				// Favorite Blog
-				$setting_name = 'favorite';
+				$edited_Blog->set( 'favorite', $setting_value );
+				$result_message = T_('The collection setting has been updated.');
+				break;
+
+			case 'page_cache':
+				// Page caching
+				$edited_Blog->set_setting( 'cache_enabled', $setting_value );
+				if( $setting_value )
+				{ // If we are enabling the page caching we should also enable AJAX forms
+					$edited_Blog->set_setting( 'ajax_form_enabled', 1 );
+				}
+				$result_message = $setting_value ?
+						T_('Page caching has been turned on for the collection.') :
+						T_('Page caching has been turned off for the collection.');
+				break;
+
+			case 'block_cache':
+				// Widget/block caching
+				$edited_Blog->set_setting( 'cache_enabled_widgets', $setting_value );
+				$result_message = $setting_value ?
+						T_('Block caching has been turned on for the collection.') :
+						T_('Block caching has been turned off for the collection.');
 				break;
 
 			default:
@@ -335,33 +344,32 @@ switch( $action )
 				break;
 		}
 
-		$setting_value = $action == 'enable_setting' ? '1' : '0';
-		$edited_Blog->set( $setting_name, $setting_value );
+		// Update the changed settings
 		$edited_Blog->dbupdate();
 
-		$Messages->add( T_('The blog setting has been updated.'), 'success' );
+		$Messages->add( $result_message, 'success' );
 		// Redirect so that a reload doesn't write to the DB twice:
 		header_redirect( $update_redirect_url, 303 ); // Will EXIT
 
 		break;
 }
 
-$AdminUI->set_path( 'blogs',  $tab  );
+$AdminUI->set_path( 'collections', $tab );
 
 
 /**
  * Display page header, menus & messages:
  */
 $AdminUI->set_coll_list_params( 'blog_properties', 'edit',
-											array( 'ctrl' => 'coll_settings', 'tab' => $tab, 'action' => 'edit' ),
-											T_('Site'), '?ctrl=collections' );
+						array( 'ctrl' => 'coll_settings', 'tab' => $tab, 'action' => 'edit' ) );
 
 
-$AdminUI->breadcrumbpath_init( true, array( 'text' => T_('Structure'), 'url' => '?ctrl=coll_settings' ) );
-$AdminUI->breadcrumbpath_add( T_('Settings'), '?ctrl=coll_settings&amp;blog=$blog$' );
+$AdminUI->breadcrumbpath_init( true, array( 'text' => T_('Collections'), 'url' => $admin_url.'?ctrl=dashboard&amp;blog=$blog$' ) );
 switch( $AdminUI->get_path(1) )
 {
 	case 'general':
+		$AdminUI->set_path( 'collections', 'settings', $tab );
+		$AdminUI->breadcrumbpath_add( T_('Settings'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab=general' );
 		$AdminUI->breadcrumbpath_add( T_('General'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab='.$tab );
 		$AdminUI->set_page_manual_link( 'general-collection-settings' );
 		if( $action == 'type' )
@@ -373,36 +381,36 @@ switch( $AdminUI->get_path(1) )
 		break;
 
 	case 'home':
-		$AdminUI->set_path( 'blogs', 'features', $tab );
+		$AdminUI->set_path( 'collections', 'features', $tab );
 		$AdminUI->breadcrumbpath_add( T_('Features'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab='.$tab );
 		$AdminUI->breadcrumbpath_add( T_('Front page'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab='.$tab );
 		$AdminUI->set_page_manual_link( 'collection-front-page-settings' );
 		break;
 
 	case 'features':
-		$AdminUI->set_path( 'blogs', 'features', $tab );
-		$AdminUI->breadcrumbpath_add( T_('Features'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab='.$tab );
+		$AdminUI->set_path( 'collections', 'features', $tab );
+		$AdminUI->breadcrumbpath_add( T_('Features'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab=home' );
 		$AdminUI->breadcrumbpath_add( T_('Posts'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab='.$tab );
 		$AdminUI->set_page_manual_link( 'post-features' );
 		break;
 
 	case 'comments':
-		$AdminUI->set_path( 'blogs', 'features', $tab );
-		$AdminUI->breadcrumbpath_add( T_('Features'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab=features' );
+		$AdminUI->set_path( 'collections', 'features', $tab );
+		$AdminUI->breadcrumbpath_add( T_('Features'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab=home' );
 		$AdminUI->breadcrumbpath_add( T_('Comments'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab='.$tab );
 		$AdminUI->set_page_manual_link( 'comment-features' );
 		break;
 
 	case 'other':
-		$AdminUI->set_path( 'blogs', 'features', $tab );
-		$AdminUI->breadcrumbpath_add( T_('Features'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab=features' );
+		$AdminUI->set_path( 'collections', 'features', $tab );
+		$AdminUI->breadcrumbpath_add( T_('Features'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab=home' );
 		$AdminUI->breadcrumbpath_add( T_('Other'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab='.$tab );
 		$AdminUI->set_page_manual_link( 'features-others' );
 		break;
 
 	case 'skin':
-		$AdminUI->set_path( 'blogs', 'skin', 'current_skin' );
-		$AdminUI->breadcrumbpath_add( T_('Skin'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab='.$tab );
+		$AdminUI->set_path( 'collections', 'skin', 'current_skin' );
+		$AdminUI->breadcrumbpath_add( T_('Skins'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab='.$tab );
 		if( $skinpage == 'selection' )
 		{
 			$AdminUI->breadcrumbpath_add( T_('Skin selection'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab='.$tab.'&amp;skinpage=selection' );
@@ -410,34 +418,44 @@ switch( $AdminUI->get_path(1) )
 		else
 		{
 			init_colorpicker_js();
-			$AdminUI->breadcrumbpath_add( T_('Settings for current skin'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab='.$tab );
+			$AdminUI->breadcrumbpath_add( T_('Skins for this blog'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab='.$tab );
 		}
 		break;
 
 	case 'plugin_settings':
-		$AdminUI->breadcrumbpath_add( T_('Blog specific plugin settings'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab='.$tab );
+		$AdminUI->breadcrumbpath_add( T_('Plugins'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab='.$tab );
 		$AdminUI->set_page_manual_link( 'blog-plugin-settings' );
 		break;
 
 	case 'urls':
-		$AdminUI->breadcrumbpath_add( T_('URL configuration'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab='.$tab );
+		$AdminUI->set_path( 'collections', 'settings', $tab );
+		$AdminUI->breadcrumbpath_add( T_('Settings'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab=general' );
+		$AdminUI->breadcrumbpath_add( T_('URLs'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab='.$tab );
 		break;
 
 	case 'seo':
-		$AdminUI->breadcrumbpath_add( T_('SEO settings'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab='.$tab );
+		$AdminUI->set_path( 'collections', 'settings', $tab );
+		$AdminUI->breadcrumbpath_add( T_('Settings'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab=general' );
+		$AdminUI->breadcrumbpath_add( T_('SEO'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab='.$tab );
 		break;
 
 	case 'advanced':
+		$AdminUI->set_path( 'collections', 'settings', $tab );
+		$AdminUI->breadcrumbpath_add( T_('Settings'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab=general' );
 		$AdminUI->breadcrumbpath_add( T_('Advanced settings'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab='.$tab );
 		break;
 
 	case 'perm':
+		$AdminUI->set_path( 'collections', 'settings', $tab );
 		load_funcs( 'collections/views/_coll_perm_view.funcs.php' );
+		$AdminUI->breadcrumbpath_add( T_('Settings'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab=general' );
 		$AdminUI->breadcrumbpath_add( T_('User permissions'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab='.$tab );
 		break;
 
 	case 'permgroup':
+		$AdminUI->set_path( 'collections', 'settings', $tab );
 		load_funcs( 'collections/views/_coll_perm_view.funcs.php' );
+		$AdminUI->breadcrumbpath_add( T_('Settings'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab=general' );
 		$AdminUI->breadcrumbpath_add( T_('Group permissions'), '?ctrl=coll_settings&amp;blog=$blog$&amp;tab='.$tab );
 		break;
 }
@@ -457,18 +475,6 @@ $AdminUI->disp_payload_begin();
 // Display VIEW:
 switch( $AdminUI->get_path(1) )
 {
-	case 'general':
-		if( $action == 'type' )
-		{	// Form to change type
-			$AdminUI->disp_view( 'collections/views/_coll_type.form.php' );
-		}
-		else
-		{	// General settings of blog
-			$next_action = 'update';
-			$AdminUI->disp_view( 'collections/views/_coll_general.form.php' );
-		}
-		break;
-
 	case 'features':
 		switch( $AdminUI->get_path(2) )
 		{
@@ -502,24 +508,36 @@ switch( $AdminUI->get_path(1) )
 		$AdminUI->disp_view( 'collections/views/_coll_plugin_settings.form.php' );
 		break;
 
-	case 'urls':
-		$AdminUI->disp_view( 'collections/views/_coll_urls.form.php' );
-		break;
-
-	case 'seo':
-		$AdminUI->disp_view( 'collections/views/_coll_seo.form.php' );
-		break;
-
-	case 'advanced':
-		$AdminUI->disp_view( 'collections/views/_coll_advanced.form.php' );
-		break;
-
-	case 'perm':
-		$AdminUI->disp_view( 'collections/views/_coll_user_perm.form.php' );
-		break;
-
-	case 'permgroup':
-		$AdminUI->disp_view( 'collections/views/_coll_group_perm.form.php' );
+	case 'settings':
+		switch( $AdminUI->get_path(2) )
+		{
+			case 'general':
+				if( $action == 'type' )
+				{	// Form to change type
+					$AdminUI->disp_view( 'collections/views/_coll_type.form.php' );
+				}
+				else
+				{	// General settings of blog
+					$next_action = 'update';
+					$AdminUI->disp_view( 'collections/views/_coll_general.form.php' );
+				}
+				break;
+			case 'urls':
+				$AdminUI->disp_view( 'collections/views/_coll_urls.form.php' );
+				break;
+			case 'seo':
+				$AdminUI->disp_view( 'collections/views/_coll_seo.form.php' );
+				break;
+			case 'advanced':
+				$AdminUI->disp_view( 'collections/views/_coll_advanced.form.php' );
+				break;
+			case 'perm':
+				$AdminUI->disp_view( 'collections/views/_coll_user_perm.form.php' );
+				break;
+			case 'permgroup':
+				$AdminUI->disp_view( 'collections/views/_coll_group_perm.form.php' );
+				break;
+		}
 		break;
 }
 

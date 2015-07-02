@@ -5,33 +5,14 @@
  * This is the object handling genreric category lists.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * PROGIDISTRI S.A.S. grants Francois PLANQUE the right to license
- * PROGIDISTRI S.A.S.'s contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- * @author mbruneau: Marc BRUNEAU / PROGIDISTRI
- *
- * @version $Id: _genericcategorycache.class.php 7841 2014-12-18 16:49:41Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -83,6 +64,10 @@ class GenericCategoryCache extends GenericCache
 	 */
 	var $revealed_subsets = array();
 
+	/**
+	 * Flags about which arrays are already sorted
+	 */
+	var $sorted_flags = array();
 
 	/**
 	 * Constructor
@@ -91,6 +76,7 @@ class GenericCategoryCache extends GenericCache
 	{
 		parent::GenericCache( $objtype, $load_all, $tablename, $prefix, $dbIDname, $name_field, $order_by, $allow_none_text, $allow_none_value, $select );
 
+		// This is the property by which we will filter out subsets, for exampel 'blog_ID' if we want to only load a specific collection:
 		$this->subset_property = $subset_property;
 	}
 
@@ -106,6 +92,7 @@ class GenericCategoryCache extends GenericCache
 		$this->subset_root_cats = array();
 		$this->revealed_all_children = false;
 		$this->revealed_subsets = array();
+		$this->sorted_flags = array();
 		parent::clear();
  	}
 
@@ -134,25 +121,29 @@ class GenericCategoryCache extends GenericCache
 	/**
 	 * Reveal children
 	 *
-	 * After this each Category will have an array pointing to its direct children
+	 * After executing this, each Chapter will have an array pointing to its direct children
 	 *
 	 * @param integer|NULL NULL for all subsets
+	 * @param boolean Set true to sort root categories or leave it on false otherwise
 	 */
-	function reveal_children( $subset_ID = NULL )
+	function reveal_children( $subset_ID = NULL, $sort_root_cats = false )
 	{
 		global $Debuglog;
 		global $Timer;
 
 		if( $this->revealed_all_children )
-		{	// ALL Children have already been revealed: (can happen even if we require a subset *now*)
+		{	// All children have already been revealed: (can happen even if we require a subset *now*)
+			if( $sort_root_cats )
+			{
+				$this->sort_root_cats( $subset_ID );
+			}
 			return;
-			/* RETURN */
 		}
 
 		if( empty($this->subset_property) )
-		{	// We are not handling subsets
+		{	// We are not handling a subset but everything instead:
 
-			echo 'Revealing all children -- this is not yet handling all edge cases that the subset version can handle';
+			echo 'DEBUG - PARTIAL IMPLEMENTATION - Revealing all children -- this is not yet handling all edge cases that the subset version can handle';
 
 			// Make sure everything has been loaded:
 			$this->load_all();
@@ -174,32 +165,43 @@ class GenericCategoryCache extends GenericCache
 				}
 			}
 
+			if( $sort_root_cats )
+			{ // Sort root categories as it was requested
+				$this->sort_root_cats( NULL );
+			}
+
 			$this->revealed_all_children = true;
 		}
 		else
-		{	// We are handling subsets
+		{	// We are handling a subset (for example Chapers of a specific blog_ID only):
 
 			if( is_null( $subset_ID ) )
-			{	// No specific subset requested, we are going to reveal all subsets
+			{	// No specific subset requested, we are going to reveal all subsets in a row:
 
 				// Make sure everything has been loaded:
 				$this->load_all();
 
-				echo 'REVEALING ALL SUBSETS in a row. Is this needed?';
+				// Commented out, because it is needed in case of cross posting through blogs
+				// echo 'DEBUG - PARTIAL IMPLEMENTATION - REVEALING ALL SUBSETS in a row. Is this needed?';
 
 				foreach( $this->subset_cache as $subset_ID => $dummy )
 				{
-					$this->reveal_children( $subset_ID );
+					$this->reveal_children( $subset_ID, $sort_root_cats );
 				}
 
 				$this->revealed_all_children = true;
 			}
 			else
-			{	// We're interested in a specific subset
+			{	// We're interested in a specific subset:
+				// *** THIS IS THE CASE USED IN B2EVOLUTION ***
+
 				if( !empty( $this->revealed_subsets[$subset_ID] ) )
 				{	// Children have already been revealed:
+					if( $sort_root_cats )
+					{
+						$this->sort_root_cats( $subset_ID );
+					}
 					return;
-					/* RETURN */
 				}
 
 				$Timer->resume('reveal_children', false );
@@ -214,13 +216,13 @@ class GenericCategoryCache extends GenericCache
 				{	// There are loaded categories
 
 					// Now check that each category has a path to the root:
-					foreach( $this->subset_cache[$subset_ID] as $cat_ID => $dummy )	// "as" would give a freakin copy of the object :(((
+					foreach( $this->subset_cache[$subset_ID] as $cat_ID => $dummy )	// "as" would give a freakin COPY of the object :(((
 					{
 						$this->check_path_to_root( $subset_ID, $cat_ID );
 					}
 
-					// loop on all loaded categories to set their children list if it has some:
-					foreach( $this->subset_cache[$subset_ID] as $cat_ID => $dummy )	// "as" would give a freakin copy of the object :(((
+					// loop on all loaded categories to set their children list if they have some:
+					foreach( $this->subset_cache[$subset_ID] as $cat_ID => $dummy )	// "as" would give a freakin COPY of the object :(((
 					{
 						$GenericCategory = & $this->subset_cache[$subset_ID][$cat_ID];
 						// echo '<br>'.$cat_ID;
@@ -236,6 +238,11 @@ class GenericCategoryCache extends GenericCache
 							$this->root_cats[] = & $GenericCategory; // $this->cache[$cat_ID];
 							$this->subset_root_cats[$this->cache[$cat_ID]->{$this->subset_property}][] = & $GenericCategory; // $this->cache[$cat_ID];
 						}
+					}
+
+					if( $sort_root_cats )
+					{ // Sort subset root categories as it was requested
+						$this->sort_root_cats( $subset_ID );
 					}
 
 					$Timer->pause('reveal_children', false );
@@ -289,6 +296,76 @@ class GenericCategoryCache extends GenericCache
 		return $this->check_path_to_root( $subset_ID, $GenericCategory->parent_ID, $path_array );
 	}
 
+
+	/**
+	 * Compare an Item with a Chapter based on the given order type
+	 * TODO: asimo> Move this function to a different class ( E.g. to Chapter or to ChapterCache )
+	 *
+	 * @param Object Item
+	 * @param Object Chapter
+	 * @param string order type: 'alpha' or 'manual'
+	 * @return @return number -1 if Item < Chapter, 1 if Item > Chapter, 0 if Item == Chapter
+	 */
+	function compare_item_with_chapter( $Item, $Chapter, $order_type )
+	{
+		if( $order_type == 'alpha' )
+		{
+			return strcmp( $Item->title, $Chapter->name );
+		}
+
+		if( $Item->order == NULL )
+		{
+			return $Chapter->order == NULL ? 0 : 1;
+		}
+		elseif( $Chapter->order == NULL )
+		{
+			return -1;
+		}
+
+		return ( $Item->order < $Chapter->order ) ? -1 : ( ( $Item->order > $Chapter->order ) ? 1 : 0 );
+	}
+
+
+	/**
+	 * Sort root categories or root categories in a subset if they are not sorted yet
+	 *
+	 * @param integer subset_ID, leave it on null to sort in all subsets
+	 */
+	function sort_root_cats( $subset_ID = NULL )
+	{
+		if( $subset_ID == NULL && empty($this->subset_property) )
+		{
+			if( !$this->sorted_flags['root_cats'] )
+			{ // Root cats were not sorted yet
+				usort( $this->root_cats, array( 'Chapter','compare_chapters' ) );
+				$this->sorted_flags['root_cats'] = true;
+			}
+			return;
+		}
+
+		if( $subset_ID == NULL )
+		{
+			foreach( array_keys( $this->subset_root_cats ) as $key )
+			{
+				if( $this->sorted_flags[$key] )
+				{ // This subset was already sorted
+					continue;
+				}
+
+				usort( $this->subset_root_cats[$key], array( 'Chapter','compare_chapters' ) );
+				$this->sorted_flags[$key] = true;
+			}
+			return;
+		}
+
+		if( empty($this->sorted_flags[$subset_ID]) )
+		{ // This subset was not sorted yet
+			usort( $this->subset_root_cats[$subset_ID], array( 'Chapter','compare_chapters' ) );
+			$this->sorted_flags[$subset_ID] = true;
+		}
+	}
+
+
 	/**
 	 * Return recursive display of loaded categories
 	 *
@@ -297,13 +374,36 @@ class GenericCategoryCache extends GenericCache
 	 * @param array categories list to display
 	 * @param integer depth of categories list
 	 * @param integer Max depth of categories list, 0/empty - is infinite
+	 * @param array Other params regarding the recursive display:
+	 *   boolean sorted, sort categories or not - default value is false
+	 *   string chapter_path, array of chapter ids from root category to the selected category
+	 *   boolean expand_all, set true to expand all categories and not only the one in the chapter path
+	 *   etc.
 	 *
 	 * @return string recursive list of all loaded categories
 	 */
-	function recurse( $callbacks, $subset_ID = NULL, $cat_array = NULL, $level = 0, $max_level = 0 )
+	function recurse( $callbacks, $subset_ID = NULL, $cat_array = NULL, $level = 0, $max_level = 0, $params = array() )
 	{
-		// Make sure children have been revealed for specific subset:
-		$this->reveal_children( $subset_ID );
+		$params = array_merge( array(
+				'sorted' => false,
+				'chapter_path' => array(),
+				'expand_all' => true,
+				'posts_are_loaded' => false,
+				'subset_ID' => $subset_ID,
+				'max_level' => $max_level
+			), $params );
+		$sorted = $params['sorted'];
+		$display_posts = ! empty( $callbacks['posts'] );
+
+		// Make sure children have been (loaded and) revealed for specific subset:
+		$this->reveal_children( $subset_ID, $sorted );
+
+		if( $display_posts && !$params['posts_are_loaded'] && ( $params['expand_all'] || !empty( $params['chapter_path'] ) ) )
+		{ // Posts needs to be loaded
+			$ItemCache = & get_ItemCache();
+			$ItemCache->load_by_categories( $params['chapter_path'], $subset_ID );
+			$params['posts_are_loaded'] = true;
+		}
 
 		if( is_null( $cat_array ) )
 		{	// Get all parent categories:
@@ -312,7 +412,7 @@ class GenericCategoryCache extends GenericCache
 				$cat_array = $this->root_cats;
 			}
 			elseif( isset( $this->subset_root_cats[$subset_ID] ) )
-			{	// We have root cats for the requested subset:
+			{ // We have root cats for the requested subset:
 				$cat_array = $this->subset_root_cats[$subset_ID];
 			}
 			else
@@ -323,51 +423,38 @@ class GenericCategoryCache extends GenericCache
 
 		$r = '';
 
+		// Go through all categories at this level:
 		foreach( $cat_array as $cat )
 		{
+			// Check if category is expended
+			$params['is_selected'] = in_array( $cat->ID, $params['chapter_path'] );
+			$params['is_opened'] = $params['expand_all'] || $params['is_selected'];
+
+			// Display a category:
 			if( is_array( $callbacks['line'] ) )
 			{ // object callback:
-				$r .= $callbacks['line'][0]->{$callbacks['line'][1]}( $cat, $level ); // <li> Category  - or - <tr><td>Category</td></tr> ...
+				$r .= $callbacks['line'][0]->{$callbacks['line'][1]}( $cat, $level, $params ); // <li> Category  - or - <tr><td>Category</td></tr> ...
 			}
 			else
 			{
-				$r .= $callbacks['line']( $cat, $level ); // <li> Category  - or - <tr><td>Category</td></tr> ...
+				$r .= $callbacks['line']( $cat, $level, $params ); // <li> Category  - or - <tr><td>Category</td></tr> ...
 			}
 
-			if( ! empty( $cat->children ) && ( empty( $max_level ) || $max_level > $level + 1 ) )
-			{ // Add children categories if they exist and no restriction by level depth:
-				$r .= $this->recurse( $callbacks, $subset_ID, $cat->children, $level + 1, $max_level );
-			}
-			elseif( is_array( $callbacks['no_children'] ) )
-			{ // object callback:
-				$r .= $callbacks['no_children'][0]->{$callbacks['no_children'][1]}( $cat, $level ); // </li>
-			}
-			else
-			{
-				$r .= $callbacks['no_children']( $cat, $level ); // </li>
-			}
-		}
-
-		if( !empty( $cat->parent_ID ) && !empty( $callbacks['posts'] ) )
-		{	// Callback to display the posts under subchapters
-			if( is_array( $callbacks['posts'] ) )
-			{	// object callback:
-				$r .= $callbacks['posts'][0]->{$callbacks['posts'][1]}( $cat->parent_ID );
-			}
-			else
-			{
-				$r .= $callbacks['posts']( $cat->parent_ID );
+			if( ( empty( $max_level ) || $max_level > $level + 1 ) && $params['is_opened'] )
+			{ // Iterate through sub categories recursively
+				$params['level'] = $level;
+				$r .= $this->iterate_through_category_children( $cat, $callbacks, true, $params );
 			}
 		}
 
 		if( ! empty( $r ) )
-		{
+		{ // We have something to display at this level, wrap in in before/after:
 			$r_before = '';
 			if( is_array( $callbacks['before_level'] ) )
 			{ // object callback:
 				$r_before .= $callbacks['before_level'][0]->{$callbacks['before_level'][1]}( $level ); // <ul>
 			}
-			else
+			elseif( isset( $callbacks['before_level'] ) )
 			{
 				$r_before .= $callbacks['before_level']( $level ); // <ul>
 			}
@@ -378,9 +465,144 @@ class GenericCategoryCache extends GenericCache
 			{ // object callback:
 				$r .= $callbacks['after_level'][0]->{$callbacks['after_level'][1]}( $level ); // </ul>
 			}
-			else
+			elseif( isset( $callbacks['after_level'] ) )
 			{
 				$r .= $callbacks['after_level']( $level ); // </ul>
+			}
+		}
+
+		return $r;
+	}
+
+
+	/**
+	 * Iterate through the given Chapter sub cats and items
+	 *
+	 * @param Object Chapter
+	 * @param array  Callback functions to display a Chapter and to display an Item
+	 * @param boolean Set true to iterate sub categories recursively, false otherwise
+	 * @param array Any additional params ( e.g. 'sorted', 'level', 'list_subs_start', etc. )
+	 * @return string the concatenated callbacks result
+	 */
+	function iterate_through_category_children( $Chapter, $callbacks, $recurse = false, $params = array() )
+	{
+		$r = "";
+		$cat_items = array();
+		$has_sub_cats = ! empty( $Chapter->children );
+		$params = array_merge( array(
+				'sorted'    => false,
+				'level'     => 0,
+				'max_level' => 0,
+				'subset_ID' => $Chapter->blog_ID
+			), $params );
+
+		if( $params['sorted'] && $has_sub_cats )
+		{
+			$Chapter->sort_children();
+		}
+		if( ! empty( $callbacks['posts'] ) )
+		{
+			$ItemCache = & get_ItemCache();
+			$cat_items = $ItemCache->get_by_cat_ID( $Chapter->ID, $params['sorted'] );
+		}
+
+		if( $has_sub_cats || !empty( $cat_items ) )
+		{ // Display category or posts
+			$cat_index = 0;
+			$item_index = 0;
+			$subcats_to_display = array();
+			$chapter_children_ids = array_keys( $Chapter->children );
+			$has_more_children = isset( $chapter_children_ids[$cat_index] );
+			$has_more_items = isset( $cat_items[$item_index] );
+			$cat_order = $Chapter->get_subcat_ordering();
+			// Set post params for post display
+			$params['chapter_ID'] = $Chapter->ID;
+			$params['cat_order'] = $cat_order;
+
+			if( ( $has_more_children || $has_more_items ) && isset( $params['list_subs_start'] ) )
+			{
+				$r .= $params['list_subs_start'];
+			}
+
+			while( $has_more_children || $has_more_items )
+			{
+				$current_sub_Chapter = $has_more_children ? $Chapter->children[$chapter_children_ids[$cat_index]] : NULL;
+				$current_Item = $has_more_items ? $cat_items[$item_index] : NULL;
+				if( $current_Item != NULL && ( $current_sub_Chapter == NULL || ( $this->compare_item_with_chapter( $current_Item, $current_sub_Chapter, $cat_order ) <= 0 ) ) )
+				{
+					if( ! empty( $subcats_to_display ) )
+					{
+						if( $recurse )
+						{
+							$r .= $this->recurse( $callbacks, $params['subset_ID'], $subcats_to_display, $params['level'] + 1, $params['max_level'], $params );
+						}
+						else
+						{ // Display each category without recursion
+							foreach( $subcats_to_display as $sub_Chapter )
+							{ // Display each category:
+								if( is_array( $callbacks['line'] ) )
+								{ // object callback:
+									$r .= $callbacks['line'][0]->{$callbacks['line'][1]}( $sub_Chapter, 0, $params ); // <li> Category  - or - <tr><td>Category</td></tr> ...
+								}
+								else
+								{
+									$r .= $callbacks['line']( $sub_Chapter, 0, $params ); // <li> Category  - or - <tr><td>Category</td></tr> ...
+								}
+							}
+						}
+						$subcats_to_display = array();
+					}
+					if( is_array( $callbacks['posts'] ) )
+					{ // object callback:
+						$r .= $callbacks['posts'][0]->{$callbacks['posts'][1]}( $current_Item, $params['level'] + 1, $params );
+					}
+					else
+					{
+						$r .= $callbacks['posts']( $current_Item, $params['level'] + 1, $params );
+					}
+					$has_more_items = isset( $cat_items[++$item_index] );
+				}
+				elseif( $current_sub_Chapter != NULL )
+				{
+					$subcats_to_display[] = $current_sub_Chapter;
+					$has_more_children = isset( $chapter_children_ids[++$cat_index] );
+				}
+			}
+
+			if( ! empty( $subcats_to_display ) )
+			{ // Display all subcats which were not displayed yet
+				if( $recurse )
+				{
+					$r .= $this->recurse( $callbacks, $params['subset_ID'], $subcats_to_display, $params['level'] + 1, $params['max_level'], $params );
+				}
+				else
+				{ // Display each category without recursion
+					foreach( $subcats_to_display as $sub_Chapter )
+					{ // Display each category:
+						if( is_array( $callbacks['line'] ) )
+						{ // object callback:
+							$r .= $callbacks['line'][0]->{$callbacks['line'][1]}( $sub_Chapter, 0, $params ); // <li> Category  - or - <tr><td>Category</td></tr> ...
+						}
+						else
+						{
+							$r .= $callbacks['line']( $sub_Chapter, 0, $params ); // <li> Category  - or - <tr><td>Category</td></tr> ...
+						}
+					}
+				}
+			}
+
+			if( ( $cat_index > 0 || $item_index > 0 ) && isset( $params['list_subs_end'] ) )
+			{
+				$r .= $params['list_subs_end'];
+			}
+		}
+		elseif( isset( $callbacks['no_children'] ) )
+		{ // Display message when no children
+			if( is_array( $callbacks['no_children'] ) )
+			{ // object callback:
+				$r .= $callbacks['no_children'][0]->{$callbacks['no_children'][1]}( $Chapter, $params['level'] + 1 ); // </li>
+			} else {
+				$r .= $callbacks['no_children']( $Chapter, $params['level'] + 1 ); // </li>
 			}
 		}
 

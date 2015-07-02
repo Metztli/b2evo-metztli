@@ -3,29 +3,17 @@
  * This file implements the UI view for the cron job form.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
- *
- * @version $Id: _cronjob.form.php 6135 2014-03-08 07:54:05Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
-global $localtimenow, $cron_job_names, $edited_Cronjob;
+global $localtimenow, $edited_Cronjob;
 
 // Determine if we are creating or updating...
 global $action;
@@ -44,17 +32,23 @@ $Form->begin_form( 'fform', $creating ? T_('New scheduled job') : T_('Edit sched
 	$Form->begin_fieldset( T_('Job details').get_manual_link('scheduler_job_form') );
 
 		if( $creating && $action != 'copy' )
-		{	// New cronjob
-			$Form->select_input_array( 'cjob_type', get_param( 'cjob_type' ), $cron_job_names, T_('Job type') );
+		{ // New cronjob
+			$cron_jobs_names = get_cron_jobs_config( 'name' );
+			// Exclude these cron jobs from manual creating
+			unset( $cron_jobs_names['send-post-notifications'] );
+			unset( $cron_jobs_names['send-comment-notifications'] );
+			$Form->select_input_array( 'cjob_type', get_param( 'cjob_type' ), $cron_jobs_names, T_('Job type') );
 		}
 		else
-		{	// Edit cronjob
+		{ // Edit cronjob
 			if( $action == 'edit' )
 			{
 				$Form->info( T_('Job #'), $edited_Cronjob->ID );
 			}
 
-			$Form->text_input( 'cjob_name', $edited_Cronjob->name, 25, T_('Job name'), '', array( 'maxlength' => 255, 'required' => true ) );
+			$Form->info( T_('Default job name'), cron_job_name( $edited_Cronjob->key, '', $edited_Cronjob->params ) );
+
+			$Form->text_input( 'cjob_name', $edited_Cronjob->name, 50, T_('Job name'), '', array( 'maxlength' => 255 ) );
 		}
 
 		$Form->date_input( 'cjob_date', date2mysql( $edited_Cronjob->start_timestamp ), T_('Schedule date'), array(

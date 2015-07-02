@@ -3,38 +3,15 @@
  * This file implements the DataObjectCache class.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- *
- * PROGIDISTRI S.A.S. grants Francois PLANQUE the right to license
- * PROGIDISTRI S.A.S.'s contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author blueyed: Daniel HAHLER.
- * @author fplanque: Francois PLANQUE
- *
- * @version $Id: _dataobjectcache.class.php 8198 2015-02-09 08:58:14Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -111,6 +88,8 @@ class DataObjectCache
 	 * The text that gets used for the "None" option in the objects options list.
 	 *
 	 * This is especially useful for i18n, because there are several "None"s!
+	 * 
+	 * !!! NOTE !!! Do NOT use T_() for this value, Use only NT_()
 	 *
 	 * @var string
 	 */
@@ -141,7 +120,8 @@ class DataObjectCache
 	 * @param string Name of the ID field (including prefix)
 	 * @param string Name of the name field (including prefix)
 	 * @param string Name of the order field or NULL to use name field
-	 * @param string The text that gets used for the "None" option in the objects options list (Default: T_('None')).
+	 * @param string The text that gets used for the "None" option in the objects options list (Default: NT_('None')).
+	 *               !!! NOTE !!! Do NOT use T_() for this value, Use only NT_()
 	 * @param mixed  The value that gets used for the "None" option in the objects options list.
 	 * @param string Additional part for SELECT clause of sql query
 	 */
@@ -178,7 +158,7 @@ class DataObjectCache
 		}
 		else
 		{
-			$this->none_option_text = /* TRANS: the default value for option lists where "None" is allowed */ T_('None');
+			$this->none_option_text = /* TRANS: the default value for option lists where "None" is allowed */ NT_('None');
 		}
 	}
 
@@ -790,7 +770,7 @@ class DataObjectCache
 		{
 			$r .= '<option value="'.$this->none_option_value.'"';
 			if( empty($default) ) $r .= ' selected="selected"';
-			$r .= '>'.format_to_output($this->none_option_text).'</option>'."\n";
+			$r .= '>'.format_to_output( T_( $this->none_option_text ) ).'</option>'."\n";
 		}
 
 		foreach( $this->cache as $loop_Obj )
@@ -846,7 +826,7 @@ class DataObjectCache
 		{	// we set current value of a country if it is sent to function
 			$r .= '<option value="'.$this->none_option_value.'"';
 			if( empty($default) ) $r .= ' selected="selected"';
-			$r .= '>'.format_to_output($this->none_option_text).'</option>'."\n";
+			$r .= '>'.format_to_output( T_( $this->none_option_text ) ).'</option>'."\n";
 		}
 
 		$pref_countries = array(); //preferred countries.

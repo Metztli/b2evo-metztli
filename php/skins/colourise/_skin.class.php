@@ -5,10 +5,8 @@
  *
  * This file is part of the b2evolution project - {@link http://b2evolution.net/}
  *
- * @package skins
+ * @package evoskins
  * @subpackage colourise
- *
- * @version $Id: _skin.class.php 7069 2014-07-04 08:32:23Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -47,11 +45,53 @@ class colourise_Skin extends Skin
 	function get_param_definitions( $params )
 	{
 		$r = array_merge( array(
+				'display_post_date' => array(
+					'label' => T_('Post date'),
+					'note' => T_('Display the date of each post'),
+					'defaultvalue' => 1,
+					'type' => 'checkbox',
+				),
 				'colorbox' => array(
 					'label' => T_('Colorbox Image Zoom'),
 					'note' => T_('Check to enable javascript zooming on images (using the colorbox script)'),
 					'defaultvalue' => 1,
 					'type'	=>	'checkbox',
+				),
+				'colorbox_vote_post' => array(
+					'label' => T_('Voting on Post Images'),
+					'note' => T_('Check this to enable AJAX voting buttons in the colorbox zoom view'),
+					'defaultvalue' => 1,
+					'type' => 'checkbox',
+				),
+				'colorbox_vote_post_numbers' => array(
+					'label' => T_('Display Votes'),
+					'note' => T_('Check to display number of likes and dislikes'),
+					'defaultvalue' => 1,
+					'type' => 'checkbox',
+				),
+				'colorbox_vote_comment' => array(
+					'label' => T_('Voting on Comment Images'),
+					'note' => T_('Check this to enable AJAX voting buttons in the colorbox zoom view'),
+					'defaultvalue' => 1,
+					'type' => 'checkbox',
+				),
+				'colorbox_vote_comment_numbers' => array(
+					'label' => T_('Display Votes'),
+					'note' => T_('Check to display number of likes and dislikes'),
+					'defaultvalue' => 1,
+					'type' => 'checkbox',
+				),
+				'colorbox_vote_user' => array(
+					'label' => T_('Voting on User Images'),
+					'note' => T_('Check this to enable AJAX voting buttons in the colorbox zoom view'),
+					'defaultvalue' => 1,
+					'type' => 'checkbox',
+				),
+				'colorbox_vote_user_numbers' => array(
+					'label' => T_('Display Votes'),
+					'note' => T_('Check to display number of likes and dislikes'),
+					'defaultvalue' => 1,
+					'type' => 'checkbox',
 				),
 				'gender_colored' => array(
 					'label' => T_('Display gender'),
@@ -65,7 +105,13 @@ class colourise_Skin extends Skin
 					'defaultvalue' => 0,
 					'type' => 'checkbox',
 				),
-			), parent::get_param_definitions( $params )	);
+				'autocomplete_usernames' => array(
+					'label' => T_('Autocomplete usernames'),
+					'note' => T_('Check to enable auto-completion of usernames entered after a "@" sign in the comment forms'),
+					'defaultvalue' => 1,
+					'type' => 'checkbox',
+				),
+			), parent::get_param_definitions( $params ) );
 
 		return $r;
 	}

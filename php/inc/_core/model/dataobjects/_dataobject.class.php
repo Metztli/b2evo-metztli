@@ -3,39 +3,15 @@
  * This file implements the abstract DataObject base class.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- *
- * PROGIDISTRI S.A.S. grants Francois PLANQUE the right to license
- * PROGIDISTRI S.A.S.'s contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE
- * @author blueyed: Daniel HAHLER
- * @author mbruneau: Marc BRUNEAU / PROGIDISTRI
- *
- * @version $Id: _dataobject.class.php 7942 2015-01-11 00:28:14Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -78,12 +54,12 @@ class DataObject
 	/**
 	 * Relations that may restrict deletion.
 	 */
-	var $delete_restrictions = array();
+	var $delete_restrictions = NULL;
 
 	/**
 	 * Relations that will cascade deletion.
 	 */
-	var $delete_cascades = array();
+	var $delete_cascades = NULL;
 
 
 	/**
@@ -107,6 +83,287 @@ class DataObject
 		$this->datemodified_field = $datemodified_field;
 		$this->creator_field      = $creator_field;
 		$this->lasteditor_field   = $lasteditor_field;
+	}
+
+
+	/**
+	 * Initialize relations for restrict and cascade deletion.
+	 */
+	function init_relations()
+	{
+		if( ! is_null( $this->delete_cascades ) || ! is_null( $this->delete_restrictions ) )
+		{ // Initialize the relations only once
+			return;
+		}
+
+		$this->delete_restrictions = $this->get_delete_restrictions();
+		$this->delete_cascades = $this->get_delete_cascades();
+	}
+
+
+	/**
+	 * Get this class db table config params
+	 *
+	 * @return array
+	 */
+	static function get_class_db_config()
+	{
+		static $class_db_config;
+
+		if( !isset( $class_db_config ) )
+		{
+			$class_db_config = array(
+				'dbprefix'           => '',
+				'dbIDname'           => 'ID',
+				'datecreated_field'  => '',
+				'datemodified_field' => '',
+				'creator_field'      => '',
+				'lasteditor_field'   => '',
+			);
+		}
+
+		return $class_db_config;
+	}
+
+
+	/**
+	 * Get delete restriction settings
+	 *
+	 * Note: In some special cases the objects may require additional restriction values.
+	 * The extra restrictions must be added with the $this->add_relations() function.
+	 *
+	 * @return array
+	 */
+	static function get_delete_restrictions()
+	{
+		/* Examples of the delete restrictions:
+
+		return array(
+				array( 'table'=>'T_table_name', 'fk'=>'foreign_column_ID', 'msg'=>T_('%d rows'),
+					'and_condition' => 'foreign_column_name = "value"' ),
+			);
+
+		*/
+
+		return array();
+	}
+
+
+	/**
+	 * Get delete cascade settings
+	 *
+	 * Note: In some special cases ( E.g. in case of spammer user delete ) the objects may require additional cascade values.
+	 * The extra cascade options must be added with the $this->add_relations() function.
+	 *
+	 * @return array
+	 */
+	static function get_delete_cascades()
+	{
+		/* Examples of the delete cascades:
+
+		return array(
+				array( 'table'=>'T_table_name', 'fk'=>'foreign_column_ID', 'msg'=>T_('%d rows'),
+					'and_condition' => 'foreign_column_name = "value"' ),
+			);
+
+		*/
+
+		return array();
+	}
+
+
+	/**
+	 * Delete the given class objects from the database which corresponds to the given condition or to the given ids array
+	 * This function must be overriden on those classes where the db delete requires some updates on other table content or some files/folders delete.
+	 * Note: the delete cascade arrays are handled!
+	 * Delete cascades are handled recursively only if the cascade arrays from the reffering class contains the class and class_path params ( e.g. see User class )!
+	 *
+	 * @param string the name of the class which objects needs to be deleted;
+	 *   Note: This is required until min phpversion will be 5.3. Since PHP 5.3 we can use static::function_name to achieve late static bindings
+	 * @param string where condition
+	 * @param array object ids
+	 * @param array additional params if required
+	 * @return mixed # of rows affected or false if error
+	 */
+	static function db_delete_where( $class_name, $sql_where, $object_ids = NULL, $params = NULL )
+	{
+		global $DB, $db_config;
+
+		// Init delete cascades
+		if( isset( $params['delete_cascades'] ) )
+		{ // Use predefined delete cascades
+			$delete_cascades = $params['delete_cascades'];
+			unset( $params['delete_cascades'] );
+		}
+		else
+		{ // Get delete cascades from the given class
+			$delete_cascades = call_user_func( array( $class_name, 'get_delete_cascades' ) );
+		}
+
+		// Init dbconfig variables
+		if( isset( $params['class_db_config'] ) )
+		{ // Use predefined class dbconfig
+			$self_db_config = $params['class_db_config'];
+			unset( $params['class_db_config'] );
+		}
+		else
+		{ // Get class dbconfig from the given class
+			$self_db_config = call_user_func( array( $class_name, 'get_class_db_config' ) );
+		}
+
+		if( isset( $params['force_delete'] ) )
+		{ // In case of force deletion, also delete restrictions
+			$delete_restrictions = call_user_func( array( $class_name, 'get_delete_restrictions' ) );
+			$delete_cascades = array_merge( $delete_cascades, $delete_restrictions );
+		}
+
+		$delete_query = 'DELETE '.$self_db_config['dbtablename'];
+		$from_clause = ' FROM '.$self_db_config['dbtablename'];
+
+		if( empty( $sql_where ) )
+		{
+			if( empty( $object_ids ) )
+			{
+				return 0;
+			}
+
+			$sql_where = $self_db_config['dbIDname'].' IN ( '.implode( ', ', $object_ids ).' )';
+		}
+
+		if( empty( $object_ids ) )
+		{
+			$sub_query = 'SELECT '.$self_db_config['dbIDname'].'
+						FROM '.$self_db_config['dbtablename'].'
+						WHERE '.$sql_where;
+			$object_ids = $DB->get_col( $sub_query );
+
+			if( empty( $object_ids ) )
+			{
+				return 0;
+			}
+		}
+
+		$use_transaction = ( isset( $params['use_transaction'] ) ) ? $params['use_transaction'] : true;
+		if( $use_transaction )
+		{
+			$DB->begin();
+			$params['use_transaction'] = false;
+		}
+
+		$index = 0;
+		foreach( $delete_cascades as $cascade )
+		{
+			if( !isset( $db_config['aliases'][$cascade['table']] ) )
+			{	// We have no declaration for this table, we consider we don't deal with this table in this app:
+				continue;
+			}
+
+			// add more where condition
+			$more_restriction = '';
+			if( isset( $cascade['and_condition'] ) )
+			{
+				$more_restriction .= ' AND ( '.$cascade['and_condition'].' )';
+			}
+
+			if( isset( $cascade['class'] ) )
+			{ // The cascade class attributum is set, call the corresponding db_delete_where() function
+				if( empty( $object_ids ) )
+				{ // delete by where condition
+					$sub_query = 'SELECT '.$self_db_config['dbIDname'].'
+						FROM '.$self_db_config['dbtablename'].'
+						WHERE '.$sql_where.$more_restriction;
+					if( $self_db_config['dbtablename'] == $cascade['table'] )
+					{ // We are removing items from the same table, avoid infinite loop
+						$object_ids = $DB->get_col( $sub_query );
+						if( empty( $object_ids ) )
+						{ // There are no entries in the foreign key table with the given condition, so nothing to delete
+							continue;
+						}
+					}
+				}
+
+				// Set cascade condition based on the already known foreign key ids or on the sub query in case of unknown foreign keys
+				$cascade_condition = $cascade['fk'].' IN ( '.( empty( $object_ids ) ? $sub_query : implode( ', ', $object_ids ) ).' )';
+
+				load_class( $cascade['class_path'], $cascade['class'] );
+				// Delete the given class objects together with all of its delete cascades
+				$params['force_delete'] = true;
+				$result = call_user_func( array( $cascade['class'], 'db_delete_where' ), $cascade['class'], $cascade_condition, NULL, $params );
+				if( $result === false )
+				{ // Delete cascade operation failed in a cascade class
+					if( $use_transaction )
+					{ // Rollback transaction
+						$DB->rollback();
+					}
+					return false;
+				}
+				continue;
+			}
+
+			$alias = $cascade['table'].++$index;
+
+			$result = $DB->query( 'DELETE '.$alias.'
+				FROM '.$cascade['table'].' AS '.$alias.'
+				WHERE '.$alias.'.'.$cascade['fk'].' IN ( '.implode( ', ', $object_ids ).' )'.$more_restriction,
+				'Delete object from db with where condition' );
+			if( $result === false )
+			{ // There is an open transaction, needs to be closed.
+				if( $use_transaction ) {
+					$DB->rollback();
+				}
+				return $result;
+			}
+		}
+
+		// Delete this (main/parent) object:
+		$result = $DB->query( $delete_query.$from_clause.' WHERE '.$sql_where, 'Delete object from db with where condition' );
+		if( $use_transaction )
+		{ // There is an open transaction, needs to be closed.
+			( $result === false ) ? $DB->rollback() : $DB->commit();
+		}
+		return $result;
+	}
+
+
+	/**
+	 * Add additional relations for specific cases
+	 * E.g. On spammer user delete the user comments must be also deleted
+	 *
+	 * @param string relation type: restrictions, cascades
+	 * @param unknown_type $new_relations
+	 */
+	function add_relations( $type, $new_relations )
+	{
+		// Make sure relations was initialized
+		$this->init_relations();
+
+		switch( $type )
+		{
+			case 'restrictions':
+				if( is_null( $this->delete_restrictions ) )
+				{
+					$this->delete_restrictions = $new_relations;
+				}
+				else
+				{
+					$this->delete_restrictions = array_merge( $this->delete_restrictions, $new_relations );
+				}
+				break;
+
+			case 'cascades':
+				if( is_null( $this->delete_cascades ) )
+				{
+					$this->delete_cascades = $new_relations;
+				}
+				else
+				{
+					$this->delete_cascades = array_merge( $this->delete_cascades, $new_relations );
+				}
+				break;
+
+			default:
+				debug_die( 'Invalid realtion type received.' );
+		}
 	}
 
 
@@ -136,7 +393,10 @@ class DataObject
 	{
 		global $DB, $Plugins, $localtimenow, $current_User;
 
-		if( $this->ID == 0 ) { debug_die( 'New object cannot be updated!' ); }
+		if( $this->ID == 0 )
+		{
+			debug_die( 'New object cannot be updated!' );
+		}
 
 		if( count( $this->dbchanges ) == 0 )
 		{
@@ -339,60 +599,47 @@ class DataObject
 
 		if( $this->ID == 0 ) { debug_die( 'Non persistant object cannot be deleted!' ); }
 
-		if( count($this->delete_cascades) )
-		{	// The are cascading deletes to be performed
+		$this->init_relations();
 
-			// Start transaction:
+		// Make sure to handle in transaction if the are cascading deletes to be performed
+		$need_transaction = ( ! empty( $this->delete_cascades ) );
+		if( $need_transaction )
+		{
 			$DB->begin();
-
-			if( ! $this->check_delete( T_('Some restrictions prevent deletion:'), $ignore_restrictions ) )
-			{ // Some restrictions still prevent deletion
-				// Note: This restrictions must be handled previously before dbdelete is called.
-				// If this code is executed it means there is an impelmentation issue and restricitons must be check there.
-				$DB->rollback();
-				return false;
-			}
-
-			foreach( $this->delete_cascades as $restriction )
-			{
-				if( !isset( $db_config['aliases'][$restriction['table']] ) )
-				{	// We have no declaration for this table, we consider we don't deal with this table in this app:
-					continue;
-				}
-
-				// add more where condition
-				$more_restriction = '';
-				if( isset( $restriction['and_condition'] ) )
-				{
-					$more_restriction .= ' AND ( '.$restriction['and_condition'].' )';
-				}
-
-				$DB->query( '
-					DELETE FROM '.$restriction['table'].'
-					WHERE '.$restriction['fk'].' = '.$this->ID.$more_restriction,
-					'Cascaded delete' );
-			}
 		}
 
-		// Delete this (main/parent) object:
-		$DB->query( "
-			DELETE FROM $this->dbtablename
-			WHERE $this->dbIDname = $this->ID",
-			'Main delete' );
+		if( ! $this->check_delete( T_('Some restrictions prevent deletion:'), $ignore_restrictions ) )
+		{ // Some restrictions still prevent deletion
+			// Note: This restrictions must be handled previously before dbdelete is called.
+			// If this code is executed it means there is an implementation issue and restricitons must be check there.
+			$DB->rollback();
+			return false;
+		}
+
+		// Set params for this object
+		$params = array(
+			'delete_cascades' => $this->delete_cascades,
+			'class_db_config' => array(
+				'dbtablename'     => $this->dbtablename,
+				'dbprefix'        => $this->dbprefix,
+				'dbIDname'        => $this->dbIDname,
+			)
+		);
+
+		// Delete this object with all of its cascade and execute all required updates if there are any
+		$result = $this->db_delete_where( get_class($this), NULL, array( $this->ID ), $params );
 
 		$Plugins->trigger_event( 'AfterObjectDelete', $params = array( 'Object' => & $this, 'type' => get_class($this) ) );
 
-		if( count($this->delete_cascades) )
-		{	// There were cascading deletes
-
-			// End transaction:
-			$DB->commit();
+		if( $need_transaction )
+		{ // Transaction was started, call commit or rollback
+			( $result !== false ) ? $DB->commit() : $DB->rollback();
 		}
 
 		// Just in case... remember this object has been deleted from DB!
 		$this->ID = 0;
 
-		return true;
+		return $result;
 	}
 
 
@@ -433,14 +680,21 @@ class DataObject
 	/**
 	 * Check relations for restrictions or cascades.
 	 * @todo dh> Add link to affected items, e.g. items when trying to delete an attachment, where it gets used.
-	 * 
+	 *
 	 * @return Messages object with the restriction messages
 	 */
 	function check_relations( $what, $ignore = array(), $addlink = false )
 	{
 		global $DB;
 
+		$this->init_relations();
+
 		$restriction_Messages = new Messages();
+
+		if( is_null( $this->$what ) )
+		{ // The relations are not defined
+			return $restriction_Messages;
+		}
 
 		foreach( $this->$what as $restriction )
 		{
@@ -514,15 +768,20 @@ class DataObject
 	 * @param string "action" param value to use (hidden field)
 	 * @param array Hidden keys (apart from "action")
 	 * @param array Additional messages for restriction messages, array( '0' - message text, '1' - message type )
+	 * @param array Params
 	 */
-	function confirm_delete( $confirm_title, $crumb_name, $delete_action, $hiddens, $additional_messages = array() )
+	function confirm_delete( $confirm_title, $crumb_name, $delete_action, $hiddens, $additional_messages = array(), $params = array() )
 	{
 		global $Messages;
+
+		$params = array_merge( array(
+				'before_submit_button' => '', // Additional text before button to submit a form
+			), $params );
 
 		$block_item_Widget = new Widget( 'block_item' );
 
 		$block_item_Widget->title = $confirm_title;
-		$block_item_Widget->disp_template_replaced( 'block_start' );
+		echo str_replace( 'panel-default', 'panel-danger', $block_item_Widget->replace_vars( $block_item_Widget->params[ 'block_start' ] ) );
 
 		$restriction_Messages = $this->check_relations( 'delete_cascades' );
 
@@ -537,11 +796,11 @@ class DataObject
 		if( $restriction_Messages->count() )
 		{	// The will be cascading deletes, issue WARNING:
 			echo '<h3>'.T_('WARNING: Deleting this object will also delete:').'</h3>';
-			$restriction_Messages->display( '', '' );
+			$restriction_Messages->display( '', '', true, 'log_container delete_messages' );
 		}
 
-		echo '<p class="warning">'.$confirm_title.'</p>';
-		echo '<p class="warning">'.T_('THIS CANNOT BE UNDONE!').'</p>';
+		echo '<p class="warning text-danger">'.$confirm_title.'</p>';
+		echo '<p class="warning text-danger">'.T_('THIS CANNOT BE UNDONE!').'</p>';
 
 		$redirect_to = param( 'redirect_to', 'url', '' );
 
@@ -553,7 +812,8 @@ class DataObject
 			$Form->hidden( 'action', $delete_action );
 			$Form->hidden( 'confirm', 1 );
 			$Form->hidden( 'redirect_to', $redirect_to );
-			$Form->button( array( 'submit', '', T_('I am sure!'), 'DeleteButton' ) );
+			echo $params['before_submit_button'];
+			$Form->button( array( 'submit', '', T_('I am sure!'), 'DeleteButton btn-danger' ) );
 		$Form->end_form();
 
 		$Form = new Form( $redirect_to, 'form_cancel', 'get', '' );

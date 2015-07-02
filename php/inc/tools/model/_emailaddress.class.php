@@ -3,24 +3,15 @@
  * This file implements the (blocked) email address class.
  *
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}.
 *
  * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
  *
- * {@internal Open Source relicensing agreement:
- * EVO FACTORY grants Francois PLANQUE the right to license
- * EVO FACTORY contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: _emailaddress.class.php 7043 2014-07-02 08:35:45Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -106,7 +97,7 @@ class EmailAddress extends DataObject
 		// Address
 		global $emadr_address;
 		param_string_not_empty( 'emadr_address', T_('Please enter email address.') );
-		$emadr_address = evo_strtolower( get_param( 'emadr_address' ) );
+		$emadr_address = utf8_strtolower( get_param( 'emadr_address' ) );
 		param_check_email( 'emadr_address', true );
 		if( $existing_emadr_ID = $this->dbexists( 'emadr_address', get_param( 'emadr_address' ) ) )
 		{	// Check if a email address already exists with the same address

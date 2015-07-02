@@ -3,26 +3,16 @@
  * Upgrade - This is a LINEAR controller
  *
  * This file is part of b2evolution - {@link http://b2evolution.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2009-2014 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2009-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2009 by The Evo Factory - {@link http://www.evofactory.com/}.
  *
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- *
- * {@internal Open Source relicensing agreement:
- * The Evo Factory grants Francois PLANQUE the right to license
- * The Evo Factory's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
  * @package maintenance
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author efy-maxim: Evo Factory / Maxim.
- * @author fplanque: Francois Planque.
- *
- * @version $Id: upgrade.ctrl.php 8115 2015-01-30 13:03:47Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -54,15 +44,15 @@ param_action();
 check_upgrade_config( true );
 
 $AdminUI->breadcrumbpath_init( false );  // fp> I'm playing with the idea of keeping the current blog in the path here...
-$AdminUI->breadcrumbpath_add( T_('System'), '?ctrl=system' );
-$AdminUI->breadcrumbpath_add( T_('Maintenance'), '?ctrl=tools' );
+$AdminUI->breadcrumbpath_add( T_('System'), $admin_url.'?ctrl=system' );
+$AdminUI->breadcrumbpath_add( T_('Maintenance'), $admin_url.'?ctrl=tools' );
 if( $tab == 'svn' )
 {
-	$AdminUI->breadcrumbpath_add( T_('Upgrade from SVN'), '?ctrl=upgrade&amp;tab='.$tab );
+	$AdminUI->breadcrumbpath_add( T_('Upgrade from SVN'), $admin_url.'?ctrl=upgrade&amp;tab='.$tab );
 }
 else
 {
-	$AdminUI->breadcrumbpath_add( T_('Auto Upgrade'), '?ctrl=upgrade' );
+	$AdminUI->breadcrumbpath_add( T_('Auto Upgrade'), $admin_url.'?ctrl=upgrade' );
 }
 
 
@@ -102,7 +92,7 @@ switch( $action )
 			b2evonet_get_updates( true );
 
 			// Display info & error messages
-			echo $Messages->display( NULL, NULL, false, 'action_messages' );
+			$Messages->display();
 
 			/**
 			 * @var AbstractSettings
@@ -512,7 +502,7 @@ switch( $action )
 			$Form->begin_fieldset( T_( 'Actions' ) );
 			echo '<p><b>'.T_('All new b2evolution files are in place. You will now be redirected to the installer to perform a DB upgrade.').'</b> '.T_('Note: the User Interface will look different.').'</p>';
 			$continue_onclick = 'location.href=\''.$baseurl.'install/index.php?action='.( ( $action == 'backup_and_overwrite_svn' ) ? 'svn_upgrade' : 'auto_upgrade' ).'&locale='.$current_locale.'\'';
-			$Form->end_form( array( array( 'button', 'continue', T_('Continue to installer'), '', $continue_onclick ) ) );
+			$Form->end_form( array( array( 'button', 'continue', T_('Continue to installer'), 'SaveButton', $continue_onclick ) ) );
 			unset( $block_item_Widget );
 		}
 		else
@@ -569,7 +559,6 @@ switch( $action )
 
 		$success = param_check_not_empty( 'svn_url', T_('Please enter the URL of repository') );
 		$success = $success && param_check_url( 'svn_url', 'download_src' );
-		$success = $success && param_check_regexp( 'svn_folder', '#/blogs/$#', T_('A correct SVN folder path must ends with "/blogs/"') );
 
 		// Display the errors and the download form again to fix data
 		$Messages->display();

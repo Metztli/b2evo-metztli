@@ -3,32 +3,14 @@
  * This file implements regional functions.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: _regional.funcs.php 235 2011-11-08 12:50:06Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -534,7 +516,7 @@ jQuery( 'input[name=<?php echo $prefix; ?>city][value=required]' ).click( functi
 {	// when city is required make subregion is required
 	set_subregion_required();
 } );
-jQuery( 'input[name=<?php echo $prefix; ?>subregion][value=required]' ).click( function ()
+jQuery( 'input[name=<?php echo $prefix; ?>subregion][value=required], input[name=<?php echo $prefix; ?>sub_region][value=required]' ).click( function ()
 {	// when subregion is required make region is required
 	set_region_required();
 } );
@@ -545,7 +527,7 @@ jQuery( 'input[name=<?php echo $prefix; ?>region][value=required]' ).click( func
 
 function set_subregion_required()
 {
-	jQuery( 'input[name=<?php echo $prefix; ?>subregion][value=required]' ).attr( 'checked', 'checked' );
+	jQuery( 'input[name=<?php echo $prefix; ?>subregion][value=required], input[name=<?php echo $prefix; ?>sub_region][value=required]' ).attr( 'checked', 'checked' );
 	set_region_required();
 }
 function set_region_required()
@@ -745,7 +727,7 @@ function ctry_status_titles( $include_false_statuses = true )
 	$status_titles = array();
 	if( $include_false_statuses )
 	{ // Include Unknown status
-		$status_titles[''] = T_('Unknown ');
+		$status_titles[''] = T_('Unknown');
 	}
 	$status_titles['trusted'] = T_('Trusted');
 	$status_titles['suspect'] = T_('Suspect');

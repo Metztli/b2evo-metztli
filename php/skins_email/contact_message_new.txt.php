@@ -5,10 +5,8 @@
  * For more info about email skins, see: http://b2evolution.net/man/themes-templates-skins/email-skins/
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
- *
- * @version $Id: contact_message_new.txt.php 7043 2014-07-02 08:35:45Z yura $
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -74,7 +72,7 @@ if( ! empty( $recipient_User ) )
 		$edit_preferences_url = NULL;
 		if( !empty( $Blog ) )
 		{ // go to blog
-			$edit_preferences_url = url_add_param( str_replace( '&amp;', '&', $Blog->gen_blogurl() ), 'disp=userprefs', '&' );
+			$edit_preferences_url = $Blog->get( 'userprefsurl', array( 'glue' => '&' ) );
 		}
 		elseif( $recipient_User->check_perm( 'admin', 'restricted' ) )
 		{ // go to admin

@@ -3,26 +3,21 @@
  * This file display the slugs list
  *
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
- * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
- *
  * @package admin
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author evfy-asimo: Attila Simo.
- *
- * @version $Id: _slug_list.view.php 6286 2014-03-21 08:37:59Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
 /**
  * @var Slug
  */
-global $Sug, $current_User;
+global $Sug, $current_User, $admin_url;
 
 $SQL = new SQL();
 
@@ -30,22 +25,26 @@ $SQL->SELECT( '*, post_title AS target_title' ); // select target_title for sort
 $SQL->FROM( 'T_slug LEFT OUTER JOIN T_items__item ON slug_itm_ID = post_ID' );
 
 // filters
+$list_is_filtered = false;
 if( get_param( 'slug_filter' ) )
 { // add slug_title filter
-	$like = $DB->escape( strtolower(get_param( 'slug_filter' )) );
+	$like = $DB->escape( strtolower( get_param( 'slug_filter' ) ) );
 	$SQL->WHERE_and( '(
 		LOWER(slug_title) LIKE "%'.$like.'%"
 		OR LOWER(post_title) LIKE "%'.$like.'%")' );
+	$list_is_filtered = true;
 }
 if( $filter_type = get_param( 'slug_type' ) )
-{ // add filter for item type
-	$SQL->WHERE_and( 'slug_type = "'.$DB->escape( get_param('slug_ftype') ).'"' );
+{ // add filter for post type
+	$SQL->WHERE_and( 'slug_type = "'.$DB->escape( get_param( 'slug_ftype' ) ).'"' );
+	$list_is_filtered = true;
 }
 if( $filter_item_ID = get_param( 'slug_item_ID' ) )
 { // add filter for item ID
 	if( is_number( $filter_item_ID ) )
 	{
-		$SQL->WHERE_and( 'slug_itm_ID = '.$DB->quote($filter_item_ID) );
+		$SQL->WHERE_and( 'slug_itm_ID = '.$DB->quote( $filter_item_ID ) );
+		$list_is_filtered = true;
 	}
 }
 
@@ -54,6 +53,11 @@ $Results = new Results( $SQL->get(), 'slug_', 'A' );
 
 $Results->title = T_('Slugs').' ('.$Results->get_total_rows().')' . get_manual_link('slugs-list');
 $Results->Cache = get_SlugCache();
+
+if( $list_is_filtered )
+{ // List is filtered, offer option to reset filters:
+	$Results->global_icon( T_('Reset all filters!'), 'reset_filters', $admin_url.'?ctrl=slugs', T_('Reset filters'), 3, 3, array( 'class' => 'action_icon btn-warning' ) );
+}
 
 /**
  * Callback to add filters on top of the result set

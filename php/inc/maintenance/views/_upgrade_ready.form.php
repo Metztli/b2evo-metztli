@@ -1,15 +1,15 @@
 <?php
 /**
  * This file is part of b2evolution - {@link http://b2evolution.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2009-2014 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
+ * @copyright (c)2009-2015 by Francois Planque - {@link http://fplanque.com/}
+ *
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
  * @package maintenance
- *
- * @version $Id: _upgrade_ready.form.php 7341 2014-09-30 09:47:23Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -36,6 +36,6 @@ $Form->begin_fieldset( T_( 'Actions' ) );
 $action_backup_value = ( $action == 'ready_svn' ) ? 'backup_and_overwrite_svn' : 'backup_and_overwrite';
 $action_backup_title = ( empty( $new_version_status ) ) ? T_( 'Backup & Upgrade' ) : T_( 'Force Backup & Upgrade' );
 
-$Form->end_form( array( array( 'submit', 'actionArray['.$action_backup_value.']', $action_backup_title, 'SaveButton' ) ) );
+$Form->end_form( array( array( 'submit', 'actionArray['.$action_backup_value.']', $action_backup_title, 'SaveButton'.( empty( $new_version_status ) ? '' : ' btn-warning' ) ) ) );
 
 ?>

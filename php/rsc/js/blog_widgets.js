@@ -1,9 +1,8 @@
 /**
  * Server communication functions - widgets javascript interface
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  * @author yabs - http://innervisions.org.uk/
- * @version $Id: blog_widgets.js 7157 2014-07-21 10:01:15Z yura $
  */
 
 
@@ -96,7 +95,7 @@ jQuery(document).ready( function()
 	});
 
 	// grab the widget ID out of the "delete" url and add as ID to parent row:
-	jQuery( '.widget_row td:nth-child(5)' ).each( function()
+	jQuery( '.widget_row td:nth-child(7)' ).each( function()
 	{
 		var widget_id = jQuery( this ).find( 'a' ).attr( "href" );
 		widget_id = widget_id.match(/wi_ID=([0-9]+)/)[1] // extract ID
@@ -105,7 +104,7 @@ jQuery(document).ready( function()
 
 	// Convert the tables:
 	var the_widgets = new Array();
-	jQuery( ".grouped" ).each( function()
+	jQuery( ".widget_container_list" ).each( function()
 	{ // grab each container
 		var container = jQuery( this ).attr( "id" );
 		the_widgets[ container ] = new Array();
@@ -113,9 +112,10 @@ jQuery(document).ready( function()
 		{ // grab each widget in container
 			var widget = jQuery( this ).attr( "id" );
 			the_widgets[ container ][ widget ] = new Array();
-			the_widgets[ container ][ widget ]["name"] = jQuery( "#"+widget ).find('.widget_name' ).html();
+			the_widgets[ container ][ widget ]["name"] = jQuery( '#' + widget ).find( '.widget_name' ).parent().html();
 			the_widgets[ container ][ widget ]["class"] = jQuery( this ).attr( "className" );
 			the_widgets[ container ][ widget ]["enabled"] = jQuery( '#' + widget + ' .widget_is_enabled' ).size();
+			the_widgets[ container ][ widget ]["cache"] = jQuery( '#' + widget + ' .widget_cache_status [rel]' ).attr( 'rel' );
 		} );
 	});
 
@@ -133,7 +133,7 @@ jQuery(document).ready( function()
 		// create widget entry for each widget in each container
 		for( widget in the_widgets[container] )
 		{	// loop through all widgets in this container
-			createWidget( widget, container, 0, the_widgets[container][widget]["name"], the_widgets[container][widget]["class"], the_widgets[container][widget]["enabled"] );
+			createWidget( widget, container, 0, the_widgets[container][widget]["name"], the_widgets[container][widget]["class"], the_widgets[container][widget]["enabled"], the_widgets[container][widget]["cache"] );
 		}
 	}
 
@@ -154,7 +154,27 @@ jQuery(document).ready( function()
 	current_widgets = getWidgetOrder(); // save current widget order
 
 	doFade( ".fadeout-ffff00" );// highlight any changed widgets
-});
+
+	// Actions for buttons to select several widgets to activate/deactivate them by one action
+	jQuery( '#widget_button_check_all' ).click( function()
+	{
+		jQuery( this ).closest( 'form' ).find( 'input[type=checkbox]' ).prop( 'checked', true );
+	} );
+	jQuery( '#widget_button_uncheck_all' ).click( function()
+	{
+		jQuery( this ).closest( 'form' ).find( 'input[type=checkbox]' ).prop( 'checked', false );
+	} );
+	jQuery( '#widget_button_check_active' ).click( function()
+	{
+		jQuery( this ).closest( 'form' ).find( '.widget_checkbox.widget_checkbox_enabled input[type=checkbox]' ).prop( 'checked', true );
+		jQuery( this ).closest( 'form' ).find( '.widget_checkbox:not(.widget_checkbox_enabled) input[type=checkbox]' ).prop( 'checked', false );
+	} );
+	jQuery( '#widget_button_check_inactive' ).click( function()
+	{
+		jQuery( this ).closest( 'form' ).find( '.widget_checkbox.widget_checkbox_enabled input[type=checkbox]' ).prop( 'checked', false );
+		jQuery( this ).closest( 'form' ).find( '.widget_checkbox:not(.widget_checkbox_enabled) input[type=checkbox]' ).prop( 'checked', true );
+	} );
+} );
 
 
 /**
@@ -282,7 +302,7 @@ function bufferedServerCall()
 	var new_widget_order = getWidgetOrder();
 	if( new_widget_order != current_widgets )
 	{	// widget order has changed, we need to update
-		jQuery( '#server_messages' ).html( '<div class="log_container"><div class="log_message">'+T_( 'Saving changes' )+'</div></a>' ); // inform user
+		jQuery( '#server_messages' ).html( '<div class="action_messages container-fluid"><ul><li><div class="alert alert-dismissible alert-info fade in">'+T_( 'Saving changes' )+'</div></li></ul></div>' ); // inform user
 
 		current_widgets = new_widget_order; // store current order
 		//add crumbs here
@@ -293,8 +313,8 @@ function bufferedServerCall()
 	}
 	else
 	{	// widget order either hasn't changed or has been changed back to original order
-		jQuery( '#server_messages' ).html( '<div class="log_container"><div class="log_message">'
-						+T_( 'Widget order unchanged' )+'</div></a>' ); // inform user
+		jQuery( '#server_messages' ).html( '<div class="action_messages container-fluid"><ul><li><div class="alert alert-dismissible alert-warning fade in">'
+						+T_( 'Widget order unchanged' )+'</div></li></ul></div>' ); // inform user
 		jQuery( '.pending_update' ).removeClass( 'pending_update' ); // remove "needs updating"
 		colourWidgets(); // redo widget colours
 	}
@@ -384,14 +404,30 @@ function editWidget( widget )
 function widgetSettings( the_html )
 {
 	// add placeholder for widgets settings form:
-	jQuery( 'body' ).append( '<div id="screen_mask" onclick="closeWidgetSettings()"></div><div id="widget_settings"></div>' );
-	// var evobar_height = jQuery( '#evo_toolbar' ).height();
-	// jQuery( '#screen_mask' ).css({ top: evobar_height });
+	jQuery( 'body' ).append( '<div id="screen_mask" onclick="closeWidgetSettings()"></div><div id="widget_settings" class="modal-content"></div>' );
 	jQuery( '#screen_mask' ).fadeTo(1,0.5).fadeIn(200);
 	jQuery( '#widget_settings' ).html( the_html ).addClass( 'widget_settings_active' );
 	jQuery( '#widget_settings' ).prepend( jQuery( '#server_messages' ) );
 	AttachServerRequest( 'form' ); // send form via hidden iframe
-	jQuery( '#widget_settings > form > span > a' ).bind( 'click', closeWidgetSettings );
+
+	// Create modal header for bootstrap skin
+	var page_title = jQuery( '#widget_settings' ).find( 'h2.page-title:first' );
+	if( page_title.length > 0 )
+	{
+		var page_title_icons = jQuery( '#widget_settings' ).find( 'span.pull-right:first' );
+		var page_title_icons_html = '';
+		if( page_title_icons.length > 0 )
+		{
+			page_title_icons.find( 'a.close_link' ).remove()
+			page_title_icons_html = '<span class="pull-right">' + page_title_icons.html() + '</span>';
+			page_title_icons.remove();
+		}
+		jQuery( '#widget_settings' ).prepend( '<div class="modal-header"><button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>' + page_title_icons_html + '<h4 class="modal-title">' + page_title.html() + '</h4></div>' );
+		page_title.remove();
+		jQuery( '#widget_settings button.close' ).bind( 'click', closeWidgetSettings );
+	}
+
+	jQuery( '#widget_settings a.close_link' ).bind( 'click', closeWidgetSettings );
 
 	// Close widget Settings if Escape key is pressed:
 	var keycode_esc = 27;
@@ -404,9 +440,10 @@ function widgetSettings( the_html )
 	});
 }
 
-function widgetSettingsCallback( the_widget, the_name )
+function widgetSettingsCallback( wi_ID, wi_name, wi_cache_status )
 {
-	jQuery( '#wi_ID_'+the_widget+' .widget_name' ).html( the_name );
+	jQuery( '#wi_ID_' + wi_ID + ' .widget_name' ).html( wi_name );
+	jQuery( '#wi_ID_' + wi_ID + ' .widget_cache_status' ).html( getWidgetCacheIcon( 'wi_ID_'+wi_ID, wi_cache_status ) );
 }
 
 function closeWidgetSettings()
@@ -415,6 +452,14 @@ function closeWidgetSettings()
 	jQuery( '#server_messages' ).insertBefore( '.available_widgets' );
 	jQuery( '#widget_settings' ).remove();
 	jQuery( '#screen_mask' ).remove();
+	return false;
+}
+
+function showMessagesWidgetSettings()
+{
+	jQuery( '#widget_settings' ).animate( {
+			scrollTop: jQuery( '#widget_settings' ).scrollTop() +  + jQuery( '#server_messages' ).position().top - 20
+		}, 100 );
 	return false;
 }
 
@@ -437,7 +482,7 @@ function T_( native_string )
 function convertAvailableList()
 {
 	// Open list on click, not on hover!
-	jQuery( ".fieldset_title_bg > span > a" ).attr( 'href', '#' ).bind( 'click', function(e)
+	jQuery( ".fieldset_title > span > a[id^='add_new']" ).attr( 'href', '#' ).bind( 'click', function(e)
 	{
 		// add placeholder for widgets settings form:
 		jQuery( 'body' ).append( '<div id="screen_mask" onclick="closeAvailableWidgets()"></div>' );
@@ -482,7 +527,7 @@ function convertAvailableList()
 		the_link = the_link.substr( the_link.indexOf( '&type' ) + 1, the_link.length );
 
 		// replace href with JS addnewwidget action:
-		jQuery( this ).children( 'a' ).attr( 'href', '#' ).bind( 'click', function(){
+		jQuery( this ).children( 'a:first' ).attr( 'href', '#' ).bind( 'click', function(){
 			addNewWidget( this, the_link );
 			// cancel default href action:
 			return false;
@@ -525,18 +570,19 @@ function addNewWidget( widget_list_item, admin_call )
  * @param string container Container to add widget to
  * @param intger wi_order ( unused atm ) Order of the widget on the server
  * @param string wi_name Name of the new widget
+ * @param string wi_cache_status Cache status
  */
-function addNewWidgetCallback( wi_ID, container, wi_order, wi_name )
+function addNewWidgetCallback( wi_ID, container, wi_order, wi_name, wi_cache_status )
 {
 	jQuery( '.fade_me' ).removeClass( 'fade_me' ); // kill any active fades
-	createWidget( 'wi_ID_'+wi_ID, container.replace( / /g, '_' ).replace( /:/g, '-' ), wi_order, '<strong>'+wi_name+'</strong>', '', 1 );
+	createWidget( 'wi_ID_'+wi_ID, container.replace( / /g, '_' ).replace( /:/g, '-' ), wi_order, wi_name, '', 1, wi_cache_status );
 	doFade( '#wi_ID_'+wi_ID );
 	if( reorder_delay_remaining > 0 )
-	{	// send outstanding updates
+	{ // send outstanding updates
 		reorder_delay_remaining = 0;
 	}
 	else
-	{	// no outstanding updates, store current order
+	{ // no outstanding updates, store current order
 		current_widgets = getWidgetOrder(); // store current order
 	}
 }
@@ -550,24 +596,40 @@ function addNewWidgetCallback( wi_ID, container, wi_order, wi_name )
  * @param string wi_name Name of the new widget
  * @param boolean wi_enabled Is the widget enabled?
  */
-function createWidget( wi_ID, container, wi_order, wi_name, wi_class, wi_enabled )
+function createWidget( wi_ID, container, wi_order, wi_name, wi_class, wi_enabled, wi_cache_status )
 {
-	//	window.alert( wi_ID + ' : ' + container + ' : ' + wi_name + ' : ' +wi_class );
-	var newWidget = jQuery( '<li id="'+wi_ID+'" class="draggable_widget"><a class="widget_name" href="#" onclick="return editWidget( \''+wi_ID+'\' );">'+wi_name+'</a></li>' );
+	var newWidget = jQuery( '<li id="'+wi_ID+'" class="draggable_widget"><span>'+wi_name+'</span></li>' );
+	newWidget.find( 'a.widget_name' ).click( function()
+	{
+		return editWidget( wi_ID );
+	} );
 	if( wi_class )
 	{ // add class
 		jQuery( newWidget ).addClass( wi_class );
 	}
 
 	// Add state indicator:
-	jQuery( newWidget ).prepend( jQuery( '<span class="widget_state">'+( wi_enabled ? enabled_icon_tag : disabled_icon_tag )+'</span>' ) );
+	jQuery( newWidget ).prepend( jQuery( '<span class="widget_state">'+
+			'<a href="#" class="toggle_action" onclick="return toggleWidget( \''+wi_ID+'\' );">'+
+				( wi_enabled ? enabled_icon_tag : disabled_icon_tag )+
+			'</a>'+
+		'</span>' ) );
+
+	// Add icon to toggle cache status:
+	var cacheIcon = jQuery( '<span class="widget_cache_status">' + getWidgetCacheIcon( wi_ID, wi_cache_status ) + '</span>' );
+	jQuery( newWidget ).prepend( cacheIcon ); // add widget action icons
 
 	// Add action icons:
-	var actionIcons = jQuery( '<span class="widget_actions"><a href="#" class="toggle_action" onclick="return toggleWidget( \''+wi_ID+'\', \''+crumb_url+'\' );">'
+	var actionIcons = jQuery( '<span class="widget_actions"><a href="#" class="toggle_action" onclick="return toggleWidget( \''+wi_ID+'\' );">'
 				+( wi_enabled ? deactivate_icon_tag : activate_icon_tag )+'</a><a href="#" onclick="return editWidget( \''+wi_ID+'\' );">'
 				+edit_icon_tag+'</a><a href="#" onclick="return deleteWidget( \''+wi_ID+'\' );">'
 				+delete_icon_tag+'</a></span>' );
 	jQuery( newWidget ).prepend( actionIcons ); // add widget action icons
+
+	// Add checkbox:
+	jQuery( newWidget ).prepend( jQuery( '<span class="widget_checkbox'+( wi_enabled ? ' widget_checkbox_enabled' : '' )+'">'+
+			'<input type="checkbox" name="widgets[]" value="'+wi_ID.replace( 'wi_ID_', '' )+'" />'+
+		'</span>' ) );
 
 	jQuery( '#container_'+container ).append( newWidget );	// add widget to container
 
@@ -582,7 +644,6 @@ function createWidget( wi_ID, container, wi_order, wi_name, wi_class, wi_enabled
  */
 function toggleWidget( wi_ID )
 {
-	 //console.log( 'Toggling widget #' + wi_ID.substr( 6 ) );
 	SendAdminRequest( 'widgets', 'toggle', 'wi_ID=' + wi_ID.substr( 6 ) + '&' + crumb_url, true );
 	return false;
 }
@@ -595,10 +656,45 @@ function toggleWidget( wi_ID )
  */
 function doToggle( wi_ID, wi_enabled )
 {
-	//console.log( 'Setting state of widget #' + wi_ID + ' to ' + ( wi_enabled ? 'enabled' : 'disabled' ) );
-
-	jQuery( '#wi_ID_' + wi_ID + ' .widget_state' ).html( wi_enabled ? enabled_icon_tag : disabled_icon_tag );
+	jQuery( '#wi_ID_' + wi_ID + ' .widget_state' ).html( '<a href="#" class="toggle_state" onclick="return toggleWidget( \'wi_ID_'+wi_ID+'\', \''+crumb_url+'\' );">'+
+				( wi_enabled ? enabled_icon_tag : disabled_icon_tag )+
+			'</a>' );
+	if( wi_enabled )
+	{
+		jQuery( '#wi_ID_' + wi_ID + ' .widget_checkbox' ).addClass( 'widget_checkbox_enabled' );
+	}
+	else
+	{
+		jQuery( '#wi_ID_' + wi_ID + ' .widget_checkbox' ).removeClass( 'widget_checkbox_enabled' );
+	}
 	jQuery( '#wi_ID_' + wi_ID + ' .toggle_action' ).html( wi_enabled ? deactivate_icon_tag : activate_icon_tag );
+
+	evoFadeBg( jQuery( '#wi_ID_' + wi_ID ), new Array( '#FFFF33' ), { speed: 3000 } );
+}
+
+/**
+ * Toggle the widget cache status.
+ *
+ * @param string Widget ID.
+ * @param string Action: 'enable', 'disable'
+ */
+function toggleCacheWidget( wi_ID, action )
+{
+	SendAdminRequest( 'widgets', 'cache_' + action, 'wi_ID=' + wi_ID.substr( 6 ) + '&' + crumb_url, true );
+	return false;
+}
+
+/**
+ * Callback for toggling a widget cache status.
+ *
+ * @param integer Widget ID
+ * @param integer new widget cache status
+ */
+function doToggleCache( wi_ID, wi_cache_status )
+{
+	jQuery( '#wi_ID_' + wi_ID + ' .widget_cache_status' ).html( getWidgetCacheIcon( 'wi_ID_'+wi_ID, wi_cache_status ) );
+
+	evoFadeBg( jQuery( '#wi_ID_' + wi_ID ), new Array( '#FFFF33' ), { speed: 3000 } );
 }
 
 /**
@@ -612,4 +708,30 @@ function doToggle( wi_ID, wi_enabled )
 function str_repeat( data, multiplier )
 {
 	return new Array( multiplier + 1 ).join( data );
+}
+
+
+/**
+ * Get icon for widget cache status
+ *
+ * @param string Widget ID
+ * @param string Widget cache status
+ * @return string
+ */
+function getWidgetCacheIcon( wi_ID, wi_cache_status )
+{
+	switch( wi_cache_status )
+	{
+		case 'enabled':
+			return '<a href="#" class="cache_action" onclick="return toggleCacheWidget( \''+wi_ID+'\', \'disable\' );">' + cache_enabled_icon_tag + '</a>';
+
+		case 'disabled':
+			return '<a href="#" class="cache_action" onclick="return toggleCacheWidget( \''+wi_ID+'\', \'enable\' );">' + cache_disabled_icon_tag + '</a>';
+
+		case 'disallowed':
+			return cache_disallowed_icon_tag;
+
+		case 'denied':
+			return '<a href="?ctrl=coll_settings&amp;tab=advanced&amp;blog=' + blog + '#fieldset_wrapper_caching">' + cache_denied_icon_tag + '</a>';
+	}
 }

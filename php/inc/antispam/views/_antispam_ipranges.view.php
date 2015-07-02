@@ -3,25 +3,20 @@
  * This file display the Antispam IP ranges
  *
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
- * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
- *
  * @package admin
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: _antispam_ipranges.view.php 849 2012-02-16 09:09:09Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
-global $admin_url, $UserSettings, $Plugins, $tab;
+global $admin_url, $UserSettings, $Plugins, $tab, $blog;
 
-$tab_param = empty( $tab ) ? '' : '&amp;tab='.$tab;
+$tab_param = empty( $tab ) ? '' : '&amp;tab='.$tab.( empty( $blog ) ? '' : '&amp;blog='.$blog );
 
 $ip_address = param( 'ip_address', 'string', '', true );
 
@@ -139,6 +134,8 @@ if( $current_User->check_perm( 'spamblacklist', 'edit' ) )
 	 */
 	function antispam_ipranges_actions( $aipr_ID, $tab_param )
 	{
+		global $admin_url;
+		
 		// A link to edit IP range
 		$r = action_icon( T_('Edit this IP range...'), 'properties',
 						$admin_url.'?ctrl=antispam'.$tab_param.'&amp;tab3=ipranges&amp;iprange_ID='.$aipr_ID.'&amp;action=iprange_edit' );

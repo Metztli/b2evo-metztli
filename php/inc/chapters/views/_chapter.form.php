@@ -3,22 +3,13 @@
  * This file implements the Chapter form
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
- *
- * @version $Id: _chapter.form.php 6135 2014-03-08 07:54:05Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -72,10 +63,17 @@ $Form->begin_fieldset( T_('Properties') );
 
 	$Form->text_input( 'cat_description', $edited_Chapter->description, 40, T_('Description'), T_('May be used as a title tag and/or meta description.'), array( 'maxlength' => 255 ) );
 
-	if( $Settings->get('chapter_ordering') == 'manual' )
+	$parent_cat_order = $edited_Chapter->get_parent_subcat_ordering();
+	if( $parent_cat_order == 'manual' )
 	{
 		$Form->text_input( 'cat_order', $edited_Chapter->order, 5, T_('Order'), T_('For manual ordering of the categories.'), array( 'maxlength' => 11 ) );
 	}
+
+	$Form->radio_input( 'cat_subcat_ordering', $edited_Chapter->get( 'subcat_ordering' ), array(
+					array( 'value'=>'parent', 'label'=>T_('Same as parent') ),
+					array( 'value'=>'alpha', 'label'=>T_('Alphabetically') ),
+					array( 'value'=>'manual', 'label'=>T_('Manually') ),
+			 ), T_('Sort sub-categories') );
 
 	$Form->checkbox_input( 'cat_meta', $edited_Chapter->meta, T_('Meta category'), array( 'note' => T_('If you check this box you will not be able to put any posts into this category.') ) );
 

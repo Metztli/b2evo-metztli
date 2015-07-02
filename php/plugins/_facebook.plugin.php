@@ -4,14 +4,16 @@
  * 
  * This file is part of the b2evolution project - {@link http://b2evolution.net/}
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * 
  * @package plugins
  * 
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  * @author asimo: Evo Factory - Attila Simo
  * 
- * @version $Id: _facebook.plugin.php 6135 2014-03-08 07:54:05Z manuel $
+ * @version $Id: _facebook.plugin.php 8856 2015-05-02 01:25:05Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -33,6 +35,7 @@ class facebook_plugin extends Plugin
 	var $version = '1.0';
 	var $author = 'The b2evo Group';
 	var $group = 'widget';
+	var $subgroup = 'other';
 
 	/**
 	 * Init

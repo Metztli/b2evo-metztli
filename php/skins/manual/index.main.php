@@ -6,15 +6,13 @@
  * It will also rely on default includes for specific dispays (like the comment form).
  *
  * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://b2evolution.net/man/skin-structure}
+ * {@link http://b2evolution.net/man/skin-development-primer}
  *
  * The main page template is used to display the blog when no specific page template is available
  * to handle the request (based on $disp).
  *
  * @package evoskins
  * @subpackage manual
- *
- * @version $Id: index.main.php 7043 2014-07-02 08:35:45Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -29,9 +27,7 @@ if( version_compare( $app_version, '5.0' ) < 0 )
 skin_init( $disp );
 
 // -------------------------- HTML HEADER INCLUDED HERE --------------------------
-skin_include( '_html_header.inc.php' );
-// Note: You can customize the default HTML header by copying the generic
-// /skins/_html_header.inc.php file into the current skin folder.
+skin_include( '_html_header.inc.php', array() );
 // -------------------------------- END OF HTML HEADER ---------------------------
 
 
@@ -58,9 +54,15 @@ skin_include( '_body_header.inc.php' );
 			) );
 		// --------------------------------- END OF MESSAGES ---------------------------------
 
-		if( !empty( $cat ) )
-		{	// Display breadcrumbs if some category is selected
-			$Skin->display_breadcrumbs( $cat );
+		if( ! empty( $cat ) )
+		{ // Display breadcrumbs if some category is selected
+			skin_widget( array(
+				// CODE for the widget:
+				'widget' => 'breadcrumb_path',
+				// Optional display params
+				'block_start' => '<div class="breadcrumbs">',
+				'block_end'   => '</div>',
+			) );
 		}
 	?>
 
@@ -76,7 +78,8 @@ skin_include( '_body_header.inc.php' );
 				'edit_text_update'  => T_('Edit post'),
 				'category_text'     => '',
 				'categories_text'   => '',
-				'catdir_text'       => ''
+				'catdir_text'       => '',
+				'user_text'         => '',
 			) );
 		// ----------------------------- END OF REQUEST TITLE ----------------------------
 	?>

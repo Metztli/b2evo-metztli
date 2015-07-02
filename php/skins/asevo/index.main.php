@@ -3,14 +3,12 @@
  * This is the main/default page template.
  *
  * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://b2evolution.net/man/skin-structure}
+ * {@link http://b2evolution.net/man/skin-development-primer}
  *
  * It is used to display the blog when no specific page template is available to handle the request.
  *
  * @package evoskins
  * @subpackage asevo
- *
- * @version $Id: index.main.php 6462 2014-04-14 13:28:56Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -26,8 +24,6 @@ skin_init( $disp );
 
 // -------------------------- HTML HEADER INCLUDED HERE --------------------------
 skin_include( '_html_header.inc.php' );
-// Note: You can customize the default HTML header by copying the
-// _html_header.inc.php file into the current skin folder.
 // -------------------------------- END OF HEADER --------------------------------
 
 
@@ -48,13 +44,15 @@ siteskin_include( '_site_body_header.inc.php' );
 		// Note: this container is designed to be a single <ul> list
 		skin_container( NT_('Menu'), array(
 				// The following params will be used as defaults for widgets included in this container:
-				'block_start' => '',
-				'block_end' => '',
+				'block_start'         => '',
+				'block_end'           => '',
 				'block_display_title' => false,
-				'list_start' => '',
-				'list_end' => '',
-				'item_start' => '<li>',
-				'item_end' => '</li>',
+				'list_start'          => '',
+				'list_end'            => '',
+				'item_start'          => '<li>',
+				'item_end'            => '</li>',
+				'item_title_before'   => '',
+				'item_title_after'    => '',
 			) );
 		// ----------------------------- END OF "Menu" CONTAINER -----------------------------
 	?>
@@ -73,7 +71,7 @@ siteskin_include( '_site_body_header.inc.php' );
 		// Display container and contents:
 		skin_container( NT_('Header'), array(
 				// The following params will be used as defaults for widgets included in this container:
-				'block_start' => '<div class="$wi_class$">',
+				'block_start' => '<div class="widget $wi_class$">',
 				'block_end' => '</div>',
 				'block_title_start' => '<h2>',
 				'block_title_end' => '</h2>',
@@ -114,6 +112,7 @@ siteskin_include( '_site_body_header.inc.php' );
 				'glue'        => ' - ',
 				'title_single_disp' => false,
 				'format'      => 'htmlbody',
+				'user_text'   => '',
 			) );
 		// ------------------------------ END OF REQUEST TITLE -----------------------------
 	?>
@@ -187,7 +186,7 @@ siteskin_include( '_site_body_header.inc.php' );
 		skin_container( NT_('Sidebar'), array(
 				// The following (optional) params will be used as defaults for widgets included in this container:
 				// This will enclose each widget in a block:
-				'block_start' => '<div class="evo_side_item $wi_class$">',
+				'block_start' => '<div class="evo_side_item widget $wi_class$">',
 				'block_end' => '</div>',
 				// This will enclose the title of each widget:
 				'block_title_start' => '<h3>',

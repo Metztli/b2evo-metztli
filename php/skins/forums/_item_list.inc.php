@@ -6,8 +6,8 @@
  * It is meant to be called by an include in the main.page.php template (or other templates)
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  */
@@ -17,7 +17,6 @@ if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.'
 $params = array_merge( array(
 		'display_column_forum' => false,
 		'post_navigation' => 'same_category', // In this skin, it makes no sense to navigate in any different mode than "same category"
-		'item_link_type'  => '#',
 	), $params );
 
 global $Item, $cat;
@@ -75,15 +74,21 @@ elseif( $comments_number > 25 )
 			<?php } ?>
 			<td class="left"><?php
 				echo $status_title;
+				$Item->load_Blog();
+				if( $Item->Blog->get_setting( 'track_unread_content' ) )
+				{
+					$Item->display_unread_status();
+				}
 				// Title:
 				$Item->title( array(
 						'link_class'      => 'topictitle',
 						'post_navigation' => $params['post_navigation'],
-						'link_type'       => $params['item_link_type'],
 					) );
 				if( $Skin->enabled_status_banner( $Item->status ) )
 				{ // Status:
-					$Item->status( array( 'format' => 'styled' ) );
+					$Item->format_status( array(
+							'template' => '<div class="floatright"><span class="note status_$status$"><span>$status_title$</span></span></div>',
+						) );
 					$legend_statuses[] = $Item->status;
 				}
 				if( empty( $cat ) )

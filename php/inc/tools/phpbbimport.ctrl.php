@@ -3,13 +3,11 @@
  * This file implements the UI controller for phpBB importer.
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
  * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: phpbbimport.ctrl.php 74 2011-10-26 13:49:38Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -107,7 +105,7 @@ switch( $action )
 		// Check that this action request is not a CSRF hacked request:
 		$Session->assert_received_crumb( 'phpbb' );
 
-		$phpbb_ranks = param( 'phpbb_ranks', 'array/integer', array() );
+		$phpbb_ranks = param( 'phpbb_ranks', 'array:integer', array() );
 		$phpbb_group_default = param( 'phpbb_group_default', 'integer' );
 		$phpbb_group_invalid = param( 'phpbb_group_invalid', 'integer' );
 
@@ -117,8 +115,8 @@ switch( $action )
 		phpbb_set_var( 'group_default', $phpbb_group_default );
 		phpbb_set_var( 'group_invalid', $phpbb_group_invalid );
 
-		$phpbb_categories = param( 'phpbb_categories', 'array/integer', array() );
-		$phpbb_forums = param( 'phpbb_forums', 'array/integer', array() );
+		$phpbb_categories = param( 'phpbb_categories', 'array:integer', array() );
+		$phpbb_forums = param( 'phpbb_forums', 'array:integer', array() );
 		phpbb_set_var( 'import_categories', $phpbb_categories );
 		phpbb_set_var( 'import_forums', $phpbb_forums );
 
@@ -171,10 +169,10 @@ switch( $action )
 $AdminUI->set_path( 'options', 'misc', 'import' );
 
 $AdminUI->breadcrumbpath_init( false );
-$AdminUI->breadcrumbpath_add( T_('System'), '?ctrl=system' );
-$AdminUI->breadcrumbpath_add( T_('Maintenance'), '?ctrl=tools' );
-$AdminUI->breadcrumbpath_add( T_('Import'), '?ctrl=tools&amp;tab3=import' );
-$AdminUI->breadcrumbpath_add( T_('phpBB Importer'), '?ctrl=phpbbimport' );
+$AdminUI->breadcrumbpath_add( T_('System'), $admin_url.'?ctrl=system' );
+$AdminUI->breadcrumbpath_add( T_('Maintenance'), $admin_url.'?ctrl=tools' );
+$AdminUI->breadcrumbpath_add( T_('Import'), $admin_url.'?ctrl=tools&amp;tab3=import' );
+$AdminUI->breadcrumbpath_add( T_('phpBB Importer'), $admin_url.'?ctrl=phpbbimport' );
 
 
 // Display <html><head>...</head> section! (Note: should be done early if actions do not redirect)

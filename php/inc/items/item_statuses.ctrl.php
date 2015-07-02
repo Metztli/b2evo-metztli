@@ -3,33 +3,14 @@
  * This file implements the controller for item statuses management.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * PROGIDISTRI S.A.S. grants Francois PLANQUE the right to license
- * PROGIDISTRI S.A.S.'s contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package admin
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- * @author mbruneau: Marc BRUNEAU / PROGIDISTRI
- *
- * @version $Id: item_statuses.ctrl.php 7650 2014-11-15 13:37:36Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -48,28 +29,23 @@ global $dispatcher;
 // Check minimum permission:
 $current_User->check_perm( 'options', 'view', true );
 
+// We should activate toolbar menu items for this controller
+$activate_collection_toolbar = true;
+
 $tab = param( 'tab', 'string', 'settings', true );
 
-/**
- * We need make this call to build menu for all modules
- */
-$AdminUI->set_path( 'items' );
+$AdminUI->set_path( 'collections', 'settings', 'statuses' );
 
-/*
- * Add sub menu entries:
- * We do this here instead of _header because we need to include all filter params into regenerate_url()
- */
-attach_browse_tabs();
+// Generate available blogs list:
+$AdminUI->set_coll_list_params( 'blog_ismember', 'view', array( 'ctrl' => 'itemstatuses', 'tab' => $tab, 'tab3' => 'statuses' ) );
 
-$AdminUI->set_path( 'items', 'settings', 'statuses' );
-
-$AdminUI->breadcrumbpath_init( true, array( 'text' => T_('Contents'), 'url' => '?ctrl=items&amp;blog=$blog$&amp;tab=full&amp;filter=restore' ) );
-$AdminUI->breadcrumbpath_add( T_('Content settings'), '?ctrl=itemtypes&amp;blog=$blog$&amp;tab=settings&amp;tab3=statuses' );
-$AdminUI->breadcrumbpath_add( T_('Post statuses'), '?ctrl=itemtypes&amp;blog=$blog$&amp;tab=settings&amp;tab3=statuses' );
+$AdminUI->breadcrumbpath_init( true, array( 'text' => T_('Collections'), 'url' => $admin_url.'?ctrl=dashboard&amp;blog=$blog$' ) );
+$AdminUI->breadcrumbpath_add( T_('Settings'), $admin_url.'?ctrl=coll_settings&amp;blog=$blog$&amp;tab=general' );
+$AdminUI->breadcrumbpath_add( T_('Post Statuses'), $admin_url.'?ctrl=itemtypes&amp;blog=$blog$&amp;tab=settings&amp;tab3=statuses' );
 
 $AdminUI->set_page_manual_link( 'managing-item-statuses' );
 
-$list_title = T_('Post statuses');
+$list_title = T_('Post Statuses');
 $default_col_order = 'A';
 $edited_name_maxlen = 30;
 $perm_name = 'options';
@@ -83,7 +59,7 @@ $delete_restrictions = array(
 		array( 'table'=>'T_items__item', 'fk'=>'post_pst_ID', 'msg'=>T_('%d related items') ),
 	);
 
-$restrict_title = T_('Cannot delete item status');	 //&laquo;%s&raquo;
+$restrict_title = T_('Cannot delete Post Status');	 //&laquo;%s&raquo;
 
 // Used to know if the element can be deleted, so to display or not display confirm delete dialog (true:display, false:not display)
 // It must be initialized to false before checking the delete restrictions

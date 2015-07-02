@@ -5,14 +5,17 @@
  * For more info about email skins, see: http://b2evolution.net/man/themes-templates-skins/email-skins/
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
- *
- * @version $Id: _email_header.inc.html.php 8027 2015-01-19 11:58:16Z yura $
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
 global $Settings, $emailskins_path;
+
+// Default params:
+$params = array_merge( array(
+		'include_greeting' => true
+	), $params );
 ?>
 <html>
 <head>
@@ -26,12 +29,13 @@ if( file_exists( $emailskins_path.'_email_style.css' ) )
 </style>
 <?php } ?>
 </head>
-<body class="email">
+<body<?php echo emailskin_style( 'body.email' ); ?>>
+<div<?php echo emailskin_style( 'div.email_wrap' ); ?>>
 <?php
 if( $Settings->get( 'notification_logo' ) != '' || $Settings->get( 'notification_long_name' ) != '' )
 { // Display email header if logo or long site name are defined
 ?>
-<div class="email_header">
+<div<?php echo emailskin_style( 'div.email_header' ); ?>>
 <?php
 if( $Settings->get( 'notification_logo' ) != '' )
 { // Display site logo
@@ -40,11 +44,16 @@ if( $Settings->get( 'notification_logo' ) != '' )
 }
 else
 { // No logo, Display only long site name
-	echo '<p class="sitename">'.$Settings->get( 'notification_long_name' ).'</p>';
+	echo '<p'.emailskin_style( '.p+p.sitename' ).'>'.$Settings->get( 'notification_long_name' ).'</p>';
 }
 ?>
 </div>
 <?php } ?>
 
-<div class="email_payload">
-<p><?php echo T_( 'Hello $login$!' ); ?></p>
+<div<?php echo emailskin_style( 'div.email_payload' ); ?>>
+<?php
+if( $params['include_greeting'] )
+{ // Display the greeting message
+?>
+<p<?php echo emailskin_style( '.p' ); ?>><?php echo T_( 'Hello $login$!' ); ?></p>
+<?php } ?>

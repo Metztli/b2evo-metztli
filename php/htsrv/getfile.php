@@ -3,25 +3,12 @@
  * This file implements the File view (including resizing of images)
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
- *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * PROGIDISTRI S.A.S. grants Francois PLANQUE the right to license
- * PROGIDISTRI S.A.S.'s contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
  *
  * @package htsrv
  *
@@ -31,11 +18,6 @@
  *           that the server is not configured for smart caching.
  *           Additionally, it does not help for non-public access, which is the meat of this file.
  *           I've added "Expires: in ten years" now, but not for thumbs (see comment there).
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author blueyed: Daniel HAHLER
- * @author fplanque: Francois PLANQUE.
- * @author mbruneau: Marc BRUNEAU / PROGIDISTRI
  */
 
 
@@ -156,8 +138,8 @@ if( ! empty( $size ) && $File->is_image() )
 
 		list( $src_width, $src_height ) = imgsize( $File->get_full_path() );
 
-		if( ! $resample_all_images && $src_width <= $thumb_width && $src_height <= $thumb_height )
-		{	// There is no need to resample, use original!
+		if( ! $resample_all_images && check_thumbnail_sizes( $thumb_type, $thumb_width, $thumb_height, $src_width, $src_height ) )
+		{ // There is no need to resample, use original!
 			$err = $File->get_af_thumb_path( $size_name, $mimetype, true, $size_x );
 
 			if( $err[0] != '!' && @copy( $File->get_full_path(), $err ) )
@@ -167,7 +149,7 @@ if( ! empty( $size ) && $File->is_image() )
 			}
 		}
 		else
-		{	// Resample
+		{ // Resample
 			list( $err, $src_imh ) = load_image( $File->get_full_path(), $mimetype );
 
 			if( empty( $err ) )

@@ -3,7 +3,7 @@
  * This is the BODY footer include template.
  *
  * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://b2evolution.net/man/skin-structure}
+ * {@link http://b2evolution.net/man/skin-development-primer}
  *
  * This is meant to be included in a page template.
  *
@@ -38,16 +38,14 @@ if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.'
 			) );
 		?>
 
-		<a href="http://www.evocamp.com/" target="_blank">evoCamp skin</a>
-		: <a href="http://www.solostream.com" target="_blank">Blog Design</a>
 		<?php
 		// Display additional credits:
 		// If you can add your own credits without removing the defaults, you'll be very cool :))
 		// Please leave this at the bottom of the page to make sure your blog gets listed on b2evolution.net
 		credits( array(
-				'list_start'  => ' : ',
+				'list_start'  => '',
 				'list_end'    => ' ',
-				'separator'   => ':',
+				'separator'   => ' - ',
 				'item_start'  => ' ',
 				'item_end'    => ' ',
 			) );

@@ -3,33 +3,14 @@
  * This file implements the User class.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE
- * @author blueyed: Daniel HAHLER
- *
- * @version $Id: _user.class.php 8214 2015-02-10 10:17:40Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -52,6 +33,7 @@ class User extends DataObject
 	var $age_max;
 	var $login;
 	var $pass;
+	var $salt;
 	var $firstname;
 	var $lastname;
 	var $nickname;
@@ -97,6 +79,13 @@ class User extends DataObject
 	var $_num_comments;
 
 	/**
+	 * Number of files by this user. Use get_num_files() to access this (lazy filled).
+	 * @var array  ( key = type, value = number of files with type )
+	 * @access protected
+	 */
+	var $_num_files;
+
+	/**
 	 * The ID of the (primary, currently only) group of the user.
 	 * @var integer
 	 */
@@ -137,6 +126,7 @@ class User extends DataObject
 	 * User fields
 	 */
 	var $userfields = array();
+	var $userfields_by_code = array();
 	var $userfields_by_type = array();
 	var $updated_fields = array();
 	var $new_fields = array();
@@ -163,44 +153,12 @@ class User extends DataObject
 		// Call parent constructor:
 		parent::DataObject( 'T_users', 'user_', 'user_ID' );
 
-		// blueyed> TODO: this will never get translated for the current User if he has another locale/lang set than default, because it gets adjusted AFTER instantiating him/her..
-		//       Use a callback (get_delete_restrictions/get_delete_cascades) instead? Should be also better for performance!
-		// fp> These settings should probably be merged with the global database description used by the installer/upgrader. However I'm not sure about how compelx plugins would be able to integrate then...
-		$this->delete_restrictions = array(
-				array( 'table'=>'T_blogs', 'fk'=>'blog_owner_user_ID', 'msg'=>T_('%d blogs owned by this user') ),
-				//array( 'table'=>'T_items__item', 'fk'=>'post_lastedit_user_ID', 'msg'=>T_('%d posts last edited by this user') ),
-				array( 'table'=>'T_items__item', 'fk'=>'post_assigned_user_ID', 'msg'=>T_('%d posts assigned to this user') ),
-				// Do not delete user private messages
-				//array( 'table'=>'T_messaging__message', 'fk'=>'msg_author_user_ID', 'msg'=>T_('The user has authored %d message(s)') ),
-				//array( 'table'=>'T_messaging__threadstatus', 'fk'=>'tsta_user_ID', 'msg'=>T_('The user is part of %d messaging thread(s)') ),
-			);
-
-		$this->delete_cascades = array(
-				array( 'table'=>'T_users__usersettings', 'fk'=>'uset_user_ID', 'msg'=>T_('%d user settings on collections') ),
-				array( 'table'=>'T_sessions', 'fk'=>'sess_user_ID', 'msg'=>T_('%d sessions opened by this user') ),
-				array( 'table'=>'T_coll_user_perms', 'fk'=>'bloguser_user_ID', 'msg'=>T_('%d user permissions on blogs') ),
-				array( 'table'=>'T_comments__votes', 'fk'=>'cmvt_user_ID', 'msg'=>T_('%d user votes on comments') ),
-				array( 'table'=>'T_subscriptions', 'fk'=>'sub_user_ID', 'msg'=>T_('%d blog subscriptions') ),
-				array( 'table'=>'T_items__item', 'fk'=>'post_creator_user_ID', 'msg'=>T_('%d posts created by this user') ),
-				array( 'table'=>'T_items__subscriptions', 'fk'=>'isub_user_ID', 'msg'=>T_('%d post subscriptions') ),
-				array( 'table'=>'T_messaging__contact', 'fk'=>'mct_to_user_ID', 'msg'=>T_('%d contacts from other users contact list') ),
-				array( 'table'=>'T_messaging__contact', 'fk'=>'mct_from_user_ID', 'msg'=>T_('%d contacts from this user contact list') ),
-				array( 'table'=>'T_messaging__contact_groups', 'fk'=>'cgr_user_ID', 'msg'=>T_('%d contact groups') ),
-				array( 'table'=>'T_messaging__contact_groupusers', 'fk'=>'cgu_user_ID', 'msg'=>T_('%d contacts from contact groups') ),
-				array( 'table'=>'T_pluginusersettings', 'fk'=>'puset_user_ID', 'msg'=>T_('%d user settings on plugins') ),
-				array( 'table'=>'T_users__fields', 'fk'=>'uf_user_ID', 'msg'=>T_('%d user fields') ),
-				array( 'table'=>'T_links', 'fk'=>'link_usr_ID', 'msg'=>T_('%d links to this user') ),
-				array( 'table'=>'T_links', 'fk'=>'link_creator_user_ID', 'msg'=>T_('%d links created by this user') ),
-				array( 'table'=>'T_files', 'fk'=>'file_root_ID', 'and_condition' => 'file_root_type = "user"', 'msg'=>T_('%d files from this user file root') ),
-				array( 'table'=>'T_email__campaign_send', 'fk'=>'csnd_user_ID', 'msg'=>T_('%d newsletter emails for this user') ),
-			);
-
 		if( $db_row == NULL )
 		{ // Setting those object properties, which are not "NULL" in DB (MySQL strict mode):
 
 			// echo 'Creating blank user';
 			$this->set( 'login', 'login' );
-			$this->set( 'pass', md5('pass') );
+			$this->set_password( 'pass' );
 			$this->set( 'locale',
 				isset( $Settings )
 					? $Settings->get('default_locale') // TODO: (settings) use "new users template setting"
@@ -242,6 +200,7 @@ class User extends DataObject
 			$this->age_max = $db_row->user_age_max;
 			$this->login = $db_row->user_login;
 			$this->pass = $db_row->user_pass;
+			$this->salt = $db_row->user_salt;
 			$this->firstname = $db_row->user_firstname;
 			$this->lastname = $db_row->user_lastname;
 			$this->nickname = $db_row->user_nickname;
@@ -265,6 +224,116 @@ class User extends DataObject
 
 			// Group for this user:
 			$this->grp_ID = $db_row->user_grp_ID;
+		}
+	}
+
+
+	/**
+	 * Get this class db table config params
+	 *
+	 * @return array
+	 */
+	static function get_class_db_config()
+	{
+		static $user_db_config;
+
+		if( !isset( $user_db_config ) )
+		{
+			$user_db_config = array_merge( parent::get_class_db_config(),
+				array(
+					'dbtablename'        => 'T_users',
+					'dbprefix'           => 'user_',
+					'dbIDname'           => 'user_ID',
+				)
+			);
+		}
+
+		return $user_db_config;
+	}
+
+
+	/**
+	 * Get delete restriction settings
+	 *
+	 * @return array
+	 */
+	static function get_delete_restrictions()
+	{
+		// fp> These settings should probably be merged with the global database description used by the installer/upgrader. However I'm not sure about how compelx plugins would be able to integrate then...
+		// asimo> Delete cascades and restrictions handling can't be handled globally in all circumstances because in a few places there is a logic behind the deletion:
+		//        e.g. Delete user as spammer or simply delete the user
+		// asimo> For sure in those cases when the cascade has no condition it would be faster to handled in on the db level.
+		//        The current db_delete_where solution handles the delete cascade generally and handle the speciel cases in the cascaded classes as well ( e.g. delete files )
+		return array(
+				array( 'table'=>'T_blogs', 'fk'=>'blog_owner_user_ID', 'msg'=>T_('%d blogs owned by this user') ),
+				//array( 'table'=>'T_items__item', 'fk'=>'post_lastedit_user_ID', 'msg'=>T_('%d posts last edited by this user') ),
+				array( 'table'=>'T_items__item', 'fk'=>'post_assigned_user_ID', 'msg'=>T_('%d posts assigned to this user') ),
+				// Do not delete user private messages
+				//array( 'table'=>'T_messaging__message', 'fk'=>'msg_author_user_ID', 'msg'=>T_('The user has authored %d message(s)') ),
+				//array( 'table'=>'T_messaging__threadstatus', 'fk'=>'tsta_user_ID', 'msg'=>T_('The user is part of %d messaging thread(s)') ),
+			);
+	}
+
+
+	/**
+	 * Get delete cascade settings
+	 *
+	 * @return array
+	 */
+	static function get_delete_cascades()
+	{
+		return array(
+				array( 'table'=>'T_users__usersettings', 'fk'=>'uset_user_ID', 'msg'=>T_('%d user settings on collections') ),
+				array( 'table'=>'T_sessions', 'fk'=>'sess_user_ID', 'msg'=>T_('%d sessions opened by this user'),
+						'class'=>'Session', 'class_path'=>'sessions/model/_session.class.php' ),
+				array( 'table'=>'T_coll_user_perms', 'fk'=>'bloguser_user_ID', 'msg'=>T_('%d user permissions on blogs') ),
+				array( 'table'=>'T_comments__votes', 'fk'=>'cmvt_user_ID', 'msg'=>T_('%d user votes on comments') ),
+				array( 'table'=>'T_subscriptions', 'fk'=>'sub_user_ID', 'msg'=>T_('%d blog subscriptions') ),
+				array( 'table'=>'T_items__item', 'fk'=>'post_creator_user_ID', 'msg'=>T_('%d posts created by this user'),
+						'class'=>'Item', 'class_path'=>'items/model/_item.class.php' ),
+				array( 'table'=>'T_items__subscriptions', 'fk'=>'isub_user_ID', 'msg'=>T_('%d post subscriptions') ),
+				array( 'table'=>'T_messaging__contact', 'fk'=>'mct_to_user_ID', 'msg'=>T_('%d contacts from other users contact list') ),
+				array( 'table'=>'T_messaging__contact', 'fk'=>'mct_from_user_ID', 'msg'=>T_('%d contacts from this user contact list') ),
+				array( 'table'=>'T_messaging__contact_groups', 'fk'=>'cgr_user_ID', 'msg'=>T_('%d contact groups') ),
+				array( 'table'=>'T_messaging__contact_groupusers', 'fk'=>'cgu_user_ID', 'msg'=>T_('%d contacts from contact groups') ),
+				array( 'table'=>'T_pluginusersettings', 'fk'=>'puset_user_ID', 'msg'=>T_('%d user settings on plugins') ),
+				array( 'table'=>'T_users__fields', 'fk'=>'uf_user_ID', 'msg'=>T_('%d user fields') ),
+				array( 'table'=>'T_users__postreadstatus', 'fk'=>'uprs_user_ID', 'msg'=>T_('%d recordings of a post having been read') ),
+				array( 'table'=>'T_links', 'fk'=>'link_usr_ID', 'msg'=>T_('%d links to this user'),
+						'class'=>'Link', 'class_path'=>'links/model/_link.class.php' ),
+				array( 'table'=>'T_files', 'fk'=>'file_root_ID', 'and_condition'=>'file_root_type = "user"', 'msg'=>T_('%d files from this user file root') ),
+				array( 'table'=>'T_email__campaign_send', 'fk'=>'csnd_user_ID', 'msg'=>T_('%d newsletter emails for this user') ),
+				array( 'table'=>'T_users__reports', 'fk'=>'urep_target_user_ID', 'msg'=>T_('%d reports about this user') ),
+				array( 'table'=>'T_users__reports', 'fk'=>'urep_reporter_ID', 'msg'=>T_('%d reports created by this user') ),
+				array( 'table'=>'T_users__user_org', 'fk'=>'uorg_user_ID', 'msg'=>T_('%d organization membership') ),
+			);
+	}
+
+
+	/**
+	 * Initialize relations for restrict and cascade deletion.
+	 * Spammer user's deletion will cascade more items.
+	 *
+	 * @param boolean Is this user spammer
+	 */
+	function init_relations( $is_spammer = false )
+	{
+		if( ! is_null( $this->delete_cascades ) || ! is_null( $this->delete_restrictions ) )
+		{ // Initialize the relations only once
+			return;
+		}
+
+		parent::init_relations();
+
+		if( $is_spammer )
+		{
+			$this->delete_cascades[] = array( 'table'=>'T_messaging__message', 'fk'=>'msg_author_user_ID', 'msg'=>T_('%d messages from this user'),
+					'class'=>'Message', 'class_path'=>'messaging/model/_message.class.php' );
+			$this->delete_cascades[] = array( 'table'=>'T_messaging__threadstatus', 'fk'=>'tsta_user_ID', 'msg'=>T_('%d message read statuses from this user') );
+			$this->delete_cascades[] = array( 'table'=>'T_comments', 'fk'=>'comment_author_user_ID', 'msg'=>T_('%d comments by this user'),
+					'class'=>'Comment', 'class_path'=>'comments/model/_comment.class.php' );
+			$this->delete_cascades[] = array( 'table'=>'T_links', 'fk'=>'link_creator_user_ID', 'msg'=>T_('%d links created by this user'),
+					'class'=>'Link', 'class_path'=>'links/model/_link.class.php' );
 		}
 	}
 
@@ -305,17 +374,18 @@ class User extends DataObject
 
 		if( !param_has_error( 'edited_user_login' ) )
 		{	// We want all logins to be lowercase to guarantee uniqueness regardless of the database case handling for UNIQUE indexes:
-			$this->set_from_Request( 'login', 'edited_user_login', true, 'evo_strtolower' );
+			$this->set_from_Request( 'login', 'edited_user_login', true, 'utf8_strtolower' );
 		}
 		// ---- Login checking / END ----
 
 		$is_identity_form = param( 'identity_form', 'boolean', false );
 		$is_admin_form = param( 'admin_form', 'boolean', false );
 		$has_full_access = $current_User->check_perm( 'users', 'edit' );
+		$has_moderate_access = $current_User->check_perm( 'users', 'moderate' );
 
 		// ******* Admin form or new user create ******* //
 		// In both cases current user must have users edit permission!
-		if( ( $is_admin_form || ( $is_identity_form && $is_new_user ) ) && $current_User->check_perm( 'users', 'edit', true ) )
+		if( ( $is_admin_form || ( $is_identity_form && $is_new_user ) ) && $has_moderate_access )
 		{ // level/group and email options are displayed on identity form only when creating a new user.
 			if( $this->ID != 1 )
 			{ // the admin user group can't be changed
@@ -323,21 +393,27 @@ class User extends DataObject
 				$this->set_from_Request( 'level', 'edited_user_level', true );
 
 				$edited_user_Group = $GroupCache->get_by_ID( param( 'edited_user_grp_ID', 'integer' ) );
-				$this->set_Group( $edited_user_Group );
+				if( /* User can change to any group: */
+				    $has_full_access ||
+				    /* User can change only to group with level lower than own group level: */
+				    ( $has_moderate_access && $edited_user_Group->get( 'level' ) < $current_User->get_Group()->get( 'level' ) ) )
+				{
+					$this->set_Group( $edited_user_Group );
+				}
 			}
 
 			param( 'edited_user_source', 'string', true );
 			$this->set_from_Request('source', 'edited_user_source', true);
 
 			// set email, without changing the user status
-			$edited_user_email = evo_strtolower( param( 'edited_user_email', 'string', true ) );
+			$edited_user_email = utf8_strtolower( param( 'edited_user_email', 'string', true ) );
 			param_check_not_empty( 'edited_user_email', T_('Please enter your e-mail address.') );
 			param_check_email( 'edited_user_email', true );
 			$this->set_email( $edited_user_email, false );
 
 			if( $is_admin_form )
 			{	// Admin form
-				$notification_sender_email = evo_strtolower( param( 'notification_sender_email', 'string', true ) );
+				$notification_sender_email = utf8_strtolower( param( 'notification_sender_email', 'string', true ) );
 				param_check_email( 'notification_sender_email' );
 				if( ! empty( $notification_sender_email ) )
 				{ // Change a value of setting
@@ -358,7 +434,7 @@ class User extends DataObject
 					$UserSettings->delete( 'notification_sender_name', $this->ID );
 				}
 
-				if( !isset( $this->dbchanges['user_email'] ) )
+				if( $has_full_access && !isset( $this->dbchanges['user_email'] ) )
 				{	// If email address is not changed
 					// Update status of email address in the T_email_address table
 					$edited_email_status = param( 'edited_email_status', 'string' );
@@ -588,6 +664,13 @@ class User extends DataObject
 			// ---- Locations / END ----
 
 
+			// ---- Organizations / START ----
+			$organizations = param( 'organizations', 'array:string' );
+			$org_roles = param( 'org_roles', 'array:string' );
+			$this->update_organizations( $organizations, $org_roles );
+			// ---- Organizations / END ----
+
+
 			// ---- Additional Fields / START ----
 
 			// Load all defined userfields for following checking of required fields
@@ -674,8 +757,8 @@ class User extends DataObject
 				}
 			}
 
-			$uf_new_fields = param( 'uf_new', 'array/array/string' );	// Recommended & required fields (it still not saved in DB)
-			$uf_add_fields = param( 'uf_add', 'array/array/string' );	// Added fields
+			$uf_new_fields = param( 'uf_new', 'array:array:string' );	// Recommended & required fields (it still not saved in DB)
+			$uf_add_fields = param( 'uf_add', 'array:array:string' );	// Added fields
 
 			// Add a new field: (JS is not enabled)
 			if( $action == 'add_field' )
@@ -833,7 +916,7 @@ class User extends DataObject
 
 				if( param_check_passwords( 'edited_user_pass1', 'edited_user_pass2', true, $Settings->get('user_minpwdlen') ) )
 				{ // We can set password
-					$this->set( 'pass', md5( $edited_user_pass2 ) );
+					$this->set_password( $edited_user_pass2 );
 				}
 			}
 			else
@@ -854,9 +937,9 @@ class User extends DataObject
 					$checkpwd_params = array();
 				}
 
-				if( ! strlen($current_user_pass) )
+				if( ! strlen( $current_user_pass ) )
 				{
-					param_error('current_user_pass' , T_('Please enter your current password.') );
+					param_error( 'current_user_pass' , T_('Please enter your current password.') );
 					param_check_passwords( 'edited_user_pass1', 'edited_user_pass2', true, $Settings->get('user_minpwdlen'), $checkpwd_params );
 				}
 				else
@@ -864,16 +947,18 @@ class User extends DataObject
 					if( $has_full_access && $this->ID != $current_User->ID )
 					{ // Admin is changing a password of other user, Check a password of current admin
 						$pass_to_check = $current_User->pass;
+						$current_user_salt = $current_User->salt;
 					}
 					else
 					{ // User is changing own pasword
 						$pass_to_check = $this->pass;
+						$current_user_salt = $this->salt;
 					}
-					if( $pass_to_check == md5($current_user_pass) )
+					if( $pass_to_check == md5( $current_user_salt.$current_user_pass, true ) )
 					{
 						if( param_check_passwords( 'edited_user_pass1', 'edited_user_pass2', true, $Settings->get('user_minpwdlen'), $checkpwd_params ) )
 						{ // We can set password
-							$this->set( 'pass', md5( $edited_user_pass2 ) );
+							$this->set_password( $edited_user_pass2 );
 						}
 					}
 					else
@@ -949,7 +1034,7 @@ class User extends DataObject
 			{ // Update user's settings
 
 				// Email communication
-				$edited_user_email = evo_strtolower( param( 'edited_user_email', 'string', true ) );
+				$edited_user_email = utf8_strtolower( param( 'edited_user_email', 'string', true ) );
 				param_check_not_empty( 'edited_user_email', T_('Please enter your e-mail address.') );
 				param_check_email( 'edited_user_email', true );
 				$this->set_email( $edited_user_email );
@@ -982,6 +1067,10 @@ class User extends DataObject
 				if( $is_comment_moderator || $this->check_role( 'comment_editor' ) )
 				{ // update 'notify_comment_moderation' only if user is comment moderator/editor at least in one blog
 					$UserSettings->set( 'notify_comment_moderation', param( 'edited_user_notify_cmt_moderation', 'integer', 0 ), $this->ID );
+				}
+				if( $this->check_perm( 'admin', 'restricted', false ) )
+				{ // update 'notify_meta_comments' only if edited user has a permission to back-office
+					$UserSettings->set( 'notify_meta_comments', param( 'edited_user_notify_meta_comments', 'integer', 0 ), $this->ID );
 				}
 				if( $is_comment_moderator )
 				{ // update 'send_cmt_moderation_reminder' only if user is comment moderator at least in one blog
@@ -1218,7 +1307,7 @@ class User extends DataObject
 
 			case 'userurl>userpage':
 				// We give priority to user submitted url:
-				if( evo_strlen($this->url) > 10 )
+				if( utf8_strlen($this->url) > 10 )
 				{
 					$url = $this->url;
 				}
@@ -1287,25 +1376,44 @@ class User extends DataObject
 				'mask'         => '$login$', // $avatar$ $login$
 				'login_format' => 'htmlbody',
 				'avatar_size'  => 'crop-top-15x15',
+				'login_text'   => 'login', // name | login
+				'use_style'    => false, // true - to use attr "style", e.g. on email templates
 			), $params );
 
 		$avatar = '';
 		$login = '';
+		$class = '';
 
 		if( strpos( $params['mask'], '$login$' ) !== false )
-		{	// Display login
-			$login = $this->dget( 'login', $params['login_format'] );
+		{ // Display login or preferred name
+			if( $params['login_text'] == 'name' )
+			{ // Use nickname or fullname
+				$login = $this->get_username( $params['login_format'] );
+			}
+			else
+			{ // Use a login
+				$login = $this->dget( 'login', $params['login_format'] );
+			}
+			// Add class "login" to detect logins by js plugins
+			$class = ( $login == $this->login ? 'login ' : '' );
 		}
 
 		if( strpos( $params['mask'], '$avatar$' ) !== false )
-		{	// Display avatar
+		{ // Display avatar
 			$avatar = $this->get_avatar_imgtag( $params['avatar_size'], '' );
 		}
 
 		$mask = array( '$login$', '$avatar$' );
 		$data = array( $login, $avatar );
 
-		return '<span class="'.$this->get_gender_class().'">'.str_replace( $mask, $data, $params['mask'] ).'</span>';
+		$gender_class = $this->get_gender_class();
+		$attr_style = '';
+		if( $params['use_style'] )
+		{ // Use "style"
+			$attr_style = emailskin_style( '.user+.'.str_replace( ' ', '.', $gender_class ) );
+		}
+
+		return '<span class="'.trim( $class.' '.$gender_class ).'"'.$attr_style.'>'.str_replace( $mask, $data, $params['mask'] ).'</span>';
 	}
 
 
@@ -1318,7 +1426,7 @@ class User extends DataObject
 	{
 		// Make sure we are not missing any param:
 		$params = array_merge( array(
-				'link_text'      => 'avatar', // avatar | only_avatar | login | nickname | firstname | lastname | fullname | preferredname
+				'link_text'      => 'avatar_name', // avatar_name | avatar_login | only_avatar | name | login | nickname | firstname | lastname | fullname | preferredname
 				'thumb_size'     => 'crop-top-15x15',
 				'thumb_class'    => 'avatar_before_login',
 				'thumb_zoomable' => false,
@@ -1326,6 +1434,7 @@ class User extends DataObject
 				'display_bubbletip' => true,
 				'nowrap'         => true,
 				'user_tab'       => 'profile',
+				'use_style'      => false, // true - to use attr "style" instead of "class", e.g. on email templates
 				'blog_ID'        => NULL,
 			), $params );
 
@@ -1338,8 +1447,8 @@ class User extends DataObject
 		}
 
 		$avatar_tag = '';
-		if( $params['link_text'] == 'avatar' || $params['link_text'] == 'only_avatar' )
-		{
+		if( strpos( $params['link_text'], 'avatar' ) !== false )
+		{ // Avatar must be displayed in this link
 			$avatar_tag = $this->get_avatar_imgtag( $params['thumb_size'], $params['thumb_class'], '', $params['thumb_zoomable'] );
 			if( $params['thumb_zoomable'] )
 			{ // User avatar is zoomable
@@ -1356,7 +1465,7 @@ class User extends DataObject
 			switch( $params['link_text'] )
 			{
 				case 'login':
-				case 'avatar':
+				case 'avatar_login':
 					$link_login = $this->login;
 					break;
 				case 'nickname':
@@ -1374,27 +1483,36 @@ class User extends DataObject
 				case 'preferredname':
 					$link_login = $this->get_preferred_name();
 					break;
+				// default: 'avatar_name' | 'avatar' | 'name'
 			}
 			$link_login = trim( $link_login );
 			if( empty( $link_login ) )
-			{ // Use a login by default if a selected field is empty
-				$link_login = $this->login;
+			{ // Use a login or preferred name by default
+				$link_login = $this->get_username();
 			}
+			// Add class "login" to detect logins by js plugins
+			$class .= ( $link_login == $this->login ? ' login' : '' );
 			if( $params['login_mask'] != '' )
 			{ // Apply login mask
 				$link_login = str_replace( '$login$', $link_login, $params['login_mask'] );
 			}
 		}
 
-		$class .= ' '.$this->get_gender_class().( $params['nowrap'] ? ' nowrap' : '' );
+		$gender_class = $this->get_gender_class();
+		$attr_style = '';
+		if( $params['use_style'] )
+		{ // Use "style"
+			$attr_style = emailskin_style( '.user+.'.str_replace( ' ', '.', $gender_class ) );
+		}
+		$attr_style = ' class="'.trim( $class.' '.$gender_class.( $params['nowrap'] ? ' nowrap' : '' ) ).'"'.$attr_style;
 
 		if( empty( $identity_url ) )
 		{
-			return '<span class="'.trim( $class ).'"'.$attr_bubbletip.'>'.$avatar_tag.$link_login.'</span>';
+			return '<span'.$attr_style.$attr_bubbletip.'>'.$avatar_tag.$link_login.'</span>';
 		}
 
 		$link_title = T_( 'Show the user profile' );
-		return '<a href="'.$identity_url.'" title="'.$link_title.'" class="'.trim( $class ).'"'.$attr_bubbletip.'>'.$avatar_tag.$link_login.'</a>';
+		return '<a href="'.$identity_url.'" title="'.$link_title.'"'.$attr_style.$attr_bubbletip.'>'.$avatar_tag.$link_login.'</a>';
 	}
 
 
@@ -1580,6 +1698,7 @@ class User extends DataObject
 			$SQL->SELECT( 'comment_status, COUNT(*)' );
 			$SQL->FROM( 'T_comments' );
 			$SQL->WHERE( 'comment_author_user_ID = '.$this->ID );
+			$SQL->WHERE_and( 'comment_type IN ( "comment", "trackback", "pingback" )' );
 			$SQL->GROUP_BY( 'comment_status' );
 			$this->_num_comments = $DB->get_assoc( $SQL->get() );
 
@@ -1596,6 +1715,31 @@ class User extends DataObject
 		}
 
 		return !empty( $this->_num_comments[ $status ] ) ? $this->_num_comments[ $status ] : 0;
+	}
+
+
+	/**
+	 * Get the number of files for the user.
+	 *
+	 * @param string File type: 'image', 'audio', 'other'
+	 * @return integer
+	 */
+	function get_num_files( $type = NULL )
+	{
+		global $DB;
+
+		if( is_null( $this->_num_files ) )
+		{
+			$links_SQL = new SQL();
+			$links_SQL->SELECT( 'file_type, COUNT( file_ID ) AS cnt' );
+			$links_SQL->FROM( 'T_links' );
+			$links_SQL->FROM_add( 'INNER JOIN T_files ON file_ID = link_file_ID' );
+			$links_SQL->WHERE( 'link_creator_user_ID = '.$this->ID );
+			$links_SQL->GROUP_BY( 'file_type' );
+			$this->_num_files = $DB->get_assoc( $links_SQL->get() );
+		}
+
+		return ! empty( $this->_num_files[ $type ] ) ? $this->_num_files[ $type ] : 0;
 	}
 
 
@@ -1793,9 +1937,10 @@ class User extends DataObject
 	 * Get user page url
 	 *
 	 * @param integer|NULL Blog ID or NULL to use current blog
+	 * @param boolean TRUE to force use URL even when current user in not logged in
 	 * @return string
 	 */
-	function get_userpage_url( $blog_ID = NULL )
+	function get_userpage_url( $blog_ID = NULL, $force_url = false )
 	{
 		global $Settings;
 
@@ -1816,7 +1961,7 @@ class User extends DataObject
 			return NULL;
 		}
 
-		if( is_logged_in() )
+		if( $force_url || is_logged_in() )
 		{ // If current User is logged in
 			if( $Settings->get( 'user_url_loggedin' ) == 'url' && $this->get_field_url( true ) != '' )
 			{ // Use website url if it is defined and setting enables this
@@ -1829,13 +1974,18 @@ class User extends DataObject
 		}
 		else
 		{ // For anonymous users
-			if( $Settings->get( 'user_url_anonymous' ) == 'url' && $this->get_field_url( true ) != '' )
-			{ // Use website url if it is defined and setting enables this
-				return $this->get_field_url( true );
-			}
-			elseif( $Settings->get( 'allow_anonymous_user_profiles' ) )
-			{ // Use an user page if url is not defined and this is enabled by setting for anonymous users
-				return url_add_param( $current_Blog->get( 'userurl' ), 'user_ID='.$this->ID );
+			$this->get_Group();
+			if( $this->Group->level >= $Settings->get( 'allow_anonymous_user_level_min' ) &&
+			    $this->Group->level <= $Settings->get( 'allow_anonymous_user_level_max' ) )
+			{ // Check if anonymous users have an access to view this user
+				if( $Settings->get( 'user_url_anonymous' ) == 'url' && $this->get_field_url( true ) != '' )
+				{ // Use website url if it is defined and setting enables this
+					return $this->get_field_url( true );
+				}
+				elseif( $Settings->get( 'allow_anonymous_user_profiles' ) )
+				{ // Use an user page if url is not defined and this is enabled by setting for anonymous users
+					return url_add_param( $current_Blog->get( 'userurl' ), 'user_ID='.$this->ID );
+				}
 			}
 		}
 
@@ -1911,7 +2061,7 @@ class User extends DataObject
 	function set( $parname, $parvalue, $make_null = false )
 	{
 		if( ( ! isset( $this->significant_changed_values[ $parname ] ) ) && ( ( $old_value = $this->get( $parname ) ) != $parvalue )
-			&& in_array( $parname, array( 'login', 'group_ID', 'nickname', 'firstname', 'lastname', 'gender', 'ctry_ID', 'rgn_ID', 'subrg_ID', 'city_ID' ) ) )
+			&& in_array( $parname, array( 'login', 'grp_ID', 'nickname', 'firstname', 'lastname', 'gender', 'ctry_ID', 'rgn_ID', 'subrg_ID', 'city_ID' ) ) )
 		{ // Save previous value of significant changes for later use in send_account_changed_notifications()
 			$this->significant_changed_values[ $parname ] = $old_value;
 		}
@@ -1925,6 +2075,21 @@ class User extends DataObject
 			default:
 				return $this->set_param( $parname, 'string', $parvalue, $make_null );
 		}
+	}
+
+
+	/**
+	 * Set the encoded password and a new password salt from a raw password
+	 *
+	 * @param string the raw password
+	 */
+	function set_password( $raw_password )
+	{
+		// Generate new salt to save a password
+		$new_pass_salt = generate_random_key( 8 );
+
+		$this->set( 'pass', md5( $new_pass_salt.$raw_password, true ) );
+		$this->set( 'salt', $new_pass_salt );
 	}
 
 
@@ -1960,7 +2125,7 @@ class User extends DataObject
 	{
 		global $Settings;
 
-		$r = parent::set_param( 'email', 'string', evo_strtolower( $email ) );
+		$r = parent::set_param( 'email', 'string', utf8_strtolower( $email ) );
 
 		if( $change_status )
 		{ // Change user status to 'emailchanged' (if email has changed and Settings are available, which they are not during install):
@@ -2053,9 +2218,8 @@ class User extends DataObject
 	{
 		if( !$pass_is_md5 )
 		{
-			$pass = md5( $pass );
+			$pass = md5( $this->salt.$pass, true );
 		}
-		// echo 'pass: ', $pass, '/', $this->pass;
 
 		return ( $pass == $this->pass );
 	}
@@ -2260,6 +2424,12 @@ class User extends DataObject
 				$blog_ID = $Item->get_blog_ID();
 				$check_status = substr( $permname, 8 );
 
+				if( $Comment->is_meta() && in_array( $permlevel, array( 'edit', 'moderate', 'delete' ) ) )
+				{ // Check the permissions for meta comment with special function
+					$perm = $this->check_perm( 'meta_comment', $permlevel, false, $Comment );
+					break;
+				}
+
 				if( ( $permlevel != 'view' ) &&  $Item->is_locked() && !$this->check_perm( 'blog_cats', 'edit', false, $blog_ID ) )
 				{ // Comment item is locked and current user is not allowed to edit/moderate locked items comment
 					break;
@@ -2299,6 +2469,77 @@ class User extends DataObject
 						$perm = $this->Group->check_perm_bloggroups( $blog_permname, 'create', $blog_ID );
 					}
 				}
+				break;
+
+			case 'meta_comment':
+				// Check permission for meta comment:
+
+				if( $permlevel == 'view' || $permlevel == 'add' )
+				{ // Set Item from target object
+					$Item = & $perm_target;
+				}
+				elseif( $permlevel == 'edit' || $permlevel == 'moderate' || $permlevel == 'delete' )
+				{ // Set Comment from target object
+					$Comment = & $perm_target;
+					if( empty( $Comment ) || ! $Comment->is_meta() )
+					{ // Comment must be defined and meta to check these permissions
+						$perm = false;
+						break;
+					}
+					$Item = & $Comment->get_Item();
+				}
+				else
+				{ // Invalid permission level
+					$perm = false;
+					break;
+				}
+
+				if( empty( $Item ) )
+				{ // Item must be defined to check these permissions
+					$perm = false;
+					break;
+				}
+
+				switch( $permlevel )
+				{
+					case 'view':
+					case 'add':
+						// Check perms to View/Add meta comments:
+						$perm = // If User can edit or delete this Item
+								$this->check_perm( 'item_post!CURSTATUS', 'edit', false, $Item )
+								// OR If User can delete any Item of the Blog
+								|| $this->check_perm( 'blog_del_post', '', false, $Item->get_blog_ID() );
+						break;
+
+					case 'edit':
+						// Check perms to Edit meta comment
+						$perm = // User can edit only own meta comment
+								$Comment->author_user_ID == $this->ID
+								// AND User must has a permission to view meta comments
+								&& $this->check_perm( 'meta_comment', 'view', false, $Item );
+						break;
+
+					case 'moderate':
+						// Moderation is not available for meta comment
+						$perm = false;
+						break;
+
+					case 'delete':
+						// Check perms to Delete meta comment:
+						if( $this->check_perm( 'blog_del_post', '', false, $Item->get_blog_ID() ) )
+						{ // If User can delete this Item
+							$perm = true;
+							break;
+						}
+						if( $this->check_perm( 'item_post!CURSTATUS', 'edit', false, $Item ) &&
+						    $Comment->author_user_ID == $this->ID )
+						{ // If it is own meta comment of the User
+							$perm = true;
+							break;
+						}
+						break;
+				}
+
 				break;
 
 			case 'item_post!CURSTATUS':
@@ -2403,7 +2644,12 @@ class User extends DataObject
 				if( ( ! $Settings->get('allow_anonymous_user_profiles') ) && ( ! $this->check_perm( 'cross_country_allow_profiles' ) ) && ( empty( $this->ctry_ID ) || ( $this->ctry_ID !== $User->ctry_ID ) ) )
 				{ // Users can view/browse other users only from the same country, but this user country is empty or not the same as the target user country
 					// this User has no permission to even view the target user
-					break;
+					$User->get_Group();
+					if( $User->Group->level < $Settings->get('allow_anonymous_user_level_min') ||
+					    $User->Group->level > $Settings->get('allow_anonymous_user_level_max') )
+					{ // The anonymous users have no access to view this user
+						break;
+					}
 				}
 
 				// Note: With this implementation only admin users are allowed to view users from different countries when cross country browsing is restricted
@@ -2737,7 +2983,7 @@ class User extends DataObject
 					$edit_perm_name = 'perm_edit';
 					$statuses_perm_name = 'perm_poststatuses';
 				}
-
+				// User is a moderator if has moderator permission at least in one blog
 				// A moderator must have permissions to create post/comment with at least two statuses from moderation statuses + published status
 				$check_statuses = get_visibility_statuses( 'moderation' );
 				// Create addition of statuses perm values
@@ -2832,7 +3078,24 @@ class User extends DataObject
 	 */
 	function get_msgform_possibility( $current_User = NULL )
 	{
-		if( ! $this->check_status( 'can_receive_any_message' ) )
+		global $DB;
+
+		$check_owner_SQL = new SQL();
+		$check_owner_SQL->SELECT( 'blog_ID' );
+		$check_owner_SQL->FROM( 'T_blogs' );
+		$check_owner_SQL->WHERE( 'blog_owner_user_ID = '.$DB->quote( $this->ID ) );
+		$check_owner_SQL->LIMIT( '1' );
+
+		if( $DB->get_var( $check_owner_SQL->get() ) )
+		{ // Allow to contact with this user because he is owner of at least one blog
+			$force_contact_blog_owner = true;
+		}
+		else
+		{
+			$force_contact_blog_owner = false;
+		}
+
+		if( ! $force_contact_blog_owner && ! $this->check_status( 'can_receive_any_message' ) )
 		{ // there is no way to send a message to a user with closed account
 			return NULL;
 		}
@@ -2843,7 +3106,7 @@ class User extends DataObject
 			{
 				global $current_User;
 			}
-			if( has_cross_country_restriction( 'contact' ) && ( empty( $current_User->ctry_ID ) || ( $current_User->ctry_ID !== $this->ctry_ID ) ) )
+			if( ! $force_contact_blog_owner && has_cross_country_restriction( 'contact' ) && ( empty( $current_User->ctry_ID ) || ( $current_User->ctry_ID !== $this->ctry_ID ) ) )
 			{ // Contat to this user is not enabled
 				return NULL;
 			}
@@ -2856,19 +3119,19 @@ class User extends DataObject
 					return 'PM';
 				}
 			}
-			if( $this->accepts_email() )
-			{ // this user allows email => send email
+			if( $force_contact_blog_owner || $this->accepts_email() )
+			{ // this user allows email => send email OR Force to allow to contact with this user because he is owner of the selected blog
 				return 'email';
 			}
 		}
 		else
 		{ // current User is not logged in
-			if( $this->accepts_email() )
-			{ // this user allows email
+			if( $force_contact_blog_owner || $this->accepts_email() )
+			{ // this user allows email OR Force to allow to contact with this user because he is owner of the selected blog
 				return 'email';
 			}
 			if( $this->accepts_pm() )
-			{ // no email option try to log in and send private message (just registered users can send PM)
+			{ // no email option - try to log in and send private message (only registered users can send PM)
 				return 'login';
 			}
 		}
@@ -3033,6 +3296,72 @@ class User extends DataObject
 
 
 	/**
+	 * Delete those users from the database which corresponds to the given condition or to the given ids array
+	 * Note: the delete cascade arrays are handled!
+	 *
+	 * @param string the name of this class
+	 *   Note: This is required until min phpversion will be 5.3. Since PHP 5.3 we can use static::function_name to achieve late static bindings
+	 * @param string where condition
+	 * @param array object ids
+	 * @return mixed # of rows affected or false if error
+	 */
+	static function db_delete_where( $class_name, $sql_where, $object_ids = NULL, $params = NULL )
+	{
+		global $DB;
+
+		$DB->begin();
+
+		if( ! empty( $sql_where ) )
+		{
+			$object_ids = $DB->get_col( 'SELECT user_ID FROM T_users WHERE '.$sql_where );
+		}
+
+		if( ! $object_ids )
+		{ // There is no user to delete
+			$DB->commit();
+			return;
+		}
+
+		// Delete orphan threads per users
+		$result = delete_orphan_threads( $object_ids );
+
+		// Remove deleted user(s) from posts where it was as last edit user
+		$user_ids = implode( ',', $object_ids );
+		$result = $result && ( $DB->query( 'UPDATE T_items__item
+								    SET post_lastedit_user_ID = NULL
+								  WHERE post_lastedit_user_ID IN ( '.$user_ids.' )' ) !== false );
+		$result = $result && ( $DB->query( 'UPDATE T_items__version
+								    SET iver_edit_user_ID = NULL
+								  WHERE iver_edit_user_ID IN ( '.$user_ids.' )' ) !== false );
+
+		// Remove this user from links where it was as last edit user
+		$result = $result && ( $DB->query( 'UPDATE T_links
+								    SET link_lastedit_user_ID = NULL
+								  WHERE link_lastedit_user_ID IN ( '.$user_ids.' )' ) !== false );
+
+		if( $result )
+		{ // Delete the user(s) with all of the cascade objects
+			$params['use_transaction'] = false; // no need to start a new transaction
+			$result = parent::db_delete_where( $class_name, $sql_where, $object_ids, $params );
+		}
+
+		if( $result !== false )
+		{ // delete the users' media folders recursively, for all deleted users
+			$FileRootCache = & get_FileRootCache();
+			foreach( $object_ids as $user_ID )
+			{
+				$root_directory = $FileRootCache->get_root_dir( 'user', $user_ID );
+				rmdir_r( $root_directory );
+			}
+		}
+
+		( $result !== false ) ? $DB->commit() : $DB->rollback();
+
+		return $result;
+	}
+
+
+	/**
 	 * Delete user and dependencies from database
 	 *
 	 * Includes WAY TOO MANY requests because we try to be compatible with MySQL 3.23, bleh!
@@ -3051,7 +3380,7 @@ class User extends DataObject
 
 		if( $deltype == 'spammer' )
 		{ // If we delete user as spammer we should delete private messaged of this user
-			$this->delete_messages();
+			$this->init_relations( true );
 		}
 		else
 		{ // If we delete user as not spammer we keep his comments as from anonymous user
@@ -3068,69 +3397,6 @@ class User extends DataObject
 			}
 		}
 
-		// Get list of posts that are going to be deleted (3.23)
-		$post_list = implode( ',', $DB->get_col( '
-				SELECT post_ID
-				  FROM T_items__item
-				 WHERE post_creator_user_ID = '.$this->ID ) );
-
-		if( !empty( $post_list ) )
-		{
-			// Delete comments
-			$ret = $DB->query( "DELETE FROM T_comments
-													WHERE comment_item_ID IN ($post_list)" );
-			if( is_a( $Log, 'log' ) )
-			{
-				$Log->add( sprintf( 'Deleted %d comments on user\'s posts.', $ret ), 'note' );
-			}
-
-			// Delete post extracats
-			$ret = $DB->query( "DELETE FROM T_postcats
-													WHERE postcat_post_ID IN ($post_list)" );
-			if( is_a( $Log, 'log' ) )
-			{
-				$Log->add( sprintf( 'Deleted %d extracats of user\'s posts\'.', $ret ) ); // TODO: geeky wording.
-			}
-
-			// Posts will we auto-deleted by parent method
-		}
-		else
-		{ // no posts
-			if( is_a( $Log, 'log' ) )
-			{
-				$Log->add( 'No posts to delete.', 'note' );
-			}
-		}
-
-		// Get list of sessions that are going to be deleted
-		$sessions_SQL = new SQL();
-		$sessions_SQL->SELECT( 'sess_ID' );
-		$sessions_SQL->FROM( 'T_sessions' );
-		$sessions_SQL->WHERE( 'sess_user_ID = '.$this->ID );
-		$sessions_list = $DB->get_col( $sessions_SQL->get() );
-
-		if( !empty( $sessions_list ) )
-		{ // Delete all hit logs of this user
-			$DB->query( 'DELETE FROM T_hitlog
-					WHERE hit_sess_ID IN ( '.$DB->quote( $sessions_list ).' )' );
-		}
-
-		// delete user involved ophan threads
-		delete_orphan_threads( $this->ID );
-
-		// Remove this user from posts where it was as last edit user
-		$DB->query( 'UPDATE T_items__item
-								    SET post_lastedit_user_ID = NULL
-								  WHERE post_lastedit_user_ID = '.$this->ID );
-		$DB->query( 'UPDATE T_items__version
-								    SET iver_edit_user_ID = NULL
-								  WHERE iver_edit_user_ID = '.$this->ID );
-
-		// Remove this user from links where it was as last edit user
-		$DB->query( 'UPDATE T_links
-								    SET link_lastedit_user_ID = NULL
-								  WHERE link_lastedit_user_ID = '.$this->ID );
-
 		// remember ID, because parent method resets it to 0
 		$old_ID = $this->ID;
 		$old_email = $this->get( 'email' );
@@ -3143,11 +3409,6 @@ class User extends DataObject
 			$Log->add( 'User has not been deleted.', 'error' );
 			return false;
 		}
-
-		// user was deleted, also delete this user's media folder recursively
-		$FileRootCache = & get_FileRootCache();
-		$root_directory = $FileRootCache->get_root_dir( 'user', $old_ID );
-		rmdir_r( $root_directory );
 
 		if( $deltype == 'spammer' )
 		{ // User was deleted as spammer, we should mark email of this user as 'Spammer'
@@ -3638,7 +3899,7 @@ class User extends DataObject
 		foreach( $LinkOwner->get_Links() as $user_Link )
 		{
 			$l_File = & $user_Link->get_File();
-			if( $l_File->is_image() )
+			if( ! empty( $l_File ) && $l_File->is_image() )
 			{
 				if( $exclude_main_picture && $l_File->ID == $this->avatar_file_ID )
 				{ // Exclude the main picture from list of other pictures
@@ -3661,9 +3922,13 @@ class User extends DataObject
 	 * @param boolean true if the avatar image should be zoomed on click, false otherwise
 	 * @param string avatar overlay text
 	 * @param string group name for lightbox plugin
+	 * @param string Change size of the attributes "width" & "height".
+	 *               Example: ( $tag_size = '160' ) => width="160" height="160"
+	 *                        ( $tag_size = '160x320' ) => width="160" height="320"
+	 *                        NULL - use real size
 	 * @return string
 	 */
-	function get_avatar_imgtag( $size = 'crop-top-64x64', $class = 'avatar', $align = '', $zoomable = false, $avatar_overlay_text = '', $lightbox_group = '' )
+	function get_avatar_imgtag( $size = 'crop-top-64x64', $class = 'avatar', $align = '', $zoomable = false, $avatar_overlay_text = '', $lightbox_group = '', $tag_size = NULL )
 	{
 		global $current_User;
 
@@ -3678,23 +3943,25 @@ class User extends DataObject
 		if( ! $Link || ! $File = & $Link->get_File() )
 		{ // User doesn't have an avatar
 			return get_avatar_imgtag_default( $size, $class, $align, array(
-					'email'  => $this->get( 'email' ),
-					'gender' => $this->get( 'gender' ),
+					'email'    => $this->get( 'email' ),
+					'gender'   => $this->get( 'gender' ),
+					'tag_size' => $tag_size,
 				) );
 		}
 
 		if( ( !$this->check_status( 'can_display_avatar' ) ) && !( is_admin_page() && is_logged_in( false ) && ( $current_User->check_perm( 'users', 'edit' ) ) ) )
 		{ // if the user status doesn't allow to display avatar and current User is not an admin in admin interface, then show default avatar
 			return get_avatar_imgtag_default( $size, $class, $align, array(
-					'email' => $this->get( 'email' ),
-					'gender' => $this->get( 'gender' ),
+					'email'    => $this->get( 'email' ),
+					'gender'   => $this->get( 'gender' ),
+					'tag_size' => $tag_size,
 				) );
 		}
 
 		if( $zoomable )
-		{	// return clickable avatar tag, zoom on click
+		{ // return clickable avatar tag, zoom on click
 			if( is_logged_in() )
-			{	// Only logged in users can see a big picture of the avatar
+			{ // Only logged in users can see a big picture of the avatar
 				// set random value to link_rel, this way the pictures on the page won't be grouped
 				// this is usefull because the same avatar picture may appear more times in the same page
 				if( empty( $lightbox_group ) )
@@ -3715,27 +3982,28 @@ class User extends DataObject
 						'image_link_rel'      => $link_rel,
 						'image_class'         => $class,
 						'image_align'         => $align,
+						'tag_size'            => $tag_size,
 					) );
 			}
 			else
-			{	// Anonymous user get an avatar picture with link to login page
+			{ // Anonymous user get an avatar picture with link to login page
 				global $Blog;
 				$redirect_to = '';
 				if( isset( $Blog ) )
-				{	// Redirect user after login
-					$redirect_to = url_add_param( $Blog->gen_blogurl(), 'disp=user&user_ID='.$this->ID, '&' );
+				{ // Redirect user after login
+					$redirect_to = $Blog->get( 'userurl', array( 'glue' => '&', 'url_suffix' => 'user_ID='.$this->ID ) );
 				}
-				$r = '<a href="'.get_login_url( 'cannot see avatar', $redirect_to ) .'">'.$File->get_thumb_imgtag( $size, $class, $align ).'</a>';
+				$r = '<a href="'.get_login_url( 'cannot see avatar', $redirect_to ) .'">'.$File->get_thumb_imgtag( $size, $class, $align, '', $tag_size ).'</a>';
 			}
 		}
 		else
 		{
-			$r = $File->get_thumb_imgtag( $size, $class, $align );
+			$r = $File->get_thumb_imgtag( $size, $class, $align, '', $tag_size );
 		}
 
 		if( $r != '' && $avatar_overlay_text != '' )
-		{	// Add overlay text if it is enabled
-			$r = $this->get_avatar_overlay_text( $r, $size, $avatar_overlay_text, $class );
+		{ // Add overlay text if it is enabled
+			$r = $this->get_avatar_overlay_text( $r, $size, $avatar_overlay_text, $class, $File );
 		}
 
 		return $r;
@@ -3745,46 +4013,75 @@ class User extends DataObject
 	/**
 	 * Get overlay text for avatar img tag
 	 *
-	 * @param img tag
-	 * @param avatar size
-	 * @param avatar overlay text
-	 * @param string class
-	 * @return html string, img tag with overlay text
+	 * @param string Tag <img />
+	 * @param array Avatar size, keys: 'width' & 'height'
+	 * @param string Avatar overlay text
+	 * @param string Class
+	 * @param object File
+	 * @return string Tag <img /> with overlay text
 	 */
-	function get_avatar_overlay_text( $img_tag, $size, $avatar_overlay_text, $class = '' )
+	function get_avatar_overlay_text( $img_tag, $thumb_size, $avatar_overlay_text, $class = '', $File = NULL )
 	{
 		preg_match( '/ width="(\d+)" height="(\d+)" /i', $img_tag, $img_sizes );
 		if( count( $img_sizes ) == 3 )
-		{	// img tag has a defined width & height
+		{ // img tag has a defined width & height
 			$width = $img_sizes[1];
 			$height = $img_sizes[2];
 		}
 		else
-		{	// We try to get a sizes from config
+		{ // We try to get a sizes from config
 			global $thumbnail_sizes;
-			if( isset( $thumbnail_sizes[$size] ) )
-			{	// Set a sizes
-				$width = $thumbnail_sizes[$size][1];
-				$height = $thumbnail_sizes[$size][2];
+			if( isset( $thumbnail_sizes[ $thumb_size ] ) )
+			{ // Set a sizes
+				$thumb_width = $thumbnail_sizes[ $thumb_size ][1];
+				$thumb_height = $thumbnail_sizes[ $thumb_size ][2];
+				if( is_null( $File ) )
+				{ // Use the size of thumbnail config if File is not defined
+					$width = $thumb_width;
+					$height = $thumb_height;
+				}
+				else
+				{ // Try to calculate what sizes are used for thumbnail really
+					list( $orig_width, $orig_height ) = $File->get_image_size( 'widthheight' );
+
+					load_funcs('files/model/_image.funcs.php');
+					if( check_thumbnail_sizes( $thumbnail_sizes[ $thumb_size ][0], $thumb_width, $thumb_height, $orig_width, $orig_height ) )
+					{ // Use the sizes of the original image
+						$width = $orig_width;
+						$height = $orig_height;
+					}
+					else
+					{ // Calculate the sizes depending on thumbnail type
+						if( $thumbnail_sizes[ $thumb_size ][0] == 'fit' )
+						{
+							list( $width, $height ) = scale_to_constraint( $orig_width, $orig_height, $thumb_width, $thumb_height );
+						}
+						else
+						{ // crop & crop-top
+							$width = $thumb_width;
+							$height = $thumb_height;
+						}
+					}
+				}
 			}
 		}
 
 		if( empty( $width ) || empty( $height ) )
-		{	// If sizes is not defined we cannot calculate a font-size for an overlay text
+		{ // If sizes is not defined we cannot calculate a font-size for an overlay text
 			return $img_tag;
 		}
 
 		$overlay_lines = explode( "\n", str_replace( "\r", '', $avatar_overlay_text ) );
 		$max_line_length = 0;
 		foreach( $overlay_lines as $line )
-		{	// Find the most long line of the overlay text
+		{ // Find the most long line of the overlay text
 			if( $max_line_length < strlen($line) )
 			{	// Get max long line
 				$max_line_length = strlen($line);
 			}
 		}
 		if( $max_line_length > 0 )
-		{	// Display an overlay text if max length is defined
+		{ // Display an overlay text if max length is defined
 			// Calculate approximate font size, 1.7 - is custom coefficient of the font
 			$font_size = ceil( ( $width / $max_line_length ) * 1.7 );
 			// Set line-height for centering text by vertical
@@ -3794,7 +4091,7 @@ class User extends DataObject
 
 			$tag_is_linked = false;
 			if( strpos( $img_tag, '</a>' ) !== false )
-			{	// img_tag is located inside tag <a>, we should to remove a end of the tag and then add
+			{ // img_tag is located inside tag <a>, we should to remove a end of the tag and then add
 				$img_tag = str_replace( '</a>', '', $img_tag );
 				$tag_is_linked = true;
 			}
@@ -3804,7 +4101,7 @@ class User extends DataObject
 						nl2br($avatar_overlay_text).
 					'</div>';
 			if( $tag_is_linked )
-			{	// Add end of the tag which is removed above
+			{ // Add end of the tag which is removed above
 				$img_tag .= '</a>';
 			}
 			$img_tag .= '</div>';
@@ -3861,7 +4158,7 @@ class User extends DataObject
 
 		if( $params['show_login'] )
 		{	// Display user name
-			$r .= $this->get_colored_login();
+			$r .= $this->get_colored_login( array( 'login_text' => 'name' ) );
 		}
 
 		$r .= !empty( $identity_url ) ? '</a>' : '</div>';
@@ -3892,6 +4189,82 @@ class User extends DataObject
 
 
 	/**
+	 * Get all user extra fields with selected type
+	 *
+	 * @param string Field type: 'email', 'word', 'number', 'phone', 'text'
+	 * @param boolean TRUE to get only the fields with icon
+	 * @return array Fields
+	 */
+	function userfields_by_type( $field_type, $only_with_icon = true )
+	{
+		global $DB;
+
+		$SQL = new SQL();
+		$SQL->SELECT( 'uf_varchar, ufdf_ID, ufdf_icon_name, ufdf_code' );
+		$SQL->FROM( 'T_users__fields' );
+		$SQL->FROM_add( 'INNER JOIN T_users__fielddefs ON uf_ufdf_ID = ufdf_ID' );
+		$SQL->WHERE( 'uf_user_ID = '.$this->ID );
+		$SQL->WHERE_and( 'ufdf_type = '.$DB->quote( $field_type ) );
+		if( $only_with_icon )
+		{
+			$SQL->WHERE_and( 'ufdf_icon_name IS NOT NULL' );
+		}
+		$SQL->ORDER_BY( 'ufdf_order' );
+
+		return $DB->get_results( $SQL->get() );
+	}
+
+
+	/**
+	 * Get user field value by ID
+	 *
+	 * @param integer Field ID
+	 * @return string Field value
+	 */
+	function userfield_value_by_ID( $field_ID )
+	{
+		global $DB;
+
+		// Load all user fields once
+		$this->userfields_load();
+
+		if( isset( $this->userfields_by_type[ $field_ID ], $this->userfields[ $this->userfields_by_type[ $field_ID ][0] ] ) )
+		{ // Get value from cache
+			return $this->userfields[ $this->userfields_by_type[ $field_ID ][0] ]->uf_varchar;
+		}
+
+		// No field value
+		return '';
+	}
+
+
+	/**
+	 * Get user field values by code
+	 *
+	 * @param integer Field code
+	 * @return array Field values
+	 */
+	function userfield_values_by_code( $field_code )
+	{
+		global $DB;
+
+		// Load all user fields once
+		$this->userfields_load();
+
+		$field_values = array();
+		if( ! empty( $this->userfields_by_code[ $field_code ] ) )
+		{ // Get value from cache
+			foreach( $this->userfields_by_code[ $field_code ] as $userfield_ID )
+			{
+				$field_values[] = $this->userfields[ $userfield_ID ]->uf_varchar;
+			}
+		}
+
+		return $field_values;
+	}
+
+
+	/**
 	 * Load userfields
 	 */
 	function userfields_load()
@@ -3899,10 +4272,10 @@ class User extends DataObject
 		global $DB;
 
 		$userfields = $DB->get_results( '
-			SELECT uf_ID, ufdf_ID, uf_varchar, ufdf_duplicated, ufdf_type, ufdf_name, ufgp_ID, ufgp_name
+			SELECT uf_ID, ufdf_ID, uf_varchar, ufdf_duplicated, ufdf_type, ufdf_name, ufdf_icon_name, ufdf_code, ufgp_ID, ufgp_name
 				FROM T_users__fields
-					LEFT JOIN T_users__fielddefs ON uf_ufdf_ID = ufdf_ID
-					LEFT JOIN T_users__fieldgroups ON ufdf_ufgp_ID = ufgp_ID
+					INNER JOIN T_users__fielddefs ON uf_ufdf_ID = ufdf_ID
+					INNER JOIN T_users__fieldgroups ON ufdf_ufgp_ID = ufgp_ID
 			WHERE uf_user_ID = '.$this->ID.'
 				AND ufdf_required != "hidden"
 			ORDER BY ufgp_order, ufdf_order, uf_ID' );
@@ -3911,7 +4284,7 @@ class User extends DataObject
 		foreach( $userfields as $userfield )
 		{
 			if( $userfield->ufdf_duplicated == 'list' )
-			{	// Prepare a values of list into one array
+			{ // Prepare a values of list into one array
 				if( !isset( $userfield_lists[$userfield->ufdf_ID] ) )
 				{	// Init array
 					$userfield_lists[$userfield->ufdf_ID] = array();
@@ -3924,19 +4297,21 @@ class User extends DataObject
 		foreach( $userfields as $userfield )
 		{
 			if( $userfield->ufdf_duplicated == 'list' )
-			{	// List style
+			{ // List style
 				if( isset( $userfield_lists[$userfield->ufdf_ID] ) )
-				{	// Save all data for this field:
+				{ // Save all data for this field:
 					$userfield->uf_varchar = implode( ', ', $userfield_lists[$userfield->ufdf_ID] );
 					$this->userfields[$userfield->uf_ID] = $userfield;
+					$this->userfields_by_code[$userfield->ufdf_code][] = $userfield->uf_ID;
 					// Unset array to avoid a duplicates
 					unset( $userfield_lists[$userfield->ufdf_ID] );
 				}
 			}
 			else
-			{	// Save all data for this field:
+			{ // Save all data for this field:
 				userfield_prepare( $userfield );
 				$this->userfields[$userfield->uf_ID] = $userfield;
+				$this->userfields_by_code[$userfield->ufdf_code][] = $userfield->uf_ID;
 			}
 			// Save index
 			$this->userfields_by_type[$userfield->ufdf_ID][] = $userfield->uf_ID;
@@ -4002,7 +4377,7 @@ class User extends DataObject
 	{
 		global $current_User, $DB, $Messages, $UserSettings, $Settings, $blog, $admin_url;
 
-		if( !$current_User->check_perm( 'users', 'edit' ) && $this->ID != $current_User->ID )
+		if( ! $current_User->can_moderate_user( $this->ID ) && $this->ID != $current_User->ID )
 		{ // user is only allowed to update him/herself
 			$Messages->add( T_('You are only allowed to update your own profile!') );
 			return 'view';
@@ -4127,9 +4502,9 @@ class User extends DataObject
 						{ // set where to redirect in front office, another way it would go to profile_update.php
 							$BlogCache = & get_BlogCache();
 							$Blog = $BlogCache->get_by_ID( $blog, false );
-							$redirect_to = rawurlencode( url_add_param( $Blog->gen_blogurl(), 'disp=userprefs' ) );
+							$redirect_to = rawurlencode( $Blog->get( 'userprefsurl' ) );
 						}
-						$activate_info_link = 'href="'.get_activate_info_url( $redirect_to ).'"';
+						$activate_info_link = 'href="'.get_activate_info_url( $redirect_to, '&amp;' ).'"';
 						$Messages->add( sprintf( T_('An email has been sent to your email address (%s). Please click on the link therein to activate your account. <a %s>More info &raquo;</a>' ), $this->dget('email'), $activate_info_link ), 'success' );
 					}
 					else
@@ -4206,11 +4581,12 @@ class User extends DataObject
 				{	// If admin closed some user account
 					// Send notification email about closed account to users with edit users permission
 					$email_template_params = array(
-							'login'   => $this->login,
-							'email'   => $this->email,
-							'reason'  => $account_close_reason,
-							'user_ID' => $this->ID,
+							'login'           => $this->login,
+							'email'           => $this->email,
+							'reason'          => $account_close_reason,
+							'user_ID'         => $this->ID,
 							'closed_by_admin' => $current_User->login,
+							'days_count'      => $this->get_days_count_close()
 						);
 					send_admin_notification( NT_('User account closed'), 'account_closed', $email_template_params );
 				}
@@ -4285,30 +4661,46 @@ class User extends DataObject
 	 * Update user avatar file
 	 *
 	 * @param integer the new avatar file ID
+	 * @param boolean TRUE to restore this file
 	 * @return mixed true on success, allowed action otherwise
 	 */
-	function update_avatar( $file_ID )
+	function update_avatar( $file_ID, $restore = false )
 	{
 		global $current_User, $Messages;
 
-		if( !$current_User->check_perm( 'users', 'edit' ) && $this->ID != $current_User->ID )
+		$can_moderate_user = $current_User->can_moderate_user( $this->ID );
+		if( ! $can_moderate_user && ( $restore || $this->ID != $current_User->ID ) )
 		{ // user is only allowed to update him/herself
-			$Messages->add( T_('You are only allowed to update your own profile!'), 'error' );
+			$Messages->add( T_('You are not allowed to update this profile!'), 'error' );
 			return 'view';
 		}
 
 		if( $file_ID == NULL )
 		{
-			$Messages->add( T_('Your profile picture could not be changed!'), 'error' );
+			$Messages->add( T_('Profile picture could not be changed!'), 'error' );
 			return 'edit';
 		}
 
 		$FileCache = & get_FileCache();
 		$File = $FileCache->get_by_ID( $file_ID );
+
+		if( ! $File->get( 'can_be_main_profile' ) && ! $can_moderate_user )
+		{ // Deny to restore picture if current user has no perm
+			$Messages->add( T_('Profile picture could not be changed!'), 'error' );
+			return 'edit';
+		}
+
 		if( $File->_FileRoot->type == 'user' && $File->_FileRoot->in_type_ID != $this->ID )
 		{ // don't allow to use pictures from other users
-			$Messages->add( T_('Your profile picture could not be changed!'), 'error' );
+			$Messages->add( T_('Profile picture could not be changed!'), 'error' );
 			return 'edit';
+		}
+
+		$restored_success = false;
+		if( $restore && $can_moderate_user )
+		{ // Restore profile picture
+			$File->set( 'can_be_main_profile', '1' );
+			$restored_success = $File->dbupdate();
 		}
 
 		$this->set( 'avatar_file_ID', $file_ID, true );
@@ -4316,7 +4708,14 @@ class User extends DataObject
 		$this->set_profileupdate_date();
 		$this->dbupdate();
 
-		$Messages->add( T_('Your profile picture has been changed.'), 'success' );
+		if( $restored_success )
+		{
+			$Messages->add( T_('Profile picture has been restored.'), 'success' );
+		}
+		else
+		{
+			$Messages->add( T_('Profile picture has been changed.'), 'success' );
+		}
 
 		// Send notification email about the changes of user account
 		$this->send_account_changed_notification( true );
@@ -4336,30 +4735,32 @@ class User extends DataObject
 	{
 		// Make sure we are not missing any param:
 		$params = array_merge( array(
-				'before' => '<br />',
-				'after' => '',
+				'before'   => '<br />',
+				'after'    => '',
+				'text'     => '',
+				'user_tab' => 'avatar',
 			), $params );
 
 		// Init links to rotate avatar
 		if( is_admin_page() )
-		{	// Back-office
-			$url_rotate_90_left = regenerate_url( '', 'user_tab=avatar&user_ID='.$this->ID.'&action=rotate_avatar_90_left&file_ID='.$file_ID.'&'.url_crumb('user'), '', '&');
-			$url_rotate_180 = regenerate_url( '', 'user_tab=avatar&user_ID='.$this->ID.'&action=rotate_avatar_180&file_ID='.$file_ID.'&'.url_crumb('user'), '', '&');
-			$url_rotate_90_right = regenerate_url( '', 'user_tab=avatar&user_ID='.$this->ID.'&action=rotate_avatar_90_right&file_ID='.$file_ID.'&'.url_crumb('user'), '', '&');
+		{ // Back-office
+			$url_rotate_90_left = regenerate_url( '', 'user_tab='.$params['user_tab'].'&user_ID='.$this->ID.'&action=rotate_avatar_90_left&file_ID='.$file_ID.'&'.url_crumb( 'user' ), '', '&' );
+			$url_rotate_180 = regenerate_url( '', 'user_tab='.$params['user_tab'].'&user_ID='.$this->ID.'&action=rotate_avatar_180&file_ID='.$file_ID.'&'.url_crumb( 'user' ), '', '&') ;
+			$url_rotate_90_right = regenerate_url( '', 'user_tab='.$params['user_tab'].'&user_ID='.$this->ID.'&action=rotate_avatar_90_right&file_ID='.$file_ID.'&'.url_crumb( 'user' ), '', '&' );
 		}
 		else
-		{	// Front-office
+		{ // Front-office
 			global $Blog;
-			$url_rotate_90_left = get_secure_htsrv_url().'profile_update.php?user_tab=avatar&blog='.$Blog->ID.'&user_ID='.$this->ID.'&action=rotate_avatar_90_left&file_ID='.$file_ID.'&'.url_crumb('user');
-			$url_rotate_180 = get_secure_htsrv_url().'profile_update.php?user_tab=avatar&blog='.$Blog->ID.'&user_ID='.$this->ID.'&action=rotate_avatar_180&file_ID='.$file_ID.'&'.url_crumb('user');
-			$url_rotate_90_right = get_secure_htsrv_url().'profile_update.php?user_tab=avatar&blog='.$Blog->ID.'&user_ID='.$this->ID.'&action=rotate_avatar_90_right&file_ID='.$file_ID.'&'.url_crumb('user');
+			$url_rotate_90_left = get_secure_htsrv_url().'profile_update.php?user_tab='.$params['user_tab'].'&blog='.$Blog->ID.'&user_ID='.$this->ID.'&action=rotate_avatar_90_left&file_ID='.$file_ID.'&'.url_crumb( 'user' );
+			$url_rotate_180 = get_secure_htsrv_url().'profile_update.php?user_tab='.$params['user_tab'].'&blog='.$Blog->ID.'&user_ID='.$this->ID.'&action=rotate_avatar_180&file_ID='.$file_ID.'&'.url_crumb( 'user' );
+			$url_rotate_90_right = get_secure_htsrv_url().'profile_update.php?user_tab='.$params['user_tab'].'&blog='.$Blog->ID.'&user_ID='.$this->ID.'&action=rotate_avatar_90_right&file_ID='.$file_ID.'&'.url_crumb( 'user' );
 		}
 
 		$html = $params['before'];
 
 		$html .= action_icon( T_('Rotate this picture 90&deg; to the left'), 'rotate_left', $url_rotate_90_left, '', 0, 0, array( 'style' => 'margin-right:4px' ) );
 		$html .= action_icon( T_('Rotate this picture 180&deg;'), 'rotate_180', $url_rotate_180, '', 0, 0, array( 'style' => 'margin-right:4px' ) );
-		$html .= action_icon( T_('Rotate this picture 90&deg; to the right'), 'rotate_right', $url_rotate_90_right, '', 0, 0 );
+		$html .= action_icon( T_('Rotate this picture 90&deg; to the right'), 'rotate_right', $url_rotate_90_right, $params['text'], empty( $params['text'] ) ? 0: 3, empty( $params['text'] ) ? 0: 4 );
 
 		$html .= $params['after'];
 
@@ -4368,55 +4769,169 @@ class User extends DataObject
 
 
 	/**
-	 * Rotate user avatar file
+	 * Get file object by ID of this user
 	 *
-	 * @param integer the new avatar file ID
-	 * @return mixed TRUE on success;
-	 *               Error code on denied action:
-	 *                 'only_own_profile' - User can update only own profile
-	 *                 'wrong_file'       - Request with wrong file ID
-	 *                 'other_user'       - Restricted to edit files from other users
-	 *                 'rotate_error'     - Some errors in rotate function
+	 * @param integer Avatar file ID
+	 * @param string Error code on denied action, It is updated by reference:
+	 *        'only_own_profile' - User can update only own profile
+	 *        'wrong_file'       - Request with wrong file ID
+	 *        'other_user'       - Restricted to edit files from other users
+	 * @return object|boolean File object on success, FALSE on failed
 	 */
-	function rotate_avatar( $file_ID, $degrees )
+	function & get_File_by_ID( $file_ID, & $error_code )
 	{
 		global $current_User, $Messages;
 
-		if( !$current_User->check_perm( 'users', 'edit' ) && $this->ID != $current_User->ID )
+		$error_code = false;
+
+		$can_moderate_user = $current_User->can_moderate_user( $this->ID );
+		if( ! $can_moderate_user && $this->ID != $current_User->ID )
 		{ // user is only allowed to update him/herself
 			$Messages->add( T_('You are only allowed to update your own profile!'), 'error' );
-			return 'only_own_profile';
+			$error_code = 'only_own_profile';
+			return false;
 		}
 
-		if( $file_ID == NULL )
-		{
-			$Messages->add( T_('Your profile picture could not be rotated!'), 'error' );
-			return 'wrong_file';
+		if( empty( $file_ID ) )
+		{ // File ID is empty
+			$Messages->add( T_('You did not specify a file.'), 'error' );
+			$error_code = 'wrong_file';
+			return false;
 		}
 
 		$FileCache = & get_FileCache();
-		if( !$File = $FileCache->get_by_ID( $file_ID, false ) )
-		{	// File does't exist
-			$Messages->add( T_('Your profile picture could not be rotated!'), 'error' );
-			return 'wrong_file';
+		$File = & $FileCache->get_by_ID( $file_ID, false, false );
+		if( empty( $File ) )
+		{ // File does't exist
+			$Messages->add( T_('The requested file does not exist!'), 'error' );
+			$error_code = 'wrong_file';
+			return false;
 		}
 
-		if( $File->_FileRoot->type != 'user' || $File->_FileRoot->in_type_ID != $this->ID )
-		{	// don't allow use the pictures from other users
-			$Messages->add( T_('Your profile picture could not be rotated!'), 'error' );
-			return 'other_user';
+		if( $File->_FileRoot->type != 'user' || ( $File->_FileRoot->in_type_ID != $this->ID && ! $can_moderate_user ) )
+		{ // don't allow use the pictures from other users
+			$Messages->add( T_('The requested file doesn\'t belong to this user.'), 'error' );
+			$error_code = 'other_user';
+			return false;
 		}
 
+		return $File;
+	}
+
+
+	/**
+	 * Rotate user avatar file
+	 *
+	 * @param integer the new avatar file ID
+	 * @param integer Degrees to rotate
+	 * @return object|string File object on success;
+	 *         Error code on denied action:
+	 *          'only_own_profile' - User can update only own profile
+	 *          'wrong_file'       - Request with wrong file ID
+	 *          'other_user'       - Restricted to edit files from other users
+	 *          'rotate_error'     - Some errors in rotate function
+	 */
+	function rotate_avatar( $file_ID, $degrees )
+	{
+		$File = & $this->get_File_by_ID( $file_ID, $error_code );
+		if( ! $File )
+		{ // The file cannot be used for this user, return error code
+			return $error_code;
+		}
+
+		global $Messages;
 		load_funcs( 'files/model/_image.funcs.php' );
 
 		if( !rotate_image( $File, $degrees ) )
-		{	// Some errors were during rotate the avatar
-			$Messages->add( T_('Your profile picture could not be rotated!'), 'error' );
+		{ // Some errors were during rotate the avatar
+			$Messages->add( T_('Profile picture could not be rotated!'), 'error' );
 			return 'rotate_error';
 		}
 
-		$Messages->add( T_('Your profile picture has been rotated.'), 'success' );
+		$Messages->add( T_('Profile picture has been rotated.'), 'success' );
 		return true;
+	}
+
+
+	/**
+	 * Rotate user avatar file
+	 *
+	 * @param integer the new avatar file ID
+	 * @param integer X coordinate (in percents)
+	 * @param integer Y coordinate (in percents)
+	 * @param integer Width (in percents)
+	 * @param integer Height (in percents)
+	 * @return object|string File object on success;
+	 *         Error code on denied action:
+	 *          'only_own_profile' - User can update only own profile
+	 *          'wrong_file'       - Request with wrong file ID
+	 *          'other_user'       - Restricted to edit files from other users
+	 *          'crop_error'       - Some errors in crop function
+	 */
+	function crop_avatar( $file_ID, $x, $y, $width, $height )
+	{
+		$File = & $this->get_File_by_ID( $file_ID, $error_code );
+		if( ! $File )
+		{ // The file cannot be used for this user, return error code
+			return $error_code;
+		}
+
+		global $Messages, $Settings;
+		load_funcs( 'files/model/_image.funcs.php' );
+
+		if( ! crop_image( $File, $x, $y, $width, $height, intval( $Settings->get( 'min_picture_size' ) ), 1024 ) )
+		{ // Some errors were during rotate the avatar
+			$Messages->add( T_('Profile picture could not be cropped!'), 'error' );
+			return 'crop_error';
+		}
+
+		$Messages->add( T_('Profile picture has been cropped.'), 'success' );
+		return true;
+	}
+
+
+	/**
+	 * Get the crop avatar icon
+	 *
+	 * @param integer File ID
+	 * @param array Params
+	 * @return string HTML text with icon to crop avatar
+	 */
+	function get_crop_avatar_icon( $file_ID, $params = array() )
+	{
+		// Make sure we are not missing any param:
+		$params = array_merge( array(
+				'before'   => '',
+				'after'    => '',
+				'text'     => '',
+				'user_tab' => 'avatar',
+				'onclick'  => '',
+			), $params );
+
+		// Init links to rotate avatar
+		if( is_admin_page() )
+		{ // Back-office
+			//$url_crop = regenerate_url( 'user_tab', 'user_tab=crop&user_ID='.$this->ID.'&file_ID='.$file_ID.'&'.url_crumb( 'user' ), '', '&' );
+			$url_crop = '#';
+		}
+		else
+		{ // Front-office
+			global $Blog;
+			$url_crop = url_add_param( $Blog->gen_blogurl(), 'disp=avatar&action=crop&file_ID='.$file_ID );
+		}
+
+		$html = $params['before'];
+
+		$link_params = array();
+		if( ! empty( $params['onclick'] ) )
+		{
+			$link_params['onclick'] = $params['onclick'];
+		}
+		$html .= action_icon( T_('Crop this picture'), 'crop', $url_crop, $params['text'], ( empty( $params['text'] ) ? 0: 3 ), ( empty( $params['text'] ) ? 0: 4 ), $link_params );
+
+		$html .= $params['after'];
+
+		return $html;
 	}
 
 
@@ -4425,20 +4940,44 @@ class User extends DataObject
 	 *
 	 * @return mixed true on success, false otherwise
 	 */
-	function remove_avatar()
+	function remove_avatar( $forbid = false )
 	{
 		global $current_User, $Messages;
 
-		if( !$current_User->check_perm( 'users', 'edit' ) && $this->ID != $current_User->ID )
+		$can_moderate_user = $current_User->can_moderate_user( $this->ID );
+		if( ! $can_moderate_user && ( $forbid || $this->ID != $current_User->ID ) )
 		{ // user is only allowed to update him/herself
-			$Messages->add( T_('You are only allowed to update your own profile!'), 'error' );
+			$Messages->add( T_('You are not allowed to update this profile!'), 'error' );
 			return false;
+		}
+
+		$forbidden_success = false;
+		if( $forbid && $can_moderate_user )
+		{ // Forbid profile picture
+			$forbidden_file_ID = $this->get( 'avatar_file_ID' );
+			$FileCache = & get_FileCache();
+			if( ! ( $forbidden_File = & $FileCache->get_by_ID( $forbidden_file_ID, false, false ) ) )
+			{ // Broken avatar file
+				$Messages->add( T_('Profile picture is not found!'), 'error' );
+				return false;
+			}
+
+			$forbidden_File->set( 'can_be_main_profile', '0' );
+			$forbidden_success = $forbidden_File->dbupdate();
 		}
 
 		$this->set( 'avatar_file_ID', NULL, true );
 		$this->dbupdate();
 
-		$Messages->add( T_('Your profile picture has been removed.'), 'success' );
+		if( $forbidden_success )
+		{
+			$Messages->add( T_('Profile picture has been forbidden.'), 'success' );
+		}
+		else
+		{
+			$Messages->add( T_('Profile picture has been removed.'), 'success' );
+		}
+
 		return true;
 	}
 
@@ -4453,7 +4992,7 @@ class User extends DataObject
 	{
 		global $current_User, $Messages;
 
-		if( !$current_User->check_perm( 'users', 'edit' ) && $this->ID != $current_User->ID )
+		if( ! $current_User->can_moderate_user( $this->ID ) && $this->ID != $current_User->ID )
 		{ // user is only allowed to update him/herself
 			$Messages->add( T_('You are only allowed to update your own profile!'), 'error' );
 			return 'view';
@@ -4461,7 +5000,7 @@ class User extends DataObject
 
 		if( $file_ID == NULL )
 		{
-			$Messages->add( T_('Your profile picture could not be changed!'), 'error' );
+			$Messages->add( T_('Profile picture could not be changed!'), 'error' );
 			return 'edit';
 		}
 
@@ -4490,7 +5029,7 @@ class User extends DataObject
 			$File->unlink();
 		}
 
-		$Messages->add( T_('Your picture has been deleted.'), 'success' );
+		$Messages->add( T_('Profile picture has been deleted.'), 'success' );
 		return true;
 	}
 
@@ -4504,8 +5043,8 @@ class User extends DataObject
 	{
 		global $current_User, $Messages, $Settings;
 
-		if( !$current_User->check_perm( 'users', 'edit' ) && $this->ID != $current_User->ID )
-		{	// user is only allowed to update him/herself
+		if( ! $current_User->can_moderate_user( $this->ID ) && $this->ID != $current_User->ID )
+		{ // user is only allowed to update him/herself
 			$Messages->add( T_('You are only allowed to update your own profile!'), 'error' );
 			return 'view';
 		}
@@ -4522,24 +5061,31 @@ class User extends DataObject
 
 		$uploadedFiles = $result['uploadedFiles'];
 		if( !empty( $uploadedFiles ) )
-		{	// upload was successful
+		{ // upload was successful
 			$File = $uploadedFiles[0];
-			if( $File->is_image() )
-			{	// uploaded file is an image
+			$duplicated_files = $File->get_duplicated_files( array( 'root_ID' => $this->ID ) );
+			if( ! empty( $duplicated_files ) )
+			{ // The file is the duplicate of other profile picture, we should delete it
+				$File->dbdelete();
+				$Messages->add( T_( 'It seems you are trying to upload the same profile picture twice.' ), 'error' );
+				return 'edit';
+			}
+			elseif( $File->is_image() )
+			{ // uploaded file is an image
 				$LinkOwner = new LinkUser( $this );
 				$File->link_to_Object( $LinkOwner );
 				$avatar_changed = false;
 				if( empty( $this->avatar_file_ID ) )
-				{	// set uploaded image as avatar
+				{ // set uploaded image as avatar
 					$this->set( 'avatar_file_ID', $File->ID, true );
 					// update profileupdate_date, because a publicly visible user property was changed
 					$this->set_profileupdate_date();
 					$this->dbupdate();
 					$avatar_changed = true;
-					$Messages->add( T_('Your profile picture has been changed.'), 'success' );
+					$Messages->add( T_('Profile picture has been changed.'), 'success' );
 				}
 				else
-				{	// User already has the avatar
+				{ // User already has the avatar
 					$Messages->add( T_('New picture has been uploaded.'), 'success' );
 				}
 				// Clear previous Links to load new uploaded file
@@ -4549,7 +5095,7 @@ class User extends DataObject
 				return true;
 			}
 			else
-			{	// uploaded file is not an image, delete the file
+			{ // uploaded file is not an image, delete the file
 				$Messages->add( T_( 'The file you uploaded does not seem to be an image.' ) );
 				$File->unlink();
 			}
@@ -4805,7 +5351,7 @@ class User extends DataObject
 
 		// Get the posts of this user which current user can delete.
 		// Note: If current user can moderate this user then it is allowed to delete all user data even if it wouldn't be allowed otherwise.
-		$check_perm = ( ( $type != 'created' ) || ( ! $current_User->check_perm( 'users', 'edit' ) ) );
+		$check_perm = ( ( $type != 'created' ) || ( ! $current_User->can_moderate_user( $this->ID ) ) );
 		$deleted_Items = $this->get_deleted_posts( $type, $check_perm );
 
 		foreach( $deleted_Items as $deleted_Item )
@@ -4857,7 +5403,7 @@ class User extends DataObject
 			return false;
 		}
 
-		if( $current_User->check_perm( 'users', 'edit' ) )
+		if( $current_User->can_moderate_user( $this->ID ) )
 		{ // If current user can moderate this user then it is allowed to delete all user data even if it wouldn't be allowed otherwise.
 			return true;
 		}
@@ -4905,8 +5451,9 @@ class User extends DataObject
 		$ItemCache = & get_ItemCache();
 
 		// If current user can moderate this user then it is allowed to delete all user data even if it wouldn't be allowed otherwise.
-		$current_user_can_moderate = $current_User->check_perm( 'users', 'edit' );
+		$current_user_can_moderate = $current_User->can_moderate_user( $this->ID );
 
+		$result = false;
 		foreach( $comments_IDs as $comment_ID )
 		{
 			$deleted_Comment = & $CommentCache->get_by_ID( $comment_ID, false, false );
@@ -4915,16 +5462,27 @@ class User extends DataObject
 			      $current_User->check_perm( 'comment!CURSTATUS', 'delete', false, $deleted_Comment ) ) )
 			{ // Current user has a permission to delete this comment
 				// Delete from DB
-				$deleted_Comment->dbdelete( true );
+				$result = $deleted_Comment->dbdelete( true, false );
+				if( ! $result )
+				{
+					break;
+				}
 			}
 			// Clear a cache to avoid a memory allocation error
 			$CommentCache->clear();
 			$ItemCache->clear();
 		}
 
-		$DB->commit();
+		if( $result )
+		{
+			$DB->commit();
+		}
+		else
+		{
+			$DB->rollback();
+		}
 
-		return true;
+		return $result;
 	}
 
 
@@ -4939,7 +5497,7 @@ class User extends DataObject
 
 		// Check permissions
 		// Note: If current user can moderate this user then it is allowed to delete all user data even if it wouldn't be allowed otherwise
-		if( ! $current_User->check_perm( 'users', 'edit' ) )
+		if( ! $current_User->can_moderate_user( $this->ID ) )
 		{ // Note: if users have delete messaging perms then they can delete any user messages ( Of course only if the delete action is available/displayed for them )
 			$current_User->check_perm( 'perm_messaging', 'delete', true );
 		}
@@ -4997,7 +5555,7 @@ class User extends DataObject
 
 		if( $total_num_posts > 0 )
 		{ // Make a link to page with user's posts
-			$total_num_posts = '<a href="'.get_dispctrl_url( 'useritems&amp;user_ID='.$this->ID ).'"><b>'.$total_num_posts.'</b></a>';
+			$total_num_posts = '<a href="'.get_dispctrl_url( 'useritems', 'user_ID='.$this->ID ).'"><b>'.$total_num_posts.'</b></a>';
 		}
 		else
 		{
@@ -5018,7 +5576,9 @@ class User extends DataObject
 	{
 		// Make sure we are not missing any param:
 		$params = array_merge( array(
-				'text' => T_( '%s has posted %s comments (%s%% of which are public). %s of these comments have been found useful by %s different users.' ),
+				'view_type'     => 'simple', // 'simple', 'extended'
+				'text_simple'   => T_( '%s has posted %s comments (%s%% of which are public). %s of these comments have been found useful by %s different users.' ),
+				'text_extended' => T_( '%s has posted %s comments (%s%% of which are public).<br />%s voted useful by %s different users.<br />%s voted NOT useful by %s different users.<br />%s considered OK by %s different users.<br />%s considered SPAM by %s different users.' ),
 			), $params );
 
 		$total_num_comments = $this->get_num_comments();
@@ -5034,7 +5594,7 @@ class User extends DataObject
 
 		if( $total_num_comments > 0 )
 		{ // Make a link to page with user's comments
-			$total_num_comments = '<a href="'.get_dispctrl_url( 'usercomments&amp;user_ID='.$this->ID ).'"><b>'.$total_num_comments.'</b></a>';
+			$total_num_comments = '<a href="'.get_dispctrl_url( 'usercomments', 'user_ID='.$this->ID ).'"><b>'.$total_num_comments.'</b></a>';
 		}
 		else
 		{
@@ -5044,25 +5604,199 @@ class User extends DataObject
 		// Get number of helpful votes on comments for this user
 		global $DB;
 		$comments_SQL = new SQL();
-		$comments_SQL->SELECT( 'cmvt_user_ID AS user_ID, COUNT(*) AS cnt' );
+		if( $params['view_type'] == 'simple' )
+		{ // Simple view
+			$comments_SQL->SELECT( 'cmvt_user_ID AS user_ID, COUNT(*) AS cnt' );
+		}
+		else
+		{ // Extended view
+			$comments_SQL->SELECT( 'cmvt_user_ID AS user_ID, cmvt_helpful, cmvt_spam' );
+		}
 		$comments_SQL->FROM( 'T_comments' );
 		$comments_SQL->FROM_add( 'INNER JOIN T_comments__votes ON comment_ID = cmvt_cmt_ID' );
 		$comments_SQL->WHERE( 'comment_author_user_ID = '.$this->ID );
 		$comments_SQL->WHERE_and( 'comment_status IN ( "published", "community", "protected", "review" )' );
-		$comments_SQL->WHERE_and( 'cmvt_helpful = 1' );
-		$comments_SQL->GROUP_BY( 'user_ID' );
-
-		$votes = $DB->get_assoc( $comments_SQL->get() );
-
-		// Calculate total votes from all users
-		$users_count = count( $votes );
-		$votes_count = 0;
-		foreach( $votes as $user_votes )
-		{
-			$votes_count += $user_votes;
+		if( $params['view_type'] == 'simple' )
+		{ // Simple view
+			$comments_SQL->WHERE_and( 'cmvt_helpful = 1' );
+			$comments_SQL->GROUP_BY( 'user_ID' );
 		}
 
-		return sprintf( $params['text'], $this->login, $total_num_comments, $public_percent, '<b>'.$votes_count.'</b>', '<b>'.$users_count.'</b>' );
+		if( $params['view_type'] == 'simple' )
+		{ // Simple view
+			$votes = $DB->get_assoc( $comments_SQL->get() );
+
+			// Calculate total votes from all users
+			$users_count_useful = count( $votes );
+			$votes_count_useful = 0;
+			foreach( $votes as $user_votes )
+			{
+				$votes_count_useful += $user_votes;
+			}
+
+			return sprintf( $params['text_simple'],
+				$this->login, $total_num_comments, $public_percent,
+				'<b class="green">'.$votes_count_useful.'</b>', '<b>'.$users_count_useful.'</b>' );
+		}
+		else
+		{ // Extended view
+			$votes = $DB->get_results( $comments_SQL->get() );
+
+			$votes_count_useful = 0;
+			$users_count_useful = array();
+			$votes_count_not = 0;
+			$users_count_not = array();
+			$votes_count_ok = 0;
+			$users_count_ok = array();
+			$votes_count_spam = 0;
+			$users_count_spam = array();
+			foreach( $votes as $vote )
+			{
+				if( $vote->cmvt_helpful === '1' )
+				{ // Useful votes
+					$votes_count_useful++;
+					$users_count_useful[ $vote->user_ID ] = NULL;
+				}
+				elseif( $vote->cmvt_helpful === '-1' )
+				{ // Not useful votes
+					$votes_count_not++;
+					$users_count_not[ $vote->user_ID ] = NULL;
+				}
+				if( $vote->cmvt_spam === '-1' )
+				{ // Ok votes
+					$votes_count_ok++;
+					$users_count_ok[ $vote->user_ID ] = NULL;
+				}
+				elseif( $vote->cmvt_spam === '1' )
+				{ // Spam votes
+					$votes_count_spam++;
+					$users_count_spam[ $vote->user_ID ] = NULL;
+				}
+			}
+
+			return sprintf( $params['text_extended'],
+				$this->login, $total_num_comments, $public_percent,
+				'<b class="green">'.$votes_count_useful.'</b>', '<b>'.count( $users_count_useful ).'</b>',
+				'<b class="red">'.$votes_count_not.'</b>', '<b>'.count( $users_count_not ).'</b>',
+				'<b class="green">'.$votes_count_ok.'</b>', '<b>'.count( $users_count_ok ).'</b>',
+				'<b class="red">'.$votes_count_spam.'</b>', '<b>'.count( $users_count_spam ).'</b>' );
+		}
+	}
+
+
+	/**
+	 * Get number of files (and number of helpful votes on photos only) by this user
+	 *
+	 * @param array Params
+	 * @return string Result
+	 */
+	function get_reputation_files( $params = array() )
+	{
+		// Make sure we are not missing any param:
+		$params = array_merge( array(
+				'view_type'           => 'simple', // 'simple', 'extended'
+				'file_type'           => 'image', // 'image', 'audio', 'other'
+				'text_image_simple'   => T_( '%s has posted %s photos. %s of these photos have been liked by %s different users.' ),
+				'text_image_extended' => T_( '%s has posted %s photos.<br />%s voted up (liked) by %s different users.<br />%s voted down by %s different users.<br />%s considered INAPPROPRIATE by %s different users.<br />%s considered SPAM by %s different users.' ),
+				'text_audio'          => T_( '%s has uploaded %s audio files.' ),
+				'text_other'          => T_( '%s has uploaded %s other files.' ),
+			), $params );
+
+		switch( $params['file_type'] )
+		{
+			case 'image':
+				// Number of photos
+				global $DB;
+				// Get number of helpful votes on links for this user
+				$links_SQL = new SQL();
+				if( $params['view_type'] == 'simple' )
+				{ // Simple view
+					$links_SQL->SELECT( 'lvot_user_ID AS user_ID, COUNT(*) AS cnt' );
+				}
+				else
+				{ // Extended view
+					$links_SQL->SELECT( 'lvot_user_ID AS user_ID, lvot_like, lvot_inappropriate, lvot_spam' );
+				}
+				$links_SQL->FROM( 'T_links' );
+				$links_SQL->FROM_add( 'INNER JOIN T_files ON file_ID = link_file_ID' );
+				$links_SQL->FROM_add( 'INNER JOIN T_links__vote ON link_ID = lvot_link_ID' );
+				$links_SQL->WHERE( 'link_creator_user_ID = '.$this->ID );
+				$links_SQL->WHERE_and( 'file_type = '.$DB->quote( $params['file_type'] ) );
+				if( $params['view_type'] == 'simple' )
+				{ // Simple view
+					$links_SQL->WHERE_and( 'lvot_like = 1' );
+					$links_SQL->GROUP_BY( 'user_ID' );
+				}
+
+
+				if( $params['view_type'] == 'simple' )
+				{ // Simple view
+					$votes = $DB->get_assoc( $links_SQL->get() );
+
+					// Calculate total votes from all users
+					$users_count_up = count( $votes );
+					$votes_count_up = 0;
+					foreach( $votes as $user_votes )
+					{
+						$votes_count_up += $user_votes;
+					}
+					return sprintf( $params['text_image_simple'],
+						$this->login, '<b>'.$this->get_num_files( 'image' ).'</b>',
+						'<b class="green">'.$votes_count_up.'</b>', '<b>'.$users_count_up.'</b>' );
+				}
+				else
+				{ // Extended view
+					$votes = $DB->get_results( $links_SQL->get() );
+
+					$votes_count_up = 0;
+					$users_count_up = array();
+					$votes_count_down = 0;
+					$users_count_down = array();
+					$votes_count_inappropriate = 0;
+					$users_count_inappropriate = array();
+					$votes_count_spam = 0;
+					$users_count_spam = array();
+					foreach( $votes as $vote )
+					{
+						if( $vote->lvot_like === '1' )
+						{ // Up votes
+							$votes_count_up++;
+							$users_count_up[ $vote->user_ID ] = NULL;
+						}
+						elseif( $vote->lvot_like === '-1' )
+						{ // Down votes
+							$votes_count_down++;
+							$users_count_down[ $vote->user_ID ] = NULL;
+						}
+						if( $vote->lvot_inappropriate === '1' )
+						{ // Inappropriate votes
+							$votes_count_inappropriate++;
+							$users_count_inappropriate[ $vote->user_ID ] = NULL;
+						}
+						if( $vote->lvot_spam === '1' )
+						{ // Spam votes
+							$votes_count_spam++;
+							$users_count_spam[ $vote->user_ID ] = NULL;
+						}
+					}
+
+					return sprintf( $params['text_image_extended'],
+						$this->login, '<b>'.$this->get_num_files( 'image' ).'</b>',
+						'<b class="green">'.$votes_count_up.'</b>', '<b>'.count( $users_count_up ).'</b>',
+						'<b class="red">'.$votes_count_down.'</b>', '<b>'.count( $users_count_down ).'</b>',
+						'<b class="red">'.$votes_count_inappropriate.'</b>', '<b>'.count( $users_count_inappropriate ).'</b>',
+						'<b class="red">'.$votes_count_spam.'</b>', '<b>'.count( $users_count_spam ).'</b>' );
+				}
+				break;
+
+			case 'audio':
+				// Number of audio files
+				return sprintf( $params['text_audio'], $this->login, '<b>'.$this->get_num_files( 'audio' ).'</b>' );
+
+			case 'other':
+				// Number of other files
+				return sprintf( $params['text_other'], $this->login, '<b>'.$this->get_num_files( 'other' ).'</b>' );
+		}
 	}
 
 
@@ -5122,6 +5856,40 @@ class User extends DataObject
 
 
 	/**
+	 * Check if user has a permission to moderate the user
+	 *
+	 * @param integer User ID
+	 * @return boolean TRUE on success
+	 */
+	function can_moderate_user( $user_ID, $assert = false )
+	{
+		if( $this->check_perm( 'users', 'edit' ) )
+		{ // User can edit all users
+			return true;
+		}
+
+		if( $this->check_perm( 'users', 'moderate', $assert ) )
+		{ // User can moderate other user but we should to compare levels of users groups
+			$UserCache = & get_UserCache();
+			if( $target_User = $UserCache->get_by_ID( $user_ID, false, false ) )
+			{
+				if( $target_User->get_Group()->get( 'level' ) < $this->get_Group()->get( 'level' ) )
+				{ // User can moderate only users with level lower than own level
+					return true;
+				}
+			}
+		}
+
+		if( $assert )
+		{ // We can't let this go on!
+			debug_die( sprintf( T_('User #%s has no permission to edit user #%s!'), $this->ID, $user_ID ) );
+		}
+
+		return false;
+	}
+
+
+	/**
 	 * Send an email notification when user account has been changed
 	 *
 	 * @param boolean true if the main profile picture was changed, false otherwise
@@ -5129,6 +5897,11 @@ class User extends DataObject
 	 */
 	function send_account_changed_notification( $avatar_changed = false, $new_avatar_upload = false )
 	{
+		if( ! is_logged_in() )
+		{ // User must be logged in for this action
+			return;
+		}
+
 		if( empty( $this->significant_changed_values ) && ( ! $avatar_changed ) && ( ! $new_avatar_upload ) )
 		{ // Nothing important was changed, so no need to send changed notification
 			return;
@@ -5139,7 +5912,7 @@ class User extends DataObject
 				'login'   => $this->login,
 				'fields'  => array(
 					'login'     => array( 'title' => NT_('Login') ),
-					'group_ID'  => array( 'title' => NT_('Group'), 'className' => 'Group' ),
+					'grp_ID'  => array( 'title' => NT_('Group'), 'className' => 'Group' ),
 					'nickname'  => array( 'title' => NT_('Nickname') ),
 					'firstname' => array( 'title' => NT_('First name') ),
 					'lastname'  => array( 'title' => NT_('Last name') ),
@@ -5195,6 +5968,202 @@ class User extends DataObject
 		send_admin_notification( NT_('User profile changed'), 'account_changed', $email_template_params );
 		// Clear changed values
 		$this->significant_changed_values = array();
+	}
+
+
+	/**
+	 * Get organizations that user has selected
+	 *
+	 * @return array Organizations( key => org_ID, value => array( 'name', 'accepted', 'role' )
+	 */
+	function get_organizations_data()
+	{
+		if( ! isset( $this->organizations ) )
+		{ // Get the organizations from DB
+			global $DB;
+			$SQL = new SQL();
+			$SQL->SELECT( 'org_ID, org_name, uorg_accepted, uorg_role' );
+			$SQL->FROM( 'T_users__user_org' );
+			$SQL->FROM_add( 'INNER JOIN T_users__organization ON org_ID = uorg_org_ID' );
+			$SQL->WHERE( 'uorg_user_ID = '.$DB->quote( $this->ID ) );
+			$SQL->ORDER_BY( 'uorg_accepted DESC, uorg_org_ID' );
+			$organizations = $DB->get_results( $SQL->get() );
+			$this->organizations = array();
+			foreach( $organizations as $organization )
+			{
+				$this->organizations[ $organization->org_ID ] = array(
+						'name'     => $organization->org_name,
+						'accepted' => $organization->uorg_accepted,
+						'role'     => $organization->uorg_role,
+					);
+			}
+		}
+
+		return $this->organizations;
+	}
+
+
+	/**
+	 * Get organizations that are accepted for this user
+	 *
+	 * @return array Organizations: array( 'name', 'url' )
+	 */
+	function get_organizations()
+	{
+		global $DB;
+
+		$SQL = new SQL();
+		$SQL->SELECT( 'org_name AS name, org_url AS url' );
+		$SQL->FROM( 'T_users__user_org' );
+		$SQL->FROM_add( 'INNER JOIN T_users__organization ON org_ID = uorg_org_ID' );
+		$SQL->WHERE( 'uorg_user_ID = '.$DB->quote( $this->ID ) );
+		// Organization must be accepted by Admin
+		$SQL->WHERE_and( 'uorg_accepted = 1' );
+		$SQL->ORDER_BY( 'org_name' );
+
+		return $DB->get_results( $SQL->get() );
+	}
+
+
+	/**
+	 * Update user's organizations in DB
+	 *
+	 * @param array Organization IDs
+	 * @param array Organization roles
+	 * @param boolean TRUE to auto accept user to organization (Used on install demo users)
+	 */
+	function update_organizations( $organization_IDs, $organization_roles = array(), $force_accept = false )
+	{
+		global $DB, $current_User;
+
+		$perm_edit_users = ( is_logged_in() && $current_User->check_perm( 'users', 'edit' ) );
+
+		$curr_orgs = $this->get_organizations_data();
+		$curr_org_IDs = array_keys( $curr_orgs );
+		$insert_orgs = array();
+		$n = 0;
+		foreach( $organization_IDs as $o => $organization_ID )
+		{
+			$organization_ID = intval( $organization_ID );
+			if( empty( $organization_ID ) )
+			{ // Organization is not selected, Skip it
+				continue;
+			}
+			if( in_array( $organization_ID, $curr_org_IDs ) )
+			{ // User is already in this organization
+				if( $perm_edit_users || ! $curr_orgs[ $organization_ID ]['accepted'] )
+				{ // Update if current user has permission or it is not accepted yet by admin
+					$insert_orgs[ $organization_ID ] = ( empty( $organization_roles[ $n ] ) ? NULL : $organization_roles[ $n ] );
+					$n++;
+				}
+				else
+				{ // Don't updated by current user
+					$insert_orgs[ $organization_ID ] = $curr_orgs[ $organization_ID ]['role'];
+				}
+			}
+			else
+			{ // Insert user in new organization
+				$insert_orgs[ $organization_ID ] = ( empty( $organization_roles[ $n ] ) ? NULL : $organization_roles[ $n ] );
+				$n++;
+			}
+		}
+
+		if( count( $insert_orgs ) > 0 )
+		{ // Insert new records with user-org relations
+			$insert_org_SQL = 'REPLACE INTO T_users__user_org ( uorg_user_ID, uorg_org_ID, uorg_accepted, uorg_role ) VALUES ';
+			$o = 0;
+			foreach( $insert_orgs as $insert_org_ID => $insert_org_role )
+			{
+				if( isset( $curr_orgs[ $insert_org_ID ] ) )
+				{ // If we are updating - Don't change the accept status
+					$insert_orgs_accepted = $curr_orgs[ $insert_org_ID ]['accepted'];
+				}
+				else
+				{ // If we are inserting - Set the accept status depends on user perms or func params
+					$insert_orgs_accepted = '0';
+					if( $force_accept || $perm_edit_users )
+					{ // If admin adds new organization for other users and for himself, it must be autoaccepted
+						$insert_orgs_accepted = '1';
+					}
+				}
+				if( $o > 0 )
+				{ // separator
+					$insert_org_SQL .= ', ';
+				}
+				$insert_org_SQL .= '( '.$this->ID.', '.$DB->quote( $insert_org_ID ).', '.$insert_orgs_accepted.', '.$DB->quote( $insert_org_role ).' )';
+				$o++;
+			}
+			$DB->query( $insert_org_SQL );
+		}
+
+		$delete_org_IDs = array_diff( $curr_org_IDs, array_keys( $insert_orgs ) );
+		if( count( $delete_org_IDs ) > 0 )
+		{ // Delete old records that were replaced with new
+			$DB->query( 'DELETE FROM T_users__user_org
+				WHERE uorg_user_ID = '.$this->ID.'
+					AND uorg_org_ID IN ( '.implode( ', ', $delete_org_IDs ).' )' );
+		}
+	}
+
+
+	/**
+	 * Get user name depending on general setting 'username_display'
+	 *
+	 * @param string Output format, see {@link format_to_output()}
+	 * @return string Login or preferred name
+	 */
+	function get_username( $format = NULL )
+	{
+		global $Settings;
+
+		if( $Settings->get( 'username_display' ) == 'name' )
+		{ // Get nickname or fullname
+			$username = $this->get_preferred_name();
+		}
+		else
+		{ // Get login
+			$username = $this->get( 'login' );
+		}
+
+		if( ! is_null( $format ) )
+		{ // Format output string
+			$username = format_to_output( $username, $format );
+		}
+
+		return $username;
+	}
+
+
+	/**
+	 * Calculate how much days user has after registration
+	 *
+	 * @return float
+	 */
+	function get_days_count_close()
+	{
+		$date_start = strtotime( $this->datecreated );
+		$date_end = time();
+		$days = ( $date_end - $date_start ) / 86400;
+
+		return number_format( $days, 1, '.', '' );
+	}
+
+
+	/**
+	 * Get count of own blogs of the user
+	 *
+	 * @return integer
+	 */
+	function get_own_blogs_count()
+	{
+		global $DB;
+
+		$SQL = new SQL();
+		$SQL->SELECT( 'COUNT( blog_ID )' );
+		$SQL->FROM( 'T_blogs' );
+		$SQL->WHERE( 'blog_owner_user_ID = '.$DB->quote( $this->ID ) );
+
+		return $DB->get_var( $SQL->get() );
 	}
 }
 

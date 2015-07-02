@@ -3,7 +3,7 @@
  * This is the main/default page template.
  *
  * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://b2evolution.net/man/skin-structure}
+ * {@link http://b2evolution.net/man/skin-development-primer}
  *
  * The main page template is used to display the blog when no specific page template is available
  * to handle the request (based on $disp).
@@ -24,9 +24,7 @@ skin_init( $disp );
 
 
 // -------------------------- HTML HEADER INCLUDED HERE --------------------------
-skin_include( '_html_header.inc.php' );
-// Note: You can customize the default HTML header by copying the generic
-// /skins/_html_header.inc.php file into the current skin folder.
+skin_include( '_html_header.inc.php', array() );
 // -------------------------------- END OF HEADER --------------------------------
 
 
@@ -71,46 +69,14 @@ skin_include( '_body_header.inc.php' );
 			'block_start' => '<div style="margin: 1em 0">',
 			'block_end' => '</div>',
 			'block_display_title' => false,
-			'disp_search_options' => 1,
+			'disp_search_options' => 0,
+			'search_class' => 'extended_search_form',
 			'use_search_disp' => 1,
 		) );
 	// ---------------------------------- END OF COMMON LINKS ---------------------------------
 
-
-	// Display message if no post:
-	display_if_empty( array(
-					'before'      => '<p class="msg_nothing" style="margin: 2em 0">',
-					'after'       => '</p>',
-					'msg_empty'   => T_('Sorry, we could not find anything matching your request, please try to broaden your search.'),
-				) );
-
-	// -------------------- PREV/NEXT PAGE LINKS (POST LIST MODE) --------------------
-	mainlist_page_links( array(
-			'block_start' => '<div class="navigation">',
-			'block_end' => '</div>',
-   		'prev_text' => '&lt;&lt;',
-   		'next_text' => '&gt;&gt;',
-		) );
-	// ------------------------- END OF PREV/NEXT PAGE LINKS -------------------------
-
-	while( $Item = & mainlist_get_item() )
-	{	// For each blog post:
-		// ---------------------- ITEM BLOCK INCLUDED HERE ------------------------
-		skin_include( '_item_block.inc.php', array(
-				'content_mode' => 'auto',		// 'auto' will auto select depending on $disp-detail
-				'image_size'	 =>	'fit-400x320',
-			) );
-		// ----------------------------END ITEM BLOCK  ----------------------------
-	}
-
-	// -------------------- PREV/NEXT PAGE LINKS (POST LIST MODE) --------------------
-	mainlist_page_links( array(
-			'block_start' => '<div class="navigation">',
-			'block_end' => '</div>',
-   		'prev_text' => '&lt;&lt;',
-   		'next_text' => '&gt;&gt;',
-		) );
-	// ------------------------- END OF PREV/NEXT PAGE LINKS -------------------------
+	// Display the search result
+	search_result_block();
 ?>
 
 

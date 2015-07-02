@@ -6,7 +6,7 @@ body {
 	font: 84% Arial, Helvetica, sans-serif;
 }
 
-div#skin_wrapper div.sitewide_header {
+div#skin_wrapper .sitewide_header {
 	margin-bottom: 0;
 	position: fixed;
 	top: 0;
@@ -14,8 +14,8 @@ div#skin_wrapper div.sitewide_header {
 	z-index: 10000;
 	-webkit-font-smoothing: subpixel-antialiased;
 }
-div#skin_wrapper.skin_wrapper_loggedin div.sitewide_header {
-	top: 23px;
+div#skin_wrapper.skin_wrapper_loggedin .sitewide_header {
+	top: 27px;
 }
 
 textarea, input, select, option, optgroup, ul.ui-autocomplete, li.token-input-token-facebook, div.token-input-dropdown-facebook {
@@ -580,7 +580,7 @@ div.error_404 {
 }
 
 /* disp=user */
-body.disp_user form.bComment fieldset.fieldset {
+body.disp_user .bComment fieldset.fieldset {
 	margin: 2em 0;
 }
 body.disp_user legend {

@@ -6,20 +6,17 @@
  * It is meant to be called by an include in the main.page.php template (or other templates)
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  * @subpackage pureforums
- *
- * @version $Id: _item_list.inc.php 7043 2014-07-02 08:35:45Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
 // Default params:
 $params = array_merge( array(
 		'post_navigation' => 'same_category', // In this skin, it makes no sense to navigate in any different mode than "same category"
-		'item_link_type'  => '#',
 	), $params );
 
 global $Item, $cat;
@@ -78,13 +75,14 @@ elseif( $comments_number > 25 )
 				}
 				// Title:
 				$Item->title( array(
-						'link_class'      => 'topictitle',
+						'link_class'      => 'topictitle'.( $Item->get_read_status() != 'read' ? ' unread' : '' ),
 						'post_navigation' => $params['post_navigation'],
-						'link_type'       => $params['item_link_type'],
 					) );
 				if( $Skin->enabled_status_banner( $Item->status ) )
 				{ // Status:
-					$Item->status( array( 'format' => 'styled' ) );
+					$Item->format_status( array(
+							'template' => '<div class="floatright"><span class="note status_$status$"><span>$status_title$</span></span></div>',
+						) );
 					$legend_statuses[] = $Item->status;
 				}
 				if( empty( $cat ) )

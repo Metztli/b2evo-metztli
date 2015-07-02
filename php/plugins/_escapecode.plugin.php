@@ -3,8 +3,8 @@
  * This file implements the Escape code plugin for b2evolution
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package plugins
  */
@@ -82,6 +82,22 @@ class escapecode_plugin extends Plugin
 		if( $item_Blog->get_setting( 'allow_html_comment' ) && $this->is_renderer_enabled( $apply_rendering, $params['renderers'] ) )
 		{ // Do escape html entities only when html is allowed for content and plugin is enabled
 			$content = & $params['comment'];
+			$content = $this->escape_code( $content );
+		}
+	}
+
+
+	/**
+	 * Event handler: Called before at the beginning, if a message of thread form gets sent (and received).
+	 */
+	function MessageThreadFormSent( & $params )
+	{
+		global $Settings;
+
+		$apply_rendering = $this->get_msg_setting( 'msg_apply_rendering' );
+		if( $Settings->get( 'allow_html_message' ) && $this->is_renderer_enabled( $apply_rendering, $params['renderers'] ) )
+		{ // Do escape html entities only when html is allowed for content and plugin is enabled
+			$content = & $params['content'];
 			$content = $this->escape_code( $content );
 		}
 	}

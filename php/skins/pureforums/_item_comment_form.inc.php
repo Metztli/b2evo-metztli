@@ -5,13 +5,11 @@
  * This file is not meant to be called directly.
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  * @subpackage pureforums
- *
- * @version $Id: _item_comment_form.inc.php 7644 2014-11-14 08:12:53Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -44,6 +42,7 @@ $params = array_merge( array(
 		'after_comment_error'  => '</em></p>',
 		'before_comment_form'  => '',
 		'after_comment_form'   => '',
+		'comment_mode'         => '', // Can be 'quote' from GET request
 	), $params );
 
 /* Yura: Dirty temp hack, because now function param() brakes html tags by validate function param_check_general_array() -> check_html_sanity() -> balance_tags() */
@@ -144,7 +143,7 @@ if( $params['disp_comment_form'] && $Item->can_comment( $params['before_comment_
 			else
 			{ // Try to get params from $_COOKIE through the param() function
 				$comment_author = param_cookie( $cookie_name, 'string', '' );
-				$comment_author_email = evo_strtolower( param_cookie( $cookie_email, 'string', '' ) );
+				$comment_author_email = utf8_strtolower( param_cookie( $cookie_email, 'string', '' ) );
 				$comment_author_url = param_cookie( $cookie_url, 'string', '' );
 			}
 			if( empty($comment_author_url) )

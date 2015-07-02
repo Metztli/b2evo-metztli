@@ -3,7 +3,7 @@
  * This is the HTML header include template.
  *
  * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://b2evolution.net/man/skin-structure}
+ * {@link http://b2evolution.net/man/skin-development-primer}
  *
  * This is meant to be included in a page template.
  * Note: This is also included in the popup: do not include site navigation!
@@ -20,7 +20,6 @@ $params = array_merge( array(
 
 require_css( 'style.css', 'relative' );
 
-add_js_for_toolbar( 'blog' );		// Registers all the javascripts needed by the toolbar menu
 init_bubbletip_js( 'blog' ); // Add jQuery bubbletip plugin
 init_results_js( 'blog' ); // Add functions to work with Results tables
 require_js( 'ajax.js', 'blog' );	// Functions to work with AJAX response data
@@ -73,8 +72,3 @@ require_js( 'ajax.js', 'blog' );	// Functions to work with AJAX response data
 </head>
 
 <body<?php skin_body_attrs( array( 'class' => 'low-contrast-linen-wptouch-bg' ) ); ?>>
-
-<?php
-// ---------------------------- TOOLBAR INCLUDED HERE ----------------------------
-//require $skins_path.'_toolbar.inc.php';
-// ------------------------------- END OF TOOLBAR --------------------------------

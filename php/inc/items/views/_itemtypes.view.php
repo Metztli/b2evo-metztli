@@ -1,40 +1,18 @@
 <?php
 /**
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2009-2014 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2009-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2009 by The Evo Factory - {@link http://www.evofactory.com/}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * The Evo Factory grants Francois PLANQUE the right to license
- * The Evo Factory's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author efy-sergey: Evo Factory / Sergey.
- * @author fplanque: Francois Planque.
- *
- * @version $Id: _itemtypes.view.php 6135 2014-03-08 07:54:05Z manuel $
  */
 
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
-load_class( 'items/model/_itemtype.class.php', 'ItemType' );
-
-global $dispatcher;
 
 // Create query
 $SQL = new SQL();
@@ -42,66 +20,88 @@ $SQL->SELECT( '*' );
 $SQL->FROM( 'T_items__type' );
 
 // Create result set:
-$Results = new Results( $SQL->get(), 'ptyp_' );
+$Results = new Results( $SQL->get(), 'ityp_' );
 
 $Results->title = T_('Item/Post/Page types');
 
-// get reserved ids
-global $reserved_ids;
-$reserved_ids = ItemType::get_reserved_ids();
+// get reserved and default ids
+global $default_ids;
+$default_ids = ItemType::get_default_ids();
 
 /**
- * Callback to build possible actions depending on item type id
+ * Callback to build possible actions depending on post type id
  *
  */
 function get_actions_for_itemtype( $id )
 {
-	global $reserved_ids;
-	$action = action_icon( T_('Duplicate this item type...'), 'copy',
-										regenerate_url( 'action', 'ptyp_ID='.$id.'&amp;action=new') );
-	if( ($id < $reserved_ids[0]) || ($id > $reserved_ids[1]) )
-	{ // not reserved id
-		$action = action_icon( T_('Edit this item type...'), 'edit',
-										regenerate_url( 'action', 'ptyp_ID='.$id.'&amp;action=edit') )
-							.$action
-							.action_icon( T_('Delete this item type!'), 'delete',
-										regenerate_url( 'action', 'ptyp_ID='.$id.'&amp;action=delete&amp;'.url_crumb('itemtype').'') );
+	global $default_ids;
+	$action = action_icon( T_('Duplicate this Post Type...'), 'copy',
+										regenerate_url( 'action', 'ityp_ID='.$id.'&amp;action=new') );
+
+	if( ! ItemType::is_reserved( $id ) )
+	{ // Edit all post types except of not reserved post type
+		$action = action_icon( T_('Edit this Post Type...'), 'edit',
+										regenerate_url( 'action', 'ityp_ID='.$id.'&amp;action=edit') )
+							.$action;
+	}
+
+	if( ! ItemType::is_special( $id ) && ! in_array( $id, $default_ids ) )
+	{ // Delete only the not reserved and not default post types
+		$action .= action_icon( T_('Delete this Post Type!'), 'delete',
+									regenerate_url( 'action', 'ityp_ID='.$id.'&amp;action=delete&amp;'.url_crumb('itemtype').'') );
 	}
 	return $action;
 }
 
 /**
- * Callback to make item type name depending on item type id
+ * Callback to make post type name depending on post type id
  *
  */
 function get_name_for_itemtype( $id, $name )
 {
-	global $reserved_ids;
+	global $current_User;
 
-	if( ($id < $reserved_ids[0]) || ($id > $reserved_ids[1]) )
-	{	// not reserved id
-		$ret_name = '<strong><a href="'.regenerate_url( 'action,ID', 'ptyp_ID='.$id.'&amp;action=edit' ).'">'.$name.'</a></strong>';
+	if( ! ItemType::is_reserved( $id ) && $current_User->check_perm( 'options', 'edit' ) )
+	{ // Not reserved id AND current User has permission to edit the global settings
+		$ret_name = '<a href="'.regenerate_url( 'action,ID', 'ityp_ID='.$id.'&amp;action=edit' ).'">'.$name.'</a>';
 	}
 	else
 	{
-		$ret_name = '<strong>'.$name.'</strong>';
+		$ret_name = $name;
 	}
-	return $ret_name;
+
+	return '<strong>'.$ret_name.'</strong>';
 }
 
 
 $Results->cols[] = array(
 		'th' => T_('ID'),
-		'order' => 'ptyp_ID',
+		'order' => 'ityp_ID',
 		'th_class' => 'shrinkwrap',
 		'td_class' => 'shrinkwrap',
-		'td' => '$ptyp_ID$',
+		'td' => '$ityp_ID$',
 	);
 
 $Results->cols[] = array(
 		'th' => T_('Name'),
-		'order' => 'ptyp_name',
-		'td' => '%get_name_for_itemtype(#ptyp_ID#, #ptyp_name#)%',
+		'order' => 'ityp_name',
+		'td' => '%get_name_for_itemtype(#ityp_ID#, #ityp_name#)%',
+	);
+
+$Results->cols[] = array(
+		'th' => T_('Back-office tab'),
+		'order' => 'ityp_backoffice_tab',
+		'td' => '$ityp_backoffice_tab$',
+		'th_class' => 'shrinkwrap',
+		'td_class' => 'center',
+	);
+
+$Results->cols[] = array(
+		'th' => T_('Template name'),
+		'order' => 'ityp_template_name',
+		'td' => '%conditional( #ityp_template_name# == "", "", #ityp_template_name#.".*.php" )%',
+		'th_class' => 'shrinkwrap',
+		'td_class' => 'center',
 	);
 
 if( $current_User->check_perm( 'options', 'edit', false ) )
@@ -110,11 +110,11 @@ if( $current_User->check_perm( 'options', 'edit', false ) )
 							'th' => T_('Actions'),
 							'th_class' => 'shrinkwrap',
 							'td_class' => 'shrinkwrap',
-							'td' => '%get_actions_for_itemtype( #ptyp_ID# )%',
+							'td' => '%get_actions_for_itemtype( #ityp_ID# )%',
 						);
 
 	$Results->global_icon( T_('Create a new element...'), 'new',
-				regenerate_url( 'action', 'action=new' ), T_('New item type').' &raquo;', 3, 4  );
+				regenerate_url( 'action', 'action=new' ), T_('New Post Type').' &raquo;', 3, 4  );
 }
 
 // Display results:

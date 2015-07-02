@@ -6,23 +6,14 @@
  * see {@link Plugin} in ../evocore/_plugin.class.php.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
  * @package plugins
- *
- * @version $Id: _google_maps.plugin.php 8174 2015-02-06 03:26:12Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -175,23 +166,26 @@ class google_maps_plugin extends Plugin
 	 */
 	function AdminDisplayItemFormFieldset( & $params )
 	{
-		global $Blog, $DB;
+		global $Blog, $DB, $admin_url;
 
 		// fp>vitaliy : make thhis title configurable per blog . default shoul dbe as below.
 		$plugin_title = $this->Settings->get( 'map_title_coll'.$Blog->ID );
 		$plugin_title = empty( $plugin_title ) ? T_( 'Google Maps plugin' ) : $plugin_title;
-		$params['Form']->begin_fieldset( $plugin_title );
+		$params['Form']->begin_fieldset( $plugin_title, array( 'id' => 'itemform_plugin_googlemap', 'fold' => ( isset( $params['edit_layout'] ) && $params['edit_layout'] == 'expert' ) ) );
 
-		if( !$Blog->get_setting( 'show_location_coordinates' ) )
+		$Item = $params['Item'];
+
+		if( $Item->get_type_setting( 'use_coordinates' ) == 'never' )
 		{
-			echo T_('You must turn on the "Show location coordinates" setting in Blog settings Post Features tab so the Google Maps plugin can save its coordinates.');
+			$url = $admin_url.'?ctrl=itemtypes&amp;action=edit&amp;blog='.$Blog->ID.'&amp;ityp_ID='.$Item->get_ItemType()->ID.'#itemtype_features';
+
+			echo sprintf( T_('You must turn on the <b>"Use coordinates"</b> setting in Post Type settings <a %s>Features</a> tab so the Google Maps plugin can save its coordinates.'), 'href="'.$url.'"' );
 			$params['Form']->end_fieldset();
 			return;
 		}
 
 		$params['Form']->switch_layout( 'linespan' );
 
-		$Item = $params['Item'];
 		require_js( '#jqueryUI#' );
 
 		$lat = $Item->get_setting('latitude');
@@ -842,7 +836,7 @@ function locate()
 
 		$this->number_of_widgets += 1;
 
-		if( !$Blog->get_setting( 'show_location_coordinates' ) )
+		if( ! empty( $Item ) && $Item->get_type_setting( 'use_coordinates' ) == 'never' )
 		{
 			return;
 		}

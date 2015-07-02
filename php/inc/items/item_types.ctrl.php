@@ -1,34 +1,15 @@
 <?php
 /**
- * This file implements the controller for item types management.
+ * This file implements the controller for post types management.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * The Evo Factory grants Francois PLANQUE the right to license
- * The Evo Factory's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author efy-sergey: Evo Factory / Sergey.
- * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: item_types.ctrl.php 7650 2014-11-15 13:37:36Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -48,39 +29,31 @@ global $current_User;
 global $dispatcher;
 
 // get reserved ids
-global $reserved_ids;
-$reserved_ids = ItemType::get_reserved_ids();
+global $special_range;
+$special_range = ItemType::get_special_range();
 
 // Check minimum permission:
 $current_User->check_perm( 'options', 'view', true );
+
+// We should activate toolbar menu items for this controller
+$activate_collection_toolbar = true;
 
 $tab = param( 'tab', 'string', 'settings', true );
 
 $tab3 = param( 'tab3', 'string', 'types', true );
 
-/**
- * We need make this call to build menu for all modules
- */
-$AdminUI->set_path( 'items' );
-
-/*
- * Add sub menu entries:
- * We do this here instead of _header because we need to include all filter params into regenerate_url()
- */
-attach_browse_tabs();
-
-$AdminUI->set_path( 'items', $tab, $tab3 );
+$AdminUI->set_path( 'collections', $tab, $tab3 );
 
 // Get action parameter from request:
 param_action();
 
-if( param( 'ptyp_ID', 'integer', '', true) )
+if( param( 'ityp_ID', 'integer', '', true) )
 {// Load itemtype from cache:
 	$ItemtypeCache = & get_ItemTypeCache();
-	if( ($edited_Itemtype = & $ItemtypeCache->get_by_ID( $ptyp_ID, false )) === false )
-	{	// We could not find the item type to edit:
+	if( ($edited_Itemtype = & $ItemtypeCache->get_by_ID( $ityp_ID, false )) === false )
+	{	// We could not find the post type to edit:
 		unset( $edited_Itemtype );
-		forget_param( 'ptyp_ID' );
+		forget_param( 'ityp_ID' );
 		$Messages->add( sprintf( T_('Requested &laquo;%s&raquo; object does not exist any longer.'), 'Itemtype' ), 'error' );
 		$action = 'nil';
 	}
@@ -100,6 +73,9 @@ switch( $action )
 		else
 		{	// Duplicate object in order no to mess with the cache:
 			$edited_Itemtype = duplicate( $edited_Itemtype ); // PHP4/5 abstraction
+			// Load all custom fields of the copied post type
+			$edited_Itemtype->get_custom_fields();
+			// Reset ID of new post type
 			$edited_Itemtype->ID = 0;
 		}
 		break;
@@ -108,18 +84,18 @@ switch( $action )
 		// Check permission:
 		$current_User->check_perm( 'options', 'edit', true );
 
-		// Make sure we got an ptyp_ID:
-		param( 'ptyp_ID', 'integer', true );
- 		break;
+		// Make sure we got an ityp_ID:
+		param( 'ityp_ID', 'integer', true );
+		break;
 
- 	case 'create': // Record new Itemtype
+	case 'create': // Record new Itemtype
 	case 'create_new': // Record Itemtype and create new
 	case 'create_copy': // Record Itemtype and create similar
-		// Insert new item type...:
-		
+		// Insert new post type...:
+
 		// Check that this action request is not a CSRF hacked request:
 		$Session->assert_received_crumb( 'itemtype' );
-		
+
 		$edited_Itemtype = new ItemType();
 
 		// Check permission:
@@ -129,10 +105,14 @@ switch( $action )
 		if( $edited_Itemtype->load_from_Request() )
 		{	// We could load data from form without errors:
 
-			if( ($edited_Itemtype->ID > $reserved_ids[0]) && ($edited_Itemtype->ID < $reserved_ids[1]) )
-			{ // is reserved item type
-				param_error( 'ptyp_ID',
-					sprintf( T_('Item types with ID from %d to %d are reserved. Please use another ID.' ), $reserved_ids[0], $reserved_ids[1] ) );
+			if( $edited_Itemtype->is_special() )
+			{ // is special post type
+				param_error( 'ityp_ID',
+					sprintf( T_('Post types with ID from %d to %d are reserved. Please use another ID.' ), $special_range[0], $special_range[1] ) );
+				// Set to 0 in order to display an edit input box for name field
+				$edited_Itemtype->ID = 0;
+				// Set name from request
+				$edited_Itemtype->set( 'name', param( 'ityp_name', 'string', '' ) );
 			}
 			else
 			{ // ID is good
@@ -150,14 +130,14 @@ switch( $action )
 				if($q)
 				{	// We have a duplicate entry:
 
-					param_error( 'ptyp_ID',
-						sprintf( T_('This item type already exists. Do you want to <a %s>edit the existing item type</a>?'),
-							'href="?ctrl=itemtypes&amp;tab='.$tab.'&amp;tab3='.$tab3.'&amp;action=edit&amp;ptyp_ID='.$q.'"' ) );
+					param_error( 'ityp_ID',
+						sprintf( T_('This post type already exists. Do you want to <a %s>edit the existing post type</a>?'),
+							'href="?ctrl=itemtypes&amp;tab='.$tab.'&amp;tab3='.$tab3.'&amp;action=edit&amp;ityp_ID='.$q.'"' ) );
 				}
 				else
 				{
 					$edited_Itemtype->dbinsert();
-					$Messages->add( T_('New item type created.'), 'success' );
+					$Messages->add( T_('New Post Type created.'), 'success' );
 				}
 				$DB->commit();
 
@@ -167,17 +147,17 @@ switch( $action )
 					{
 						case 'create_copy':
 							// Redirect so that a reload doesn't write to the DB twice:
-							header_redirect( '?ctrl=itemtypes&tab='.$tab.'&tab3='.$tab3.'&action=new&ptyp_ID='.$entered_itemtype_id, 303 ); // Will EXIT
+							header_redirect( $admin_url.'?ctrl=itemtypes&blog='.$blog.'&tab='.$tab.'&tab3='.$tab3.'&action=new&ityp_ID='.$entered_itemtype_id, 303 ); // Will EXIT
 							// We have EXITed already at this point!!
 							break;
 						case 'create_new':
 							// Redirect so that a reload doesn't write to the DB twice:
-							header_redirect( '?ctrl=itemtypes&tab='.$tab.'&tab3='.$tab3.'&action=new', 303 ); // Will EXIT
+							header_redirect( $admin_url.'?ctrl=itemtypes&blog='.$blog.'&tab='.$tab.'&tab3='.$tab3.'&action=new', 303 ); // Will EXIT
 							// We have EXITed already at this point!!
 							break;
 						case 'create':
 							// Redirect so that a reload doesn't write to the DB twice:
-							header_redirect( '?ctrl=itemtypes&tab='.$tab.'&tab3='.$tab3.'', 303 ); // Will EXIT
+							header_redirect( $admin_url.'?ctrl=itemtypes&blog='.$blog.'&tab='.$tab.'&tab3='.$tab3.'', 303 ); // Will EXIT
 							// We have EXITed already at this point!!
 							break;
 					}
@@ -187,7 +167,7 @@ switch( $action )
 		break;
 
 	case 'update':
-		// Edit item type form...:
+		// Edit post type form...:
 
 		// Check that this action request is not a CSRF hacked request:
 		$Session->assert_received_crumb( 'itemtype' );
@@ -195,17 +175,17 @@ switch( $action )
 		// Check permission:
 		$current_User->check_perm( 'options', 'edit', true );
 
-		// Make sure we got an ptyp_ID:
-		param( 'ptyp_ID', 'integer', true );
+		// Make sure we got an ityp_ID:
+		param( 'ityp_ID', 'integer', true );
 
 		// load data from request
 		if( $edited_Itemtype->load_from_Request() )
 		{	// We could load data from form without errors:
 
-			if( ($edited_Itemtype->ID > $reserved_ids[0]) && ($edited_Itemtype->ID < $reserved_ids[1]) )
-			{ // is reserved item type
-				param_error( 'ptyp_ID',
-					sprintf( T_('Item types with ID from %d to %d are reserved. You can not edit this item type.' ), $reserved_ids[0], $reserved_ids[1] ) );
+			if( $edited_Itemtype->is_reserved() )
+			{ // is reserved post type
+				param_error( 'ityp_ID',
+					sprintf( T_('Post types with IDs = ( %d ) are reserved. You can not edit this post type.' ), implode( ', ', $posttypes_reserved_IDs ) ) );
 			}
 			else
 			{ // ID is good
@@ -213,18 +193,18 @@ switch( $action )
 				$DB->begin();
 
 				$edited_Itemtype->dbupdate();
-				$Messages->add( T_('Item type updated.'), 'success' );
+				$Messages->add( T_('Post type updated.'), 'success' );
 
 				$DB->commit();
 
-				header_redirect( '?ctrl=itemtypes&amp;tab='.$tab.'&amp;tab3='.$tab3.'', 303 ); // Will EXIT
+				header_redirect( $admin_url.'?ctrl=itemtypes&blog='.$blog.'&tab='.$tab.'&tab3='.$tab3.'', 303 ); // Will EXIT
 				// We have EXITed already at this point!!
 			}
 		}
 		break;
 
 	case 'delete':
-		// Delete item type:
+		// Delete post type:
 
 		// Check that this action request is not a CSRF hacked request:
 		$Session->assert_received_crumb( 'itemtype' );
@@ -232,30 +212,56 @@ switch( $action )
 		// Check permission:
 		$current_User->check_perm( 'options', 'edit', true );
 
-		// Make sure we got an ptyp_ID:
-		param( 'ptyp_ID', 'integer', true );
+		// Make sure we got an ityp_ID:
+		param( 'ityp_ID', 'integer', true );
 
-		if( ($edited_Itemtype->ID > $reserved_ids[0]) && ($edited_Itemtype->ID < $reserved_ids[1]) )
-		{ // is reserved item type
-			param_error( 'ptyp_ID',
-				sprintf( T_('Item types with ID from %d to %d are reserved. You can not delete this item type' ), $reserved_ids[0], $reserved_ids[1] ) );
+		$default_ids = ItemType::get_default_ids();
+
+		if( $edited_Itemtype->is_special() )
+		{ // is special post type
+			param_error( 'ityp_ID',
+				sprintf( T_('Post types with ID from %d to %d are reserved. You can not delete this post type.' ), $special_range[0], $special_range[1] ) );
+			// To don't display a confirmation question
+			$action = 'edit';
+		}
+		elseif( ( $item_type_blog_ID = array_search( $edited_Itemtype->ID, $default_ids ) ) !== false )
+		{ // is default post type of the blog
+			if( $item_type_blog_ID == 'default' )
+			{
+				$Messages->add( T_('This Post Type is the default for all collections. You can not delete this Post Type.' ) );
+			}
+			else
+			{
+				$BlogCache = & get_BlogCache();
+				$blog_names = array();
+				foreach( $default_ids as $blog_ID => $item_type_ID )
+				{
+					if( $edited_Itemtype->ID == $item_type_ID && ( $Blog = & $BlogCache->get_by_ID( $blog_ID, false, false ) ) )
+					{
+						$blog_names[] = '<a href="'.$admin_url.'?ctrl=coll_settings&tab=features&blog='.$Blog->ID.'#fieldset_wrapper_post_options"><b>'.$Blog->get('name').'</b></a>';
+					}
+				}
+				$Messages->add( sprintf( T_('This Post Type is default for the collections: %s. You can not delete this Post Type.' ), implode( ', ', $blog_names ) ) );
+			}
+			// To don't display a confirmation question
+			$action = 'edit';
 		}
 		else
 		{ // ID is good
 			if( param( 'confirm', 'integer', 0 ) )
 			{ // confirmed, Delete from DB:
-				$msg = sprintf( T_('Item type &laquo;%s&raquo; deleted.'), $edited_Itemtype->dget('name') );
-				$edited_Itemtype->dbdelete( true );
+				$msg = sprintf( T_('Post type &laquo;%s&raquo; deleted.'), $edited_Itemtype->dget('name') );
+				$edited_Itemtype->dbdelete();
 				unset( $edited_Itemtype );
-				forget_param( 'ptyp_ID' );
+				forget_param( 'ityp_ID' );
 				$Messages->add( $msg, 'success' );
 				// Redirect so that a reload doesn't write to the DB twice:
-				header_redirect( '?ctrl=itemtypes&amp;tab='.$tab.'&amp;tab3='.$tab3.'', 303 ); // Will EXIT
+				header_redirect( $admin_url.'?ctrl=itemtypes&blog='.$blog.'&tab='.$tab.'&tab3='.$tab3.'', 303 ); // Will EXIT
 				// We have EXITed already at this point!!
 			}
 			else
 			{	// not confirmed, Check for restrictions:
-				if( ! $edited_Itemtype->check_delete( sprintf( T_('Cannot delete item type &laquo;%s&raquo;'), $edited_Itemtype->dget('name') ) ) )
+				if( ! $edited_Itemtype->check_delete( sprintf( T_('Cannot delete Post Type &laquo;%s&raquo;'), $edited_Itemtype->dget('name') ) ) )
 				{	// There are restrictions:
 					$action = 'view';
 				}
@@ -265,9 +271,12 @@ switch( $action )
 
 }
 
-$AdminUI->breadcrumbpath_init( true, array( 'text' => T_('Contents'), 'url' => '?ctrl=items&amp;blog=$blog$&amp;tab=full&amp;filter=restore' ) );
-$AdminUI->breadcrumbpath_add( T_('Content settings'), '?ctrl=itemtypes&amp;blog=$blog$&amp;tab=settings' );
-$AdminUI->breadcrumbpath_add( T_('Post types'), '?ctrl=itemtypes&amp;blog=$blog$&amp;tab=settings&amp;tab3=types' );
+// Generate available blogs list:
+$AdminUI->set_coll_list_params( 'blog_ismember', 'view', array( 'ctrl' => 'itemtypes', 'tab' => $tab, 'tab3' => 'types' ) );
+
+$AdminUI->breadcrumbpath_init( true, array( 'text' => T_('Collections'), 'url' => $admin_url.'?ctrl=dashboard&amp;blog=$blog$' ) );
+$AdminUI->breadcrumbpath_add( T_('Settings'), $admin_url.'?ctrl=coll_settings&amp;blog=$blog$&amp;tab=general' );
+$AdminUI->breadcrumbpath_add( T_('Post Types'), $admin_url.'?ctrl=itemtypes&amp;blog=$blog$&amp;tab=settings&amp;tab3=types' );
 
 $AdminUI->set_page_manual_link( 'managing-item-types' );
 
@@ -292,7 +301,7 @@ switch( $action )
 	case 'delete':
 		// We need to ask for confirmation:
 		$edited_Itemtype->confirm_delete(
-				sprintf( T_('Delete item type &laquo;%s&raquo;?'),  $edited_Itemtype->dget('name') ),
+				sprintf( T_('Delete Post Type &laquo;%s&raquo;?'),  $edited_Itemtype->dget('name') ),
 				'itemtype', $action, get_memorized( 'action' ) );
 		/* no break */
 	case 'new':
@@ -306,10 +315,10 @@ switch( $action )
 
 
 	default:
-		// No specific request, list all item types:
+		// No specific request, list all post types:
 		// Cleanup context:
-		forget_param( 'ptyp_ID' );
-		// Display item types list:
+		forget_param( 'ityp_ID' );
+		// Display post types list:
 		$AdminUI->disp_view( 'items/views/_itemtypes.view.php' );
 		break;
 

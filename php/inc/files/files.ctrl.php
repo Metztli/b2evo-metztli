@@ -10,38 +10,15 @@
  * fp>> Move/copy should not be a mode (too geeky). All we need is a dir selection tree inside of upload and move.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- *
- * PROGIDISTRI S.A.S. grants Francois PLANQUE the right to license
- * PROGIDISTRI S.A.S.'s contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package admin
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author blueyed: Daniel HAHLER.
- * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: files.ctrl.php 7970 2015-01-14 07:21:36Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -70,7 +47,6 @@ $AdminUI->set_path( 'files', 'browse' );
 
 // 1 when AJAX request, E.g. when popup is used to link a file to item/comment
 param( 'ajax_request', 'integer', 0, true );
-
 
 // INIT params:
 if( param( 'root_and_path', 'string', '', false ) /* not memorized (default) */ && strpos( $root_and_path, '::' ) )
@@ -170,11 +146,11 @@ $fm_FileRoot = NULL;
 
 $FileRootCache = & get_FileRootCache();
 
-$available_Roots = $FileRootCache->get_available_FileRoots();
+$available_Roots = $FileRootCache->get_available_FileRoots( get_param( 'root' ) );
 
-if( ! empty($root) )
+if( ! empty( $root ) )
 { // We have requested a root folder by string:
-	$fm_FileRoot = & $FileRootCache->get_by_ID($root, true);
+	$fm_FileRoot = & $FileRootCache->get_by_ID( $root, true );
 
 	if( ! $fm_FileRoot || ! isset( $available_Roots[$fm_FileRoot->ID] ) || ! $current_User->check_perm( 'files', 'view', false, $fm_FileRoot ) )
 	{ // Root not found or not in list of available ones
@@ -300,6 +276,7 @@ if( $fm_FileRoot )
 	}
 }
 
+
 if( ! $ajax_request )
 { // Don't display tabs on AJAX request
 	file_controller_build_tabs();
@@ -337,7 +314,7 @@ $Debuglog->add( 'path: '.var_export( $path, true ), 'files' );
  *
  * @global array
  */
-$fm_selected = param( 'fm_selected', 'array/string', array(), true );
+$fm_selected = param( 'fm_selected', 'array:string', array(), true );
 $Debuglog->add( count($fm_selected).' selected files/directories', 'files' );
 /**
  * The selected files (must be within current fileroot)
@@ -416,6 +393,7 @@ switch( $action )
 		if( $error_dirname = validate_dirname( $create_name ) )
 		{ // Not valid dirname
 			$Messages->add( $error_dirname, 'error' );
+			syslog_insert( sprintf( 'Invalid name is detected for folder %s', '<b>'.$create_name.'</b>' ), 'warning', 'file' );
 			break;
 		}
 
@@ -477,6 +455,7 @@ switch( $action )
 		if( $error_filename = validate_filename( $create_name, $current_User->check_perm( 'files', 'all' ) ) )
 		{ // Not valid filename or extension
 			$Messages->add( $error_filename, 'error' );
+			syslog_insert( sprintf( 'The creating file %s has an unrecognized extension', '<b>'.$create_name.'</b>' ), 'warning', 'file' );
 			break;
 		}
 
@@ -715,7 +694,7 @@ switch( $action )
 		}
 
 		param( 'confirmed', 'integer', 0 );
-		param( 'new_names', 'array/string', array() );
+		param( 'new_names', 'array:string', array() );
 
 		// Check params for each file to rename:
 		while( $loop_src_File = & $selected_Filelist->get_next() )
@@ -804,9 +783,21 @@ switch( $action )
 
 		$selected_Filelist->restart();
 		if( $confirmed )
-		{ // Unlink files:
+		{ // Delete files, It is possible only file has no links:
+			$selected_Filelist->load_meta();
 			while( $l_File = & $selected_Filelist->get_next() )
 			{
+				// Check if there are delete restrictions on this file:
+				$restriction_Messages = $l_File->check_relations( 'delete_restrictions', array(), true );
+
+				if( $restriction_Messages->count() )
+				{ // There are restrictions:
+					$Messages->add( $l_File->get_prefixed_name().': '.T_('cannot be deleted because of the following relations')
+						.$restriction_Messages->display( NULL, NULL, false, false ) );
+					// Skip this file
+					continue;
+				}
+
 				if( $l_File->unlink() )
 				{
 					$Messages->add( sprintf( ( $l_File->is_dir() ? T_('The directory &laquo;%s&raquo; has been deleted.')
@@ -820,8 +811,9 @@ switch( $action )
 				}
 			}
 			$action = 'list';
+			$redirect_to = param( 'redirect_to', 'url', NULL );
 			// Redirect so that a reload doesn't write to the DB twice:
-			header_redirect( regenerate_url( '', '', '', '&' ), 303 ); // Will EXIT
+			header_redirect( empty( $redirect_to ) ? regenerate_url( '', '', '', '&' ) : $redirect_to, 303 ); // Will EXIT
 			// We have EXITed already at this point!!
 		}
 		else
@@ -943,7 +935,7 @@ switch( $action )
 						}
 
 						// Let's make the link!
-						$LinkOwner->add_link( $l_File->ID, 'teaser', $order++ );
+						$LinkOwner->add_link( $l_File->ID, ( $order == 1 ? 'teaser' : 'aftermore' ), $order++ );
 
 						$Messages->add( sprintf( T_('&laquo;%s&raquo; has been attached.'), $l_File->dget('name') ), 'success' );
 
@@ -1203,7 +1195,7 @@ switch( $action )
 		// Forget selected files
 		if( $files_count > 1 ) $fm_selected = NULL;
 
-		$Messages->add( $LinkOwner->translate( 'Selected files have been linked to owner.' ), 'success' );
+		$Messages->add( $LinkOwner->translate( 'Selected files have been linked to xxx.' ), 'success' );
 
 		// In case the mode had been closed, reopen it:
 		$fm_mode = 'link_object';
@@ -1211,7 +1203,7 @@ switch( $action )
 		// REDIRECT / EXIT
 		if( $action == 'link_inpost' )
 		{
-			header_redirect( $admin_url.'?ctrl=links&link_type='.$LinkOwner->type.'&action=edit_links&mode=iframe&link_object_ID='.$LinkOwner->get_ID() );
+			header_redirect( $admin_url.'?ctrl=links&link_type='.$LinkOwner->type.'&action=edit_links&mode=iframe&link_object_ID='.$LinkOwner->get_ID().'&iframe_name='.$iframe_name );
 		}
 		else
 		{
@@ -1242,9 +1234,9 @@ switch( $action )
 		}
 
 
-		param( 'perms', 'array/integer', array() );
+		param( 'perms', 'array:integer', array() );
 		param( 'edit_perms_default' ); // default value when multiple files are selected
-		param( 'use_default_perms', 'array/string', array() ); // array of file IDs that should be set to default
+		param( 'use_default_perms', 'array:string', array() ); // array of file IDs that should be set to default
 
 		if( count( $use_default_perms ) && $edit_perms_default === '' )
 		{
@@ -1356,7 +1348,7 @@ switch( $fm_mode )
 		}
 
 		// Get the source list
-		if( $fm_sources = param( 'fm_sources', 'array/string', array(), true ) )
+		if( $fm_sources = param( 'fm_sources', 'array:string', array(), true ) )
 		{
 			$fm_sources_root = param( 'fm_sources_root', 'string', '', true );
 
@@ -1401,8 +1393,8 @@ switch( $fm_mode )
 		}
 
 		param( 'confirm', 'integer', 0 );
-		param( 'new_names', 'array/string', array() );
-		param( 'overwrite', 'array/integer', array() );
+		param( 'new_names', 'array:string', array() );
+		param( 'overwrite', 'array:integer', array() );
 
 		// Check params for each file to rename:
 		while( $loop_src_File = & $fm_source_Filelist->get_next() )
@@ -1428,6 +1420,7 @@ switch( $fm_mode )
 				{ // Not a file name or not an allowed extension
 					$confirm = 0;
 					$Messages->add( $error_filename , 'error' );
+					syslog_insert( sprintf( 'The copied file %s has an unrecognized extension', '<b>'.$new_names[$loop_src_File->get_md5_ID()].'</b>' ), 'warning', 'file', $loop_src_File->ID );
 					continue;
 				}
 			}
@@ -1612,23 +1605,31 @@ if( !isset($Blog) || $fm_FileRoot->type != 'collection' || $fm_FileRoot->in_type
 			$fm_FileRoot->name, $Blog->get('shortname') ) : '' );
 }
 
-// require colorbox js
-require_js_helper( 'colorbox' );
-// require File Uploader js and css
-require_js( 'multiupload/fileuploader.js' );
-require_css( 'fileuploader.css' );
-
 $mode = param( 'mode', 'string', '' );
-if( $mode == 'upload' || $mode == 'import' )
-{ // Add css to remove spaces around window
-	require_css( 'fileadd.css', 'rsc_url' );
-}
 
-// Display <html><head>...</head> section! (Note: should be done early if actions do not redirect)
-$AdminUI->disp_html_head();
+if( $mode != 'modal' )
+{
+	// require colorbox js
+	require_js_helper( 'colorbox' );
+	// require File Uploader js and css
+	require_js( 'multiupload/fileuploader.js' );
+	require_css( 'fileuploader.css' );
 
-// Display title, menu, messages, etc. (Note: messages MUST be displayed AFTER the actions)
-$AdminUI->disp_body_top();
+	if( $mode == 'upload' || $mode == 'import' )
+	{ // Add css to remove spaces around window
+		require_css( 'fileadd.css', 'rsc_url' );
+	}
+
+	if( $mode == 'popup' )
+	{ // Don't display navigation on popup mode
+		$AdminUI->clear_menu_entries( 'files' );
+	}
+
+	// Display <html><head>...</head> section! (Note: should be done early if actions do not redirect)
+	$AdminUI->disp_html_head();
+
+	// Display title, menu, messages, etc. (Note: messages MUST be displayed AFTER the actions)
+	$AdminUI->disp_body_top();
 
 // Display reload-icon in the opener window if we're a popup in the same CWD and the
 // Filemanager content differs.
@@ -1651,7 +1652,10 @@ $AdminUI->disp_body_top();
 </script>
 <?php
 
-$AdminUI->disp_payload_begin();
+	$AdminUI->disp_payload_begin();
+
+
+	}
 
 /*
  * Display payload:
@@ -1688,6 +1692,10 @@ if( !empty($action ) && $action != 'list' && $action != 'nil' )
 
 		case 'edit_properties':
 			// File properties (Meta data) dialog:
+			if( $mode == 'modal' )
+			{ // Unmemorize the mode param in order to submit form in mormal mode
+				forget_param( 'mode' );
+			}
 			$AdminUI->disp_view( 'files/views/_file_properties.form.php' );
 			break;
 
@@ -1737,18 +1745,20 @@ switch( $fm_mode )
 		break;
 }
 
+if( $mode != 'modal' )
+{
+	// -------------------
+	// Browsing interface:
+	// -------------------
+	// Display VIEW:
+	$AdminUI->disp_view( 'files/views/_file_browse.view.php' );
 
-// -------------------
-// Browsing interface:
-// -------------------
-// Display VIEW:
-$AdminUI->disp_view( 'files/views/_file_browse.view.php' );
+	
+	// End payload block:
+	$AdminUI->disp_payload_end();
 
-
-// End payload block:
-$AdminUI->disp_payload_end();
-
-// Display body bottom, debug info and close </html>:
-$AdminUI->disp_global_footer();
+	// Display body bottom, debug info and close </html>:
+	$AdminUI->disp_global_footer();
+}
 
 ?>

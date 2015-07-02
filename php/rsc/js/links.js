@@ -2,25 +2,13 @@
  * This file implements links specific Javascript functions.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2006 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
+ * @copyright (c)2003-2006 by Francois PLANQUE - {@link http://fplanque.com/}
  *
  * @package admin
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author attila: Attila Simo
- *
- * @version $Id: $
  */
 
 function evo_display_position_onchange( selectInput, url, crumb )
@@ -33,9 +21,9 @@ function evo_display_position_onchange( selectInput, url, crumb )
 		if( r == "OK" ) {
 			evoFadeSuccess( jQuery(oThis.form).closest('tr') );
 			jQuery(oThis.form).closest('td').removeClass('error');
-			if( new_position == 'albumart')
-			{ // Position "Album Art" can be used only by one link
-				jQuery( 'select[name=link_position][id!=' + selectInput.id + '] option[value=albumart]:selected' ).each( function()
+			if( new_position == 'cover' )
+			{ // Position "Cover" can be used only by one link
+				jQuery( 'select[name=link_position][id!=' + selectInput.id + '] option[value=cover]:selected' ).each( function()
 				{ // Replace previous position with "Inline"
 					jQuery( this ).parent().val( 'aftermore' );
 					evoFadeSuccess( jQuery( this ).closest('tr') );
@@ -52,23 +40,24 @@ function evo_display_position_onchange( selectInput, url, crumb )
 
 
 /**
- * Insert an image tag into the post ( example: [image:123:caption text] )
+ * Insert inline tag into the post ( example: [image:123:caption text] | [file:123:caption text] )
  *
+ * @param strin Type: 'image', 'file'
  * @param integer File ID
  * @param string Caption text
  */
-function insert_image_link( link_ID, caption )
+function insert_inline_link( type, link_ID, caption )
 {
 	var b2evoCanvas = window.parent.document.getElementById('itemform_post_content');
 	if( b2evoCanvas != null )
-	{	// Canvas exists
-		var insert_tag = '[image:' + link_ID + ':' + caption + ']';
+	{ // Canvas exists
+		var insert_tag = '[' + type + ':' + link_ID + ':' + caption + ']';
 		// Insert an image tag
 		textarea_wrap_selection( b2evoCanvas, insert_tag, '', 0, window.parent.document );
 
 		var $position_selector = jQuery( '#display_position_' + link_ID );
 		if( $position_selector.length != 0 )
-		{	// Change the position to 'Inline'
+		{ // Change the position to 'Inline'
 			if( $position_selector.val() != 'inline' )
 			{
 				$position_selector.val( 'inline' ).change();
@@ -88,7 +77,7 @@ function item_unlink( link_ID )
 	var b2evoCanvas = window.parent.document.getElementById( 'itemform_post_content' );
 	if( b2evoCanvas != null )
 	{ // Canvas exists
-		var regexp = new RegExp( '\\\[image:' + link_ID + ':?[^\\\]]*\\\]', 'ig' );
+		var regexp = new RegExp( '\\\[(image|file|inline):' + link_ID + ':?[^\\\]]*\\\]', 'ig' );
 		textarea_str_replace( b2evoCanvas, regexp, '', window.parent.document );
 	}
 }

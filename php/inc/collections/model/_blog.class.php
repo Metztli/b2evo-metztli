@@ -3,34 +3,15 @@
  * This file implements the Blog class.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  * Parts of this file are copyright (c)2005 by Jason Edgecombe.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- *
- * Jason EDGECOMBE grants Francois PLANQUE the right to license
- * Jason EDGECOMBE's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package evocore
- *
- * @version $Id: _blog.class.php 7985 2015-01-14 18:41:51Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -98,7 +79,7 @@ class Blog extends DataObject
 	var $allowtrackbacks = 0;
 	var $allowblogcss = 0;
 	var $allowusercss = 0;
-	var $in_bloglist = 1;
+	var $in_bloglist = 'public';
 	var $media_location = 'default';
 	var $media_subdir = '';
 	var $media_fullpath = '';
@@ -160,20 +141,6 @@ class Blog extends DataObject
 		// Call parent constructor:
 		parent::DataObject( 'T_blogs', 'blog_', 'blog_ID' );
 
-		$this->delete_restrictions = array(
-				array( 'table'=>'T_categories', 'fk'=>'cat_blog_ID', 'msg'=>T_('%d related categories') ),
-				array( 'table'=>'T_files', 'fk'=>'file_root_ID', 'and_condition' => 'file_root_type = "collection"', 'msg'=>T_('%d files in this blog file root') ),
-			);
-
-		$this->delete_cascades = array(
-				array( 'table'=>'T_coll_settings', 'fk'=>'cset_coll_ID', 'msg'=>T_('%d blog settings') ),
-				array( 'table'=>'T_coll_user_perms', 'fk'=>'bloguser_blog_ID', 'msg'=>T_('%d user permission definitions') ),
-				array( 'table'=>'T_coll_group_perms', 'fk'=>'bloggroup_blog_ID', 'msg'=>T_('%d group permission definitions') ),
-				array( 'table'=>'T_subscriptions', 'fk'=>'sub_coll_ID', 'msg'=>T_('%d subscriptions') ),
-				array( 'table'=>'T_widget', 'fk'=>'wi_coll_ID', 'msg'=>T_('%d widgets') ),
-				array( 'table'=>'T_hitlog', 'fk'=>'hit_coll_ID', 'msg'=>T_('%d hits') ),
-			);
-
 		if( $db_row == NULL )
 		{
 			global $default_locale;
@@ -221,12 +188,91 @@ class Blog extends DataObject
 
 
 	/**
-	 * @param string
+	 * Get delete cascade settings
+	 *
+	 * @return array
+	 */
+	static function get_delete_cascades()
+	{
+		return array(
+				array( 'table'=>'T_coll_settings', 'fk'=>'cset_coll_ID', 'msg'=>T_('%d blog settings') ),
+				array( 'table'=>'T_coll_user_perms', 'fk'=>'bloguser_blog_ID', 'msg'=>T_('%d user permission definitions') ),
+				array( 'table'=>'T_coll_group_perms', 'fk'=>'bloggroup_blog_ID', 'msg'=>T_('%d group permission definitions') ),
+				array( 'table'=>'T_subscriptions', 'fk'=>'sub_coll_ID', 'msg'=>T_('%d subscriptions') ),
+				array( 'table'=>'T_widget', 'fk'=>'wi_coll_ID', 'msg'=>T_('%d widgets') ),
+				array( 'table'=>'T_hitlog', 'fk'=>'hit_coll_ID', 'msg'=>T_('%d hits') ),
+				array( 'table'=>'T_categories', 'fk'=>'cat_blog_ID', 'msg'=>T_('%d related categories with all of its content recursively'),
+						'class'=>'Chapter', 'class_path'=>'chapters/model/_chapter.class.php' ),
+				array( 'table'=>'T_files', 'fk'=>'file_root_ID', 'and_condition'=>'file_root_type = "collection"', 'msg'=>T_('%d files in this blog file root'),
+						'class'=>'File', 'class_path'=>'files/model/_file.class.php' ),
+			);
+	}
+
+
+	/**
+	 * Compare two Blog based on the common blog order setting
+	 *
+	 * @param Blog A
+	 * @param Blog B
+	 * @return number -1 if A < B, 1 if A > B, 0 if A == B
+	 */
+	static function compare_blogs( $a_Blog, $b_Blog )
+	{
+		global $Settings;
+
+		if( $a_Blog->ID == $b_Blog->ID )
+		{
+			return 0;
+		}
+
+		$order_by = $Settings->get('blogs_order_by');
+		$order_dir = $Settings->get('blogs_order_dir');
+
+		if( $order_by == 'RAND' )
+		{ // In case of Random order we consider every blog as equal
+			return 0;
+		}
+
+		$blog_a_value = $a_Blog->get( $order_by );
+		$blog_b_value = $b_Blog->get( $order_by );
+		if( $blog_a_value == $blog_b_value )
+		{ // The compare fields are equal sort based on the ID
+			$blog_a_value = $a_Blog->ID;
+			$blog_b_value = $b_Blog->ID;
+		}
+		$result = is_numeric( $blog_a_value ) ? ( $blog_a_value < $blog_b_value ? -1 : 1 ) : strcmp( $blog_a_value, $blog_b_value );
+
+		if( $order_dir == 'DESC' )
+		{ // Change the order direction
+			$result = $result * (-1);
+		}
+
+		return $result;
+	}
+
+
+	/**
+	 * Initialize blog setting by kind
+	 *
+	 * @param string Kind: 'main', 'std', 'photo', 'group', 'forum', 'manual'
+	 * @param string Name
+	 * @param string Short name
+	 * @param string Url/slug
 	 */
 	function init_by_kind( $kind, $name = NULL, $shortname = NULL, $urlname = NULL )
 	{
 		switch( $kind )
 		{
+			case 'main':
+				$this->set( 'type', 'main' );
+				$this->set( 'name', empty( $name ) ? T_('Homepage Title') : $name );
+				$this->set( 'shortname', empty( $shortname ) ? T_('Home') : $shortname );
+				$this->set( 'urlname', empty( $urlname ) ? 'main' : $urlname );
+				$this->set_setting( 'front_disp', 'front' );
+				$this->set_setting( 'aggregate_coll_IDs', '*' );
+				$this->set_setting( 'in_skin_login', '1' );
+				break;
+
 			case 'photo':
 				$this->set( 'type', 'photo' );
 				$this->set( 'name', empty($name) ? T_('My photoblog') : $name );
@@ -234,6 +280,7 @@ class Blog extends DataObject
 				$this->set( 'urlname', empty($urlname) ? 'photo' : $urlname );
 				$this->set_setting( 'posts_per_page', 12 );
 				$this->set_setting( 'archive_mode', 'postbypost' );
+				$this->set_setting( 'front_disp', 'posts' );
 				break;
 
 			case 'group':
@@ -254,13 +301,25 @@ class Blog extends DataObject
 				$this->set_setting( 'allow_comments', 'registered' );
 				$this->set_setting( 'in_skin_editing', '1' );
 				$this->set_setting( 'posts_per_page', 30 );
-				$this->set_setting( 'allow_html_post', 0 );
 				$this->set_setting( 'allow_html_comment', 0 );
 				$this->set_setting( 'orderby', 'last_touched_ts' );
 				$this->set_setting( 'orderdir', 'DESC' );
 				$this->set_setting( 'enable_goto_blog', 'post' );
 				$this->set_setting( 'front_disp', 'front' );
+				$this->set_setting( 'track_unread_content', 1 );
 				$this->set_setting( 'allow_rating_comment_helpfulness', 1 );
+				$this->set_setting( 'category_ordering', 'manual' );
+
+				// Try to find post type "Forum Topic" in DB
+				global $DB;
+				$forum_topic_type_ID = $DB->get_var( 'SELECT ityp_ID
+					 FROM T_items__type
+					WHERE ityp_ID = 200
+					  AND ityp_name = "Forum Topic"' );
+				if( $forum_topic_type_ID )
+				{ // Set default post type as "Forum Topic"
+					$this->set_setting( 'default_post_type', $forum_topic_type_ID );
+				}
 				break;
 
 			case 'manual':
@@ -272,6 +331,18 @@ class Blog extends DataObject
 				$this->set_setting( 'single_links', 'chapters' );
 				$this->set_setting( 'enable_goto_blog', 'post' );
 				$this->set_setting( 'front_disp', 'front' );
+				$this->set_setting( 'category_ordering', 'manual' );
+
+				// Try to find post type "Manual Page" in DB
+				global $DB;
+				$manual_page_type_ID = $DB->get_var( 'SELECT ityp_ID
+					 FROM T_items__type
+					WHERE ityp_ID = 100
+					  AND ityp_name = "Manual Page"' );
+				if( $manual_page_type_ID )
+				{ // Set default post type as "Manual Page"
+					$this->set_setting( 'default_post_type', $manual_page_type_ID );
+				}
 				break;
 
 			case 'std':
@@ -313,25 +384,55 @@ class Blog extends DataObject
 
 		// Load collection settings and clear update cascade array
 		$this->load_CollectionSettings();
-		$this->CollectionSettings->clear_update_cascade();
 
 		if( param( 'blog_name', 'string', NULL ) !== NULL )
 		{ // General params:
 			$this->set_from_Request( 'name' );
 			$this->set( 'shortname', param( 'blog_shortname', 'string', true ) );
-			$this->set( 'locale',    param( 'blog_locale',    'string', $default_locale ) );
-			$this->set( 'order',     param( 'blog_order',     'integer' ) );
+
+			// Language / locale:
+			if( param( 'blog_locale', 'string', NULL ) !== NULL )
+			{ // These settings can be hidden when only one locale is enaled in the system
+				$this->set_from_Request( 'locale' );
+				$this->set_setting( 'locale_source', param( 'blog_locale_source', 'string', 'blog' ) );
+				$this->set_setting( 'post_locale_source', param( 'blog_post_locale_source', 'string', 'post' ) );
+			}
+
+			// Collection permissions:
+			$old_advanced_perms = $this->get( 'advanced_perms' );
+			$new_advanced_perms = param( 'advanced_perms', 'integer', 0 );
+			$old_allow_access = $this->get_setting( 'allow_access' );
+			$new_allow_access = param( 'blog_allow_access', 'string', '' );
+			if( $old_allow_access != 'members' && $new_allow_access == 'members' )
+			{ // If 'Allow access' is changed to 'Members' we should activate advanced perms automatically
+				$new_advanced_perms = 1;
+			}
+			if( $old_advanced_perms == 1 && $new_advanced_perms == 0 && $old_allow_access == 'members' )
+			{ // If advanced perms are deselected we should also change 'Allow access' back to 'Logged in users'
+				$new_allow_access = 'users';
+			}
+			$this->set( 'advanced_perms', $new_advanced_perms );
+			$this->set_setting( 'allow_access', $new_allow_access );
+			if( $this->get_setting( 'allow_access' ) == 'users' || $this->get_setting( 'allow_access' ) == 'members' )
+			{ // Disable site maps, feeds and ping plugins when access is restricted on this blog
+				$this->set_setting( 'enable_sitemaps', 0 );
+				$this->set_setting( 'feed_content', 'none' );
+				$this->set_setting( 'ping_plugins', '' );
+			}
+
+			// Lists of collections:
+			$this->set( 'order', param( 'blog_order', 'integer' ) );
+			$this->set( 'in_bloglist', param( 'blog_in_bloglist', 'string', 'public' ) );
 			$this->set( 'favorite',  param( 'favorite', 'integer', 0 ) );
 		}
 
-
-		if( param( 'archive_links',   'string', NULL ) !== NULL )
+		if( param( 'archive_links', 'string', NULL ) !== NULL )
 		{ // Archive link type:
 			$this->set_setting( 'archive_links', get_param( 'archive_links' ) );
 			$this->set_setting( 'archive_posts_per_page', param( 'archive_posts_per_page', 'integer', NULL ), true );
 		}
 
-		if( param( 'chapter_links',   'string', NULL ) !== NULL )
+		if( param( 'chapter_links', 'string', NULL ) !== NULL )
 		{ // Chapter link type:
 			$this->set_setting( 'chapter_links', get_param( 'chapter_links' ) );
 		}
@@ -362,7 +463,7 @@ class Blog extends DataObject
 			$this->set_setting( 'image_size', get_param( 'image_size' ));
 		}
 
-		if( param( 'tag_links',   'string', NULL ) !== NULL )
+		if( param( 'tag_links', 'string', NULL ) !== NULL )
 		{ // Tag page link type:
 			$this->set_setting( 'tag_links', get_param( 'tag_links' ) );
 		}
@@ -479,11 +580,6 @@ class Blog extends DataObject
 			$this->set_setting( 'comments_per_feed', get_param( 'comments_per_feed' ) );
 		}
 
-		if( param( 'require_title', 'string', NULL ) !== NULL )
-		{ // Title for items required?
-			$this->set_setting( 'require_title', get_param( 'require_title' ) );
-		}
-
 		if( param( 'blog_shortdesc', 'string', NULL ) !== NULL )
 		{	// Description:
 			$this->set_from_Request( 'shortdesc' );
@@ -532,14 +628,13 @@ class Blog extends DataObject
 
 		if( in_array( 'pings', $groups ) )
 		{ // we want to load the ping checkboxes:
-			$blog_ping_plugins = param( 'blog_ping_plugins', 'array/string', array() );
+			$blog_ping_plugins = param( 'blog_ping_plugins', 'array:string', array() );
 			$blog_ping_plugins = array_unique($blog_ping_plugins);
 			$this->set_setting('ping_plugins', implode(',', $blog_ping_plugins));
 		}
 
 		if( in_array( 'authors', $groups ) )
-		{ // we want to load the multiple authors params
-			$this->set( 'advanced_perms',  param( 'advanced_perms', 'integer', 0 ) );
+		{ // we want to load the workflow & permissions params
 			$this->set_setting( 'use_workflow',  param( 'blog_use_workflow', 'integer', 0 ) );
 		}
 
@@ -558,12 +653,11 @@ class Blog extends DataObject
 
 		if( in_array( 'features', $groups ) )
 		{ // we want to load the workflow checkboxes:
-			$this->set_setting( 'allow_html_post', param( 'allow_html_post', 'integer', 0 ) );
-
 			$this->set_setting( 'enable_goto_blog', param( 'enable_goto_blog', 'string', NULL ) );
 
 			$this->set_setting( 'editing_goto_blog', param( 'editing_goto_blog', 'string', NULL ) );
 
+			$this->set_setting( 'default_post_type', param( 'default_post_type', 'integer', 0 ) );
 			$this->set_setting( 'default_post_status', param( 'default_post_status', 'string', NULL ) );
 
 			$this->set_setting( 'post_categories', param( 'post_categories', 'string', NULL ) );
@@ -587,42 +681,6 @@ class Blog extends DataObject
 			$this->set_setting( 'timestamp_min_duration', param_duration( 'timestamp_min_duration' ) );
 			$this->set_setting( 'timestamp_max', param( 'timestamp_max', 'string', '' ) );
 			$this->set_setting( 'timestamp_max_duration', param_duration( 'timestamp_max_duration' ) );
-
-			// Location
-			$location_country = param( 'location_country', 'string', 'hidden' );
-			$location_region = param( 'location_region', 'string', 'hidden' );
-			$location_subregion = param( 'location_subregion', 'string', 'hidden' );
-			$location_city = param( 'location_city', 'string', 'hidden' );
-
-			if( $location_city == 'required' )
-			{	// If city is required - all location fields also are required
-				$location_country = $location_region = $location_subregion = 'required';
-			}
-			else if( $location_subregion == 'required' )
-			{	// If subregion is required - country & region fields also are required
-				$location_country = $location_region = 'required';
-			}
-			else if( $location_region == 'required' )
-			{	// If region is required - country field also is required
-				$location_country = 'required';
-			}
-
-			$this->set_setting( 'location_country', $location_country );
-			$this->set_setting( 'location_region', $location_region );
-			$this->set_setting( 'location_subregion', $location_subregion );
-			$this->set_setting( 'location_city', $location_city );
-
-			// Set to show Latitude & Longitude params for this blog items
-			$this->set_setting( 'show_location_coordinates', param( 'show_location_coordinates', 'integer', 0 ) );
-
-			// Load custom double & varchar fields
-			$custom_field_names = array();
-			$this->load_custom_fields( 'double', $update_cascade_query, $custom_field_names );
-			$this->load_custom_fields( 'varchar', $update_cascade_query, $custom_field_names );
-			if( !empty( $update_cascade_query ) )
-			{ // Some custom fields were deleted and these fields must be deleted from the item settings table also. Add required query.
-				$this->CollectionSettings->add_update_cascade( $update_cascade_query );
-			}
 
 			// call modules update_collection_features on this blog
 			modules_call_method( 'update_collection_features', array( 'edited_Blog' => & $this ) );
@@ -667,8 +725,8 @@ class Blog extends DataObject
 			$this->set_setting( 'allow_subscriptions', param( 'allow_subscriptions', 'integer', 0 ) );
 			$this->set_setting( 'allow_item_subscriptions', param( 'allow_item_subscriptions', 'integer', 0 ) );
 
-			// Public blog list
-			$this->set( 'in_bloglist', param( 'blog_in_bloglist',   'integer', 0 ) );
+			// Tracking unread content
+			$this->set_setting( 'track_unread_content', param( 'track_unread_content', 'integer', 0 ) );
 
 			$this->set_setting( 'image_size_user_list', param( 'image_size_user_list', 'string' ) );
 			$this->set_setting( 'image_size_messaging', param( 'image_size_messaging', 'string' ) );
@@ -685,11 +743,12 @@ class Blog extends DataObject
 			{ // Only admin can set this setting to 'Public'
 				$this->set_setting( 'new_feedback_status', $new_feedback_status );
 			}
-			$this->set_setting( 'disable_comments_bypost', param( 'disable_comments_bypost', 'string', '0' ) );
 			$this->set_setting( 'allow_anon_url', param( 'allow_anon_url', 'string', '0' ) );
 			$this->set_setting( 'allow_html_comment', param( 'allow_html_comment', 'string', '0' ) );
 			$this->set_setting( 'allow_attachments', param( 'allow_attachments', 'string', 'registered' ) );
 			$this->set_setting( 'max_attachments', param( 'max_attachments', 'integer', '' ) );
+			$this->set_setting( 'autocomplete_usernames', param( 'autocomplete_usernames', 'integer', '' ) );
+			$this->set_setting( 'display_rating_summary', param( 'display_rating_summary', 'string', '0' ) );
 			$this->set_setting( 'allow_rating_items', param( 'allow_rating_items', 'string', 'never' ) );
 			$this->set_setting( 'rating_question', param( 'rating_question', 'text' ) );
 			$this->set_setting( 'allow_rating_comment_helpfulness', param( 'allow_rating_comment_helpfulness', 'string', '0' ) );
@@ -775,7 +834,10 @@ class Blog extends DataObject
 
 			if( in_array( 'login', $groups ) )
 			{ // we want to load the login params:
-				$this->set_setting( 'in_skin_login', param( 'in_skin_login', 'integer', 0 ) );
+				if( ! get_setting_Blog( 'login_blog_ID' ) )
+				{ // Update this only when no blog is defined for login/registration
+					$this->set_setting( 'in_skin_login', param( 'in_skin_login', 'integer', 0 ) );
+				}
 				$this->set_setting( 'in_skin_editing', param( 'in_skin_editing', 'integer', 0 ) );
 			}
 
@@ -809,7 +871,7 @@ class Blog extends DataObject
 
 			if( ($blog_urlname = param( 'blog_urlname', 'string', NULL )) !== NULL )
 			{	// check urlname
-				if( param_check_not_empty( 'blog_urlname', T_('You must provide an URL blog name!') ) )
+				if( param_check_not_empty( 'blog_urlname', T_('You must provide an URL collection name!') ) )
 				{
 					if( ! preg_match( '|^[A-Za-z0-9\-]+$|', $blog_urlname ) )
 					{
@@ -823,7 +885,7 @@ class Blog extends DataObject
 															AND blog_ID <> '.$this->ID
 														) )
 					{ // urlname is already in use
-						param_error( 'blog_urlname', sprintf( T_('The URL name %s is already in use by another blog. Please choose another name.'), "&laquo;$blog_urlname&raquo;" ) );
+						param_error( 'blog_urlname', sprintf( T_('The URL name %s is already in use by another collection. Please choose another name.'), "&laquo;$blog_urlname&raquo;" ) );
 						$blog_urlname = NULL;
 					}
 
@@ -851,8 +913,8 @@ class Blog extends DataObject
 					else
 					{ // It is not valid absolute URL, don't update the blog 'siteurl' to avoid errors
 						$allow_new_access_type = false; // If site url is not updated do not allow access_type update either
-						$Messages->add( T_('Blog Folder URL').': '.sprintf( T_('%s is an invalid absolute URL'), '&laquo;'.evo_htmlspecialchars( $blog_siteurl ).'&raquo;' )
-							.' '.T_('You must provide an absolute URL (starting with <code>http://</code> or <code>https://</code>) and it must contain at least one \'/\' sign after the domain name!'), 'error' );
+						$Messages->add( T_('Collection Folder URL').': '.sprintf( T_('%s is an invalid absolute URL'), '&laquo;'.htmlspecialchars( $blog_siteurl ).'&raquo;' )
+							.'. '.T_('You must provide an absolute URL (starting with <code>http://</code> or <code>https://</code>) and it must contain at least one \'/\' sign after the domain name!'), 'error' );
 					}
 				}
 				elseif( $access_type == 'relative' )
@@ -890,7 +952,7 @@ class Blog extends DataObject
 				// fp> TODO: better interface
 				if( $aggregate_coll_IDs != '*' && !preg_match( '#^([0-9]+(,[0-9]+)*)?$#', $aggregate_coll_IDs ) )
 				{
-					param_error( 'aggregate_coll_IDs', T_('Invalid aggregate blog ID list!') );
+					param_error( 'aggregate_coll_IDs', T_('Invalid aggregate collection ID list!') );
 				}
 				$this->set_setting( 'aggregate_coll_IDs', $aggregate_coll_IDs );
 			}
@@ -950,6 +1012,7 @@ class Blog extends DataObject
 								if( $error = validate_dirname($subdir) )
 								{
 									param_error( 'blog_media_subdir', T_('Media dir location').': '.$error );
+									syslog_insert( sprintf( 'Invalid name is detected for folder %s', '<b>'.$subdir.'</b>' ), 'warning', 'file' );
 								}
 							}
 						}
@@ -965,89 +1028,6 @@ class Blog extends DataObject
 		}
 
 		return ! param_errors_detected();
-	}
-
-
-	/**
-	 * Load blog custom fields setting
-	 *
-	 * @param string custom field types
-	 * @param string query to remove deleted custom field settings from items
-	 * @param array Field names array is used to check the diplicates
-	 */
-	function load_custom_fields( $type, & $update_cascade_query, & $field_names )
-	{
-		global $DB, $Messages;
-
-		$empty_title_error = false; // use this to display empty title fields error message only ones
-		$real_custom_field_count = 0; // custom fields count after update
-		$custom_field_count = param( 'count_custom_'.$type, 'integer', 0 ); // all custom fields count ( contains even deleted fields )
-		$delted_field_guids = param( 'deleted_custom_'.$type, 'string', '' );
-		if( ( $custom_field_count == 0 ) && empty( $delted_field_guids ) )
-		{ // There were no custom field add, update or delete request so no need for further checks
-			return;
-		}
-		$deleted_custom_fields = explode( ',', $delted_field_guids );
-
-		// Update custom fields
-		for( $i = 1 ; $i <= $custom_field_count; $i++ )
-		{
-			$custom_field_guid = param( 'custom_'.$type.'_guid'.$i, '/^[a-z0-9\-_]+$/', NULL );
-			if( in_array( $custom_field_guid, $deleted_custom_fields ) )
-			{ // This field was deleted, don't neeed to update
-				continue;
-			}
-
-			$real_custom_field_count++;
-			$custom_field_value = param( 'custom_'.$type.'_'.$i, 'string', NULL );
-			$custom_field_name = param( 'custom_'.$type.'_fname'.$i, '/^[a-z0-9\-_]+$/', NULL );
-			if( empty( $custom_field_value ) )
-			{ // Field title can't be emtpy
-				if( !$empty_title_error )
-				{ // This message was not displayed yet
-					$Messages->add( T_('Custom field titles can\'t be empty!') );
-					$empty_title_error = true;
-				}
-			}
-			elseif( empty( $custom_field_name ) )
-			{ // Field identical name can't be emtpy
-				$Messages->add( sprintf( T_('Please enter name for custom field "%s"'), $custom_field_value ) );
-			}
-			elseif( in_array( $custom_field_name, $field_names ) )
-			{ // Field name must be identical
-				$Messages->add( sprintf( T_('The field name "%s" is not identical, please use another.'), $custom_field_value ) );
-			}
-			else
-			{ // Add new identical field name
-				$field_names[] = $custom_field_name;
-			}
-			// Update field settings
-			$this->set_setting( 'custom_'.$type.$real_custom_field_count, $custom_field_guid );
-			$this->set_setting( 'custom_'.$type.'_'.$custom_field_guid, $custom_field_value );
-			$this->set_setting( 'custom_fname_'.$custom_field_guid, $custom_field_name );
-		}
-
-		// get custom field count from db
-		$db_custom_field_count = $this->get_setting( 'count_custom_'.$type );
-		for( $i = $real_custom_field_count + 1 ; $i <= $db_custom_field_count; $i++ )
-		{ // delete not wanted settings by index
-			$this->delete_setting( 'custom_'.$type.$i );
-		}
-		foreach( $deleted_custom_fields as $delted_field_guid )
-		{ // delete not wanted settings by guid
-			if( empty( $update_cascade_query ) )
-			{
-				$update_cascade_query = 'DELETE FROM T_items__item_settings WHERE iset_name = "custom_'.$type.'_'.$delted_field_guid.'"';
-			}
-			else
-			{
-				$update_cascade_query .= ' OR iset_name = "custom_'.$type.'_'.$delted_field_guid.'"';
-			}
-			$this->delete_setting( 'custom_fname_'.$delted_field_guid );
-			$this->delete_setting( 'custom_'.$type.'_'.$delted_field_guid );
-		}
-		// update number of custom fields
-		$this->set_setting( 'count_custom_'.$type, $real_custom_field_count );
 	}
 
 
@@ -1125,7 +1105,6 @@ class Blog extends DataObject
 		{
 			case 'ID':
 			case 'allowtrackbacks':
-			case 'blog_in_bloglist':
 				return $this->set_param( $parname, 'number', $parvalue, $make_null );
 				break;
 
@@ -1147,13 +1126,21 @@ class Blog extends DataObject
 
 		switch( $this->access_type )
 		{
+			case 'baseurl':
 			case 'default':
 				// Access through index.php: match absolute URL or call default blog
 				if( ( $Settings->get('default_blog_ID') == $this->ID )
 					|| preg_match( '#^https?://#', $this->siteurl ) )
 				{ // Safety check! We only do that kind of linking if this is really the default blog...
 					// or if we call by absolute URL
-					return $baseurl.$this->siteurl.'index.php';
+					if( $this->access_type == 'default' )
+					{
+						return $baseurl.$this->siteurl.'index.php';
+					}
+					else
+					{
+						return $baseurl.$this->siteurl;
+					}
 				}
 				// ... otherwise, we add the blog ID:
 
@@ -1161,8 +1148,12 @@ class Blog extends DataObject
 				// Access through index.php + blog qualifier
 				return $baseurl.$this->siteurl.'index.php?blog='.$this->ID;
 
+			case 'extrabase':
+				// We want to use extra path on base url, use the blog urlname:
+				return $baseurl.$this->siteurl.$this->urlname.'/';
+
 			case 'extrapath':
-				// We want to use extra path info, use the blog urlname:
+				// We want to use extra path on index.php, use the blog urlname:
 				return $baseurl.$this->siteurl.'index.php/'.$this->urlname.'/';
 
 			case 'relative':
@@ -1190,12 +1181,19 @@ class Blog extends DataObject
 
 		switch( $this->access_type )
 		{
+			case 'baseurl':
+				return $baseurl.$this->siteurl;
+
 			case 'default':
 			case 'index.php':
 				return $baseurl.$this->siteurl.'index.php/';
 
+			case 'extrabase':
+				// We want to use extra path on base url, use the blog urlname:
+				return $baseurl.$this->siteurl.$this->urlname.'/';
+
 			case 'extrapath':
-				// We want to use extra path info, use the blog urlname:
+				// We want to use extra path on index.php, use the blog urlname:
 				return $baseurl.$this->siteurl.'index.php/'.$this->urlname.'/';
 
 			case 'relative':
@@ -1599,19 +1597,19 @@ class Blog extends DataObject
 
 		if( empty( $this->default_cat_ID ) )
 		{	// If the previous query has returned NULL
-			if( $Settings->get('chapter_ordering') == 'manual' )
+			if( $this->get_setting('category_ordering') == 'manual' )
 			{	// Manual order
 				$select_temp_order = ', IF( cat_order IS NULL, 999999999, cat_order ) AS temp_order';
-				$sql_order = ' ORDER BY temp_order';
+				$sql_order = ' ORDER BY cat_parent_ID, temp_order';
 			}
 			else
 			{	// Alphabetic order
 				$select_temp_order = '';
-				$sql_order = ' ORDER BY cat_name';
+				$sql_order = ' ORDER BY cat_parent_ID, cat_name';
 			}
 			$sql = 'SELECT cat_ID'.$select_temp_order.'
 			          FROM T_categories
-			         WHERE cat_blog_ID = '.$this->ID
+			         WHERE cat_blog_ID = '.$this->ID.' AND cat_meta = 0'
 			         .$sql_order
 			         .' LIMIT 1';
 
@@ -1834,11 +1832,22 @@ class Blog extends DataObject
 	 * Get a param.
 	 *
 	 * @param string Parameter name
+	 * @param array Additional params
 	 * @return false|string The value as string or false in case of error (e.g. media dir is disabled).
 	 */
-	function get( $parname )
+	function get( $parname, $params = array() )
 	{
 		global $xmlsrv_url, $baseurl, $basepath, $media_url, $current_User, $Settings, $Debuglog;
+
+		if( gettype( $params ) != 'array' )
+		{
+			debug_die('wrong $params');
+		}
+
+		$params = array_merge( array(
+				'glue'       => '&amp;',
+				'url_suffix' => '', // additional url params are appended at the end
+			), $params );
 
 		switch( $parname )
 		{
@@ -1889,21 +1898,56 @@ class Blog extends DataObject
 				$disp_param = 'msgform';
 				break;
 
+			case 'profileurl':
+				$disp_param = 'profile';
+				break;
+
+			case 'avatarurl':
+				$disp_param = 'avatar';
+				break;
+
+			case 'pwdchangeurl':
+				$disp_param = 'pwdchange';
+				break;
+
+			case 'userprefsurl':
+				$disp_param = 'userprefs';
+				break;
+
+			case 'subsurl':
+				$disp_param = 'subs';
+				$params['url_suffix'] .= '#subs';
+				break;
+
 			case 'userurl':
-				return url_add_param( $this->gen_blogurl(), 'disp=user' );
+				$disp_param = 'user';
+				break;
 
 			case 'usersurl':
 				$disp_param = 'users';
 				break;
 
 			case 'loginurl':
-				return url_add_param( $this->gen_blogurl(), 'disp=login' );
-
-			case 'subsurl':
-				return url_add_param( $this->gen_blogurl(), 'disp=subs#subs' );
+			case 'registerurl':
+			case 'lostpasswordurl':
+			case 'activateinfourl':
+			case 'access_requires_loginurl':
+				$url_disp = str_replace( 'url', '', $parname );
+				if( $login_Blog = & get_setting_Blog( 'login_blog_ID' ) )
+				{ // Use special blog for login/register actions if it is defined in general settings
+					return url_add_param( $login_Blog->gen_blogurl(), 'disp='.$url_disp, $params['glue'] );
+				}
+				else
+				{ // Use login/register urls of this blog
+					return url_add_param( $this->gen_blogurl(), 'disp='.$url_disp, $params['glue'] );
+				}
 
 			case 'threadsurl':
 				$disp_param = 'threads';
+				break;
+
+			case 'messagesurl':
+				$disp_param = 'messages';
 				break;
 
 			case 'contactsurl':
@@ -1995,16 +2039,30 @@ class Blog extends DataObject
 				return parent::get( $parname );
 		}
 
-		if( !empty( $disp_param ) )
+		if( ! empty( $disp_param ) )
 		{ // Get url depending on value of param 'disp'
-			if( $this->get_setting( 'front_disp' ) == $disp_param )
+			$this_Blog = & $this;
+			if( in_array( $disp_param, array( 'threads', 'messages', 'contacts', 'msgform', 'user', 'profile', 'avatar', 'pwdchange', 'userprefs', 'subs' ) ) )
+			{ // Check if we can use this blog for messaging actions or we should use spec blog
+				if( $msg_Blog = & get_setting_Blog( 'msg_blog_ID' ) )
+				{ // Use special blog for messaging actions if it is defined in general settings
+					$this_Blog = & $msg_Blog;
+				}
+			}
+
+			if( $this_Blog->get_setting( 'front_disp' ) == $disp_param )
 			{ // Get home page of this blog because front page displays current disp
-				return $this->gen_blogurl( 'default' );
+				$url = $this_Blog->gen_blogurl( 'default' );
 			}
 			else
 			{ // Add disp param to blog's url when current disp is not a front page
-				return url_add_param( $this->gen_blogurl(), 'disp='.$disp_param );
+				$url = url_add_param( $this_Blog->gen_blogurl(), 'disp='.$disp_param, $params['glue'] );
 			}
+			if( ! empty( $params['url_suffix'] ) )
+			{ // Append url suffix
+				$url = url_add_param( $url, $params['url_suffix'], $params['glue'] );
+			}
+			return $url;
 		}
 	}
 
@@ -2180,12 +2238,12 @@ class Blog extends DataObject
 	}
 
 
- 	/**
+	/**
 	 * Insert into the DB
 	 */
 	function dbinsert()
 	{
-		global $DB, $Plugins;
+		global $DB, $Plugins, $Settings;
 
 		$DB->begin();
 
@@ -2198,8 +2256,29 @@ class Blog extends DataObject
 			$this->set( 'order', $max_order + 1 );
 		}
 
+		$set_default_blog_ID = isset( $Settings );
+		if( get_setting_Blog( 'default_blog_ID' ) )
+		{ // Don't set a default blog if it is already defined and the blog exists in DB
+			$set_default_blog_ID = false;
+		}
+
+		if( $set_default_blog_ID )
+		{ // No default blog yet, Use for first base url as "Default collection on baseurl"
+			$this->set( 'access_type', 'baseurl' );
+		}
+		else
+		{ // For all other blogs use "Extra path on index.php"
+			$this->set( 'access_type', 'extrapath' );
+		}
+
 		if( parent::dbinsert() )
 		{
+			if( $set_default_blog_ID )
+			{ // Use this blog as default because it is probably first created
+				$Settings->set( 'default_blog_ID', $this->ID );
+				$Settings->dbupdate();
+			}
+
 			if( isset( $this->CollectionSettings ) )
 			{
 				// So far all settings have been saved to collection #0 !
@@ -2375,126 +2454,16 @@ class Blog extends DataObject
 	/**
 	 * Delete a blog and dependencies from database
 	 *
-	 * Includes WAY TOO MANY requests because we try to be compatible with MySQL 3.23, bleh!
-	 *
 	 * @param boolean true if you want to echo progress
 	 */
 	function dbdelete( $echo = false )
 	{
-		global $DB, $Messages, $Plugins;
+		global $DB, $Messages, $Plugins, $Settings;
 
 		// Try to obtain some serious time to do some serious processing (5 minutes)
 		set_max_execution_time(300);
 
-		// Note: No need to localize the status messages...
-		if( $echo ) echo '<p>MySQL 3.23 compatibility mode!';
-
-		$DB->begin();
-
-		// Get list of cats that are going to be deleted (3.23)
-		if( $echo ) echo '<br />Getting category list to delete... ';
-		$cat_list = implode( ',', $DB->get_col( "
-				SELECT cat_ID
-				  FROM T_categories
-				 WHERE cat_blog_ID = $this->ID" ) );
-
-		if( empty( $cat_list ) )
-		{ // There are no cats to delete
-			if( $echo ) echo 'None!';
-		}
-		else
-		{ // Delete the cats & dependencies
-
-			// Get list of posts that are going to be deleted (3.23)
-			if( $echo ) echo '<br />Getting post list to delete... ';
-			$post_list = implode( ',', $DB->get_col( "
-					SELECT postcat_post_ID
-					  FROM T_postcats
-					 WHERE postcat_cat_ID IN ($cat_list)" ) );
-
-			if( empty( $post_list ) )
-			{ // There are no posts to delete
-				if( $echo ) echo 'None!';
-			}
-			else
-			{ // Delete the posts & dependencies
-
-				// TODO: There's also a constraint FK_post_parent_ID..
-
-				// Delete postcats
-				if( $echo ) echo '<br />Deleting post-categories... ';
-				$ret = $DB->query(	"DELETE FROM T_postcats
-															WHERE postcat_cat_ID IN ($cat_list)" );
-				if( $echo ) printf( '(%d rows)', $ret );
-				$Messages->add( T_('Deleted post-categories'), 'success' );
-
-				// Delete comments
-				if( $echo ) echo '<br />Deleting comments on blog\'s posts... ';
-				$comments_list = implode( ',', $DB->get_col( "
-						SELECT comment_ID
-						  FROM T_comments
-						 WHERE comment_item_ID IN ($post_list)" ) );
-				if( !empty( $comments_list ) )
-				{	// Delete the comments & dependencies
-					$DB->query( "DELETE FROM T_comments__votes
-												WHERE cmvt_cmt_ID IN ($comments_list)" );
-					$ret = $DB->query( "DELETE FROM T_comments
-															WHERE comment_item_ID IN ($post_list)" );
-				}
-				else
-				{	// No comments in this blog
-					$ret = 0;
-				}
-				if( $echo ) printf( '(%d rows)', $ret );
-				$Messages->add( T_('Deleted comments on blog\'s posts'), 'success' );
-
-
-				// Delete posts
-				if( $echo ) echo '<br />Deleting blog\'s posts... ';
-				$DB->query( "DELETE FROM T_items__itemtag
-											WHERE itag_itm_ID IN ($post_list)" );
-				$DB->query( "DELETE FROM T_items__item_settings
-											WHERE iset_item_ID IN ($post_list)" );
-				$DB->query( "DELETE FROM T_items__prerendering
-											WHERE itpr_itm_ID IN ($post_list)" );
-				$DB->query( "DELETE FROM T_items__status
-											WHERE pst_ID IN ($post_list)" );
-				$DB->query( "DELETE FROM T_items__subscriptions
-											WHERE isub_item_ID IN ($post_list)" );
-				$DB->query( "DELETE FROM T_items__version
-											WHERE iver_itm_ID IN ($post_list)" );
-				$DB->query( "DELETE l, lv FROM T_links AS l
-					 LEFT JOIN T_links__vote AS lv ON lv.lvot_link_ID = l.link_ID
-					WHERE l.link_itm_ID IN ($post_list)" );
-				$DB->query( "DELETE FROM T_slug
-											WHERE slug_itm_ID IN ($post_list)" );
-				$ret = $DB->query( "DELETE FROM T_items__item
-															WHERE post_ID IN ($post_list)" );
-				if( $echo ) printf( '(%d rows)', $ret );
-				$Messages->add( T_('Deleted blog\'s posts'), 'success' );
-
-			} // / are there posts?
-
-			// Delete categories
-			if( $echo ) echo '<br />Deleting blog\'s categories... ';
-			$ret = $DB->query( "DELETE FROM T_categories
-													WHERE cat_blog_ID = $this->ID" );
-			if( $echo ) printf( '(%d rows)', $ret );
-			$Messages->add( T_('Deleted blog\'s categories'), 'success' );
-
-		} // / are there cats?
-
-		// Delete the blog cache folder - try to delete even if cache is disabled
-		load_class( '_core/model/_pagecache.class.php', 'PageCache' );
-		$PageCache = new PageCache( $this );
-		$PageCache->cache_delete();
-
-		// Delete the blog files/links from DB
-		$DB->query( 'DELETE f, l, lv FROM T_files AS f
-			LEFT JOIN T_links l ON l.link_file_ID = f.file_ID
-			LEFT JOIN T_links__vote AS lv ON lv.lvot_link_ID = l.link_ID
-			    WHERE f.file_root_type = "collection"
-			      AND f.file_root_ID = '.$this->ID );
+		if( $echo ) echo 'Delete collection with all of it\'s content... ';
 
 		// remember ID, because parent method resets it to 0
 		$old_ID = $this->ID;
@@ -2502,13 +2471,14 @@ class Blog extends DataObject
 		// Delete main (blog) object:
 		if( ! parent::dbdelete() )
 		{
-			$DB->rollback();
-
 			$Messages->add( 'Blog has not been deleted.', 'error' );
 			return false;
 		}
 
-		$DB->commit();
+		// Delete the blog cache folder - try to delete even if cache is disabled
+		load_class( '_core/model/_pagecache.class.php', 'PageCache' );
+		$PageCache = new PageCache( $this );
+		$PageCache->cache_delete();
 
 		// Delete blog's media folder recursively
 		$FileRootCache = & get_FileRootCache();
@@ -2521,7 +2491,30 @@ class Blog extends DataObject
 		$Plugins->trigger_event( 'AfterCollectionDelete', $params = array( 'Blog' => & $this ) );
 		$this->ID = 0;
 
+		if( isset( $Settings ) )
+		{ // Reset settings related to the deleted blog
+			if( $Settings->get( 'default_blog_ID' ) == $old_ID )
+			{ // Reset default blog ID
+				$Settings->set( 'default_blog_ID', 0 );
+			}
+			if( $Settings->get( 'info_blog_ID' ) == $old_ID )
+			{ // Reset info blog ID
+				$Settings->set( 'info_blog_ID', 0 );
+			}
+			if( $Settings->get( 'login_blog_ID' ) == $old_ID )
+			{ // Reset login blog ID
+				$Settings->set( 'login_blog_ID', 0 );
+			}
+			if( $Settings->get( 'msg_blog_ID' ) == $old_ID )
+			{ // Reset messaging blog ID
+				$Settings->set( 'msg_blog_ID', 0 );
+			}
+			$Settings->dbupdate();
+		}
+
 		if( $echo ) echo '<br />Done.</p>';
+
+		return true;
 	}
 
 
@@ -2820,23 +2813,50 @@ class Blog extends DataObject
 			return NULL;
 		}
 
-		$r = url_add_param( $this->get('msgformurl'), 'recipient_id='.$this->owner_user_ID );
+		$blog_contact_url = $this->get( 'msgformurl', array(
+				'url_suffix' => 'recipient_id='.$owner_User->ID
+			) );
 
 		if( $with_redirect )
 		{
 			if( $owner_User->get_msgform_possibility() != 'login' )
 			{
-				$r .= '&amp;redirect_to='
+				$blog_contact_url = url_add_param( $blog_contact_url, 'redirect_to='
 					// The URL will be made relative on the next page (this is needed when $htsrv_url is on another domain! -- multiblog situation )
-					.rawurlencode( regenerate_url('','','','&') );
+					.rawurlencode( regenerate_url('','','','&') ) );
 			}
 			else
-			{
-				$r .= '&amp;redirect_to='.rawurlencode( url_add_param( $this->gen_blogurl(), 'disp=msgform&recipient_id='.$owner_User->ID, '&' ) );
+			{ // no email option - try to log in and send private message (only registered users can send PM)
+				$blog_contact_url = url_add_param( $blog_contact_url, 'redirect_to='.rawurlencode( url_add_param( $this->gen_blogurl(), 'disp=msgform', '&' ) ) );
 			}
 		}
 
-		return $r;
+		return $blog_contact_url;
+	}
+
+
+	/**
+	 * Get aggregate coll IDs
+	 *
+	 * @return integer|NULL|array
+	 *  - current blog ID if no aggreation
+	 *  - NULL if aggreagation of all blogs
+	 *  - array of aggreagated blog IDs
+	 */
+	function get_aggregate_coll_IDs()
+	{
+		$aggregate_coll_IDs = $this->get_setting( 'aggregate_coll_IDs' );
+
+		if( empty( $aggregate_coll_IDs ) || $aggregate_coll_IDs == '-' )
+		{ // No aggregation, return only the current blog:
+			return $this->ID;
+		}
+		elseif( $aggregate_coll_IDs == '*' )
+		{ // Aggregation of all blogs
+			return NULL;
+		}
+
+		return explode( ',', $aggregate_coll_IDs );
 	}
 
 
@@ -2849,22 +2869,32 @@ class Blog extends DataObject
 	 *  - other: as present in DB
 	 *
 	 * @param string SQL field name
+	 * @param string Force current blog setting 'aggregate_coll_IDs'
 	 * @return string e.g. "$field IN (1,5)". It will return " 1 ", when all blogs/cats are aggregated.
 	 */
-	function get_sql_where_aggregate_coll_IDs( $field )
+	function get_sql_where_aggregate_coll_IDs( $field, $force_coll_IDs = NULL )
 	{
-		$aggregate_coll_IDs = $this->get_setting('aggregate_coll_IDs');
-		if( empty( $aggregate_coll_IDs ) )
-		{	// We only want posts from the current blog:
-			return " $field = $this->ID ";
-		}
-		elseif( $aggregate_coll_IDs == '*' )
-		{
-			return " 1 ";
+		if( is_null( $force_coll_IDs ) )
+		{ // Use collection IDs from blog setting
+			$aggregate_coll_IDs = $this->get_setting( 'aggregate_coll_IDs' );
 		}
 		else
-		{	// We are aggregating posts from several blogs:
-			return " $field IN ($aggregate_coll_IDs)";
+		{ // Force collections IDs
+			$aggregate_coll_IDs = $force_coll_IDs;
+		}
+
+		if( empty( $aggregate_coll_IDs ) || $aggregate_coll_IDs == '-' )
+		{ // We only want posts from the current blog:
+			return ' '.$field.' = '.$this->ID.' ';
+		}
+		elseif( $aggregate_coll_IDs == '*' )
+		{ // We are aggregating all blogs
+			return ' 1 ';
+		}
+		else
+		{ // We are aggregating posts from several blogs:
+			global $DB;
+			return ' '.$field.' IN ( '.$DB->quote( explode( ',', $aggregate_coll_IDs ) ).' )';
 		}
 	}
 
@@ -2881,10 +2911,50 @@ class Blog extends DataObject
 					  				INNER JOIN T_postcats ON itag_itm_ID = postcat_post_ID
 					  				INNER JOIN T_categories ON postcat_cat_ID = cat_ID
 						 WHERE cat_blog_ID = '.$this->ID.'
-						 	 AND tag_name = '.$DB->quote( evo_strtolower($tag) );
+						 	 AND tag_name = '.$DB->quote( utf8_strtolower($tag) );
 
 		return $DB->get_var( $sql );
 
+	}
+
+
+	/**
+	 * Get the number of items in this collection
+	 * Note: It counts all items with any kind of visibility status
+	 *
+	 * @return integer the number of items
+	 */
+	function get_number_of_items()
+	{
+		global $DB;
+
+		$sql = 'SELECT COUNT(post_ID)
+				FROM T_items__item WHERE post_main_cat_ID IN (
+					SELECT cat_ID FROM T_categories
+					WHERE cat_blog_ID = '.$this->ID.' )';
+
+		return $DB->get_var( $sql );
+	}
+
+
+	/**
+	 * Get the number of comments in this collection
+	 * Note: It counts all comments with any kind of visibility status, except comments in trash
+	 *
+	 * @return integer the number of not recycled comments
+	 */
+	function get_number_of_comments()
+	{
+		global $DB;
+
+		$sql = 'SELECT COUNT(comment_ID)
+				FROM T_comments
+				LEFT JOIN T_items__item ON comment_item_ID = post_ID
+				WHERE comment_status != "trash" AND post_main_cat_ID IN (
+					SELECT cat_ID FROM T_categories
+					WHERE cat_blog_ID = '.$this->ID.' )';
+
+		return $DB->get_var( $sql );
 	}
 
 
@@ -3052,46 +3122,77 @@ class Blog extends DataObject
 
 
 	/**
-	 * Country is visible for defining
+	 * Check if current user has access to this blog depending on settings
 	 *
-	 * @return boolean TRUE if users can define a country for posts of current blog
+	 * @return boolean TRUE on success
 	 */
-	function country_visible()
+	function check_access()
 	{
-		return $this->get_setting( 'location_country' ) != 'hidden' || $this->region_visible();
-	}
+		global $Messages, $skins_path, $ads_current_skin_path, $ReqURL, $disp;
 
+		$allow_access = $this->get_setting( 'allow_access' );
 
-	/**
-	 * Region is visible for defining
-	 *
-	 * @return boolean TRUE if users can define a region for posts of current blog
-	 */
-	function region_visible()
-	{
-		return $this->get_setting( 'location_region' ) != 'hidden' || $this->subregion_visible();
-	}
+		if( $allow_access == 'public' )
+		{ // Everyone has an access to this blog
+			return true;
+		}
 
+		if( in_array( $disp, array( 'login', 'lostpassword', 'register', 'help', 'msgform', 'access_requires_login' ) ) )
+		{ // Don't restrict these pages
+			return true;
+		}
 
-	/**
-	 * Subregion is visible for defining
-	 *
-	 * @return boolean TRUE if users can define a subregion for posts of current blog
-	 */
-	function subregion_visible()
-	{
-		return $this->get_setting( 'location_subregion' ) != 'hidden' || $this->city_visible();
-	}
+		/**
+		 * $allow_access == 'users' || 'members'
+		 */
+		if( ! is_logged_in() )
+		{ // Only logged in users have an access to this blog
+			$Messages->add( T_( 'You need to log in before you can access this collection.' ), 'error' );
 
+			// Redirect to login form on "access_requires_login.main.php"
+			header_redirect( get_login_url( 'no access to blog', NULL, false, NULL, 'access_requires_loginurl' ), 302 );
+			// will have exited
+		}
+		elseif( $allow_access == 'members' )
+		{ // Check if current user is member of this blog
+			global $current_User;
 
-	/**
-	 * City is visible for defining
-	 *
-	 * @return boolean TRUE if users can define a city for posts of current blog
-	 */
-	function city_visible()
-	{
-		return $this->get_setting( 'location_city' ) != 'hidden';
+			if( ! $current_User->check_perm( 'blog_ismember', 'view', false, $this->ID ) )
+			{ // Force disp to restrict access for current user
+				$disp = 'access_denied';
+
+				$Messages->add( T_( 'You are not a member of this collection, therefore you are not allowed to access it.' ), 'error' );
+
+				$blog_skin_ID = $this->get_skin_ID();
+				if( ! empty( $blog_skin_ID ) )
+				{
+					// Use 'access_denied.main.php' instead of real template when current User is not a member of this blog
+					$template = 'access_denied.main.php';
+
+					$SkinCache = & get_SkinCache();
+					$Skin = & $SkinCache->get_by_ID( $blog_skin_ID );
+					$ads_current_skin_path = $skins_path.$Skin->folder.'/';
+					$skin_template_name = $ads_current_skin_path.$template;
+					if( file_exists( $skin_template_name ) )
+					{ // Display a special template of this skin
+						require $skin_template_name;
+						exit;
+					}
+					elseif( $global_template_name = skin_fallback_path( $template ) )
+					{ // Display a special template for all skins
+						require $global_template_name;
+						exit;
+					}
+					else
+					{ // Display a template from site skins
+						siteskin_include( $template );
+						exit;
+					}
+				}
+			}
+		}
+
+		return true;
 	}
 
 
@@ -3170,8 +3271,15 @@ class Blog extends DataObject
 				{ // The media folder was not used before, create the new media folder
 					return $this->get_media_dir( true );
 				}
-				if( ! @rename( $old_media_dir, $new_media_dir ) )
-				{ // Some error on renaming
+				if( copy_r( $old_media_dir, $new_media_dir, '', array( '_evocache', '.evocache' ) ) )
+				{ // The file have been copied to new folder successfully
+					if( ! rmdir_r( $old_media_dir ) )
+					{ // Display a warning if old folder could not be deleted
+						$Messages->add( sprintf( T_('Could not delete the old media folder "%s", please try to delete it manually.'), '<b>'.$old_media_dir.'</b>' ), 'warning' );
+					}
+				}
+				else
+				{ // Display a message if some error on copying
 					$Messages->add( sprintf( T_('Could not move the media folder content from "%s" to the new "%s" location.'), '<b>'.$old_media_dir.'</b>', '<b>'.$new_media_dir.'</b>' ), 'error' );
 					return false;
 				}

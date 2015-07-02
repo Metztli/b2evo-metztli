@@ -8,8 +8,8 @@
  * For example: /blogs/index.php?disp=postidx
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  */
@@ -25,71 +25,35 @@ skin_widget( array(
 		'block_start' => '',
 		'block_end' => '',
 		'block_display_title' => false,
-		'disp_search_options' => 1,
+		'disp_search_options' => 0,
+		'search_class' => 'extended_search_form',
 		'use_search_disp' => 1,
 		'button' => T_('Search')
 	) );
 // ---------------------------------- END OF COMMON LINKS ---------------------------------
 
-// Display message if no post:
-display_if_empty( array(
-				'before'      => '<p class="msg_nothing" style="margin: 2em 0">',
-				'after'       => '</p>',
-				'msg_empty'   => T_('Sorry, we could not find anything matching your request, please try to broaden your search.'),
-			) );
-
-if( isset( $MainList ) && $MainList->result_num_rows > 0 )
-{
-
-// -------------------- PREV/NEXT PAGE LINKS (POST LIST MODE) --------------------
-mainlist_page_links( array(
-		'block_start' => '<div class="navigation">',
-		'block_end' => '</div>',
-		'prev_text' => '&lt;&lt;',
-		'next_text' => '&gt;&gt;',
+// Display the search result
+search_result_block( array(
+		'title_prefix_post'     => T_('Topic: '),
+		'title_prefix_comment'  => T_('Reply: '),
+		'title_prefix_category' => T_('Forum: '),
+		'title_prefix_tag'      => T_('Tag: '),
+		/*'block_start' => '<table class="bForums" width="100%" cellspacing="1" cellpadding="2" border="0">
+			<tr>
+				<th>'.T_('Title').'</th>
+				<th width="60%">'.T_('Content').'</th>
+				<th>'.T_('Author').'</th>
+				</tr>',
+		'block_end'   => '</table>',
+		'row_start'   => '<tr>',
+		'row_end'     => '</tr>',
+		'cell_title_start'   => '<td class="left">',
+		'cell_title_end'     => '</td>',
+		'cell_author_start'  => '<td class="left">',
+		'cell_author_end'    => '</td>',
+		'cell_author_empty'  => '&nbsp;',
+		'cell_content_start' => '<td class="left row2">',
+		'cell_content_end'   => '</td>',*/
 	) );
-// ------------------------- END OF PREV/NEXT PAGE LINKS -------------------------
-
-?>
-<table class="bForums bPosts" width="100%" cellspacing="1" cellpadding="2" border="0">
-	<tr>
-		<th>&nbsp;</th>
-		<th><?php echo T_('Forum'); ?></th>
-		<th><?php echo T_('Topics'); ?></th>
-		<th width="70"><?php echo T_('Replies'); ?></th>
-		<th width="100"><?php echo T_('Author'); ?></th>
-		<th width="160"><?php echo T_('Last Post'); ?></th>
-	</tr>
-<?php
-// --------------------------------- START OF POSTS -------------------------------------
-while( mainlist_get_item() )
-{	// For each blog post, do everything below up to the closing curly brace "}"
-
-	// ---------------------- ITEM BLOCK INCLUDED HERE ------------------------
-	skin_include( '_item_list.inc.php', array(
-			'content_mode'         => 'auto', // 'auto' will auto select depending on $disp-detail
-			'image_size'           => 'fit-400x320',
-			'display_column_forum' => true,
-			'item_link_type'       => 'permalink', // Use 'permalink' to display title of all posts as links (used especially for intro-cat posts)
-		) );
-	// ----------------------------END ITEM BLOCK  ----------------------------
-
-} // ---------------------------------- END OF POSTS ------------------------------------
-
-?>
-</table>
-<?php
-
-
-// -------------------- PREV/NEXT PAGE LINKS (POST LIST MODE) --------------------
-mainlist_page_links( array(
-		'block_start' => '<div class="navigation">',
-		'block_end' => '</div>',
-		'prev_text' => '&lt;&lt;',
-		'next_text' => '&gt;&gt;',
-	) );
-// ------------------------- END OF PREV/NEXT PAGE LINKS -------------------------
-
-}
 
 ?>

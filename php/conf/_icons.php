@@ -13,7 +13,7 @@ if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page direct
  * @param string icon name/key
  * @return array array( 'file' (relative to $rsc_path/$rsc_url), 'alt', 'size', 'class', 'rollover' )
  */
-function get_icon_info($name)
+function get_icon_info( $name )
 {
 	/*
 	 * dh> Idea:
@@ -25,7 +25,7 @@ function get_icon_info($name)
 	}
 	*/
 
-	switch($name)
+	switch( $name )
 	{
 		case 'pixel': return array(
 			'alt'  => '',
@@ -89,7 +89,7 @@ function get_icon_info($name)
 			'legend'=>T_('Delete'),
 			'size' => array( 16, 16 ),
 			'xy' => array( 128, 16 ),
-			'glyph' => 'remove-sign',
+			'glyph' => 'trash',
 			'fa' => 'trash-o'
 		);
 
@@ -99,14 +99,14 @@ function get_icon_info($name)
 			'size' => array( 15, 15 ),
 			'xy' => array( 64, 0 ),
 			'glyph' => 'chevron-up',
-			'fa' => 'chevron-up'
+			'fa' => 'sort-amount-asc'
 		);
 		case 'descending': return array(    // descending sort order
 			'alt'  => /* TRANS: Short (alt tag) for "Descending" */ T_('D'),
 			'size' => array( 15, 15 ),
 			'xy' => array( 80, 0 ),
 			'glyph' => 'chevron-down',
-			'fa' => 'chevron-down'
+			'fa' => 'sort-amount-desc'
 		);
 
 		case 'sort_desc_on': return array(
@@ -265,14 +265,24 @@ function get_icon_info($name)
 			'legend' => T_('Expand'),
 			'size' => array( 15, 15 ),
 			'xy' => array( 96, 0 ),
-			'fa' => 'minus-square-o'
+			'glyph' => 'expand',
+			'toggle-glyph' => 'collapse-down',
+			'size-glyph' => array( 10 ),
+			'fa' => 'caret-right',
+			'toggle-fa' => 'caret-down',
+			'size-fa' => array( 3 )
 		);
 		case 'collapse': return array(
 			'alt'  => '-',
 			'legend' => T_('Collapse'),
 			'size' => array( 15, 15 ),
 			'xy' => array( 112, 0 ),
-			'fa' => 'plus-square-o'
+			'glyph' => 'collapse-down',
+			'toggle-glyph' => 'expand',
+			'size-glyph' => array( 10 ),
+			'fa' => 'caret-down',
+			'toggle-fa' => 'caret-right',
+			'size-fa' => array( 3 )
 		);
 
 		case 'filters_show': return array(
@@ -280,14 +290,18 @@ function get_icon_info($name)
 			'size' => array( 15, 15 ),
 			'xy' => array( 64, 16 ),
 			'glyph' => 'expand',
-			'fa' => 'caret-right'
+			'toggle-glyph' => 'collapse-down',
+			'fa' => 'caret-right',
+			'toggle-fa' => 'caret-down'
 		);
 		case 'filters_hide': return array(
 			'alt'  => T_('Collapse'),
 			'size' => array( 15, 15 ),
 			'xy' => array( 80, 16 ),
 			'glyph' => 'collapse-down',
-			'fa' => 'caret-down'
+			'toggle-glyph' => 'expand',
+			'fa' => 'caret-down',
+			'toggle-fa' => 'caret-right'
 		);
 
 		case 'refresh': return array(
@@ -324,7 +338,8 @@ function get_icon_info($name)
 			'size' => array( 16, 16 ),
 			'xy' => array( 64, 176 ),
 			'glyph' => 'exclamation-sign',
-			'fa' => 'exclamation-circle'
+			'fa' => 'exclamation-circle',
+			'color' => '#d9534f',
 		);
 		case 'warning_yellow': return array(
 			'alt'  => T_('Warning'),
@@ -358,13 +373,21 @@ function get_icon_info($name)
 			'fa' => 'home'
 		);
 
+		case 'puzzle': return array(
+			'rollover' => true,
+			'alt'  => T_('New'),
+			'size' => array( 16, 15 ),
+			'xy' => array( 0, 64 ),
+			'glyph' => 'plus',
+			'fa' => 'puzzle-piece'
+		);
 		case 'new': return array(
 			'rollover' => true,
 			'alt'  => T_('New'),
 			'size' => array( 16, 15 ),
 			'xy' => array( 0, 64 ),
 			'glyph' => 'plus',
-			'fa' => 'plus-square fa-x-rollover-orange'
+			'fa' => 'plus-square'
 		);
 		case 'compose_new': return array( // for composing a new message or text
 			'rollover' => true,
@@ -372,7 +395,15 @@ function get_icon_info($name)
 			'size' => array( 16, 15 ),
 			'xy' => array( 0, 64 ),
 			'glyph' => 'pencil',			// May need something else
-			'fa' => 'pencil fa-x-rollover-orange'
+			'fa' => 'pencil'
+		);
+		case 'contacts': return array(
+			'rollover' => true,
+			'alt'  => T_('Contacts'),
+			'size' => array( 0 ,0 ),
+			'xy' => array( 0, 0 ),
+			'glyph' => 'user',
+			'fa' => 'users'
 		);
 		case 'copy': return array(
 			'alt'  => T_('Copy'),
@@ -380,6 +411,13 @@ function get_icon_info($name)
 			'xy' => array( 32, 64 ),
 			'glyph' => 'share',
 			'fa' => 'copy'
+		);
+		case 'choose': return array(
+			'alt'  => T_('Choose'),
+			'size' => array( 16, 13 ),
+			'xy' => array( 64, 64 ),
+			'glyph' => 'hand-up',
+			'fa' => 'hand-o-up'
 		);
 		case 'edit': return array(
 			'alt'  => T_('Edit'),
@@ -400,7 +438,7 @@ function get_icon_info($name)
 			'size' => array( 16, 13 ),
 			'xy' => array( 64, 64 ),
 			'glyph' => 'pencil',
-			'fa' => 'list-alt'
+			'fa' => 'edit'
 		);
 		case 'publish': return array(
 			'alt'  => T_('Publish'),
@@ -425,29 +463,46 @@ function get_icon_info($name)
 			'glyph' => 'screenshot',
 			'fa' => 'bullseye'
 		);
-		case 'delete': return array(
-			'alt'  => T_('Del'),
-			'legend' => T_('Delete'),
+		case 'recycle': return array(
+			'alt'  => T_('Recycle'),
+			'legend' => T_('Recycle'),
 			'size' => array( 15, 15 ),
 			'xy' => array( 128, 64 ),
 			'glyph' => 'remove',
 			'fa' => 'recycle fa-x-rollover-red-light'
+		);
+		case 'delete': return array(
+			'alt'  => /* TRANS: Delete */ T_('Del'),
+			'legend' => T_('Delete'),
+			'size' => array( 15, 15 ),
+			'xy' => array( 128, 64 ),
+			'glyph' => 'remove',
+			'color' => '#F00',
+			'fa' => 'trash-o'
+		);
+		case 'remove': return array(
+			'alt' => /* TRANS: Remove */ T_('Rem'),
+			'size' => array( 13, 13 ),
+			'xy' => array( 144, 64 ),
+			'glyph' => 'remove-sign',
+			'fa' => 'times-circle',
+			'color' => '#F00',
+		);
+		case 'xross': return array(	// Do NOT use for actions. Use only to indicate Mismatch
+			'alt' => 'x',
+			'size' => array( 13, 13 ),
+			'xy' => array( 144, 64 ),
+			'glyph' => 'remove-sign',
+			'fa' => 'times-circle',
+			'color' => '#F00',
 		);
 		case 'close': return array(
 			'rollover' => true,
 			'alt' => T_('Close'),
 			'size' => array( 14, 14 ),
 			'xy' => array( 0, 224 ),
-			'glyph' => 'remove-sign',
-			'fa' => 'times-circle fa-x-rollover-red-light'
-		);
-		case 'xross': return array(
-			'alt'  => T_('Del'),
-			'size' => array( 13, 13 ),
-			'xy' => array( 144, 64 ),
-			'glyph' => 'remove',
-			'fa' => 'times',
-			'color' => '#F00',
+			'glyph' => 'remove', // Looks like "X"
+			'fa' => 'close fa-x-rollover-red-light'
 		);
 
 		case 'bullet_black':
@@ -462,8 +517,15 @@ function get_icon_info($name)
 			'alt'  => '&nbsp;',
 			'size' => array( 9, 9 ),
 			'xy' => array( 112, 176 ),
-			'fa' => 'circle-o',
+			'fa' => 'circle-thin',
 			'color' => '#000'
+		);
+		case 'bullet_empty_grey': return array(
+			'alt'  => '&nbsp;',
+			'size' => array( 9, 9 ),
+			'xy' => array( 112, 176 ),
+			'fa' => 'circle-thin',
+			'color' => '#999'
 		);
 		case 'bullet_blue': return array(
 			'alt'  => '&bull;',
@@ -491,7 +553,7 @@ function get_icon_info($name)
 			'size' => array( 9, 9 ),
 			'xy' => array( 80, 192 ),
 			'fa' => 'circle',
-			'color' => '#0F0'
+			'color' => '#5cb85c'
 		);
 		case 'bullet_yellow': return array(
 			'alt'  => '&bull;',
@@ -511,7 +573,7 @@ function get_icon_info($name)
 			'alt'  => '&bull;',
 			'size' => array( 9, 9 ),
 			'xy' => array( 0, 192 ),
-			'fa' => 'circle-o',
+			'fa' => 'circle-thin',
 			'color' => '#CCC'
 		);
 		case 'bullet_magenta': return array(
@@ -527,14 +589,14 @@ function get_icon_info($name)
 			'legend' => T_('Activate'),
 			'size' => array( 16, 16 ),
 			'xy' => array( 64, 96 ),
-			'fa' => 'retweet'
+			'fa' => 'toggle-on'
 		);
 		case 'deactivate': return array(
 			'alt'  => /* TRANS: Short for "Deactivate(d)" */ T_('Deact.'),
 			'legend' => T_('Deactivate'),
 			'size' => array( 16, 16 ),
 			'xy' => array( 80, 96 ),
-			'fa' => 'retweet'
+			'fa' => 'toggle-off'
 		);
 		case 'enabled': return array(
 			'alt'  => /* TRANS: Short for "Activate(d)" */ T_('Act.'),
@@ -549,7 +611,7 @@ function get_icon_info($name)
 			'legend' => T_('Deactivated'),
 			'size' => array( 9, 9 ),
 			'xy' => array( 112, 176 ),
-			'fa' => 'circle-o',
+			'fa' => 'circle-thin',
 			'color' => '#000'
 		);
 
@@ -557,19 +619,20 @@ function get_icon_info($name)
 			/* TRANS: Link + space => verb (not noun) */ 'alt' => T_('Link '),
 			'size' => array( 14, 14 ),
 			'xy' => array( 96, 96 ),
-			'glyph' => 'resize-small',
-			'fa' => 'link'
+			'glyph' => 'paperclip',
+			'fa' => 'paperclip'
 		);
 		case 'unlink': return array(
 			'alt'  => T_('Unlink'),
 			'size' => array( 14, 14 ),
 			'xy' => array( 112, 96 ),
 			'glyph' => 'resize-full',
-			'fa' => 'unlink'
+			'fa' => 'unlink',
+			'color' => '#F00',
 		);
 
 		case 'parent_childto_arrow': return array(
-			'alt'  => T_('+'),
+			'alt'  => '+',
 			'size' => array( 14, 16 ),
 			'xy' => array( 16, 128 )
 		);
@@ -580,6 +643,13 @@ function get_icon_info($name)
 			'xy' => array( 32, 128 ),
 			'glyph' => 'question-sign',
 			'fa' => 'question-circle'
+		);
+		case 'question': return array(
+			'size' => array( 16, 16 ),
+			'xy' => array( 32, 128 ),
+			'glyph' => 'question-sign',
+			'fa' => 'question-circle',
+			'color' => '#F90'
 		);
 		case 'manual': return array(
 			'rollover' => true,
@@ -805,6 +875,13 @@ function get_icon_info($name)
 			'fa' => 'square-o'
 		);
 
+		case 'filter': return array(
+			'alt'  => T_('Filter'),
+			'size' => array( 1, 1 ),
+			'xy' => array( 0, 0 ),
+			'glyph' => 'filter',
+			'fa' => 'filter'
+		);
 		case 'reset_filters': return array(
 			'alt'  => T_('Reset all filters'),
 			'size' => array( 16, 16 ),
@@ -973,7 +1050,7 @@ function get_icon_info($name)
 			'glyph' => 'plus-sign',
 			'fa' => 'plus-circle'
 		);
-		case 'remove': return array(
+		case 'minus': return array(
 			'alt'  => T_('Remove'),
 			'size' => array( 16, 16 ),
 			'xy' => array( 48, 224 ),
@@ -1006,6 +1083,12 @@ function get_icon_info($name)
 			'size' => array( 14, 16 ),
 			'xy' => array( 96, 224 ),
 			'fa' => 'rotate-right'
+		);
+		case 'crop': return array(
+			'alt'  => T_('Crop this picture'),
+			'size' => array( 16, 16 ),
+			'xy' => array( 0, 80 ),
+			'fa' => 'crop'
 		);
 
 		case 'notification': return array(
@@ -1053,7 +1136,102 @@ function get_icon_info($name)
 			'size' => array( 10, 16 ),
 			'xy' => array( 0, 32 ),
 			'fa' => 'flash',
-			'color' => '#efc944'
+			'color' => '#ff9900'
+		);
+
+		case 'page_cache_on': return array(
+			'alt'  => '',
+			'size' => array( 16, 16 ),
+			'xy' => array( 128, 32 ),
+			'fa' => 'file-code-o',
+			'color' => '#F90'
+		);
+		case 'page_cache_off': return array(
+			'alt'  => '',
+			'size' => array( 16, 16 ),
+			'xy' => array( 128, 32 ),
+			'fa' => 'bolt',
+			'color' => '#000'
+		);
+
+		case 'block_cache_on': return array(
+			'alt'  => '',
+			'size' => array( 16, 16 ),
+			'xy' => array( 128, 32 ),
+			'fa' => 'cube',
+			'color' => '#F90'
+		);
+		case 'block_cache_off': return array(
+			'alt'  => '',
+			'size' => array( 10, 16 ),
+			'xy' => array( 0, 32 ),
+			'fa' => 'bolt',
+			'color' => '#000'
+		);
+		case 'block_cache_disabled': return array(
+			'alt'  => '',
+			'size' => array( 10, 16 ),
+			'xy' => array( 0, 32 ),
+			'fa' => 'bolt',
+			'color' => '#CCC'
+		);
+		case 'block_cache_denied': return array(
+			'alt'  => '',
+			'size' => array( 10, 16 ),
+			'xy' => array( 0, 32 ),
+			'fa' => 'bolt',
+			'color' => '#ff9900'
+		);
+
+		case 'star_on': return array(
+			'alt' => '',
+			'size' => array( 16, 16 ),
+			'xy' => array( 0, 208 ),
+			'fa' => 'star',
+			'color' => '#FC0'
+		);
+		case 'star_off': return array(
+			'alt' => '',
+			'size' => array( 16, 16 ),
+			'xy' => array( 16, 208 ),
+			'fa' => 'star-o',
+			'color' => '#999'
+		);
+
+		case 'elevate': return array(		// Elevate comment into a post
+			'alt' => '',
+			'size' => array( 0, 0 ),
+			'xy' => array( 0, 0 ),
+			'fa' => 'newspaper-o',
+		);
+
+		case 'coll_default': return array(	// Default collection to display
+			'alt' => '',
+			'size' => array( 0, 0 ),
+			'xy' => array( 0, 0 ),
+			'fa' => 'compass',
+			'color' => '#F90'
+		);
+		case 'coll_info': return array(		// Collection used for info pages
+			'alt' => '',
+			'size' => array( 0, 0 ),
+			'xy' => array( 0, 0 ),
+			'fa' => 'info-circle',
+			'color' => '#F90'
+		);
+		case 'coll_login': return array(		// Collection used for login
+			'alt' => '',
+			'size' => array( 0, 0 ),
+			'xy' => array( 0, 0 ),
+			'fa' => 'check-circle',
+			'color' => '#F90'
+		);
+		case 'coll_message': return array(	// Collection used for messaging
+			'alt' => '',
+			'size' => array( 0, 0 ),
+			'xy' => array( 0, 0 ),
+			'fa' => 'comments',
+			'color' => '#F90'
 		);
 	}
 }

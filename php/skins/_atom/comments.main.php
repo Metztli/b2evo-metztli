@@ -3,14 +3,12 @@
  * This template generates an Atom feed for the requested blog's latest comments
  *
  * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://b2evolution.net/man/skin-structure}
+ * {@link http://b2evolution.net/man/skin-development-primer}
  *
  * See {@link http://atompub.org/2005/07/11/draft-ietf-atompub-format-10.html}
  *
  * @package evoskins
  * @subpackage atom
- *
- * @version $Id: comments.main.php 3157 2013-03-06 04:34:44Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -82,7 +80,7 @@ echo '<?xml version="1.0" encoding="'.$io_charset.'"?'.'>';
 	<id><?php $Blog->disp( 'comments_atom_url', 'xmlattr' ) /* TODO: may need a regenerate_url() */ ?></id>
 	<generator uri="http://b2evolution.net/" version="<?php echo $app_version ?>"><?php echo $app_name ?></generator>
 	<updated><?php echo gmdate('Y-m-d\TH:i:s\Z'); ?></updated>
-	<?php while( $Comment = & $CommentList->get_next() )
+	<?php while( $Comment = & $CommentList->get_next( false ) )
 	{	/* Loop through comments: */ ?>
 	<entry>
 		<title type="text"><?php

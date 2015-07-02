@@ -7,8 +7,6 @@
  *
  * @package skins
  * @subpackage forums
- *
- * @version $Id: _skin.class.php 13 2011-10-24 23:42:53Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -89,6 +87,42 @@ class forums_Skin extends Skin
 					'defaultvalue' => 1,
 					'type' => 'checkbox',
 				),
+				'colorbox_vote_post' => array(
+					'label' => T_('Voting on Post Images'),
+					'note' => T_('Check this to enable AJAX voting buttons in the colorbox zoom view'),
+					'defaultvalue' => 1,
+					'type' => 'checkbox',
+				),
+				'colorbox_vote_post_numbers' => array(
+					'label' => T_('Display Votes'),
+					'note' => T_('Check to display number of likes and dislikes'),
+					'defaultvalue' => 1,
+					'type' => 'checkbox',
+				),
+				'colorbox_vote_comment' => array(
+					'label' => T_('Voting on Comment Images'),
+					'note' => T_('Check this to enable AJAX voting buttons in the colorbox zoom view'),
+					'defaultvalue' => 1,
+					'type' => 'checkbox',
+				),
+				'colorbox_vote_comment_numbers' => array(
+					'label' => T_('Display Votes'),
+					'note' => T_('Check to display number of likes and dislikes'),
+					'defaultvalue' => 1,
+					'type' => 'checkbox',
+				),
+				'colorbox_vote_user' => array(
+					'label' => T_('Voting on User Images'),
+					'note' => T_('Check this to enable AJAX voting buttons in the colorbox zoom view'),
+					'defaultvalue' => 1,
+					'type' => 'checkbox',
+				),
+				'colorbox_vote_user_numbers' => array(
+					'label' => T_('Display Votes'),
+					'note' => T_('Check to display number of likes and dislikes'),
+					'defaultvalue' => 1,
+					'type' => 'checkbox',
+				),
 				'gender_colored' => array(
 					'label' => T_('Display gender'),
 					'note' => T_('Use colored usernames to differentiate men & women.'),
@@ -101,13 +135,19 @@ class forums_Skin extends Skin
 					'defaultvalue' => 0,
 					'type' => 'checkbox',
 				),
+				'autocomplete_usernames' => array(
+					'label' => T_('Autocomplete usernames'),
+					'note' => T_('Check to enable auto-completion of usernames entered after a "@" sign in the comment forms'),
+					'defaultvalue' => 1,
+					'type' => 'checkbox',
+				),
 				'banner_public' => array(
 					'label' => T_('"Public" banner'),
 					'note' => T_('Display banner for "Public" posts (posts & comments)'),
 					'defaultvalue' => 1,
 					'type' => 'checkbox',
 				),
-			), parent::get_param_definitions( $params )	);
+			), parent::get_param_definitions( $params ) );
 
 		return $r;
 	}
@@ -188,8 +228,8 @@ class forums_Skin extends Skin
 	 */
 	function display_breadcrumbs( $chapter_ID, $params = array() )
 	{
-		if( $chapter_ID <= 0 )
-		{ // No selected chapter, or an exlcude chapter filter is set
+		if( $chapter_ID == 0 )
+		{	// No selected chapter
 			return;
 		}
 
@@ -291,68 +331,26 @@ class forums_Skin extends Skin
 			return $skin_chapters_cache;
 		}
 
+		$ChapterCache = & get_ChapterCache();
+		$ChapterCache->reveal_children( $Blog->ID, true );
+
 		$skin_chapters_cache = array();
 		if( $parent_ID > 0 )
-		{	// Get children of selected chapter
-			global $DB, $Settings;
-
-			$skin_chapters_cache = array();
-
-			$SQL = new SQL();
-			$SQL->SELECT( 'cat_ID' );
-			$SQL->FROM( 'T_categories' );
-			$SQL->WHERE( 'cat_parent_ID = '.$DB->quote( $parent_ID ) );
-			if( $Settings->get( 'chapter_ordering' ) == 'manual' )
-			{	// Manual order
-				$SQL->ORDER_BY( 'cat_meta, cat_order' );
-			}
-			else
-			{	// Alphabetic order
-				$SQL->ORDER_BY( 'cat_meta, cat_name' );
-			}
-
+		{ // Get children of selected chapter
 			$ChapterCache = & get_ChapterCache();
-
-			$categories = $DB->get_results( $SQL->get() );
-			foreach( $categories as $c => $category )
-			{
-				$skin_chapters_cache[$c] = $ChapterCache->get_by_ID( $category->cat_ID );
-				// Get children
-				$SQL->WHERE( 'cat_parent_ID = '.$DB->quote( $category->cat_ID ) );
-				$children = $DB->get_results( $SQL->get() );
-				foreach( $children as $child_Chapter )
-				{
-					$skin_chapters_cache[$c]->children[$child_Chapter->cat_ID] = $ChapterCache->get_by_ID( $child_Chapter->cat_ID );
-				}
+			$parent_Chapter = $ChapterCache->get_by_ID( $parent_ID );
+			$parent_Chapter->sort_children();
+			foreach( $parent_Chapter->children as $Chapter )
+			{ // Iterate through childrens or the given parent Chapter
+				$skin_chapters_cache[$Chapter->ID] = $ChapterCache->get_by_ID( $Chapter->ID );
+				$Chapter->sort_children();
 			}
 		}
 		else
-		{	// Get the all chapters for current blog
-			$ChapterCache = & get_ChapterCache();
-			$ChapterCache->load_subset( $Blog->ID );
-
-			if( isset( $ChapterCache->subset_cache[ $Blog->ID ] ) )
+		{ // Get the current blog root chapters
+			foreach( $ChapterCache->subset_root_cats[ $Blog->ID] as $Chapter )
 			{
-				$skin_chapters_cache = $ChapterCache->subset_cache[ $Blog->ID ];
-
-				foreach( $skin_chapters_cache as $c => $Chapter )
-				{ // Init children
-					foreach( $skin_chapters_cache as $child_Chapter )
-					{ // Again go through all chapters to find a children for current chapter
-						if( $Chapter->ID == $child_Chapter->get( 'parent_ID' ) )
-						{ // Add to array of children
-							$skin_chapters_cache[$c]->children[$child_Chapter->ID] = $child_Chapter;
-						}
-					}
-				}
-
-				foreach( $skin_chapters_cache as $c => $Chapter )
-				{ // Unset the child chapters
-					if( $Chapter->get( 'parent_ID' ) )
-					{
-						unset( $skin_chapters_cache[$c] );
-					}
-				}
+				$skin_chapters_cache[$Chapter->ID] = $Chapter;
 			}
 		}
 
@@ -382,6 +380,51 @@ class forums_Skin extends Skin
 
 		// Don't display status banner
 		return false;
+	}
+
+
+	/**
+	 * Those templates are used for example by the messaging screens.
+	 */
+	function get_template( $name )
+	{
+		switch( $name )
+		{
+			case 'Form':
+				// Default Form settings:
+				return array(
+					'layout'            => 'fieldset',
+					'title_fmt'         => '<span style="float:right">$global_icons$</span><h2>$title$</h2>'."\n",
+					'no_title_fmt'      => '<span style="float:right">$global_icons$</span>'."\n",
+					'formstart'         => '<table class="bForums" width="100%" cellspacing="1" cellpadding="2" border="0">',
+					'formend'           => '</table>',
+					'fieldset_begin'    => '<tr><th colspan="3" $fieldset_attribs$>$fieldset_title$</th></tr>',
+					'fieldset_end'      => '',
+					'fieldstart'        => '<tr $ID$>',
+					'fieldend'          => '</tr>',
+					'labelclass'        => '',
+					'labelstart'        => '<td class="row1 left">',
+					'labelend'          => '</td>',
+					'labelempty'        => '<td class="row1 left"></td>',
+					'inputstart'        => '<td class="row2 left">',
+					'inputend'          => '</td>',
+					'infostart'         => '<td class="row2 left" colspan="2">',
+					'infoend'           => '</td>',
+					'buttonsstart'      => '<tr><td colspan="2" class="buttons">',
+					'buttonsend'        => '</td></tr>',
+					'inline_labelstart' => '<td class="left" colspan="2">',
+					'inline_labelend'   => '</td>',
+					'inline_inputstart' => '',
+					'inline_inputend'   => '',
+					'customstart'       => '<tr><td colspan="2" class="custom_content">',
+					'customend'         => '</td></tr>',
+					'note_format'       => ' <span class="notes">%s</span>',
+				);
+
+			default:
+				// Delegate to parent class:
+				return parent::get_template( $name );
+		}
 	}
 }
 

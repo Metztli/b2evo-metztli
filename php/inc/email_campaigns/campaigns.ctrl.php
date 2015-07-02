@@ -3,24 +3,13 @@
  * This file implements the UI controller for browsing the email campaigns.
  *
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
- *
- * {@internal Open Source relicensing agreement:
- * Vegar BERG GULDAL grants Francois PLANQUE the right to license
- * Vegar BERG GULDAL's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}.
  *
  * @package admin
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE
- *
- * @version $Id: campaigns.ctrl.php 8039 2015-01-21 11:33:57Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -191,10 +180,11 @@ switch( $action )
 		$email_html = $edited_EmailCampaign->get( 'email_html' );
 
 		// Convert HTML to Plain Text
+		$email_text = preg_replace( '/<a[^>]+href="([^"]+)"[^>]*>[^<]*<\/a>/i', ' [ $1 ] ', $email_html );
 		$email_text = str_replace(
 			array( "\n", "\r", '</p><p>', '<p>',  '</p>', '<br>', '<br />', '<br/>' ),
 			array( '',   '',   "\n\n",    "\n\n", "\n\n", "\n",   "\n",     "\n" ),
-			$email_html );
+			$email_text );
 		$email_text = strip_tags( $email_text );
 
 		$edited_EmailCampaign->set( 'email_text', $email_text );
@@ -312,13 +302,13 @@ switch( $action )
 $AdminUI->breadcrumbpath_init( false );
 $AdminUI->breadcrumbpath_add( T_('Emails'), $admin_url.'?ctrl=campaigns' );
 $AdminUI->breadcrumbpath_add( T_('Campaigns'), $admin_url.'?ctrl=campaigns' );
+$AdminUI->set_page_manual_link( 'email-campaigns' );
 
 if( $action == 'edit' )
 { // Build special tabs in edit mode of the campaign
-	$AdminUI->set_path( 'email', $tab );
-	$AdminUI->clear_menu_entries( 'email' );
+	$AdminUI->set_path( 'email', 'campaigns', $tab );
 	$campaign_edit_modes = get_campaign_edit_modes( $ecmp_ID );
-	$AdminUI->add_menu_entries( 'email', $campaign_edit_modes );
+	$AdminUI->add_menu_entries( array( 'email', 'campaigns' ), $campaign_edit_modes );
 	$AdminUI->breadcrumbpath_add( T_('Edit campaign'), $admin_url.'?ctrl=campaigns&amp;action=edit&amp;ecmp_ID='.$ecmp_ID );
 
 	if( !empty( $campaign_edit_modes[ $tab ] ) )
@@ -360,7 +350,7 @@ switch( $action )
 			case 'html':
 				if( $edited_EmailCampaign->get( 'email_html' ) == '' && !param_errors_detected() )
 				{ // Set default value for HTML message
-					$edited_EmailCampaign->set( 'email_html', '<p>This is our newsletter...</p>' );
+					$edited_EmailCampaign->set( 'email_html', '<p>Hello $login$!</p>'."\r\n\r\n".'<p>This is our newsletter...</p>' );
 				}
 				$AdminUI->disp_view( 'email_campaigns/views/_campaigns_html.form.php' );
 				break;

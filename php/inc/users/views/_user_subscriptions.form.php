@@ -3,36 +3,14 @@
  * This file implements the UI view for the user subscriptions.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * The Evo Factory grants Francois PLANQUE the right to license
- * The Evo Factory's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- *
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package admin
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE
- *
- * @version $Id: _user_subscriptions.form.php 1498 2012-07-09 09:10:04Z yura $
  */
 
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -75,7 +53,8 @@ global $activate_account_reminder_threshold, $comment_moderation_reminder_thresh
 
 // Default params:
 $default_params = array(
-		'skin_form_params' => array(),
+		'skin_form_params'     => array(),
+		'form_class_user_subs' => 'bComment',
 	);
 
 if( isset( $params ) )
@@ -114,7 +93,7 @@ if( $is_admin_page )
 else
 {
 	$form_title = '';
-	$form_class = 'bComment';
+	$form_class = $params['form_class_user_subs'];
 	$checklist_params = array( 'wide' => true );
 }
 
@@ -177,13 +156,28 @@ $Form->begin_fieldset( T_('Communications') );
 	$has_messaging_perm = $edited_User->check_perm( 'perm_messaging', 'reply', false );
 	$messaging_options = array(	array( 'PM', 1, T_( 'private messages on this site.' ), ( ( $UserSettings->get( 'enable_PM', $edited_User->ID ) ) && ( $has_messaging_perm ) ), !$has_messaging_perm || $disabled ) );
 	$emails_msgform = $Settings->get( 'emails_msgform' );
+
+	$email_messaging_note = '';
+	if( ! $UserSettings->get( 'enable_email', $edited_User->ID ) &&
+			( $emails_msgform == 'userset' ||
+				( $emails_msgform == 'adminset' && $current_User->check_perm( 'users', 'edit' ) )
+			) )
+	{ // Check if user has own blog and display a red note
+		$user_own_blogs_count = $edited_User->get_own_blogs_count();
+		if( $user_own_blogs_count > 0 )
+		{
+			$email_messaging_note = '<span class="red">'.sprintf( T_('You are the owner of %d collections. Visitors of these collections will <b>always</b> be able to contact you through a message form if needed (your email address will NOT be revealed).'),
+				$user_own_blogs_count ).'</span>';
+		}
+	}
+
 	if( $emails_msgform == 'userset' )
 	{ // user can set
-		$messaging_options[] = array( 'email', 2, T_( 'emails through a message form that will NOT reveal my email address.' ), $UserSettings->get( 'enable_email', $edited_User->ID ), $disabled );
+		$messaging_options[] = array( 'email', 2, T_( 'emails through a message form that will NOT reveal my email address.' ), $UserSettings->get( 'enable_email', $edited_User->ID ), $disabled, $email_messaging_note );
 	}
 	elseif( ( $emails_msgform == 'adminset' ) && ( $current_User->check_perm( 'users', 'edit' ) ) )
 	{ // only administrator users can set and current User is in 'Administrators' group
-		$messaging_options[] = array( 'email', 2, T_( 'emails through a message form that will NOT reveal my email address. [Admin]' ), $UserSettings->get( 'enable_email', $edited_User->ID ), $disabled );
+		$messaging_options[] = array( 'email', 2, T_( 'emails through a message form that will NOT reveal my email address.' ).' ['.T_('Admin').']', $UserSettings->get( 'enable_email', $edited_User->ID ), $disabled, $email_messaging_note );
 	}
 	$Form->checklist( $messaging_options, 'edited_user_msgform', T_('Other users can send me'), false, false, $checklist_params );
 
@@ -206,6 +200,10 @@ $Form->begin_fieldset( T_('Notifications') );
 	if( $is_comment_moderator || $edited_User->check_role( 'comment_editor' ) )
 	{ // edited user has permission to edit other than his own comments at least in one status in one blog
 		$notify_options[] = array( 'edited_user_notify_cmt_moderation', 1, T_('a comment is posted and I have permissions to moderate it.'), $UserSettings->get( 'notify_comment_moderation', $edited_User->ID ), $disabled );
+	}
+	if( $edited_User->check_perm( 'admin', 'restricted', false ) )
+	{ // edited user has a permission to back-office
+		$notify_options[] = array( 'edited_user_notify_meta_comments', 1, T_('a meta comment is posted.'), $UserSettings->get( 'notify_meta_comments', $edited_User->ID ), $disabled );
 	}
 	if( $is_comment_moderator )
 	{ // edited user is comment moderator at least in one blog
@@ -328,7 +326,11 @@ else
 	}
 	if( $Settings->get( 'subscribe_new_blogs' ) == 'public' )
 	{	// If a subscribing to new blogs available only for the public blogs
-		$BlogCache_SQL->WHERE_and( 'blog_in_bloglist = 1' );
+		$BlogCache_SQL->WHERE_and( '( blog_in_bloglist IN ( "public", "logged" ) ) OR
+			( blog_in_bloglist = "member" AND (
+				( SELECT bloguser_user_ID FROM T_coll_user_perms WHERE bloguser_blog_ID = blog_ID AND bloguser_ismember = 1 AND bloguser_user_ID = '.$edited_User->ID.' ) OR
+				( SELECT bloggroup_group_ID FROM T_coll_group_perms WHERE bloggroup_blog_ID = blog_ID AND bloggroup_ismember = 1 AND bloggroup_group_ID = '.$edited_User->grp_ID.' )
+			) )' );
 	}
 	if( !empty( $subs_blog_IDs ) )
 	{	// Exclude the blogs from the list if user already is subscribed on them
@@ -393,7 +395,7 @@ $Form->begin_fieldset( T_('Individual post subscriptions') );
 		global $admin_url;
 		$ItemCache = & get_ItemCache();
 
-		$Form->info_field( '', T_( 'You are subscribed to be notified on all updates on the following posts' ).':', array( 'class' => 'info_full' ) );
+		$Form->info_field( '', T_( 'You are subscribed to be notified of all new comments on the following posts' ).':', array( 'class' => 'info_full' ) );
 		$blog_name = NULL;
 		foreach( $individual_posts_subs as $row )
 		{

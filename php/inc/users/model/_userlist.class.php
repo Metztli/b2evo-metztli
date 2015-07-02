@@ -3,22 +3,14 @@
  * This file implements the UserList class.
  *
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2004-2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
- * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package evocore
- *
- * @version $Id: _userlist.class.php 236 2011-11-08 16:08:22Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -46,7 +38,7 @@ class UserList extends DataObjectList2
 	 * Boolean var, TRUE - to memorize params (regenerate_url)
 	 */
 	var $memorize = true;
-	
+
 	/**
 	 * @var array Params to build query
 	 */
@@ -65,6 +57,7 @@ class UserList extends DataObjectList2
 	 *                    'join_city'    => true,
 	 *                    'keywords_fields'     - Fields of users table to search by keywords
 	 *                    'where_status_closed' - FALSE - to don't display closed users
+	 *                    'where_org_ID' - ID of organization
 	 */
 	function UserList(
 		$filterset_name = '', // Name to be used when saving the filterset (leave empty to use default)
@@ -88,7 +81,7 @@ class UserList extends DataObjectList2
 			$this->filterset_name = 'UserList_filters';
 		}
 
-		$this->order_param = $param_prefix.'order';
+		$this->order_param = 'results_'.$param_prefix.'order';
 		$this->page_param = $param_prefix.'paged';
 
 		// Initialize the default filter set:
@@ -98,6 +91,7 @@ class UserList extends DataObjectList2
 				'region'              => NULL,    // integer, Region ID
 				'subregion'           => NULL,    // integer, Subregion ID
 				'city'                => NULL,    // integer, City ID
+				'membersonly'         => false,   // boolean, Restrict by members
 				'keywords'            => NULL,    // string, Search words
 				'gender'              => NULL,    // string: 'M', 'F' or 'MF'
 				'status_activated'    => NULL,    // string: 'activated'
@@ -111,6 +105,9 @@ class UserList extends DataObjectList2
 				'userfields'          => array(), // Format of item: array( 'type' => type_ID, 'value' => search_words )
 				'order'               => '-D',    // Order
 				'users'               => array(), // User IDs
+				'level_min'           => NULL,    // integer, Level min
+				'level_max'           => NULL,    // integer, Level max
+				'org'                 => NULL,    // integer, Organization ID
 		) );
 	}
 
@@ -150,7 +147,7 @@ class UserList extends DataObjectList2
 		$this->page = param( $this->page_param, 'integer', 1 );
 
 		// Country
-		if( has_cross_country_restriction() )
+		if( has_cross_country_restriction( 'users', 'list' ) )
 		{ // In case of cross country restrionction we always have to set the ctry filter
 			// In this case we always have a logged in user
 			global $current_User;
@@ -169,6 +166,11 @@ class UserList extends DataObjectList2
 			 * Selected filter preset:
 			 */
 			memorize_param( 'filter_preset', 'string', $this->default_filters['filter_preset'], $this->filters['filter_preset'] );  // List of authors to restrict to
+
+			/*
+			 * Restrict by membersonly
+			 */
+			memorize_param( 'membersonly', 'integer', $this->default_filters['membersonly'], $this->filters['membersonly'] );
 
 			/*
 			 * Restrict by keywords
@@ -216,6 +218,11 @@ class UserList extends DataObjectList2
 			 */
 			memorize_param( 'age_min', 'integer', $this->default_filters['age_min'], $this->filters['age_min'] );
 			memorize_param( 'age_max', 'integer', $this->default_filters['age_max'], $this->filters['age_max'] );
+
+			/*
+			 * Restrict by organization
+			 */
+			memorize_param( 'org', 'integer', $this->default_filters['org'], $this->filters['org'] );
 
 			/*
 			 * Restrict by user fields
@@ -300,6 +307,11 @@ class UserList extends DataObjectList2
 		}
 
 		/*
+		 * Restrict by members
+		 */
+		$this->filters['membersonly'] = param( 'membersonly', 'boolean', $this->default_filters['membersonly'], true );
+
+		/*
 		 * Restrict by keywords
 		 */
 		$this->filters['keywords'] = param( 'keywords', 'string', $this->default_filters['keywords'], true );         // Search string
@@ -365,8 +377,8 @@ class UserList extends DataObjectList2
 		/*
 		 * Restrict by user fields
 		 */
-		$criteria_types = param( 'criteria_type', 'array/integer', array(), true );
-		$criteria_values = param( 'criteria_value', 'array/string', array(), true );
+		$criteria_types = param( 'criteria_type', 'array:integer', array(), true );
+		$criteria_values = param( 'criteria_value', 'array:string', array(), true );
 		$userfields = array();
 		foreach( $criteria_types as $c => $type )
 		{
@@ -376,6 +388,17 @@ class UserList extends DataObjectList2
 				);
 		}
 		$this->filters['userfields'] = $userfields;
+
+		/*
+		 * Restrict by level
+		 */
+		$this->filters['level_min'] = param( 'level_min', 'integer', $this->default_filters['level_min'], true );
+		$this->filters['level_max'] = param( 'level_max', 'integer', $this->default_filters['level_max'], true );
+
+		/*
+		 * Restrict by organization ID
+		 */
+		$this->filters['org'] = param( 'org', 'integer', $this->default_filters['org'], true );
 
 		// 'paged'
 		$this->page = param( $this->page_param, 'integer', 1, true );      // List page number in paged display
@@ -422,17 +445,24 @@ class UserList extends DataObjectList2
 		// If group == -1 we shouldn't group list by user group
 		$this->query_params['grouped'] = ( $this->filters['group'] != -1 );
 		$this->UserQuery = new UserQuery( $this->Cache->dbtablename, $this->Cache->dbprefix, $this->Cache->dbIDname, $this->query_params );
+
 		if( isset( $this->query_params['keywords_fields'] ) )
 		{ // Change keywords_fields from query params
 			$this->UserQuery->keywords_fields = $this->query_params['keywords_fields'];
 		}
+
 		if( isset( $this->query_params['where_status_closed'] ) )
 		{ // Limit by closed users
 			$this->UserQuery->where_status( 'closed', $this->query_params['where_status_closed'] );
 		}
 
+		if( isset( $this->query_params['where_org_ID'] ) )
+		{ // Select by organization ID
+			$this->UserQuery->where_organization( $this->query_params['where_org_ID'] );
+		}
+
 		// If browse users from different countries is restricted, then always filter to the current User country
-		if( has_cross_country_restriction() )
+		if( has_cross_country_restriction( 'users', 'list' ) )
 		{ // Browse users from different countries is restricted, filter to current user country
 			$ctry_filter = $current_User->ctry_ID;
 			// if country filtering was changed the qurey must be refreshed
@@ -446,6 +476,7 @@ class UserList extends DataObjectList2
 		/*
 		 * filtering stuff:
 		 */
+		$this->UserQuery->where_members( $this->filters['membersonly'] );
 		$this->UserQuery->where_keywords( $this->filters['keywords'] );
 		$this->UserQuery->where_gender( $this->filters['gender'] );
 		$this->UserQuery->where_status( $this->filters['status_activated'] );
@@ -459,6 +490,13 @@ class UserList extends DataObjectList2
 		$this->UserQuery->where_location( 'city', $this->filters['city'] );
 		$this->UserQuery->where_age_group( $this->filters['age_min'], $this->filters['age_max'] );
 		$this->UserQuery->where_userfields( $this->filters['userfields'] );
+		$this->UserQuery->where_level( $this->filters['level_min'], $this->filters['level_max'] );
+		$this->UserQuery->where_organization( $this->filters['org'] );
+		if( ! is_logged_in() )
+		{ // Restrict users by group level for anonymous users
+			global $Settings;
+			$this->UserQuery->where_group_level( $Settings->get('allow_anonymous_user_level_min'), $Settings->get('allow_anonymous_user_level_max') );
+		}
 
 		if( $this->get_order_field_list() != '' )
 		{
@@ -493,7 +531,7 @@ class UserList extends DataObjectList2
 		// This is more efficient than manipulating all fields at once.
 
 		// *** STEP 1 ***
-		$user_IDs = $this->filters['users'];
+		$user_IDs = isset( $this->filters['users'] ) ? $this->filters['users'] : array();
 		if( $this->refresh_query || // Some filters are changed
 		    $localtimenow - $Session->get( $this->filterset_name.'_refresh_time' ) > 7200 ) // Time has passed ( 2 hours )
 		{	// We should create new list of user IDs
@@ -622,7 +660,7 @@ class UserList extends DataObjectList2
 		 * @var User
 		 */
 		$prev_User = & $this->get_prevnext_User( $direction );
-		if( has_cross_country_restriction() )
+		if( has_cross_country_restriction( 'users', 'list' ) )
 		{ // If current user has cross country restriction, make sure we display only users from the same country
 			// Note: This may happen only if the user list filter was saved and the cross country restriction was changed after that
 			global $current_User;
@@ -636,7 +674,7 @@ class UserList extends DataObjectList2
 		{	// User exists in DB
 			$output = $before;
 			$identity_url = get_user_identity_url( $prev_User->ID, $user_tab );
-			$login = str_replace( '$login$', $prev_User->get_colored_login(), $text );
+			$login = str_replace( '$login$', $prev_User->get_colored_login( array( 'login_text' => 'name' ) ), $text );
 			if( !empty( $identity_url ) )
 			{	// User link is available
 				// Note: we don't want a bubble tip on navigation links

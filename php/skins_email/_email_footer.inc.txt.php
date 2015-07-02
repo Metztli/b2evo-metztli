@@ -5,21 +5,20 @@
  * For more info about email skins, see: http://b2evolution.net/man/themes-templates-skins/email-skins/
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
- *
- * @version $Id: _email_footer.inc.txt.php 7043 2014-07-02 08:35:45Z yura $
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
-global $admin_url, $baseurl, $app_name, $Settings;
+global $baseurl, $app_name, $Settings;
 
 // Default params:
 $params = array_merge( array(
 		'unsubscribe_text' => '',
+		'recipient_User'   => NULL,
 	), $params );
 
-$edit_notification_url = $admin_url.'?ctrl=user&user_tab=subs';
+$recipient_user_ID  = empty( $params['recipient_User'] ) ? NULL : $params['recipient_User']->ID;
 
 echo "\n\n-- \n";
 
@@ -29,7 +28,7 @@ echo sprintf( T_( 'Your login on %s is: $login$' ), $Settings->get( 'notificatio
 echo "\n\n";
 
 echo T_( 'Too many emails?' )."\n";
-echo sprintf( T_('To edit your email notification preferences, click here: %s'), $edit_notification_url );
+echo sprintf( T_('To edit your email notification preferences, click here: %s'), get_notifications_url( '&amp;', $recipient_user_ID ) );
 if( !empty( $params['unsubscribe_text'] ) )
 { // Display the unsubscribe message with link
 	echo "\n".$params['unsubscribe_text'];

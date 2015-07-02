@@ -3,33 +3,14 @@
  * This file implements the UI controller for plugins management.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package admin
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- * @author blueyed: Daniel HAHLER
- *
- * @version $Id: plugins.ctrl.php 7332 2014-09-29 11:31:08Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -56,16 +37,19 @@ $UserSettings->param_Request( 'plugins_disp_avail', 'plugins_disp_avail', 'integ
 $admin_Plugins = & get_Plugins_admin();
 $admin_Plugins->restart();
 
-// Pre-walk list of plugins
+// Pre-walk list of plugins, this will register all existing plugins and verify the statuses
 while( $loop_Plugin = & $admin_Plugins->get_next() )
 {
 	if( $loop_Plugin->status == 'broken' && ! isset( $admin_Plugins->plugin_errors[$loop_Plugin->ID] ) )
-	{ // The plugin is not "broken" anymore (either the problem got fixed or it was "broken" from a canceled "install_db_schema" action)
-		// TODO: set this to the previous status (dh)
-		$Plugins->set_Plugin_status( $loop_Plugin, 'disabled' );
+	{ // The plugin is not "broken" anymore or it has only some required db changes (either the problem got fixed or it was "broken" from a canceled "install_db_schema" action)
+		load_funcs('plugins/_plugin.funcs.php');
+		if( install_plugin_db_schema_action( $loop_Plugin, false ) )
+		{ // There are no required db changes and no error detected so this plugin is not broken any more
+			// TODO: set this to the previous status (dh)
+			$Plugins->set_Plugin_status( $loop_Plugin, 'disabled' );
+		}
 	}
 }
-
 
 /*
  * Action Handling part I
@@ -325,6 +309,7 @@ switch( $action )
 		}
 		else
 		{ // delta queries have to be confirmed in payload
+			$action = 'install_db_schema';
 			$next_action = 'install_db_schema';
 			break;
 		}
@@ -480,8 +465,8 @@ switch( $action )
 		param( 'edited_plugin_code' );
 		param( 'edited_plugin_priority' );
 		param( 'edited_plugin_apply_rendering' );
-		param( 'edited_plugin_displayed_events', 'array/string', array() );
-		param( 'edited_plugin_events', 'array/integer', array() );
+		param( 'edited_plugin_displayed_events', 'array:string', array() );
+		param( 'edited_plugin_events', 'array:integer', array() );
 
 		$default_Plugin = & $admin_Plugins->register($edit_Plugin->classname);
 
@@ -646,6 +631,14 @@ switch( $action )
 			break;
 		}
 
+		load_funcs('plugins/_plugin.funcs.php');
+		if( $edit_Plugin->status == 'broken' && ! install_plugin_db_schema_action( $edit_Plugin ) )
+		{ // If the plugin is in broken status and has some required db changes then display the db changes
+			$action = 'install_db_schema';
+			$next_action = 'install_db_schema';
+			break;
+		}
+
 		// Detect new events, so they get displayed correctly in the "Edit events" fieldset:
 		$admin_Plugins->save_events( $edit_Plugin, array() );
 
@@ -744,14 +737,15 @@ switch( $action )
 			$Messages->add( T_('Plugin events have been updated.'), 'success' );
 		}
 
-		// Check if it can stay enabled, if it is
-		if( $edit_Plugin->status == 'enabled' )
+		// Check if we should change plugin status to 'needs_config'
+		// to view this plugin in list with orange "question" icon
+		if( $edit_Plugin->status == 'enabled' || $edit_Plugin->status == 'disabled' )
 		{
 			$enable_return = $edit_Plugin->BeforeEnable();
 			if( $enable_return !== true )
 			{
 				$Plugins->set_Plugin_status( $edit_Plugin, 'needs_config' );
-				$Messages->add( T_('The plugin has been disabled.').( empty($enable_return) ? '' : '<br />'.$enable_return ), 'error' );
+				$Messages->add( T_('The plugin has been disabled.').( empty( $enable_return ) ? '' : '<br />'.$enable_return ), 'error' );
 			}
 		}
 
@@ -837,9 +831,9 @@ if( isset($edit_Plugin) && is_object($edit_Plugin) && isset( $admin_Plugins->plu
 
 
 $AdminUI->breadcrumbpath_init( false );
-$AdminUI->breadcrumbpath_add( T_('System'), '?ctrl=system',
+$AdminUI->breadcrumbpath_add( T_('System'), $admin_url.'?ctrl=system',
 		T_('Global settings are shared between all blogs; see Blog settings for more granular settings.') );
-$AdminUI->breadcrumbpath_add( T_('Plugin configuration'), '?ctrl=plugins' );
+$AdminUI->breadcrumbpath_add( T_('Plugin configuration'), $admin_url.'?ctrl=plugins' );
 
 init_plugins_js( 'rsc_url', $AdminUI->get_template( 'tooltip_plugin' ) );
 
@@ -876,7 +870,7 @@ switch( $action )
 		<div class="panelinfo">
 
 			<?php
-			$Form = new Form( NULL, 'install_db_deltas', 'get' );
+			$Form = new Form( NULL, 'install_db_deltas', 'get', 'compact' );
 
 			$Form->global_icon( T_('Cancel installation!'), 'close', regenerate_url() );
 
@@ -904,7 +898,9 @@ switch( $action )
 				$Form->hidden( 'install_db_deltas_confirm_md5', md5(implode( '', $install_db_deltas )) );
 			}
 
-			$Form->submit( array( '', T_('Install!'), 'ActionButton' ) );
+			echo '<div class="center">';
+			$Form->submit( array( '', T_('Install!'), 'ActionButton btn-primary' ) );
+			echo '</div>';
 			$Form->end_form();
 			?>
 
@@ -920,7 +916,7 @@ switch( $action )
 		<div class="panelinfo">
 
 			<?php
-			$Form = new Form( '', 'uninstall_plugin', 'post' );
+			$Form = new Form( '', 'uninstall_plugin', 'post', 'compact' );
 
 			$Form->global_icon( T_('Cancel uninstall!'), 'close', regenerate_url() );
 
@@ -950,7 +946,7 @@ switch( $action )
 
 			echo '<p>'.T_('THIS CANNOT BE UNDONE!').'</p>';
 
-			$Form->submit( array( '', T_('I am sure!'), 'DeleteButton' ) );
+			$Form->submit( array( '', T_('I am sure!'), 'DeleteButton btn-danger' ) );
 			$Form->end_form();
 			?>
 
@@ -1012,8 +1008,6 @@ switch( $action )
 			$Form->info_field( T_('Help'), implode( ' ', $help_icons ) );
 		}
 
-		$Form->end_fieldset();
-
 		if( $edit_Plugin->ID < 1 )
 		{ // add "Install NOW" submit button (if not already installed)
 			$registrations = $admin_Plugins->count_regs($edit_Plugin->classname);
@@ -1025,11 +1019,13 @@ switch( $action )
 				$Form->hidden( 'action', 'install' );
 				$Form->hidden( 'plugin', $edit_Plugin->classname );
 
-				$Form->begin_fieldset( '', array( 'class'=>'fieldset center' ) );
-				$Form->submit( array( '', T_('Install NOW!'), 'ActionButton' ) );
-				$Form->end_fieldset();
+				echo '<div class="center">';
+				$Form->submit( array( '', T_('Install NOW!'), 'ActionButton btn-primary' ) );
+				echo '</div>';
 			}
 		}
+
+		$Form->end_fieldset();
 
 		$Form->end_form();
 		$action = '';

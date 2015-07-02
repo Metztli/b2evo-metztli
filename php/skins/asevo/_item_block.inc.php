@@ -6,8 +6,8 @@
  * It is meant to be called by an include in the main.page.php template (or other templates)
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  */
@@ -19,7 +19,7 @@ global $Item;
 $params = array_merge( array(
 		'feature_block'    => false,
 		'content_mode'     => 'auto',		// 'auto' will auto select depending on $disp-detail
-		'item_class'       => 'evo_post',
+		'item_class'       => 'evo_post evo_content_block',
 		'image_size'	     => 'fit-400x320',
 		'author_link_text' => 'preferredname',
 	), $params );
@@ -50,21 +50,19 @@ echo '<div id="styled_content_block">'; // Beginning of post display
 	<?php
 		if( $Item->status != 'published' )
 		{
-			$Item->status( array( 'format' => 'styled' ) );
+			$Item->format_status( array(
+					'template' => '<div class="floatright"><span class="note status_$status$"><span>$status_title$</span></span></div>',
+				) );
 		}
 		$Item->permanent_link( array(
 				'text' => '#icon#',
 			) );
 
-		$Item->issue_date( array(
-				'before'      => ' ',
-				'after'       => ' ',
-				'date_format' => '#',
-			) );
+		$Item->issue_date();
 
 		$Item->issue_time( array(
 				'after'       => '',
-				'time_format' => 'H:i',
+				'time_format' => '#short_time',
 			) );
 
 		$Item->author( array(
@@ -94,7 +92,7 @@ echo '<div id="styled_content_block">'; // Beginning of post display
 	<?php
 		// ---------------------- POST CONTENT INCLUDED HERE ----------------------
 		skin_include( '_item_content.inc.php', $params );
-		// Note: You can customize the default item feedback by copying the generic
+		// Note: You can customize the default item content by copying the generic
 		// /skins/_item_content.inc.php file into the current skin folder.
 		// -------------------------- END OF POST CONTENT -------------------------
 	?>
@@ -110,7 +108,6 @@ echo '<div id="styled_content_block">'; // Beginning of post display
 							'link_text_one' => '#',
 							'link_text_more' => '#',
 							'link_title' => '#',
-							'use_popup' => false,
 						) );
 		 ?>
 		<?php
@@ -123,7 +120,6 @@ echo '<div id="styled_content_block">'; // Beginning of post display
 							'link_text_one' => '#',
 							'link_text_more' => '#',
 							'link_title' => '#',
-							'use_popup' => false,
 						) );
 		 ?>
 	</div>
@@ -144,9 +140,4 @@ echo '<div id="styled_content_block">'; // Beginning of post display
 		locale_restore_previous();	// Restore previous locale (Blog locale)
 	?>
 </div>
-
-<?php
-
-echo '</div>'; // End of post display 
-
-?>
+<?php echo '</div>'; // End of post display ?>

@@ -5,25 +5,12 @@
  * NOTE: the refererList() and stats_* functions are not fully functional ATM. I'll transform them into the Hitlog object during the next days. blueyed.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
- *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
  *
  * {@internal Origin:
  * This file was inspired by N C Young's Referer Script released in
@@ -32,14 +19,6 @@
  * }}
  *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author N C Young (nathan@ncyoung.com).
- * @author blueyed: Daniel HAHLER.
- * @author fplanque: Francois PLANQUE.
- * @author vegarg: Vegar BERG GULDAL.
- *
- * @version $Id: _hitlog.funcs.php 8062 2015-01-25 21:06:15Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -249,7 +228,7 @@ function hits_results_block( $params = array() )
 
 	$SQL->ORDER_BY( '*, hit_ID' );
 
-	$Results = new Results( $SQL->get(), $resuts_param_prefix, $default_order, $UserSettings->get( 'results_per_page' ), $count_SQL->get() );
+	$Results = new Results( $SQL->get(), $resuts_param_prefix, $default_order, $UserSettings->get( 'results_per_page' ), $count_SQL->get(), true, 100000 );
 
 	// Initialize Results object
 	hits_results( $Results, array( 'default_order' => $default_order ) );
@@ -470,7 +449,7 @@ function stats_referer( $before='', $after='', $disp_ref = true )
 	if( strlen($ref) > 0 )
 	{
 		echo $before;
-		if( $disp_ref ) echo evo_htmlentities( $ref );
+		if( $disp_ref ) echo htmlentities( $ref );
 		echo $after;
 	}
 }
@@ -483,7 +462,7 @@ function stats_basedomain( $disp = true )
 {
 	global $row_stats;
 	if( $disp )
-		echo evo_htmlentities( $row_stats['dom_name'] );
+		echo htmlentities( $row_stats['dom_name'] );
 	else
 		return $row_stats['dom_name'];
 }
@@ -509,7 +488,7 @@ function stats_search_keywords( $keyphrase, $length = 45 )
 	// Convert keyword encoding, some charsets are supported only in PHP 4.3.2 and later.
 	// This fixes encoding problem for Cyrillic keywords
 	// See http://forums.b2evolution.net/viewtopic.php?t=17431
-	$keyphrase = evo_htmlentities( $keyphrase, ENT_COMPAT, $evo_charset );
+	$keyphrase = htmlentities( $keyphrase, ENT_COMPAT, $evo_charset );
 
 	return '<span title="'.format_to_output( $keyphrase_orig, 'htmlattr' ).'">'.$keyphrase.'</span>';
 }
@@ -657,7 +636,7 @@ function generate_hit_stat( $days, $min_interval, $max_interval, $display_proces
 		);
 
 	$robots = array();
-	foreach ($user_agents as $lUserAgent)
+	foreach( $user_agents as $lUserAgent )
 	{
 		if ($lUserAgent[0] == 'robot')
 		{
@@ -665,19 +644,22 @@ function generate_hit_stat( $days, $min_interval, $max_interval, $display_proces
 		}
 	}
 
-	$robots_count = count($robots) - 1;
+	$robots_count = count( $robots ) - 1;
 
-	$ref_count = count($referes) - 1;
+	$ref_count = count( $referes ) - 1;
 
-	$admin_link = array('link' => $admin_url,
-		'blog_id' => NULL);
+	$admin_link = array(
+			'link' => $admin_url,
+			'blog_id' => NULL
+		);
 
-	$links_count = count($links);
+	$links_count = count( $links );
 
 	if( empty( $links_count ) )
 	{
-		$Messages->add('Do not have blog links to generate statistics');
-		break;
+		global $Messages;
+		$Messages->add( 'Cannot generate statistics without collection links.' );
+		return;
 	}
 
 	// generate users id array
@@ -694,7 +676,7 @@ function generate_hit_stat( $days, $min_interval, $max_interval, $display_proces
 
 	if( empty( $users_count ) )
 	{
-		$Messages->add('Do not have valid users to generate statistics');
+		$Messages->add( 'Cannot generate statistics without valid users.' );
 		break;
 	}
 
@@ -916,7 +898,7 @@ function generate_hit_stat( $days, $min_interval, $max_interval, $display_proces
 			if( $insert_data_count % 100 == 0 )
 			{ // Display a process of creating by one dot for 100 hits
 				echo ' .';
-				flush();
+				evo_flush();
 			}
 		}
 	}
@@ -1168,5 +1150,34 @@ function extract_keyphrase_from_hitlogs()
 	$DB->get_var( 'SELECT RELEASE_LOCK( '.$DB->quote( $lock_name ).' )' );
 
 	return true;
+}
+
+
+/**
+ * Parse extra params of goal hit (E.g. 'item_ID=123')
+ *
+ * @param string Value of extra params
+ * @param string
+ */
+function stats_goal_hit_extra_params( $ghit_params )
+{
+	if( preg_match( '/^item_ID=([0-9]+)$/i', $ghit_params, $matches ) )
+	{ // Parse item ID
+		$ItemCache = & get_ItemCache();
+		if( $Item = & $ItemCache->get_by_ID( intval( $matches[1] ), false, false ) )
+		{ // Display a link to view with current item title
+			global $current_User;
+			if( $current_User->check_perm( 'item_post!CURSTATUS', 'edit', false, $Item ) )
+			{ // Link to admin view
+				return $Item->get_title( array( 'link_type' => 'admin_view' ) );
+			}
+			else
+			{ // Link to permament url (it is allowed for current post type)
+				return $Item->get_title();
+			}
+		}
+	}
+
+	return htmlspecialchars( $ghit_params );
 }
 ?>

@@ -3,16 +3,13 @@
  * This file implements the UI controller for translation management.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE
- *
- * @version $Id: translation.ctrl.php 985 2012-04-16 21:59:17Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -134,11 +131,11 @@ switch( $action )
 }
 
 $AdminUI->breadcrumbpath_init( false );
-$AdminUI->breadcrumbpath_add( T_('System'), '?ctrl=system',
+$AdminUI->breadcrumbpath_add( T_('System'), $admin_url.'?ctrl=system',
 		T_('Global settings are shared between all blogs; see Blog settings for more granular settings.') );
-$AdminUI->breadcrumbpath_add( T_('Regional settings'), '?ctrl=locales' );
-$AdminUI->breadcrumbpath_add( T_('Locales'), '?ctrl=locales' );
-$AdminUI->breadcrumbpath_add( T_('Translation editor'), '?ctrl=translation&locale='.$locale );
+$AdminUI->breadcrumbpath_add( T_('Regional'), $admin_url.'?ctrl=locales' );
+$AdminUI->breadcrumbpath_add( T_('Locales'), $admin_url.'?ctrl=locales' );
+$AdminUI->breadcrumbpath_add( T_('Translation editor'), $admin_url.'?ctrl=translation&locale='.$locale );
 
 // Display <html><head>...</head> section! (Note: should be done early if actions do not redirect)
 $AdminUI->disp_html_head();

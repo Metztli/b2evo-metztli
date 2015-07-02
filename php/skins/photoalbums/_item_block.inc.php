@@ -6,13 +6,11 @@
  * It is meant to be called by an include in the main.page.php template (or other templates)
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
- * @subpackage photoalbum
- *
- * @version $Id: _item_block.inc.php 7043 2014-07-02 08:35:45Z yura $
+ * @subpackage photoalbums
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -38,16 +36,18 @@ $params = array_merge( array(
 
 	<?php
 		// Display images that are linked to this post:
+		echo '<div class="post_images">';
 		$Item->images( array(
-				'before'              => '<div class="post_images">',
+				'before'              => '',
 				'before_image'        => '<div class="image_block"><div>',
 				'before_image_legend' => '<div class="image_legend">',
 				'after_image_legend'  => '</div>',
 				'after_image'         => '</div></div>',
-				'after'               => '</div>',
+				'after'               => '',
 				'image_size'          => $Skin->get_setting( 'single_thumb_size' ),
 				'image_align'         => 'middle',
 			) );
+		echo '</div>';
 	?>
 
 <div class="bPostContent">
@@ -58,8 +58,8 @@ $params = array_merge( array(
 			// ---------------------- POST CONTENT INCLUDED HERE ----------------------
 			// Note: at the top of this file, we set: 'image_size' =>	'', // Do not display images in content block - Image is handled separately
 			skin_include( '_item_content.inc.php', $params );
-			// Note: You can customize the default item feedback by copying the generic
-			// /skins/_item_feedback.inc.php file into the current skin folder.
+			// Note: You can customize the default item content by copying the generic
+			// /skins/_item_content.inc.php file into the current skin folder.
 			// -------------------------- END OF POST CONTENT -------------------------
 		?>
 
@@ -82,6 +82,7 @@ $params = array_merge( array(
 						'before_section_title' => '<h4>',
 						'after_section_title'  => '</h4>',
 						'author_link_text'     => 'preferredname',
+						'comment_image_size'   => 'fit-256x256',
 					) );
 				// Note: You can customize the default item feedback by copying the generic
 				// /skins/_item_feedback.inc.php file into the current skin folder.
@@ -135,7 +136,8 @@ var $nav = jQuery( '.nav_album' );
 var nav_size = $nav.size();
 var nav_top = <?php echo ( is_logged_in() ? 23 : 0 ) ; ?>;
 var $navSpacer = $( '<div />', {
-		"height": $nav.outerHeight( true ),
+		'class':  'nav_album_spacer',
+		'height': $nav.outerHeight( true ),
 	} );
 
 jQuery( window ).resize( function()

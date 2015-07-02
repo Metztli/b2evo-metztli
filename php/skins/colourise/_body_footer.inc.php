@@ -3,12 +3,12 @@
  * This is the BODY footer include template.
  *
  * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://b2evolution.net/man/skin-structure}
+ * {@link http://b2evolution.net/man/skin-development-primer}
  *
  * This is meant to be included in a page template.
  *
  * @package evoskins
- * @subpackage evopress
+ * @subpackage colourise
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 ?>

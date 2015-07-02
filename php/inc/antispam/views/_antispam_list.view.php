@@ -3,29 +3,24 @@
  * This file implements the UI controller for the antispam management.
  *
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
- *
- * {@internal Open Source relicensing agreement:
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}.
  *
  * @package admin
  *
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  *
  * @todo Allow applying / re-checking of the known data, not just after an update!
- *
- * @version $Id: _antispam_list.view.php 6225 2014-03-16 10:01:05Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
 
 if( get_param('display_mode') == 'js' )
 {	// This is an Ajax response
-	echo '<h2>'.T_('Antispam blacklist').'</h2>';
+	echo '<h2 class="page-title">'.T_('Antispam blacklist').'</h2>';
 }
 
 // ADD KEYWORD FORM:
@@ -113,7 +108,7 @@ $Results->filter_area = array(
 $Results->cols[] = array(
 						'th' => T_('Keyword'),
 						'order' => 'aspm_string',
-						'td' => '%evo_htmlspecialchars(#aspm_string#)%',
+						'td' => '%htmlspecialchars(#aspm_string#)%',
 					);
 
 // Set columns:

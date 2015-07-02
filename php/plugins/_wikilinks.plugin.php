@@ -5,8 +5,8 @@
  * Creates wiki links
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package plugins
  * @ignore
@@ -101,6 +101,21 @@ class wikilinks_plugin extends Plugin
 
 
 	/**
+	 * Perform rendering of Message content
+	 *
+	 * NOTE: Use default coll settings of comments as messages settings
+	 *
+	 * @see Plugin::RenderMessageAsHtml()
+	 */
+	function RenderMessageAsHtml( & $params )
+	{
+		$content = & $params['data'];
+
+		return $this->render_content( $content, NULL, true );
+	}
+
+
+	/**
 	 * Render content of Item, Comment, Message
 	 *
 	 * @todo get rid of global $blog
@@ -176,7 +191,7 @@ class wikilinks_plugin extends Plugin
 					// Convert the WikiWord to an urltitle
 					$WikiWord = $match[0];
 					$Wiki_Word = preg_replace( '*([^\p{Lu}_])([\p{Lu}])*'.$regexp_modifier, '$1-$2', $WikiWord );
-					$wiki_word = evo_strtolower( $Wiki_Word );
+					$wiki_word = utf8_strtolower( $Wiki_Word );
 					// echo '<br />Match: [', $WikiWord, '] -> [', $wiki_word, ']';
 					$wiki_word = replace_special_chars( $wiki_word );
 					$wikiwords[ $WikiWord ] = $wiki_word;
@@ -223,7 +238,7 @@ class wikilinks_plugin extends Plugin
 		// BRACKETED WIKIWORDS:
 		$search = '/
 				(?<= \(\( | \[\[ )										# Lookbehind for (( or [[
-				([\p{L}0-9]+[\p{L}0-9_\-]*)									# Anything from Wikiword to WikiWordLong
+				([\p{L}0-9#]+[\p{L}0-9#_\-]*)									# Anything from Wikiword to WikiWordLong
 				(?= ( \s .*? )? ( \)\) | \]\] ) )			# Lookahead for )) or ]]
 			/x'.$regexp_modifier;	// x = extended (spaces + comments allowed)
 
@@ -235,17 +250,18 @@ class wikilinks_plugin extends Plugin
 			{
 				// Convert the WikiWord to an urltitle
 				$WikiWord = $match[0];
-				if( preg_match( '/^[\p{Ll}0-9_\-]+$/'.$regexp_modifier, $WikiWord ) )
+				if( preg_match( '/^[\p{Ll}0-9#_\-]+$/'.$regexp_modifier, $WikiWord ) )
 				{	// This WikiWord already matches a slug format
 					$Wiki_Word = $WikiWord;
 					$wiki_word = $Wiki_Word;
 				}
 				else
 				{	// Convert WikiWord to slug format
-					$Wiki_Word = preg_replace( array( '*([^\p{Lu}_])([\p{Lu}])*'.$regexp_modifier, '*([^0-9])([0-9])*'.$regexp_modifier ), '$1-$2', $WikiWord );
-					$wiki_word = evo_strtolower( $Wiki_Word );
+					$Wiki_Word = preg_replace( array( '*([^\p{Lu}#_])([\p{Lu}#])*'.$regexp_modifier, '*([^0-9])([0-9])*'.$regexp_modifier ), '$1-$2', $WikiWord );
+					$wiki_word = utf8_strtolower( $Wiki_Word );
 				}
-				// echo '<br />Match: [', $WikiWord, '] -> [', $wiki_word, ']';
+				// Remove additional params from $wiki_word, it should be cleared. We keep the params in $WikiWord and parse them below.
+				$wiki_word = preg_replace( '/^([^#]+)(#.+)?$/i', '$1', $wiki_word );
 				$wiki_word = replace_special_chars( $wiki_word );
 				$wikiwords[ $WikiWord ] = $wiki_word;
 			}
@@ -259,6 +275,17 @@ class wikilinks_plugin extends Plugin
 			// Construct arrays for replacing wikiwords by links:
 			foreach( $wikiwords as $WikiWord => $wiki_word )
 			{
+				// Parse wiki word to find additional param for atrr "id"
+				$url_params = '';
+				preg_match( '/^([^#]+)(#(.+))?$/i', $WikiWord, $WikiWord_match );
+				if( isset( $WikiWord_match[3] ) )
+				{ // wiki word has attr "id"
+					$url_params .= '#'.$WikiWord_match[3];
+				}
+
+				// Fix for regexp
+				$WikiWord = str_replace( '#', '\#', $WikiWord );
+
 				// [[WikiWord text]]
 				$search_wikiwords[] = '*
 					\[\[
@@ -289,6 +316,8 @@ class wikilinks_plugin extends Plugin
 					\)\)
 					*sx';	// s = dot matches newlines, x = extended (spaces + comments allowed)
 
+				// Use title of wiki word without attribute part
+				$WikiWord = $WikiWord_match[1];
 
 				// Find matching Chapter or Item:
 				$permalink = '';
@@ -306,21 +335,21 @@ class wikilinks_plugin extends Plugin
 				}
 
 				if( !empty( $permalink ) )
-				{	// Chapter or Item are found
+				{ // Chapter or Item are found
 					// [[WikiWord text]]
-					$replace_links[] = '<a href="'.$permalink.'">$1</a>';
+					$replace_links[] = '<a href="'.$permalink.$url_params.'">$1</a>';
 
 					// ((WikiWord text))
-					$replace_links[] = '<a href="'.$permalink.'">$1</a>';
+					$replace_links[] = '<a href="'.$permalink.$url_params.'">$1</a>';
 
 					// [[Wikiword]]
-					$replace_links[] = '<a href="'.$permalink.'">'.$existing_link_text.'</a>';
+					$replace_links[] = '<a href="'.$permalink.$url_params.'">'.$existing_link_text.'</a>';
 
 					// ((Wikiword))
-					$replace_links[] = '<a href="'.$permalink.'">'.$link_text.'</a>';
+					$replace_links[] = '<a href="'.$permalink.$url_params.'">'.$link_text.'</a>';
 				}
 				else
-				{	// Chapter and Item are not found
+				{ // Chapter and Item are not found
 					$create_link = isset($blog) ? ('<a href="'.$admin_url.'?ctrl=items&amp;action=new&amp;blog='.$blog.'&amp;post_title='.preg_replace( '*([^\p{Lu}_])([\p{Lu}])*'.$regexp_modifier, '$1%20$2', $WikiWord ).'&amp;post_urltitle='.$wiki_word.'" title="Create...">?</a>') : '';
 
 					// [[WikiWord text]]

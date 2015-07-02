@@ -3,28 +3,13 @@
  * This is the init file for the session module.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: _sessions.init.php 7414 2014-10-13 08:10:51Z yura $
  */
 if( !defined('EVO_CONFIG_LOADED') ) die( 'Please, do not access this page directly.' );
 
@@ -105,7 +90,7 @@ function & get_GoalCategoryCache( $allow_none_text = NULL )
 	{ // Cache doesn't exist yet:
 		if( ! isset( $allow_none_text ) )
 		{
-			$allow_none_text = T_('None');
+			$allow_none_text = NT_('None');
 		}
 		load_class( 'sessions/model/_goalcat.class.php', 'GoalCategory' );
 		$GoalCategoryCache = new DataObjectCache( 'GoalCategory', false, 'T_track__goalcat', 'gcat_', 'gcat_ID', 'gcat_name', 'gcat_name', $allow_none_text ); // COPY (FUNC)
@@ -145,43 +130,41 @@ class sessions_Module extends Module
 		global $topleft_Menu;
 		global $current_User;
 		global $admin_url;
-		global $Blog;
+		global $Blog, $activate_collection_toolbar;
 
 		if( !$current_User->check_perm( 'admin', 'normal' ) )
 		{
 			return;
 		}
 
-		if( !empty($Blog) && $current_User->check_perm( 'stats', 'list' ) )
-		{	// Permission to view stats for user's blogs:
-			$entries = array();
-			$entries['stats_sep'] = array(
-				'separator' => true,
-			);
-			$entries['stats'] = array(
-				'text' => T_('Blog analytics'),
-				'href' => $admin_url.'?ctrl=stats&amp;tab=summary&amp;tab3=global&amp;blog='.$Blog->ID,
-				'entries' => array(
-					'summary' => array(
-						'text' => T_('Hit summary').'&hellip;',
-						'href' => $admin_url.'?ctrl=stats&amp;tab=summary&amp;tab3=global&amp;blog='.$Blog->ID ),
-					'refsearches' => array(
-						'text' => T_('Search B-hits').'&hellip;',
-						'href' => $admin_url.'?ctrl=stats&amp;tab=refsearches&amp;tab3=hits&amp;blog='.$Blog->ID ),
-					'referers' => array(
-						'text' => T_('Referered B-hits').'&hellip;',
-						'href' => $admin_url.'?ctrl=stats&amp;tab=referers&amp;blog='.$Blog->ID ),
-					'other' => array(
-						'text' => T_('Direct B-hits').'&hellip;',
-						'href' => $admin_url.'?ctrl=stats&amp;tab=other&amp;blog='.$Blog->ID ),
-					'hits' => array(
-						'text' => T_('All Hits').'&hellip;',
-						'href' => $admin_url.'?ctrl=stats&amp;tab=hits&amp;blog='.$Blog->ID ),
-					'domains' => array(
-						'text' => T_('Referring domains').'&hellip;',
-						'href' => $admin_url.'?ctrl=stats&amp;tab=domains&amp;blog='.$Blog->ID ),
-					)
-			);
+		if( ( ! is_admin_page() || ! empty( $activate_collection_toolbar ) ) && ! empty( $Blog ) && $current_User->check_perm( 'stats', 'list' ) )
+		{ // Permission to view stats for user's blogs:
+			$entries = array(
+				'stats_separator' => array( 'separator' => true ),
+				'stats' => array(
+					'text' => T_('Collection Analytics'),
+					'href' => $admin_url.'?ctrl=stats&amp;tab=summary&amp;tab3=global&amp;blog='.$Blog->ID,
+					'entries' => array(
+						'summary' => array(
+							'text' => T_('Hit summary').'&hellip;',
+							'href' => $admin_url.'?ctrl=stats&amp;tab=summary&amp;tab3=global&amp;blog='.$Blog->ID ),
+						'refsearches' => array(
+							'text' => T_('Search B-hits').'&hellip;',
+							'href' => $admin_url.'?ctrl=stats&amp;tab=refsearches&amp;tab3=hits&amp;blog='.$Blog->ID ),
+						'referers' => array(
+							'text' => T_('Referered B-hits').'&hellip;',
+							'href' => $admin_url.'?ctrl=stats&amp;tab=referers&amp;blog='.$Blog->ID ),
+						'other' => array(
+							'text' => T_('Direct B-hits').'&hellip;',
+							'href' => $admin_url.'?ctrl=stats&amp;tab=other&amp;blog='.$Blog->ID ),
+						'hits' => array(
+							'text' => T_('All Hits').'&hellip;',
+							'href' => $admin_url.'?ctrl=stats&amp;tab=hits&amp;blog='.$Blog->ID ),
+						'domains' => array(
+							'text' => T_('Referring domains').'&hellip;',
+							'href' => $admin_url.'?ctrl=stats&amp;tab=domains&amp;blog='.$Blog->ID ),
+						)
+				) );
 
 			$topleft_Menu->add_menu_entries( 'blog', $entries );
 		}
@@ -192,20 +175,10 @@ class sessions_Module extends Module
 			// TODO: this is hackish and would require a proper function call
 			$topleft_Menu->_menus['entries']['tools']['disabled'] = false;
 
-			// TODO: this is hackish and would require a proper function call
-			if( ! empty($topleft_Menu->_menus['entries']['tools']['entries']) )
-			{	// There are already entries aboce, insert a separator:
-				$topleft_Menu->add_menu_entries( 'tools', array(
-						'stats_sep' => array(
-								'separator' => true,
-							),
-					)
-				);
-			}
-
-			$entries = array();
-			$entries['stats'] = array(
-					'text' => T_('Global analytics'),
+			$entries = array(
+				'stats_separator' => array( 'separator' => true ),
+				'stats' => array(
+					'text' => T_('Global Analytics'),
 					'href' => $admin_url.'?ctrl=stats&amp;tab=summary&amp;tab3=global&amp;blog=0',
 					'entries' => array(
 						'summary' => array(
@@ -223,14 +196,21 @@ class sessions_Module extends Module
 						'hits' => array(
 							'text' => T_('All Hits').'&hellip;',
 							'href' => $admin_url.'?ctrl=stats&amp;tab=hits&amp;blog=0' ),
+						array( 'separator' => true ),
+						'ips' => array(
+							'text' => T_('IPs').'&hellip;',
+							'href' => $admin_url.'?ctrl=stats&amp;tab=ips&amp;blog=0' ),
 						'domains' => array(
 							'text' => T_('Referring domains').'&hellip;',
 							'href' => $admin_url.'?ctrl=stats&amp;tab=domains&amp;blog=0' ),
 						'goals' => array(
 							'text' => T_('Goals').'&hellip;',
-							'href' => $admin_url.'?ctrl=goals' ),
+							'href' => $admin_url.'?ctrl=goals&amp;blog=0' ),
+						'settings' => array(
+							'text' => T_('Settings').'&hellip;',
+							'href' => $admin_url.'?ctrl=stats&amp;tab=settings&amp;blog=0' ),
 						)
-				);
+				) );
 
 			if( !is_admin_page() )
 			{
@@ -279,6 +259,7 @@ class sessions_Module extends Module
 								'summary' => array(
 									'text' => T_('Hit summary'),
 									'href' => $admin_url.'?ctrl=stats&amp;tab=summary&amp;tab3=global&amp;blog='.$blog,
+									'order' => 'group_last',
 									'entries' => array(
 										'global' => array(
 											'text' => T_('Global hits'),
@@ -336,13 +317,10 @@ class sessions_Module extends Module
 								'hits' => array(
 									'text' => T_('All Hits'),
 									'href' => $admin_url.'?ctrl=stats&amp;tab=hits&amp;blog='.$blog ),
-								'ips' => array(
-									'text' => T_('IPs'),
-									'href' => $admin_url.'?ctrl=stats&amp;tab=ips&amp;blog='.$blog,
-									'entries' => $ips_entries ),
 								'domains' => array(
 									'text' => T_('Referring domains'),
 									'href' => $admin_url.'?ctrl=stats&amp;tab=domains&amp;blog='.$blog,
+									'order' => 'group_last',
 									'entries' => array(
 										'all' => array(
 											'text' => T_('All referrers'),
@@ -352,6 +330,10 @@ class sessions_Module extends Module
 											'href' => $admin_url.'?ctrl=stats&amp;tab=domains&amp;tab3=top&amp;blog='.$blog ),
 										),
 									),
+								'ips' => array(
+									'text' => T_('IPs'),
+									'href' => $admin_url.'?ctrl=stats&amp;tab=ips&amp;blog='.$blog,
+									'entries' => $ips_entries ),
 							)
 						);
 
@@ -363,15 +345,15 @@ class sessions_Module extends Module
 					array(
 						'goals' => array(
 							'text' => T_('Goals'),
-							'href' => $admin_url.'?ctrl=goals',
+							'href' => $admin_url.'?ctrl=goals&amp;blog='.$blog,
 							'entries' => array(
 								'goals' => array(
 									'text' => T_('Goals'),
-									'href' => $admin_url.'?ctrl=goals'
+									'href' => $admin_url.'?ctrl=goals&amp;blog='.$blog
 									),
 								'cats' => array(
 									'text' => T_('Categories'),
-									'href' => $admin_url.'?ctrl=goals&amp;tab3=cats'
+									'href' => $admin_url.'?ctrl=goals&amp;tab3=cats&amp;blog='.$blog
 									),
 								'hits' => array(
 									'text' => T_('Goal hits'),
@@ -379,17 +361,41 @@ class sessions_Module extends Module
 									),
 								'stats' => array(
 									'text' => T_('Stats'),
-									'href' => $admin_url.'?ctrl=goals&amp;tab3=stats'
+									'href' => $admin_url.'?ctrl=goals&amp;tab3=stats&amp;blog='.$blog
 									),
 								),
 							),
 						'settings' => array(
 							'text' => T_('Settings'),
-							'href' => $admin_url.'?ctrl=stats&amp;tab=settings' ),
+							'href' => $admin_url.'?ctrl=stats&amp;tab=settings&amp;blog='.$blog ),
 						)
 				);
 			}
 		}
+	}
+
+
+	/**
+	 * Get the sessions module cron jobs
+	 *
+	 * @see Module::get_cron_jobs()
+	 */
+	function get_cron_jobs()
+	{
+		return array(
+			'process-hit-log' => array(
+				'name'   => T_('Extract info from hit log'),
+				'help'   => '#',
+				'ctrl'   => 'cron/jobs/_process_hitlog.job.php',
+				'params' => NULL,
+			),
+			'prune-old-hits-and-sessions' => array(
+				'name'   => T_('Prune old hits & sessions (includes OPTIMIZE)'),
+				'help'   => '#',
+				'ctrl'   => 'cron/jobs/_prune_hits_sessions.job.php',
+				'params' => NULL,
+			),
+		);
 	}
 }
 

@@ -3,16 +3,13 @@
  * This file implements the decode the returned emails support functions.
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
- *
- * @version $Id: _decode_returned_emails.funcs.php 815 2012-02-11 08:25:32Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -250,7 +247,7 @@ function dre_process_messages( & $mbox, $limit )
 		if( empty($html_body) )
 		{	// Plain-text message
 			dre_msg('Message type: TEXT');
-			dre_msg('Message body: <pre style="font-size:10px">'.evo_htmlspecialchars($strbody).'</pre>');
+			dre_msg('Message body: <pre style="font-size:10px">'.htmlspecialchars($strbody).'</pre>');
 
 			// Process body. First fix different line-endings (dos, mac, unix), remove double newlines
 			$content = str_replace( array("\r", "\n\n"), "\n", trim($strbody) );
@@ -332,7 +329,7 @@ function dre_simulate_message( $message_text )
 
 	dre_msg('<hr /><h3>Processing message:</h3>');
 
-	dre_msg('Message body: <pre style="font-size:10px">'.evo_htmlspecialchars( $content ).'</pre>');
+	dre_msg('Message body: <pre style="font-size:10px">'.htmlspecialchars( $content ).'</pre>');
 
 	dre_msg('<b class="green">Success</b>');
 
@@ -500,7 +497,7 @@ function dre_get_emails( $content, $max_count = 1, $delimeter = ', ' )
  */
 function dre_prepare_html_message( $message )
 {
-	dre_msg('Message body (original): <pre style="font-size:10px">'.evo_htmlspecialchars($message).'</pre>');
+	dre_msg('Message body (original): <pre style="font-size:10px">'.htmlspecialchars($message).'</pre>');
 
 	$marker = 0;
 	if( preg_match( '~<body[^>]*>(.*?)</body>~is', $message, $result ) )
@@ -536,7 +533,7 @@ function dre_prepare_html_message( $message )
 	);
 	$content = preg_replace( $patterns, '', $content );
 
-	dre_msg('Message body (processed): <pre style="font-size:10px">'.evo_htmlspecialchars($content).'</pre>');
+	dre_msg('Message body (processed): <pre style="font-size:10px">'.htmlspecialchars($content).'</pre>');
 
 	return $content;
 }
@@ -582,11 +579,11 @@ function dre_get_processing_content( $content, $emails )
 		$email = $emails[ count( $emails ) - 1 ];
 		if( !empty( $email ) )
 		{	// Get error text after last email address
-			$error_text = trim( evo_substr( $content, evo_strpos( $content, $email ) + evo_strlen( $email ) ) );
+			$error_text = trim( utf8_substr( $content, utf8_strpos( $content, $email ) + utf8_strlen( $email ) ) );
 		}
 		if( empty( $error_text ) )
 		{	// If error text is empty we should get all content before email OR full content if no email address in content
-			$error_text = empty( $email ) ? $content : trim( evo_substr( $content, 0, evo_strpos( $content, $email ) ) );
+			$error_text = empty( $email ) ? $content : trim( utf8_substr( $content, 0, utf8_strpos( $content, $email ) ) );
 		}
 	}
 	else
@@ -622,7 +619,7 @@ function dre_get_error_message( $message )
 	}
 
 	// Return error text limited by DB field length
-	return evo_substr( $error_text, 0, 255 );
+	return utf8_substr( $error_text, 0, 255 );
 }
 
 
@@ -777,9 +774,9 @@ function dre_limit_by_terminators( $content )
 			{	// Skip empty string
 				continue;
 			}
-			if( !empty( $repath_terminator ) && ($os_terminator = evo_strpos( $content, $repath_terminator )) !== false )
+			if( !empty( $repath_terminator ) && ($os_terminator = utf8_strpos( $content, $repath_terminator )) !== false )
 			{	// Remove text after terminator string
-				$content = evo_substr( $content, 0, $os_terminator );
+				$content = utf8_substr( $content, 0, $os_terminator );
 			}
 		}
 	}
@@ -801,7 +798,7 @@ function dre_insert_returned_email( $content, $message_text, $headers )
 	global $DB, $dre_emails;
 
 	// Extract emails from content
-	$emails = evo_strtolower( dre_get_emails( $content ) );
+	$emails = utf8_strtolower( dre_get_emails( $content ) );
 
 	// Get content between email and body terminator
 	$content = dre_get_processing_content( $content, $emails );

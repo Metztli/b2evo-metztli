@@ -3,15 +3,15 @@
  * This file implements Antispam handling functions.
  *
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2004-2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
  * Parts of this file are copyright (c)2004 by Vegar BERG GULDAL - {@link http://funky-m.com/}.
  * Parts of this file are copyright (c)2005 by The University of North Carolina at Charlotte as
  * contributed by Jason Edgecombe {@link http://tst.uncc.edu/}.
- *
- * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
  *
  * {@internal Open Source relicensing agreement:
  * Daniel HAHLER grants Francois PLANQUE the right to license
@@ -29,13 +29,6 @@
  *  }}
  *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author blueyed: Daniel HAHLER.
- * @author fplanque: Francois PLANQUE.
- * @author vegarg: Vegar BERG GULDAL.
- *
- * @version $Id: _antispam.funcs.php 8020 2015-01-19 08:18:22Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -158,19 +151,20 @@ function antispam_report_abuse( $abuse_string )
 	if( ! $Settings->get('antispam_report_to_central') )
 	{
 		$Messages->add( 'Reporting is disabled.', 'error' );  // NO TRANS necessary
-		return;
+		return false;
 	}
 
 	if( preg_match( '#^http://localhost[/:]#', $baseurl) && ( $antispamsrv_host != 'localhost' ) && empty( $antispam_test_for_real )  )
 	{ // Local install can only report to local test server
 		$Messages->add( T_('Reporting abuse to b2evolution aborted (Running on localhost).'), 'error' );
-		return(false);
+		return false;
 	}
 
 	// Construct XML-RPC client:
-	load_funcs('xmlrpc/model/_xmlrpc.funcs.php');
-	$client = new xmlrpc_client( $antispamsrv_uri, $antispamsrv_host, $antispamsrv_port);
-	$client->debug = $debug;
+	load_funcs( 'xmlrpc/model/_xmlrpc.funcs.php' );
+	$client = new xmlrpc_client( $antispamsrv_uri, $antispamsrv_host, $antispamsrv_port );
+	// yura: I commented this because xmlrpc_client prints the debug info on screen and it breaks header_redirect()
+	// $client->debug = $debug;
 
 	// Construct XML-RPC message:
 	$message = new xmlrpcmsg(
@@ -183,7 +177,7 @@ function antispam_report_abuse( $abuse_string )
 									new xmlrpcval($baseurl,'string'),         // The base URL of this b2evo
 								)
 							);
-	$result = $client->send($message);
+	$result = $client->send( $message );
 	if( $ret = xmlrpc_logresult( $result, $Messages, false ) )
 	{ // Remote operation successful:
 		antispam_update_source( $abuse_string, 'reported' );
@@ -195,7 +189,7 @@ function antispam_report_abuse( $abuse_string )
 		$Messages->add( T_('Failed to report abuse to b2evolution.net.'), 'error' );
 	}
 
-	return($ret);
+	return $ret;
 }
 
 
@@ -210,8 +204,9 @@ function antispam_poll_abuse()
 
 	// Construct XML-RPC client:
 	load_funcs('xmlrpc/model/_xmlrpc.funcs.php');
-	$client = new xmlrpc_client( $antispamsrv_uri, $antispamsrv_host, $antispamsrv_port);
-	$client->debug = $debug;
+	$client = new xmlrpc_client( $antispamsrv_uri, $antispamsrv_host, $antispamsrv_port );
+	// yura: I commented this because xmlrpc_client prints the debug info on screen and it breaks header_redirect()
+	// $client->debug = $debug;
 
 	// Get datetime from last update, because we only want newer stuff...
 	$last_update = $Settings->get( 'antispam_last_update' );
@@ -234,14 +229,14 @@ function antispam_poll_abuse()
 
 	$Messages->add( sprintf( T_('Requesting abuse list from %s...'), $antispamsrv_host ), 'note' );
 
-	$result = $client->send($message);
+	$result = $client->send( $message );
 
 	if( $ret = xmlrpc_logresult( $result, $Messages, false ) )
 	{ // Response is not an error, let's process it:
 		$response = $result->value();
 		if( $response->kindOf() == 'struct' )
 		{ // Decode struct:
-			$response = xmlrpc_decode_recurse($response);
+			$response = xmlrpc_decode_recurse( $response );
 			if( !isset( $response['strings'] ) || !isset( $response['lasttimestamp'] ) )
 			{
 				$Messages->add( T_('Incomplete reponse.'), 'error' );
@@ -250,14 +245,14 @@ function antispam_poll_abuse()
 			else
 			{ // Start registering strings:
 				$value = $response['strings'];
-				if( count($value) == 0 )
+				if( count( $value ) == 0 )
 				{
 					$Messages->add( T_('No new blacklisted strings are available.'), 'note' );
 				}
 				else
 				{ // We got an array of strings:
 					$Messages->add( T_('Adding strings to local blacklist:'), 'note' );
-					foreach($value as $banned_string)
+					foreach( $value as $banned_string )
 					{
 						if( antispam_create( $banned_string, 'central' ) )
 						{ // Creation successed
@@ -272,7 +267,7 @@ function antispam_poll_abuse()
 						}
 					}
 					// Store latest timestamp:
-					$endedat = date('Y-m-d H:i:s', iso8601_decode($response['lasttimestamp']) );
+					$endedat = date('Y-m-d H:i:s', iso8601_decode( $response['lasttimestamp'] ) );
 					$Messages->add( T_('New latest update timestamp').': '.$endedat, 'note' );
 
 					$Settings->set( 'antispam_last_update', $endedat );
@@ -288,7 +283,7 @@ function antispam_poll_abuse()
 		}
 	}
 
-	return($ret);
+	return $ret ;
 }
 
 
@@ -308,7 +303,7 @@ function get_ban_domain( $url )
 	// echo '<p>'.$url;
 
 	// Remove http:// part + everything after the last path element ( '/' alone is ignored on purpose )
-	$domain = preg_replace( '~^ ([a-z]+://)? ([^/#]+) (/ ([^/]*/)+ )? .* ~xi', '\\2\\3', $url );
+	$domain = preg_replace( '~^ ([a-z]+://)? ([^/#\?]+) (/ ([^/]*/)+ )? .* ~xi', '\\2\\3', $url );
 
 	// echo '<br>'.$domain;
 
@@ -325,7 +320,7 @@ function get_ban_domain( $url )
 		return false;
 	}
 
-	if( evo_strlen( $base_domain ) < evo_strlen( $domain ) )
+	if( utf8_strlen( $base_domain ) < utf8_strlen( $domain ) )
 	{	// The guy is spamming with subdomains (or www):
 		return '.'.$base_domain;
 	}
@@ -394,7 +389,7 @@ function echo_affected_comments( $affected_comments, $status, $keyword, $noperms
 	{
 		if( $noperms_count == 0 )
 		{ // There isn't any affected comment witch corresponding status
-			printf( '<p>'.T_('No %s comments match the keyword [%s].').'</p>', '<strong>'.$status.'</strong>', evo_htmlspecialchars($keyword) );
+			printf( '<p>'.T_('No %s comments match the keyword [%s].').'</p>', '<strong>'.$status.'</strong>', htmlspecialchars($keyword) );
 		}
 		else
 		{ // There are affected comment witch corresponding status, but current user has no permission
@@ -437,7 +432,7 @@ function echo_affected_comments( $affected_comments, $status, $keyword, $noperms
 		echo '<td>';
 		disp_url( $Comment->get_author_url(), 50 );
 		echo '</td>';
-		echo '<td>'.strmaxlen(strip_tags( $Comment->get_content( 'raw_text' ) ), 71).'</td>';
+		echo '<td>'.excerpt( $Comment->get_content( 'raw_text' ), 71 ).'</td>';
 		// no permission check, because affected_comments contains current user editable comments
 		echo '<td class="shrinkwrap">'.action_icon( T_('Edit...'), 'edit', '?ctrl=comments&amp;action=edit&amp;comment_ID='.$Comment->ID ).'</td>';
 		echo '</tr>';
@@ -505,8 +500,9 @@ function antispam_block_request()
 		    $Domain = & $DomainCache->get_by_name( $user_domain, false, false ) &&
 		    $Domain->get( 'status' ) == 'blocked' )
 		{ // The request from this domain must be blocked
-			debug_die( 'This request has been blocked.', array(
-				'debug_info' => sprintf( 'A request from \'%s\' domain was blocked because of this domain is blocked.', $user_domain ) ) );
+			$debug_message = sprintf( 'A request from \'%s\' domain was blocked because of this domain is blocked.', $user_domain );
+			syslog_insert( $debug_message, 'warning' );
+			debug_die( 'This request has been blocked.', array( 'debug_info' => $debug_message ) );
 		}
 
 		load_funcs('sessions/model/_hitlog.funcs.php');
@@ -515,8 +511,9 @@ function antispam_block_request()
 		    $Domain = & get_Domain_by_url( $initial_referer ) &&
 		    $Domain->get( 'status' ) == 'blocked' )
 		{ // The request from this domain must be blocked
-			debug_die( 'This request has been blocked.', array(
-				'debug_info' => sprintf( 'A request from \'%s\' initial referer was blocked because of a blocked domain.', $initial_referer ) ) );
+			$debug_message = sprintf( 'A request from \'%s\' initial referer was blocked because of a blocked domain.', $initial_referer );
+			syslog_insert( $debug_message, 'warning' );
+			debug_die( 'This request has been blocked.', array( 'debug_info' => $debug_message ) );
 		}
 	}
 
@@ -562,8 +559,9 @@ function antispam_block_by_ip()
 			SET aipr_block_count = aipr_block_count + 1
 			WHERE aipr_ID = '.$DB->quote( $ip_range_ID ) );
 
-		debug_die( 'This request has been blocked.', array(
-			'debug_info' => sprintf( 'A request with ( %s ) ip addresses was blocked because of a blocked IP range ID#%s.', implode( ', ', $request_ip_list ), $ip_range_ID ) ) );
+		$debug_message = sprintf( 'A request with ( %s ) ip addresses was blocked because of a blocked IP range ID#%s.', implode( ', ', $request_ip_list ), $ip_range_ID );
+		syslog_insert( $debug_message, 'warning' );
+		debug_die( 'This request has been blocked.', array( 'debug_info' => $debug_message ) );
 	}
 }
 
@@ -586,8 +584,9 @@ function antispam_block_by_country( $country_ID, $assert = true )
 	{ // The country exists in the database and has blocked status
 		if( $assert )
 		{ // block the request
-			debug_die( 'This request has been blocked.', array(
-				'debug_info' => sprintf( 'A request from \'%s\' was blocked because of this country is blocked.', $Country->get_name() ) ) );
+			$debug_message = sprintf( 'A request from \'%s\' was blocked because of this country is blocked.', $Country->get_name() );
+			syslog_insert( $debug_message, 'warning' );
+			debug_die( 'This request has been blocked.', array( 'debug_info' => $debug_message ) );
 		}
 		// Update the number of requests from blocked countries
 		$DB->query( 'UPDATE T_regional__country
@@ -604,9 +603,10 @@ function antispam_block_by_country( $country_ID, $assert = true )
  * Check if we can move current user to suspect group
  *
  * @param integer|NULL User ID, NULL = $current_User
+ * @param boolean TRUE to check if user is in trust group
  * @return boolean TRUE if current user can be moved
  */
-function antispam_suspect_check( $user_ID = NULL )
+function antispam_suspect_check( $user_ID = NULL, $check_trust_group = true )
 {
 	global $Settings;
 
@@ -638,13 +638,16 @@ function antispam_suspect_check( $user_ID = NULL )
 		return false;
 	}
 
-	$antispam_trust_groups = $Settings->get('antispam_trust_groups');
-	if( !empty( $antispam_trust_groups ) )
-	{
-		$antispam_trust_groups = explode( ',', $antispam_trust_groups );
-		if( in_array( $User->grp_ID, $antispam_trust_groups ) )
-		{ // Current User has group which cannot be moved to suspicious users
-			return false;
+	if( $check_trust_group )
+	{ // Check if user is in trust group
+		$antispam_trust_groups = $Settings->get('antispam_trust_groups');
+		if( !empty( $antispam_trust_groups ) )
+		{
+			$antispam_trust_groups = explode( ',', $antispam_trust_groups );
+			if( in_array( $User->grp_ID, $antispam_trust_groups ) )
+			{ // Current User has group which cannot be moved to suspicious users
+				return false;
+			}
 		}
 	}
 
@@ -657,12 +660,25 @@ function antispam_suspect_check( $user_ID = NULL )
  * Move user to suspect group by IP address
  *
  * @param string IP address
+ * @param integer|NULL User ID, NULL = $current_User
+ * @param boolean TRUE to check if user is in trust group
  */
-function antispam_suspect_user_by_IP( $IP_address = '' )
+function antispam_suspect_user_by_IP( $IP_address = '', $user_ID = NULL, $check_trust_group = true )
 {
-	global $DB, $Settings, $current_User;
+	global $DB, $Settings;
 
-	if( !antispam_suspect_check() )
+	if( empty( $user_ID ) )
+	{ // If user_ID was not set, use the current_User
+		global $current_User;
+		$User = $current_User;
+	}
+	else
+	{ // get User
+		$UserCache = & get_UserCache();
+		$User = $UserCache->get_by_ID( $user_ID, false, false );
+	}
+
+	if( !antispam_suspect_check( $user_ID, $check_trust_group ) )
 	{ // Current user cannot be moved to suspect group
 		return;
 	}
@@ -687,8 +703,8 @@ function antispam_suspect_user_by_IP( $IP_address = '' )
 		$GroupCache = & get_GroupCache();
 		if( $suspicious_Group = & $GroupCache->get_by_ID( (int)$Settings->get('antispam_suspicious_group'), false, false ) )
 		{ // Group exists in DB and we can change user's group
-			$current_User->set_Group( $suspicious_Group );
-			$current_User->dbupdate();
+			$User->set_Group( $suspicious_Group );
+			$User->dbupdate();
 		}
 	}
 }
@@ -699,12 +715,13 @@ function antispam_suspect_user_by_IP( $IP_address = '' )
  *
  * @param integer Country ID
  * @param integer|NULL User ID, NULL = $current_User
+ * @param boolean TRUE to check if user is in trust group
  */
-function antispam_suspect_user_by_country( $country_ID, $user_ID = NULL )
+function antispam_suspect_user_by_country( $country_ID, $user_ID = NULL, $check_trust_group = true )
 {
-	global $DB, $Settings, $current_User;
+	global $DB, $Settings;
 
-	if( !antispam_suspect_check( $user_ID ) )
+	if( !antispam_suspect_check( $user_ID, $check_trust_group ) )
 	{ // Current user cannot be moved to suspect group
 		return;
 	}

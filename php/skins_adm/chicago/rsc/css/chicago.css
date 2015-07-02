@@ -2,11 +2,18 @@
  * Backoffice main Cascading Style Sheets definitions for Chicago style.
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2005 by Francois PLANQUE - {@link http://fplanque.net/}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2005 by Francois PLANQUE - {@link http://fplanque.com/}
  *
  * @package admin
  */
+
+.pull-right {
+	float: right;
+}
+.pull-left {
+	float: left;
+}
 
 body {
 	margin: 0;
@@ -332,12 +339,32 @@ textarea.field_error {
 .fieldset_title .action_icon {
 	font-size: 84%;
 }
+.fieldset_title span[id^=icon_folding] {
+	cursor: pointer;
+}
+.fieldset_title span.fa[id^=icon_folding] {
+	font-size: 18px;
+	line-height: 14px;
+	width: 12px;
+	text-align: center;
+}
 #fieldset_wrapper_itemform_links .fieldset_title a.action_icon {
 	line-height: 15px;
 }
 #fieldset_wrapper_itemform_links .fieldset_title a.action_icon span.icon {
 	vertical-align: bottom;
 	margin-right: 2px;
+}
+div.fieldset_wrapper.folded .fieldset_title {
+	border-bottom: 1px solid #9db0bc;
+	border-bottom-left-radius: 5px;
+	border-bottom-right-radius: 5px;
+}
+div.fieldset_wrapper.folded .fieldset_title .fieldset_title_right {
+	border-bottom-right-radius: 5px;
+}
+div.fieldset_wrapper.folded fieldset {
+	display: none;
 }
 
 .fform fieldset,
@@ -409,6 +436,11 @@ table.filelist th a.basic_sort_link,
 table.filelist th span {
 	display: block;
 	padding: 2px 8px;
+}
+table.grouped th span.fa,
+table.filelist th span.fa {
+	display: inline-block;
+	padding: 0;
 }
 table.grouped th a.basic_sort_link:hover,
 table.filelist th a.basic_sort_link:hover {
@@ -565,6 +597,17 @@ div.edit_actions input.SaveButton:hover {
 .dashboard_post .small {
 	margin: 4px 0 2px 0;
 }
+.dashboard_comment_avatar {
+	float: left;
+	margin: 0 5px 5px 0;
+}
+.dashboard_comment_avatar a {
+	display: inline-block;
+}
+.dashboard_comment_title {
+	font-size: 16px;
+	margin: 0;
+}
 
 
 /*
@@ -640,12 +683,10 @@ div.bSideItem {
 	color: #929292;
 }
 
-div.block_item div.bComment, /* Entire comment block */
-div.block_item form.bComment /* New comment form */
-{
+div.block_item .evo_form__comment { /* Entire comment block / Form */
 	border: 1px solid #becdd6;
 	padding: 0;
-	margin: 1ex;
+	margin: 1ex 0;
 }
 div.bComment > p { /* padding for e.g. "No feedback for this post yet..." */
 	padding: 1ex;
@@ -673,7 +714,10 @@ div.bPost {
 	padding: 0;
 	margin: 0 0 1ex 0;
 }
-
+.bContent {
+	padding: 1ex;
+	margin: 0;
+}
 div.bPostpublished {
 	border: 1px solid #becdd6;
 	background-color: #fff;
@@ -740,6 +784,9 @@ div.bPostreview {
 .bPostdraft,
 div.block_item div.bCommentdraft {
 	border: 1px solid #fc3;
+}
+.bPostdraft > .bContent,
+div.block_item div.bCommentdraft {
 	background-color: #ffb;
 }
 .bPostdraft span.bStatus,
@@ -777,6 +824,8 @@ div.bCommentdraft div.CommentActionsArea {
 .bPostdeprecated,
 div.block_item div.bCommentdeprecated {
 	border: 1px solid #000;
+}
+.bPostdraft > .bContent, .bCommentdeprecated {
 	background-color: #eee;
 	color: #888;
 }
@@ -839,13 +888,14 @@ div.bCommentexpired div.CommentActionsArea {
 	border-top: 1px solid #f66;
 	background-color: #F6F5CB;
 }
-div.bCommentexpired span.bExpired
-{
+div.bCommentexpired span.bExpired {
 	color: #f66;
 }
 
 .bPostredirected {
 	border: 1px solid #639;
+}
+.bPostredirected > .bContent {
 	background-color: #dcf;
 }
 .bPostredirected span.bStatus,
@@ -868,11 +918,6 @@ div.bCommentexpired span.bExpired
 	background-color: #c0b0e0;
 }
 
-.bContent,
-.bCommentContent,
-.bFeedback {
-	margin: 1ex;
-}
 .bTitle {
 	font-weight: bold;
 	margin: 0;
@@ -984,15 +1029,16 @@ table.catselect td.selector {
 
 div.edit_toolbars {
 	margin-top: 1ex;
-	width: 100%;
+	width: auto;
 	text-align: center;
+	padding: 0 7px;
 }
 div.edit_toolbar {
 	background-color: #f1f6f8;
 	border: 1px solid #becdd6;
 	padding: 1px 2px;
 	margin: 1px auto;
-	width: 98%;
+	width: auto;
 }
 div.edit_toolbar input {
 	background: #fefefe url(../img/whitebar24.png) repeat-x center;
@@ -1005,20 +1051,24 @@ div.edit_toolbar input:hover {
 }
 
 div.edit_area {
-	width: 100%;
+	width: auto;
 	text-align: center;
+	padding: 0 7px;
 }
 div.edit_area textarea,
-textarea.bComment {
-	width: 98%;
+textarea.bComment.form_textarea_input {
+	width: 100%;
 	margin: 0 auto;
+	-webkit-box-sizing: border-box;
+	-moz-box-sizing: border-box;
+	box-sizing: border-box;
 }
 div.edit_actions {
 	background-color: #f1f6f8;
 	border: 1px solid #becdd6;
 	padding: 2px;
-	margin: 1ex auto;
-	width: 98%;
+	margin: 1ex 7px;
+	width: auto;
 	text-align: right;
 }
 
@@ -1071,7 +1121,7 @@ th.checkright {
 /*
  * Skin selection:
  */
-div.skinshot,
+.skinshot,
 div.coll_settings_skinshot {
 	background-color: #E0E9F0;
 }
@@ -1084,7 +1134,35 @@ div.skinshot div.current {
 div.skinshot_noshot {
 	color: #555;
 }
+.skinshot_new {
+	margin: 7px;
+	text-align: center;
+	font-size: 20px;
+	background: none;
+	border: 3px dashed #CCC;
+	width: 250px;
+	height: 209px;
+}
+.skinshot_new:hover {
+	background: #E0E9F0;
+	text-decoration: none;
+}
+.skinshot_new .fa {
+	display: block;
+	font-size: 100px;
+	margin: 20px 0 10px;
+}
 
+/* Skin settings */
+.skin_settings_form {
+	margin-left: 280px;
+}
+.fform .skin_settings_form fieldset.fieldset {
+	width: auto;
+	border: 1px solid #9db0bc;
+	padding: 1ex;
+	margin: 0;
+}
 
 /*
  * System checks
@@ -1133,11 +1211,6 @@ div.input ul.token-input-list-facebook {
 	-webkit-box-shadow: 1px 2px 5px 0 rgba(119, 119, 119, 0.16) inset;
 	box-shadow: 1px 2px 5px 0 rgba(119, 119, 119, 0.16) inset;
 }
-@media screen and (-webkit-min-device-pixel-ratio:0) { /* Safari & Chrome only */
-	div.input ul.token-input-list-facebook {
-		margin-left: 2px;
-	}
-}
 div#ffield_item_tags ul.token-input-list-facebook {
 	width: 100%;
 }
@@ -1148,18 +1221,38 @@ div#ffield_item_tags ul.token-input-list-facebook {
 }
 
 /* Statuses of posts & comments display */
-#styled_content_block .status_draft,
-#styled_content_block .status_review,
-#styled_content_block .status_community,
-#styled_content_block .status_protected,
-#styled_content_block .status_private,
-#styled_content_block .status_published,
-#styled_content_block .status_deprecated,
-#styled_content_block .status_redirected {
+#styled_content_block span[class*=status_] {
 	top: -7px;
 	left: 7px;
 }
 span.note.status_draft span {
 	color: #fff;
 	background-color: #FFCC33;
+}
+
+/* Style for file browse inputs */
+.btn-file {
+	position: relative;
+	overflow: hidden;
+	background: #FFF;
+	padding: 0 5px;
+	border: 1px solid #AAA;
+	border-radius: 4px;
+}
+.btn-file input[type=file] {
+	position: absolute;
+	top: 0;
+	right: 0;
+	min-width: 100%;
+	min-height: 100%;
+	font-size: 100px;
+	text-align: right;
+	filter: alpha(opacity=0);
+	opacity: 0;
+	cursor: inherit;
+	display: block;
+}
+
+span[id^=title_folding_] {
+	cursor: default;
 }

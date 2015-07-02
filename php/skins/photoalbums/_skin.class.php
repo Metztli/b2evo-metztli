@@ -6,9 +6,7 @@
  * This file is part of the b2evolution project - {@link http://b2evolution.net/}
  *
  * @package skins
- * @subpackage photoalbum
- *
- * @version $Id: _skin.class.php 7069 2014-07-04 08:32:23Z yura $
+ * @subpackage photoalbums
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -36,6 +34,18 @@ class photoalbums_Skin extends Skin
 	function get_default_type()
 	{
 		return 'normal';
+	}
+
+
+	/**
+	 * What evoSkins API does has this skin been designed with?
+	 *
+	 * This determines where we get the fallback templates from (skins_fallback_v*)
+	 * (allows to use new markup in new b2evolution versions)
+	 */
+	function get_api_version()
+	{
+		return 5;
 	}
 
 
@@ -93,6 +103,42 @@ class photoalbums_Skin extends Skin
 					'defaultvalue' => 1,
 					'type' => 'checkbox',
 				),
+				'colorbox_vote_post' => array(
+					'label' => T_('Voting on Post Images'),
+					'note' => T_('Check this to enable AJAX voting buttons in the colorbox zoom view'),
+					'defaultvalue' => 1,
+					'type' => 'checkbox',
+				),
+				'colorbox_vote_post_numbers' => array(
+					'label' => T_('Display Votes'),
+					'note' => T_('Check to display number of likes and dislikes'),
+					'defaultvalue' => 1,
+					'type' => 'checkbox',
+				),
+				'colorbox_vote_comment' => array(
+					'label' => T_('Voting on Comment Images'),
+					'note' => T_('Check this to enable AJAX voting buttons in the colorbox zoom view'),
+					'defaultvalue' => 1,
+					'type' => 'checkbox',
+				),
+				'colorbox_vote_comment_numbers' => array(
+					'label' => T_('Display Votes'),
+					'note' => T_('Check to display number of likes and dislikes'),
+					'defaultvalue' => 1,
+					'type' => 'checkbox',
+				),
+				'colorbox_vote_user' => array(
+					'label' => T_('Voting on User Images'),
+					'note' => T_('Check this to enable AJAX voting buttons in the colorbox zoom view'),
+					'defaultvalue' => 1,
+					'type' => 'checkbox',
+				),
+				'colorbox_vote_user_numbers' => array(
+					'label' => T_('Display Votes'),
+					'note' => T_('Check to display number of likes and dislikes'),
+					'defaultvalue' => 1,
+					'type' => 'checkbox',
+				),
 				'gender_colored' => array(
 					'label' => T_('Display gender'),
 					'note' => T_('Use colored usernames to differentiate men & women.'),
@@ -103,6 +149,18 @@ class photoalbums_Skin extends Skin
 					'label' => T_('Username bubble tips'),
 					'note' => T_('Check to enable bubble tips on usernames'),
 					'defaultvalue' => 0,
+					'type' => 'checkbox',
+				),
+				'autocomplete_usernames' => array(
+					'label' => T_('Autocomplete usernames'),
+					'note' => T_('Check to enable auto-completion of usernames entered after a "@" sign in the comment forms'),
+					'defaultvalue' => 1,
+					'type' => 'checkbox',
+				),
+				'banner_public' => array(
+					'label' => T_('"Public" banner'),
+					'note' => T_('Display banner for "Public" posts (posts & comments)'),
+					'defaultvalue' => 1,
 					'type' => 'checkbox',
 				),
 				'mediaidx_thumb_size' => array(
@@ -126,7 +184,7 @@ class photoalbums_Skin extends Skin
 					'options' => get_available_thumb_sizes(),
 					'type' => 'select',
 				),
-			), parent::get_param_definitions( $params )	);
+			), parent::get_param_definitions( $params ) );
 
 		return $r;
 	}
@@ -205,7 +263,7 @@ class photoalbums_Skin extends Skin
 		if( isset( $thumbnail_sizes[ $single_thumb_size ] ) )
 		{
 			// Make the width of image block as fixed to don't expand it by long post title text
-			$custom_css .= '	.post_images .image_block { width:'.$thumbnail_sizes[ $single_thumb_size ][1].'px; max-width:'.$thumbnail_sizes[ $single_thumb_size ][1]."px }\n";
+			$custom_css .= '	.post_images .image_block .image_legend { width:'.$thumbnail_sizes[ $single_thumb_size ][1].'px; max-width:'.$thumbnail_sizes[ $single_thumb_size ][1]."px }\n";
 			// Set width & height for block with text "No pictures yet"
 			/*$custom_css .= '	.posts_list .bPost b { width:'.( $thumbnail_sizes[ $single_thumb_size ][1] - 20 ).'px;'
 				.'height:'.( $thumbnail_sizes[ $single_thumb_size ][2] - 20 ).'px'." }\n";*/
@@ -219,6 +277,31 @@ class photoalbums_Skin extends Skin
 	</style>';
 			add_headline( $custom_css );
 		}
+	}
+
+
+	/**
+	 * Determine to display status banner or to don't display
+	 *
+	 * @param string Status of Item or Comment
+	 * @return boolean TRUE if we can display status banner for given status
+	 */
+	function enabled_status_banner( $status )
+	{
+		if( $status != 'published' )
+		{ // Display status banner everytime when status is not 'published'
+			return true;
+		}
+
+		if( is_logged_in() && $this->get_setting( 'banner_public' ) )
+		{ // Also display status banner if status is 'published'
+			//   AND current user is logged in
+			//   AND this feature is enabled in skin settings
+			return true;
+		}
+
+		// Don't display status banner
+		return false;
 	}
 
 }

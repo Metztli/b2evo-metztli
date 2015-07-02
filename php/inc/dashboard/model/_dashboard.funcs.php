@@ -3,19 +3,13 @@
  * This file implements the support functions for the dashboard.
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal Open Source relicensing agreement:
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: _dashboard.funcs.php 7283 2014-09-05 12:58:59Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -271,25 +265,46 @@ function show_comments_awaiting_moderation( $blog_ID, $CommentList = NULL, $limi
 		$CommentList->display_init();
 	}
 
+	$index = 0;
 	$new_comment_IDs = array();
 	while( $Comment = & $CommentList->get_next() )
 	{ // Loop through comments:
 		$new_comment_IDs[] = $Comment->ID;
+		$index = $index + 1;
+		// Only 5 commens should be visible, set hidden status for the rest
+		$hidden_status = ( $index > 5 ) ? ' hidden_comment' : '';
 
-		echo '<div id="comment_'.$Comment->ID.'" class="dashboard_post dashboard_post_'.($CommentList->current_idx % 2 ? 'even' : 'odd' ).'">';
+		echo '<div id="comment_'.$Comment->ID.'" class="dashboard_post dashboard_post_'.($CommentList->current_idx % 2 ? 'even' : 'odd' ).$hidden_status.'">';
+
+/* OLD:
 		echo '<div class="floatright"><span class="note status_'.$Comment->status.'"><span>';
 		$Comment->status();
 		echo '</span></span></div>';
+	NEW:
+*/
+		$Comment->format_status( array(
+				'template' => '<div class="floatright"><span class="note status_$status$"><span>$status_title$</span></span></div>',
+			) );
 
+		echo $Comment->get_author( array(
+				'before'      => '<div class="dashboard_comment_avatar">',
+				'after'       => '</div>',
+				'before_user' => '<div class="dashboard_comment_avatar">',
+				'after_user'  => '</div>',
+				'link_text'   => 'only_avatar',
+				'link_class'  => 'user',
+				'thumb_size'  => 'crop-top-80x80',
+				'thumb_class' => 'user',
+			) );
+
+		echo '<h3 class="dashboard_comment_title">';
 		if( ( $Comment->status !== 'draft' ) || ( $Comment->author_user_ID == $current_User->ID ) )
-		{// Display Comment permalink icon
-			echo '<span style="float: left; padding-right: 5px; margin-top: 4px">'.$Comment->get_permanent_link( '#icon#' ).'</span>';
+		{ // Display Comment permalink icon
+			echo $Comment->get_permanent_link( '#icon#' ).' ';
 		}
-		echo '<h3 class="dashboard_post_title">';
 		echo $Comment->get_title( array(
 				'author_format' => '<strong>%s</strong>',
-				'link_text'     => 'avatar',
-				'thumb_size'    => 'crop-top-15x15',
+				'link_text'     => 'login',
 			) );
 		$comment_Item = & $Comment->get_Item();
 		echo ' '.T_('in response to')
@@ -305,19 +320,12 @@ function show_comments_awaiting_moderation( $blog_ID, $CommentList = NULL, $limi
 		$Comment->date();
 		$Comment->author_url_with_actions( '', true );
 		$Comment->author_email( '', ' &bull; Email: <span class="bEmail">', '</span> &bull; ' );
-		$Comment->author_ip( 'IP: <span class="bIP">', '</span> ', true );
-		if( ! empty( $Comment->author_IP ) )
-		{ // Display icon of yellow lightning with link to antispam page
-			$antispam_icon = get_icon( 'lightning', 'imgtag', array( 'title' => T_( 'Go to edit this IP address in antispam control panel' ) ) );
-			echo implode( ', ', get_linked_ip_list( array( $Comment->author_IP ), NULL, $antispam_icon ) );
-		}
+		$Comment->author_ip( 'IP: <span class="bIP">', '</span> ', true, true );
 		$Comment->ip_country();
 		$Comment->spam_karma( ' &bull; '.T_('Spam Karma').': %s%', ' &bull; '.T_('No Spam Karma') );
 		echo '</div>';
 
-		echo '<div class="small">';
 		$Comment->content( 'htmlbody', true );
-		echo '</div>';
 
 		echo '<div class="dashboard_action_area">';
 		// Display edit button if current user has the rights:
@@ -330,9 +338,9 @@ function show_comments_awaiting_moderation( $blog_ID, $CommentList = NULL, $limi
 
 		echo '<div class="floatleft">';
 
-		$Comment->edit_link( ' ', ' ', get_icon( 'edit' ), '#', button_class(), '&amp;', true, $redirect_to );
+		$Comment->edit_link( ' ', ' ', get_icon( 'edit_button' ).' '.T_('Edit'), '#', button_class( 'text_primary' ).' btn-sm w80px', '&amp;', true, $redirect_to );
 
-		echo '<span class="'.button_class( 'group' ).'">';
+		echo '<span class="'.button_class( 'group' ).' btn-group-sm">';
 		// Display publish NOW button if current user has the rights:
 		$Comment->publish_link( '', '', '#', '#', button_class( 'text' ), '&amp;', true, true );
 
@@ -346,12 +354,7 @@ function show_comments_awaiting_moderation( $blog_ID, $CommentList = NULL, $limi
 		echo '</div>';
 
 		// Display Spam Voting system
-		$vote_spam_params = array();
-		if( ! $script )
-		{ // This is an async request, so javascript is enabled for sure and we may display voting
-			$vote_spam_params['display'] = true;
-		}
-		$Comment->vote_spam( '', '', '&amp;', true, true, $vote_spam_params );
+		$Comment->vote_spam( '', '', '&amp;', true, true, array( 'button_group_class' => button_class( 'group' ).' btn-group-sm' ) );
 
 		echo '<div class="clear"></div>';
 		echo '</div>';
@@ -369,17 +372,27 @@ function show_comments_awaiting_moderation( $blog_ID, $CommentList = NULL, $limi
  * Get a count of the records in the DB table
  *
  * @param string Table name
+ * @param string SQL WHERE
+ * @param string SQL FROM
  * @return integer A count of the records
  */
-function get_table_count( $table_name )
+function get_table_count( $table_name, $sql_where = '', $sql_from = '' )
 {
 	global $DB;
 
 	$SQL = new SQL();
 	$SQL->SELECT( 'COUNT( * )' );
 	$SQL->FROM( $table_name );
+	if( !empty( $sql_from ) )
+	{ // Additional sql for FROM clause
+		$SQL->FROM_add( $sql_from );
+	}
+	if( !empty( $sql_where ) )
+	{ // Additional sql for WHERE clause
+		$SQL->WHERE( $sql_where );
+	}
 
-	return $DB->get_var( $SQL->get() );
+	return intval( $DB->get_var( $SQL->get() ) );
 }
 
 
@@ -445,19 +458,18 @@ function display_posts_awaiting_moderation( $status, & $block_item_Widget )
 		// Load item's creator user:
 		$Item->get_creator_User();
 
-		$Item->status( array(
-				'before' => '<div class="floatright"><span class="note status_'.$Item->status.'"><span>',
-				'after'  => '</span></span></div>',
+		$Item->format_status( array(
+				'template' => '<div class="floatright"><span class="note status_$status$"><span>$status_title$</span></span></div>',
 			) );
 
 		echo '<div class="dashboard_float_actions">';
 		$Item->edit_link( array( // Link to backoffice for editing
 				'before'    => ' ',
 				'after'     => ' ',
-				'class'     => 'ActionButton btn btn-default',
+				'class'     => 'ActionButton btn btn-primary',
 				'text'      => get_icon( 'edit_button' ).' '.T_('Edit')
 			) );
-		$Item->publish_link( '', '', '#', '#', 'PublishButton' );
+		$Item->publish_link( '', '', '#', '#', 'PublishButton btn btn-status-published' );
 		echo get_icon( 'pixel' );
 		echo '</div>';
 
@@ -486,32 +498,116 @@ function display_posts_awaiting_moderation( $status, & $block_item_Widget )
 
 
 /**
- * Limit number by min and max values
+ * Get percent by function log10()
  *
- * @param integer Number
- * @param integer|NULL Minimum value or NULL to don't limit
- * @param integer|NULL Maximum value or NULL to don't limit
+ * @param integer Value
+ * @return integer Percent
  */
-function limit_number_by_interval( $number, $min = NULL, $max = NULL )
+function log10_percent( $value )
 {
-	$number = intval( $number );
+	$percent = log10( intval( $value ) ) * 2 * 10;
+	return intval( $percent > 100 ? 100 : $percent );
+}
 
-	if( is_null( $min ) && is_null( $max ) )
-	{ // Nothing to limit
-		return $number;
+
+/**
+ * Display charts
+ *
+ * @param array Chart data
+ */
+function display_charts( $chart_data )
+{
+	if( empty( $chart_data ) )
+	{ // No data
+		return;
 	}
 
-	if( ! is_null( $min ) && $number < $min )
-	{ // Limit by min
-		return $min;
+	echo '<div class="charts">';
+	foreach( $chart_data as $chart_item )
+	{
+		if( $chart_item['type'] == 'number' )
+		{ // Calculate a percent with log10 where max value is 100000
+			$chart_percent = empty( $chart_item['value'] ) ? 0 : log10_percent( $chart_item['value'] );
+			// Set a color for value, from green(0%) to red(100%)
+			$chart_color = get_color_by_percent( '#61bd4f', '#f2d600', '#ffab4a', $chart_percent );
+		}
+		else
+		{ // Calculate a real percent
+			$chart_percent = empty( $chart_item['100%'] ) ? 0 : floor( intval( $chart_item['value'] ) / $chart_item['100%'] ) * 100;
+			$chart_item['value'] = $chart_percent.'%';
+			$chart_color = '#00F';
+		}
+		if( $chart_item['value'] > 0 && $chart_percent == 0 )
+		{ // Display a little chart for not null values
+			$chart_percent = 0.01;
+		}
+		// Display chart
+		echo '<div class="chart">
+				<div class="'.$chart_item['type'].'" data-percent="'.$chart_percent.'"><b style="color:'.$chart_color.'">'.$chart_item['value'].'</b></div>
+				<div class="label">'.$chart_item['title'].'</div>
+			</div>';
+	}
+	echo '</div>';
+
+	echo '<div class="clear"></div>';
+}
+
+
+/**
+ * Convert color #FFFFFF to array( 'R' => 255, 'G' => 255, 'B' => 255 )
+ *
+ * @param string Color in hex format
+ * @return array Color in RGB format
+ */
+function color_hex2rgb( $color )
+{
+	$color = str_replace( '#', '', $color );
+	$color = str_split( $color, strlen( $color ) / 3 );
+	foreach( $color as $c => $hex )
+	{
+		$color[ $c ] = strlen( $hex ) == 1 ? $hex.$hex : $hex;
+	}
+	return array(
+			'R' => hexdec( $color[0] ),
+			'G' => hexdec( $color[1] ),
+			'B' => hexdec( $color[2] ),
+		);
+}
+
+
+/**
+ * Get color by percent between three colors
+ *
+ * @param string Start Color in hex format
+ * @param string Middle Color in hex format
+ * @param string End Color in hex format
+ * @param integer Percent
+ * @return string Result Color in hex format
+ */
+function get_color_by_percent( $color_from, $color_middle, $color_to, $percent )
+{
+	if( $percent < 50 )
+	{ // First 50 percents
+		$color_to = $color_middle;
+		$percent *= 2;
+	}
+	else
+	{ // Last 50 percents
+		$color_from = $color_middle;
+		$percent = ( $percent - 50 ) * 2;
+	}
+	$color_from = color_hex2rgb( $color_from );
+	$color_to = color_hex2rgb( $color_to );
+
+	$new_color = '#';
+	foreach( $color_from as $rgb_key => $rgb_color )
+	{
+		$rgb_percent = $color_from[ $rgb_key ] + round( ( $color_to[ $rgb_key ] - $color_from[ $rgb_key ] ) * ( $percent / 100 ) );
+		$rgb_percent = $rgb_percent > 255 ? 255 : ( $rgb_percent < 0 ? 0 : $rgb_percent );
+
+		$new_color .= str_pad( dechex( $rgb_percent ), 2, 0, STR_PAD_LEFT );
 	}
 
-	if( ! is_null( $max ) && $number > $max )
-	{ // Limit by max
-		return $max;
-	}
-
-	// Original value
-	return $number;
+	return $new_color;
 }
 ?>

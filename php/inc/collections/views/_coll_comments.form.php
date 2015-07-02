@@ -3,20 +3,15 @@
  * This file implements the UI view for the Collection comments properties.
  *
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
- *
- * {@internal Open Source relicensing agreement:
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}.
  *
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  *
  * @package admin
- *
- * @version $Id: _coll_comments.form.php 6135 2014-03-08 07:54:05Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -109,8 +104,6 @@ $Form->begin_fieldset( T_('Feedback options') . get_manual_link('comment-feedbac
 
 	echo '<div class="feedback_details_container">';
 
-	$Form->checkbox( 'disable_comments_bypost', $edited_Blog->get_setting( 'disable_comments_bypost' ), '', T_('Comments can be disabled on each post separately') );
-
 	$Form->checkbox( 'allow_anon_url', $edited_Blog->get_setting( 'allow_anon_url' ), T_('Anonymous URLs'), T_('Allow anonymous commenters to submit an URL') );
 
 	$Form->checkbox( 'allow_html_comment', $edited_Blog->get_setting( 'allow_html_comment' ),
@@ -139,6 +132,9 @@ $Form->begin_fieldset( T_('Feedback options') . get_manual_link('comment-feedbac
 		$Form->checkbox( 'blog_allowtrackbacks', $edited_Blog->get( 'allowtrackbacks' ), T_('Trackbacks').$trackbacks_title, $trackbacks_warning.T_('Allow other bloggers to send trackbacks to this blog, letting you know when they refer to it. This will also let you send trackbacks to other blogs.') );
 	}
 
+	$Form->checkbox( 'autocomplete_usernames', $edited_Blog->get_setting( 'autocomplete_usernames' ),
+		T_( 'Autocomplete usernames in back-office' ), T_( 'Check to enable auto-completion of usernames entered after a "@" sign in the comment forms' ) );
+
 	echo '</div>';
 
 	if( $edited_Blog->get_setting( 'allow_comments' ) == 'never' )
@@ -155,13 +151,15 @@ $Form->end_fieldset();
 
 $Form->begin_fieldset( T_('Voting options') . get_manual_link('comment-voting-options'), array( 'class' => 'feedback_details_container' ) );
 
+	$Form->checkbox( 'display_rating_summary', $edited_Blog->get_setting( 'display_rating_summary' ), T_('Display summary'), T_('Display a summary of ratings above the comments') );
+
 	$Form->radio( 'allow_rating_items', $edited_Blog->get_setting( 'allow_rating_items' ),
 						array( $any_option, $registered_option, $member_option, $never_option,
 						), T_('Allow star ratings from'), true );
 
 	$Form->textarea_input( 'rating_question', $edited_Blog->get_setting( 'rating_question' ), 3, T_('Star rating question') );
 
-	$Form->checkbox( 'allow_rating_comment_helpfulness', $edited_Blog->get_setting( 'allow_rating_comment_helpfulness' ), T_('Allow helpful/not helpful'), T_("Allow users to say if a comment was helpful or not.") );
+	$Form->checkbox( 'allow_rating_comment_helpfulness', $edited_Blog->get_setting( 'allow_rating_comment_helpfulness' ), T_('Allow helpful/not helpful'), T_('Allow users to say if a comment was helpful or not.') );
 
 $Form->end_fieldset();
 

@@ -6,11 +6,11 @@
  * It is meant to be called by an include in the main.page.php template (or other templates)
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
- * @subpackage evopress
+ * @subpackage colourise
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -22,7 +22,6 @@ $params = array_merge( array(
 		'content_mode'    => 'auto',		// 'auto' will auto select depending on $disp-detail
 		'item_class'      => 'post',
 		'image_size'      => 'fit-400x320'
-
 	), $params );
 
 echo '<div id="styled_content_block">'; // Beginning of posts display
@@ -43,14 +42,16 @@ echo '<div id="styled_content_block">'; // Beginning of posts display
 		}
 		if( $Item->status != 'published' )
 		{
-			$Item->status( array( 'format' => 'styled' ) );
+			$Item->format_status( array(
+					'template' => '<div class="floatright"><span class="note status_$status$"><span>$status_title$</span></span></div>',
+				) );
 		}
 	?>
 
 	<h2><?php $Item->title(); ?></h2>
 
 	<?php
-		if( (!$Item->is_intro()) && $Skin->get_setting( 'display_post_date') )
+		if( (!$Item->is_intro()) && $Skin->get_setting( 'display_post_date' ) )
 		{	// Display only if we're *not* displaying an intro post AND we want to see the date:
 			$Item->issue_time( array(
 					'before'      => '<small>',
@@ -85,7 +86,7 @@ echo '<div id="styled_content_block">'; // Beginning of posts display
 	<?php
 		// ---------------------- POST CONTENT INCLUDED HERE ----------------------
 		skin_include( '_item_content.inc.php', $params );
-		// Note: You can customize the default item feedback by copying the generic
+		// Note: You can customize the default item content by copying the generic
 		// /skins/_item_content.inc.php file into the current skin folder.
 		// -------------------------- END OF POST CONTENT -------------------------
 	?>
@@ -130,12 +131,12 @@ echo '<div id="styled_content_block">'; // Beginning of posts display
 							'link_text_one' => '#',
 							'link_text_more' => '#',
 							'link_title' => '#',
-							'use_popup' => false,
 						) );
 						
 					$Item->issue_time( array(
-							'before'    => ' | ',
-							'after'     => ' ',
+							'before'      => ' | ',
+							'after'       => ' ',
+							'time_format' => '#short_time',
 						) );
 						
 				?>

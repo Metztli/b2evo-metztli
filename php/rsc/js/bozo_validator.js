@@ -3,7 +3,7 @@
  * on a link which will result in potential data input loss
  * Tested on Firefox (XP & Mac OSX) , IE6 (XP), Safari (Mac OSX)
  * b2evolution - http://b2evolution.net/
- * @version $Id: bozo_validator.js 7904 2014-12-26 07:50:08Z yura $
+ * @version $Id: bozo_validator.js 7905 2014-12-26 07:53:17Z yura $
  */
 var bozo_confirm_mess;
 

@@ -5,8 +5,8 @@
  * This file is not meant to be called directly.
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  * @subpackage basic
@@ -60,7 +60,7 @@ $Comment = & $params['Comment'];
 ?>
 </h5>
 <blockquote>
-	<small><?php $Comment->date() ?> @ <?php $Comment->time( 'H:i' ) ?></small>
+	<small><?php $Comment->date() ?> @ <?php $Comment->time( '#short_time' ) ?></small>
 	<div><?php $Comment->content() ?></div>
 	<?php $Comment->reply_link(); /* Link for replying to the Comment */ ?>
 </blockquote>

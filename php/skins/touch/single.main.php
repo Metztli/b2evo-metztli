@@ -3,7 +3,7 @@
  * This is the main/default page template.
  *
  * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://b2evolution.net/man/skin-structure}
+ * {@link http://b2evolution.net/man/skin-development-primer}
  *
  * The main page template is used to display the blog when no specific page template is available
  * to handle the request (based on $disp).
@@ -24,9 +24,7 @@ skin_init( $disp );
 
 
 // -------------------------- HTML HEADER INCLUDED HERE --------------------------
-skin_include( '_html_header.inc.php' );
-// Note: You can customize the default HTML header by copying the generic
-// /skins/_html_header.inc.php file into the current skin folder.
+skin_include( '_html_header.inc.php', array() );
 // -------------------------------- END OF HEADER --------------------------------
 ?>
 
@@ -84,6 +82,7 @@ while( $Item = & mainlist_get_item() )
 					) );
 				$Item->issue_time( array(
 						'before'      => /* TRANS: time */ T_('at '),
+						'time_format' => '#short_time',
 					) );
 				$Item->author( array(
 						'before'    => ' > ',
@@ -102,7 +101,6 @@ while( $Item = & mainlist_get_item() )
 				'link_text_one' => '&darr; '.T_('Skip to comments'),
 				'link_text_more' => '&darr; '.T_('Skip to comments'),
 				'link_title' => '',
-				'use_popup' => false,
 				'show_in_single_mode' => true
 			) );
 	?>
@@ -113,7 +111,9 @@ while( $Item = & mainlist_get_item() )
 		<?php
 			if( $Item->status != 'published' )
 			{
-				$Item->status( array( 'format' => 'styled' ) );
+				$Item->format_status( array(
+						'template' => '<div class="floatright"><span class="note status_$status$"><span>$status_title$</span></span></div>',
+					) );
 			}
 			// ---------------------- POST CONTENT INCLUDED HERE ----------------------
 			skin_include( '_item_content.inc.php', array(
@@ -122,34 +122,6 @@ while( $Item = & mainlist_get_item() )
 			// Note: You can customize the default item content by copying the generic
 			// /skins/_item_content.inc.php file into the current skin folder.
 			// -------------------------- END OF POST CONTENT -------------------------
-		?>
-
-		<?php
-			// ------------------------- "Item - Single" CONTAINER EMBEDDED HERE --------------------------
-			// WARNING: EXPERIMENTAL -- NOT RECOMMENDED FOR PRODUCTION -- MAY CHANGE DRAMATICALLY BEFORE RELEASE.
-			// Display container contents:
-			skin_container( /* TRANS: Widget container name */ NT_('Item Single'), array(
-					// The following (optional) params will be used as defaults for widgets included in this container:
-					// This will enclose each widget in a block:
-					'block_start' => '<div class="$wi_class$">',
-					'block_end' => '</div>',
-					// This will enclose the title of each widget:
-					'block_title_start' => '<h3>',
-					'block_title_end' => '</h3>',
-					// If a widget displays a list, this will enclose that list:
-					'list_start' => '<ul>',
-					'list_end' => '</ul>',
-					// This will enclose each item in a list:
-					'item_start' => '<li>',
-					'item_end' => '</li>',
-					// This will enclose sub-lists in a list:
-					'group_start' => '<ul>',
-					'group_end' => '</ul>',
-					// This will enclose (foot)notes:
-					'notes_start' => '<div class="notes">',
-					'notes_end' => '</div>',
-				) );
-			// ----------------------------- END OF "Item - Single" CONTAINER -----------------------------
 		?>
 
 		<?php

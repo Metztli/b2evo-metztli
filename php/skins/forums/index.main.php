@@ -6,15 +6,13 @@
  * It will also rely on default includes for specific dispays (like the comment form).
  *
  * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://b2evolution.net/man/skin-structure}
+ * {@link http://b2evolution.net/man/skin-development-primer}
  *
  * The main page template is used to display the blog when no specific page template is available
  * to handle the request (based on $disp).
  *
  * @package evoskins
  * @subpackage forums
- *
- * @version $Id: index.main.php 9 2011-10-24 22:32:00Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -23,6 +21,8 @@ if( version_compare( $app_version, '4.0.0-dev' ) < 0 )
 	die( 'This skin is designed for b2evolution 4.0.0 and above. Please <a href="http://b2evolution.net/downloads/index.html">upgrade your b2evolution</a>.' );
 }
 
+
+global $Settings;
 
 /**
  * @var string Name of cookie for skin width
@@ -72,8 +72,6 @@ skin_include( '_html_header.inc.php', array(
 	'useritems_text'    => T_('User\'s topics'),
 	'usercomments_text' => T_('User\'s replies'),
 ) );
-// Note: You can customize the default HTML header by copying the generic
-// /skins/_html_header.inc.php file into the current skin folder.
 // -------------------------------- END OF HEADER --------------------------------
 
 
@@ -90,7 +88,7 @@ siteskin_include( '_site_body_header.inc.php' );
 		// Display container and contents:
 		skin_container( NT_('Page Top'), array(
 				// The following params will be used as defaults for widgets included in this container:
-				'block_start'         => '<div class="$wi_class$">',
+				'block_start'         => '<div class="widget $wi_class$">',
 				'block_end'           => '</div>',
 				'block_display_title' => false,
 				'list_start'          => '<ul>',
@@ -108,7 +106,7 @@ siteskin_include( '_site_body_header.inc.php' );
 		// Display container and contents:
 		skin_container( NT_('Header'), array(
 				// The following params will be used as defaults for widgets included in this container:
-				'block_start'       => '<div class="$wi_class$">',
+				'block_start'       => '<div class="widget $wi_class$">',
 				'block_end'         => '</div>',
 				'block_title_start' => '<h1>',
 				'block_title_end'   => '</h1>',
@@ -137,6 +135,8 @@ siteskin_include( '_site_body_header.inc.php' );
 				'list_end'            => '',
 				'item_start'          => '<li>',
 				'item_end'            => '</li>',
+				'item_title_before'   => '',
+				'item_title_after'    => '',
 			) );
 		// ----------------------------- END OF "Menu" CONTAINER -----------------------------
 	?>
@@ -147,20 +147,16 @@ siteskin_include( '_site_body_header.inc.php' );
 
 <?php
 if( $disp == 'front' || $disp == 'posts' )
-{
-	// ------------------------- "Menu Top" CONTAINER EMBEDDED HERE --------------------------
-	// Display container and contents:
-	// Note: this container is designed to be a single <ul> list
-	skin_container( NT_('Menu Top'), array(
-			// The following params will be used as defaults for widgets included in this container:
-			'block_title_start'   => '',
-			'block_title_end'     => '',
-			'list_start'          => '',
-			'list_end'            => '',
-			'item_start'          => '',
-			'item_end'            => '',
+{ // Widget 'Search form':
+	skin_widget( array(
+			// CODE for the widget:
+			'widget' => 'coll_search_form',
+			// Optional display params
+			'block_title_start' => '',
+			'block_title_end'   => '',
+			'title'             => T_('Search this forum:'),
+			'button'            => T_('Search')
 		) );
-	// ----------------------------- END OF "Menu Top" CONTAINER -----------------------------
 }
 ?>
 
@@ -198,6 +194,7 @@ if( $disp == 'front' || $disp == 'posts' )
 				'posts_text'        => '',
 				'useritems_text'    => T_('User\'s topics'),
 				'usercomments_text' => T_('User\'s replies'),
+				'user_text'         => '',
 			) );
 		// ----------------------------- END OF REQUEST TITLE ----------------------------
 	?>
@@ -209,35 +206,13 @@ if( $disp == 'front' || $disp == 'posts' )
 			'profile_avatar_before' => '<div class="center">',
 			'profile_avatar_after'  => '<div><br />',
 			'disp_edit_categories'  => false,
-			'skin_form_params'      => array(
-					'formstart'      => '<table class="bForums" width="100%" cellspacing="1" cellpadding="2" border="0">',
-					'formend'        => '</table>',
-					'fieldset_begin' => '<tr><th colspan="3" $fieldset_attribs$>$fieldset_title$</th></tr>',
-					'fieldset_end'   => '',
-					'fieldstart'     => '<tr $ID$>',
-					'fieldend'       => '</tr>',
-					'labelstart'     => '<td class="row1 left">',
-					'labelend'       => '</td>',
-					'inputstart'     => '<td class="row2 left">',
-					'inputend'       => '</td>',
-					'infostart'      => '<td class="row2 left" colspan="2">',
-					'infoend'        => '</td>',
-					'buttonsstart'   => '<tr><td colspan="2" class="buttons">',
-					'buttonsend'     => '</td></tr>',
-					'inline_labelstart' => '<td class="left" colspan="2">',
-					'inline_labelend'   => '</td>',
-					'inline_inputstart' => '',
-					'inline_inputend'   => '',
-					'customstart'       => '<tr><td colspan="2" class="custom_content">',
-					'customend'         => '</td></tr>',
-				),
-				'notify_my_text'              => T_( 'Notify me by email whenever a reply is published on one of <strong>my</strong> topics.' ),
-				'notify_moderator_text'       => T_( 'Notify me by email whenever a reply is posted in a forum where I am a moderator.' ),
-				'user_itemlist_title'         => T_('Topics created by %s'),
-				'user_itemlist_no_results'    => T_('User has not created any topics'),
-				'user_commentlist_title'      => T_('Replies posted by %s'),
-				'user_commentlist_no_results' => T_('User has not posted any replies'),
-				'user_commentlist_col_post'   => T_('Reply on:'),
+			'notify_my_text'              => T_( 'Notify me by email whenever a reply is published on one of <strong>my</strong> topics.' ),
+			'notify_moderator_text'       => T_( 'Notify me by email whenever a reply is posted in a forum where I am a moderator.' ),
+			'user_itemlist_title'         => T_('Topics created by %s'),
+			'user_itemlist_no_results'    => T_('User has not created any topics'),
+			'user_commentlist_title'      => T_('Replies posted by %s'),
+			'user_commentlist_no_results' => T_('User has not posted any replies'),
+			'user_commentlist_col_post'   => T_('Reply on:'),
 		) );
 		// Note: you can customize any of the sub templates included here by
 		// copying the matching php file into your skin directory.
@@ -253,7 +228,7 @@ if( $disp == 'front' || $disp == 'posts' )
 		skin_container( NT_('Sidebar'), array(
 				// The following (optional) params will be used as defaults for widgets included in this container:
 				// This will enclose each widget in a block:
-				'block_start' => '<div class="sidebar_block $wi_class$">',
+				'block_start' => '<div class="sidebar_block widget $wi_class$">',
 				'block_end' => '<div class="clear"></div></div>',
 				// This will enclose the title of each widget:
 				'block_title_start' => '<div class="sidebar_title">',
@@ -297,7 +272,7 @@ if( $disp == 'front' || $disp == 'posts' )
 					'after'       => ' &bull; ',
 				) );
 
-		// TODO: dh> provide a default class for pTyp, too. Should be a name and not the ptyp_ID though..?!
+		// TODO: dh> provide a default class for pTyp, too. Should be a name and not the ityp_ID though..?!
 		?>
 
 		<?php

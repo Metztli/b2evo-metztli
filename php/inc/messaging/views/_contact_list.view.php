@@ -1,26 +1,16 @@
 <?php
 /**
  * This file is part of b2evolution - {@link http://b2evolution.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2009-2014 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2009-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2009 by The Evo Factory - {@link http://www.evofactory.com/}.
  *
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- *
- * {@internal Open Source relicensing agreement:
- * The Evo Factory grants Francois PLANQUE the right to license
- * The Evo Factory's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
  * @package messaging
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author efy-maxim: Evo Factory / Maxim.
- * @author fplanque: Francois Planque.
- *
- * @version $Id: _contact_list.view.php 7698 2014-11-26 07:46:54Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -278,7 +268,7 @@ if( in_array( 'login', $show_columns ) )
 		{
 			if( $link )
 			{
-				$login_text = get_user_identity_link( $User->login, $User->ID, 'user', 'text' );
+				$login_text = get_user_identity_link( $User->login, $User->ID, 'user', 'login' );
 				if( $User->check_status( 'is_closed' ) )
 				{ // add (closed account) note to corresponding contacts!
 					$login_text .= '<span class="note">('.T_( 'closed account' ).')</span>';
@@ -464,7 +454,7 @@ if( count( $Results->rows ) > 0 )
 
 	$Form->combo_box( 'group', param( 'group_combo', 'string', '' ), get_contacts_groups_options( param( 'group', 'string', '-1' ), false ), $multi_action_icon.T_('Add all selected contacts to this group'), array( 'new_field_size' => '8' ) );
 
-	$Form->buttons( array( array( 'submit', 'actionArray[add_group]', T_('Add'), 'SaveButton' ) ) );
+	$Form->buttons( array( array( 'submit', 'actionArray[add_group]', T_('Add'), 'SaveButton btn-primary btn-sm' ) ) );
 
 	echo '</span>';
 

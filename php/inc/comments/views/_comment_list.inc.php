@@ -3,19 +3,14 @@
  * This file implements the comment list
  *
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
- * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
- *
  * @package admin
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: _comment_list.inc.php 6426 2014-04-08 16:26:27Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -24,17 +19,11 @@ if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.'
  */
 global $Comment;
 /**
- * @var Blog
- */
-global $Blog;
-/**
  * @var CommentList
  */
 global $CommentList;
 
-global $current_User;
-
-global $dispatcher;
+global $AdminUI;
 
 // If rediret_to was not set, create new redirect
 $redirect_to = param( 'redirect_to', 'url', regenerate_url( '', 'filter=restore', '', '&' ) );
@@ -47,7 +36,7 @@ $currentpage = param( 'currentpage', 'integer', 0 );
 $comments_number = param( 'comments_number', 'integer', 0 );
 if( ( $item_id != 0 ) && ( $comments_number > 0 ) )
 {
-	echo_pages( $item_id, $currentpage, $comments_number );
+	echo_comment_pages( $item_id, $currentpage, $comments_number, $AdminUI->get_template( 'pagination' ) );
 }
 
 while( $Comment = & $CommentList->get_next() )
@@ -61,7 +50,7 @@ while( $Comment = & $CommentList->get_next() )
 
 if( ( $item_id != 0 ) && ( $comments_number > 0 ) )
 {
-	echo_pages( $item_id, $currentpage, $comments_number );
+	echo_comment_pages( $item_id, $currentpage, $comments_number, $AdminUI->get_template( 'pagination' ) );
 }
 
 ?>

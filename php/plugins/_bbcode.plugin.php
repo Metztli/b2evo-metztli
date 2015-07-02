@@ -5,8 +5,8 @@
  * BB style formatting, like [b]bold[/b]
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package plugins
  */
@@ -178,6 +178,33 @@ Supported tags by default are: [b] [i] [s] [color=...] [size=...] [font=...] [qu
 		}
 
 		$content = replace_content_outcode( $this->post_search_list, $this->post_replace_list, $content, array( $this, 'parse_bbcode' ) );
+
+		return true;
+	}
+
+
+	/**
+	 * Perform rendering of Message content
+	 *
+	 * NOTE: Use default coll settings of comments as messages settings
+	 *
+	 * @see Plugin::RenderMessageAsHtml()
+	 */
+	function RenderMessageAsHtml( & $params )
+	{
+		$content = & $params['data'];
+		$Blog = NULL;
+		if( !isset( $this->msg_search_list ) )
+		{
+			$this->msg_search_list = $this->prepare_search_list( 'coll_comment_search_list', $Blog, true );
+		}
+
+		if( !isset( $this->msg_replace_list ) )
+		{
+			$this->msg_replace_list = explode( "\n", str_replace( "\r", '', $this->get_coll_setting( 'coll_comment_replace_list', $Blog, true ) ) );
+		}
+
+		$content = replace_content_outcode( $this->msg_search_list, $this->msg_replace_list, $content, array( $this, 'parse_bbcode' ) );
 
 		return true;
 	}
@@ -411,6 +438,7 @@ Supported tags by default are: [b] [i] [s] [color=...] [size=...] [font=...] [qu
 				$Item = $params['Item'];
 				$item_Blog = & $Item->get_Blog();
 				$apply_rendering = $this->get_coll_setting( 'coll_apply_rendering', $item_Blog );
+				$allow_null_blog = false;
 				break;
 
 			case 'Comment':
@@ -427,6 +455,13 @@ Supported tags by default are: [b] [i] [s] [color=...] [size=...] [font=...] [qu
 					$item_Blog = & $comment_Item->get_Blog();
 				}
 				$apply_rendering = $this->get_coll_setting( 'coll_apply_comment_rendering', $item_Blog );
+				$allow_null_blog = false;
+				break;
+
+			case 'Message':
+				$search_list_setting_name = 'coll_comment_search_list';
+				$apply_rendering = $this->get_msg_setting( 'msg_apply_rendering' );
+				$allow_null_blog = true;
 				break;
 
 			default:
@@ -440,7 +475,7 @@ Supported tags by default are: [b] [i] [s] [color=...] [size=...] [font=...] [qu
 			return false;
 		}
 
-		$search_list = trim( $this->get_coll_setting( $search_list_setting_name, $item_Blog ) );
+		$search_list = trim( $this->get_coll_setting( $search_list_setting_name, $item_Blog, $allow_null_blog ) );
 
 		if( empty( $search_list ) )
 		{	// No list defined
@@ -476,8 +511,7 @@ Supported tags by default are: [b] [i] [s] [color=...] [size=...] [font=...] [qu
 		// Load js to work with textarea
 		require_js( 'functions.js', 'blog', true, true );
 
-		?>
-		<script type="text/javascript">
+		?><script type="text/javascript">
 		//<![CDATA[
 		var bbButtons = new Array();
 		var bbOpenTags = new Array();
@@ -511,7 +545,7 @@ Supported tags by default are: [b] [i] [s] [color=...] [size=...] [font=...] [qu
 		function bbGetButton(button, i)
 		{
 			return '<input type="button" id="' + button.id + '" accesskey="' + button.access + '" title="' + button.tit
-					+ '" style="' + button.style + '" class="quicktags" data-func="bbInsertTag|b2evoCanvas|'+i+'" value="' + button.display + '" />';
+					+ '" style="' + button.style + '" class="<?php echo $this->get_template( 'toolbar_button_class' ); ?>" data-func="bbInsertTag|b2evoCanvas|'+i+'" value="' + button.display + '" />';
 		}
 
 		// Memorize a new open tag
@@ -569,14 +603,16 @@ Supported tags by default are: [b] [i] [s] [color=...] [size=...] [font=...] [qu
 
 		function bbToolbar()
 		{
-			var bbcode_toolbar = '<div><?php echo T_('BB code:'); ?> ';
+			var bbcode_toolbar = '<?php echo $this->get_template( 'toolbar_title_before' ).T_('BB code:').' '.$this->get_template( 'toolbar_title_after' ); ?>';
+			bbcode_toolbar += '<?php echo $this->get_template( 'toolbar_group_before' ); ?>';
 			for( var i = 0; i < bbButtons.length; i++ )
 			{
 				bbcode_toolbar += bbGetButton( bbButtons[i], i );
 			}
-			bbcode_toolbar += '<input type="button" id="bb_close" class="quicktags" data-func="bbCloseAllTags" title="<?php echo T_('Close all tags') ?>" value="close all tags" style="margin-left:8px;" />'
-			bbcode_toolbar += '</div>';
-			jQuery( '#bbcode_toolbar' ).html( bbcode_toolbar );
+			bbcode_toolbar += '<?php echo $this->get_template( 'toolbar_group_after' ).$this->get_template( 'toolbar_group_before' ); ?>';
+			bbcode_toolbar += '<input type="button" id="bb_close" class="<?php echo $this->get_template( 'toolbar_button_class' ); ?>" data-func="bbCloseAllTags" title="<?php echo T_('Close all tags') ?>" value="X" />';
+			bbcode_toolbar += '<?php echo $this->get_template( 'toolbar_group_after' ); ?>';
+			jQuery( '.bbcode_toolbar' ).html( bbcode_toolbar );
 		}
 
 		/**
@@ -631,11 +667,12 @@ Supported tags by default are: [b] [i] [s] [color=...] [size=...] [font=...] [qu
 			}
 		}
 		//]]>
-		</script>
+		</script><?php
 
-		<div id="bbcode_toolbar" class="edit_toolbar"><script type="text/javascript">bbToolbar();</script></div>
+		echo $this->get_template( 'toolbar_before', array( '$toolbar_class$' => 'bbcode_toolbar' ) );
+		?><script type="text/javascript">bbToolbar();</script><?php
+		echo $this->get_template( 'toolbar_after' );
 
-		<?php
 		return true;
 	}
 
@@ -683,15 +720,33 @@ Supported tags by default are: [b] [i] [s] [color=...] [size=...] [font=...] [qu
 
 
 	/**
+	 * Event handler: Called when displaying editor toolbars for message.
+	 *
+	 * @param array Associative array of parameters
+	 * @return boolean did we display a toolbar?
+	 */
+	function DisplayMessageToolbar( & $params )
+	{
+		if( $this->get_msg_setting( 'msg_apply_rendering' ) )
+		{
+			$params['target_type'] = 'Message';
+			return $this->DisplayCodeToolbar( $params );
+		}
+		return false;
+	}
+
+
+	/**
 	 * Prepare a search list
 	 *
 	 * @param string Setting name of search list (' post_search_list', 'comment_search_list' )
 	 * @param object Blog
+	 * @param boolean Allow empty Blog
 	 * @return array Search list
 	 */
-	function prepare_search_list( $setting_name, $Blog )
+	function prepare_search_list( $setting_name, $Blog = NULL, $allow_null_blog = false )
 	{
-		$search_list = explode( "\n", str_replace( "\r", '', $this->get_coll_setting( $setting_name, $Blog ) ) );
+		$search_list = explode( "\n", str_replace( "\r", '', $this->get_coll_setting( $setting_name, $Blog, $allow_null_blog ) ) );
 
 		foreach( $search_list as $l => $line )
 		{	// Remove button name from regexp string

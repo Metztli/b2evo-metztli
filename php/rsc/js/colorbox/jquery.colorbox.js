@@ -321,8 +321,8 @@
 		$content = $div("Content").append(
 			$loaded = $div("LoadedContent", 'width:0; height:0; overflow:hidden'),
 			$loadingOverlay = $div("LoadingOverlay").add($div("LoadingGraphic")),
-			$voting = $div("Voting"),
 			$title = $div("Title"),
+			$voting = $div("Voting"),
 			$current = $div("Current"),
 			$next = $div("Next"),
 			$prev = $div("Previous"),
@@ -336,7 +336,7 @@
 
 		$('body').prepend($overlay, $box.append($wrap, $loadingBay));
 
-		voting_positions_done = false;
+		$voting.data( 'voting_positions_done', 0 );
 		previous_title = '';
 
 		$content.children()
@@ -473,17 +473,14 @@
 				setTimeout(function(){  // small delay before binding onresize due to an IE8 bug.
 					$window.bind('resize.' + prefix, publicMethod.position);
 				}, 1);
+
+				( $wrap.parent().width() <= 480 ) ? $current.hide() : $current.show();
+				( $wrap.parent().width() < 380 ) ? $slideshow.hide() : $slideshow.show();
 			},
 			step: function () {
 				modalDimensions(this);
 			}
 		});
-
-		if( $loaded.width() < 380 )
-		{
-			$current.hide();
-			$slideshow.hide();
-		}
 	};
 
 	publicMethod.resize = function (options) {
@@ -686,6 +683,7 @@
 				if( settings.displayVoting && settings.votingUrl != '' )
 				{	// If voting panel is enabled
 					voting_height = $voting.outerHeight()
+					$voting.css( 'bottom', '9px' );
 				}
 				$title.css( 'margin-bottom', voting_height + $close.outerHeight() - 3 );
 				title_height = 15;
@@ -693,6 +691,7 @@
 			else
 			{	// No title
 				title_height = -15;
+				$voting.css( 'bottom', '25px' );
 			}
 			$loaded.css( 'margin-bottom', parseInt( $loaded.css( 'margin-bottom' ) ) + title_height );
 			loadedHeight += title_height;
@@ -700,16 +699,26 @@
 		previous_title = settings.title;
 
 		if( settings.displayVoting && settings.votingUrl != '' && element.id != '' )
-		{	// Initialize the actions for the voting controls
-			if( !voting_positions_done )
-			{	// Fix positions of the control elements
-				$loaded.css( 'margin-bottom', parseInt( $loaded.css( 'margin-bottom' ) ) + $voting.outerHeight() );
-				loadedHeight = $loaded.outerHeight(true);
-				voting_positions_done = true;
+		{ // Initialize the actions for the voting controls
+			if( $voting.data( 'voting_positions_done' ) == 0 )
+			{ // Fix positions of the control elements
+				if( loadedHeight == 0 )
+				{ // Fix height because sometimes it doesn't have a time for initialization
+					loadedHeight = $loaded.outerHeight(true);
+				}
+				loadedHeight += $voting.outerHeight();
+				$voting.data( 'voting_positions_done', 1 );
 			}
+			$voting.show();
 
 			// Initialize the voting events
 			init_voting_bar( $voting, settings.votingUrl, element.id, true );
+		}
+		else if( $voting.html() != '' )
+		{ // Clear the voting panel if previous image displayed this
+			loadedHeight -= $voting.outerHeight();
+			$voting.html( '' ).hide();
+			$voting.data( 'voting_positions_done', 0 );
 		}
 
 		settings.h = settings.height ?

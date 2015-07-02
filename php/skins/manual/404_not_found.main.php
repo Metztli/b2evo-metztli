@@ -6,15 +6,13 @@
  * It will also rely on default includes for specific dispays (like the comment form).
  *
  * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://b2evolution.net/man/skin-structure}
+ * {@link http://b2evolution.net/man/skin-development-primer}
  *
  * The main page template is used to display the blog when no specific page template is available
  * to handle the request (based on $disp).
  *
  * @package evoskins
  * @subpackage manual
- *
- * @version $Id: 404_not_found.main.php 7043 2014-07-02 08:35:45Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -23,7 +21,6 @@ if( version_compare( $app_version, '5.0' ) < 0 )
 	die( 'This skin is designed for b2evolution 5.0 and above. Please <a href="http://b2evolution.net/downloads/index.html">upgrade your b2evolution</a>.' );
 }
 
-global $Skin;
 
 if( !empty( $requested_404_title ) )
 { // Initialize a prefilled search form
@@ -37,9 +34,7 @@ if( !empty( $requested_404_title ) )
 skin_init( !empty( $requested_404_title ) ? 'search' : $disp );
 
 // -------------------------- HTML HEADER INCLUDED HERE --------------------------
-skin_include( '_html_header.inc.php' );
-// Note: You can customize the default HTML header by copying the generic
-// /skins/_html_header.inc.php file into the current skin folder.
+skin_include( '_html_header.inc.php', array() );
 // -------------------------------- END OF HTML HEADER ---------------------------
 
 
@@ -69,6 +64,18 @@ skin_include( '_left_navigation_bar.inc.php' );
 				'block_end'   => '</div>',
 			) );
 		// --------------------------------- END OF MESSAGES ---------------------------------
+	?>
+
+	<?php
+		// ------------------------ TITLE FOR THE CURRENT REQUEST ------------------------
+		request_title( array(
+				'title_before'      => '<h1 class="page_title">',
+				'title_after'       => '</h1>',
+				'title_single_disp' => false,
+				'title_page_disp'   => false,
+				'format'            => 'htmlbody',
+			) );
+		// ----------------------------- END OF REQUEST TITLE ----------------------------
 	?>
 
 	<?php
@@ -127,10 +134,13 @@ skin_include( '_left_navigation_bar.inc.php' );
 
 			// --------------------------------- START OF CONTENT HIERARCHY --------------------------------
 			echo '<h2 class="table_contents">'.T_('Table of contents').'</h2>';
-			$Skin->display_chapters( array(
-					'display_blog_title' => false,
-					'display_children'   => true,
-					'class_selected'     => ''
+			skin_widget( array(
+					// CODE for the widget:
+					'widget' => 'content_hierarchy',
+					// Optional display params
+					'display_blog_title'   => false,
+					'open_children_levels' => 20,
+					'class_selected'       => ''
 				) );
 			// ---------------------------------- END OF CONTENT HIERARCHY ---------------------------------
 

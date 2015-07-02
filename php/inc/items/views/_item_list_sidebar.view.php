@@ -3,19 +3,14 @@
  * This file implements the riight sidebar for the post browsing screen.
  *
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
- * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
- *
  * @package admin
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: _item_list_sidebar.view.php 6411 2014-04-07 15:17:33Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -77,8 +72,8 @@ echo $template['block_end'];
 $Widget = new Widget();
 $Widget->title = T_('Filters');
 if( $ItemList->is_filtered() )
-{	// List is filtered, offer option to reset filters:
-	$Widget->global_icon( T_('Reset all filters!'), 'reset_filters', '?ctrl=items&amp;blog='.$Blog->ID.'&amp;filter=reset', T_('Reset filters'), 4, 4 );
+{ // List is filtered, offer option to reset filters:
+	$Widget->global_icon( T_('Reset all filters!'), 'reset_filters', '?ctrl=items&amp;blog='.$Blog->ID.'&amp;filter=reset', T_('Reset filters'), 4, 4, array( 'class' => 'action_icon btn btn-warning btn-sm' ) );
 }
 echo $Widget->replace_vars( $template['block_start'] );
 
@@ -87,7 +82,11 @@ echo $Widget->replace_vars( $template['block_start'] );
 	$Form->begin_form( '' );
 
 		$Form->hidden_ctrl();
-		$Form->submit( array( 'submit', T_('Search'), 'search', '', 'float:right' ) );
+		$Form->button_input( array(
+				'tag'   => 'button',
+				'value' => get_icon( 'filter' ).' '.T_('Filter'),
+				'class' => 'search btn-info pull-right',
+			) );
 
 		$Form->hidden( 'tab', $tab );
 		$Form->hidden( 'blog', $Blog->ID );
@@ -130,7 +129,7 @@ echo $Widget->replace_vars( $template['block_start'] );
 		echo '<legend>'.T_('Title / Text contains').'</legend>';
 
 		?>
-		<div><input type="text" name="<?php echo $pp ?>s" size="20" value="<?php echo evo_htmlspecialchars($s) ?>" class="SearchField" /></div>
+		<div class="tile"><input type="text" name="<?php echo $pp ?>s" size="20" value="<?php echo htmlspecialchars($s) ?>" class="SearchField form-control" /></div>
 		<?php
 		// echo T_('Words').' : ';
 		?>
@@ -194,8 +193,8 @@ echo $Widget->replace_vars( $template['block_start'] );
 					{
 						echo '<li><input type="radio" name="'.$pp.'assgn" value="'.$loop_User->ID.'" class="radio"';
 						if( $loop_User->ID == $assgn ) echo ' checked="checked"';
-						echo ' /> <a href="'.regenerate_url( $pp.'assgn', $pp.'assgn='.$loop_User->ID ).'" class="'.$loop_User->get_gender_class().'" rel="bubbletip_user_'.$loop_User->ID.'">';
-						$loop_User->login();
+						echo ' /> <a href="'.regenerate_url( $pp.'assgn', $pp.'assgn='.$loop_User->ID ).'" rel="bubbletip_user_'.$loop_User->ID.'">';
+						echo $loop_User->get_colored_login( array( 'login_text' => 'name' ) );
 						echo '</a></li>';
 					}
 				}
@@ -246,8 +245,8 @@ echo $Widget->replace_vars( $template['block_start'] );
 				{
 					echo '<li><input type="radio" name="'.$pp.'author" value="'.$loop_User->ID.'" class="radio"';
 					if( $loop_User->ID == $author ) echo ' checked="checked"';
-					echo ' /> <a href="'.regenerate_url( $pp.'author', $pp.'author='.$loop_User->ID ).'" class="'.$loop_User->get_gender_class().'" rel="bubbletip_user_'.$loop_User->ID.'">';
-					$loop_User->login();
+					echo ' /> <a href="'.regenerate_url( $pp.'author', $pp.'author='.$loop_User->ID ).'" rel="bubbletip_user_'.$loop_User->ID.'">';
+					echo $loop_User->get_colored_login( array( 'login_text' => 'name' ) );
 					echo '</a></li>';
 				}
 			}
@@ -313,13 +312,17 @@ echo $Widget->replace_vars( $template['block_start'] );
 				'itemlist_prefix' => $pp,       // Prefix of the ItemList object
 			) );
 
-
-		$Form->submit( array( 'submit', T_('Search'), 'search' ) );
+		echo '<br />';
+		$Form->button_input( array(
+				'tag'   => 'button',
+				'value' => get_icon( 'filter' ).' '.T_('Filter'),
+				'class' => 'search btn-info',
+			) );
 
 		if( $ItemList->is_filtered() )
 		{
 			// TODO: style this better:
-			echo '&nbsp; <a href="?ctrl=items&amp;blog='.$Blog->ID.'&amp;filter=reset">'.T_('Reset all filters!').'</a>';
+			echo '&nbsp; <a href="?ctrl=items&amp;blog='.$Blog->ID.'&amp;filter=reset" class="btn btn-warning">'.get_icon( 'filter' ).' '.T_('Reset all filters!').'</a>';
 		}
 
 	$Form->end_form();

@@ -3,14 +3,12 @@
  * This is the BODY footer include template.
  *
  * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://b2evolution.net/man/skin-structure}
+ * {@link http://b2evolution.net/man/skin-development-primer}
  *
  * This is meant to be included in a page template.
  *
  * @package evoskins
  * @subpackage manual
- *
- * @version $Id: _body_footer.inc.php 7043 2014-07-02 08:35:45Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -55,12 +53,10 @@ global $Settings, $Session;
 			// Display a link to help page:
 			$Blog->help_link( array(
 					'before'      => ' ',
-					'after'       => ' &bull; ',
+					'after'       => ' ',
 					'text'        => T_('Help'),
 				) );
 		?>
-
-		<?php display_param_link( $skin_links ) ?> by <?php display_param_link( $francois_links ) ?>
 
 		<?php
 			// Display additional credits:

@@ -7,8 +7,6 @@
  *
  * @package skins
  * @subpackage custom
- *
- * @version $Id: _skin.class.php 3328 2013-03-26 11:44:11Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 

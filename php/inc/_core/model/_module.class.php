@@ -1,25 +1,13 @@
 <?php
 /**
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: _module.class.php 6135 2014-03-08 07:54:05Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -104,6 +92,19 @@ class Module
 	 * Upgrade the module's tables in b2evo database
 	 */
 	function upgrade_b2evo_tables()
+	{
+	}
+
+	/**
+	 * Get what demo collections are installed by the module
+	 *
+	 * @return array Collections, example:
+	 *                 array(
+	 *                   'blog_key' => T_('Blog title'),
+	 *                   'blog_other_key' => T_('Blog other title')
+	 *                 )
+	 */
+	function get_demo_collections()
 	{
 	}
 
@@ -237,11 +238,11 @@ class Module
 	 * @param string Requested permission level
 	 * @param mixed Permission target (blog ID, array of cat IDs...)
 	 * @param string function name
-	 * $param object user's Group - can't be NULL
+	 * @param object user's Group - can't be NULL
 	 * @return boolean True on success (permission is granted), false if permission is not granted
 	 *                 NULL if permission not implemented.
 	 */
-	function check_perm( $permname, $permlevel, $permtarget, $function, $Group )
+	static function check_perm( $permname, $permlevel, $permtarget, $function, $Group )
 	{
 		if( empty( $Group ) )
 		{ // group must be set
@@ -285,6 +286,25 @@ class Module
 
 
 	/**
+	 * Get module specific cron jobs
+	 *
+	 * NOTE: keys starting with "plugin_" are reserved for jobs provided by Plugins
+	 *
+	 * @return array(
+	 *  job_key => array(
+	 *  	'name' => name_value,    // string - the display name of the cron job
+	 *  	'help' => help_config,   // string - The manual topic or a manual URL. Set '#' to use the default manual topic ( 'task-'+job_key ).
+	 *  	'ctrl' => ctrl_path,     // string - the path of the cronjob ctrl file
+	 *  	'params' => job_params ) // array/NULL - the cron job params if there is any or NULL otherwise
+	 *  )
+	 */
+	function get_cron_jobs()
+	{
+		return array();
+	}
+
+
+	/**
 	 * Switch actions for contacts
 	 *
 	 * @param array
@@ -296,7 +316,7 @@ class Module
 
 	/**
 	 * Check Minimum PHP version required for the module
-	 * 
+	 *
 	 * @param string module name/id
 	 */
 	function check_required_php_version( $module )

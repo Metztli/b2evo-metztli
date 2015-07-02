@@ -5,10 +5,8 @@
  * For more info about email skins, see: http://b2evolution.net/man/themes-templates-skins/email-skins/
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
- *
- * @version $Id: account_closed.txt.php 7043 2014-07-02 08:35:45Z yura $
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -25,16 +23,17 @@ $params = array_merge( array(
 		'reason'  => '',
 		'user_ID' => '',
 		'closed_by_admin' => '',// Login of admin which closed current user account
+		'days_count' => 0
 	), $params );
 
 
 if( empty( $params['closed_by_admin'] ) )
 {	// Current user closed own account
-	echo T_('A user account was closed!');
+	printf( T_('A user account was closed %s days after creation.'), $params['days_count'] );
 }
 else
 {	// Admin closed current user account
-	printf( T_('A user account was closed by %s'), $params['closed_by_admin'] );
+	printf( T_('A user account was closed %s days after creation by %s'), $params['days_count'], $params['closed_by_admin'] );
 }
 echo "\n\n";
 

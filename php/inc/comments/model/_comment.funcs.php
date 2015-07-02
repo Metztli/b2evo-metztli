@@ -3,29 +3,16 @@
  * This file implements Comment handling functions.
   *
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2004-2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
- *
- * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
  *
  * @package evocore
  *
  * @todo implement CommentCache based on LinkCache
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author cafelog (team)
- * @author blueyed: Daniel HAHLER.
- * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: _comment.funcs.php 7246 2014-08-20 12:35:51Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -51,7 +38,7 @@ function generic_ctp_number( $post_id, $mode = 'comments', $status = 'published'
 		return 0;
 	}
 
-	$show_statuses = is_admin_page() ? get_visibility_statuses( 'keys', array( 'trash', 'redirected' ) ) : get_inskin_statuses( $blog, 'comment' );
+	$show_statuses = ( is_admin_page() || ( ! $filter_by_perm ) ) ? get_visibility_statuses( 'keys', array( 'trash', 'redirected' ) ) : get_inskin_statuses( $blog, 'comment' );
 	$filter_index = $filter_by_perm ? 0 : 1;
 	if( !isset($cache_ctp_number) || !isset($cache_ctp_number[$filter_index][$post_id]) )
 	{ // we need a query to count comments
@@ -66,7 +53,7 @@ function generic_ctp_number( $post_id, $mode = 'comments', $status = 'published'
 
 		if( !$count_expired )
 		{
-			$count_SQL->FROM_add( 'LEFT JOIN T_items__item_settings as expiry_setting ON comment_item_ID = iset_item_ID AND iset_name = "post_expiry_delay"' );
+			$count_SQL->FROM_add( 'LEFT JOIN T_items__item_settings as expiry_setting ON comment_item_ID = iset_item_ID AND iset_name = "comment_expiry_delay"' );
 			$count_SQL->WHERE_and( 'expiry_setting.iset_value IS NULL OR expiry_setting.iset_value = "" OR TIMESTAMPDIFF(SECOND, comment_date, '.$DB->quote( date2mysql( $servertimenow ) ).') < expiry_setting.iset_value' );
 		}
 	}
@@ -91,7 +78,8 @@ function generic_ctp_number( $post_id, $mode = 'comments', $status = 'published'
 						'comments'   => $statuses_array,
 						'trackbacks' => $statuses_array,
 						'pingbacks'  => $statuses_array,
-						'feedbacks'  => $statuses_array
+						'feedbacks'  => $statuses_array,
+						'metas'      => $statuses_array
 					);
 			}
 
@@ -106,11 +94,14 @@ function generic_ctp_number( $post_id, $mode = 'comments', $status = 'published'
 				// Total for type on post:
 				$cache_ctp_number[$filter_index][$row->comment_item_ID][$row->comment_type.'s']['total'] += $row->type_count;
 
-				// Total for status on post:
-				$cache_ctp_number[$filter_index][$row->comment_item_ID]['feedbacks'][$row->comment_status] += $row->type_count;
+				if( $row->comment_type != 'meta' )
+				{ // Exclude meta comments from feedbacks
+					// Total for status on post:
+					$cache_ctp_number[$filter_index][$row->comment_item_ID]['feedbacks'][$row->comment_status] += $row->type_count;
 
-				// Total for post:
-				$cache_ctp_number[$filter_index][$row->comment_item_ID]['feedbacks']['total'] += $row->type_count;
+					// Total for post:
+					$cache_ctp_number[$filter_index][$row->comment_item_ID]['feedbacks']['total'] += $row->type_count;
+				}
 			}
 		}
 	}
@@ -126,10 +117,11 @@ function generic_ctp_number( $post_id, $mode = 'comments', $status = 'published'
 
 		// Initializes post to nocount!
 		$cache_ctp_number[$filter_index][intval($post_id)] = array(
-				'comments' => $statuses_array,
+				'comments'   => $statuses_array,
 				'trackbacks' => $statuses_array,
-				'pingbacks' => $statuses_array,
-				'feedbacks' => $statuses_array
+				'pingbacks'  => $statuses_array,
+				'feedbacks'  => $statuses_array,
+				'metas'      => $statuses_array
 			);
 
 		$count_SQL->WHERE_and( 'comment_item_ID = '.intval($post_id) );
@@ -142,15 +134,18 @@ function generic_ctp_number( $post_id, $mode = 'comments', $status = 'published'
 			// Total for type on post:
 			$cache_ctp_number[$filter_index][$row->comment_item_ID][$row->comment_type.'s']['total'] += $row->type_count;
 
-			// Total for status on post:
-			$cache_ctp_number[$filter_index][$row->comment_item_ID]['feedbacks'][$row->comment_status] += $row->type_count;
+			if( $row->comment_type != 'meta' )
+			{ // Exclude meta comments from feedbacks
+				// Total for status on post:
+				$cache_ctp_number[$filter_index][$row->comment_item_ID]['feedbacks'][$row->comment_status] += $row->type_count;
 
-			// Total for post:
-			$cache_ctp_number[$filter_index][$row->comment_item_ID]['feedbacks']['total'] += $row->type_count;
+				// Total for post:
+				$cache_ctp_number[$filter_index][$row->comment_item_ID]['feedbacks']['total'] += $row->type_count;
+			}
 		}
 	}
 
-	if( ($mode != 'comments') && ($mode != 'trackbacks') && ($mode != 'pingbacks') )
+	if( ! in_array( $mode, array( 'comments', 'trackbacks', 'pingbacks', 'metas' ) ) )
 	{
 		$mode = 'feedbacks';
 	}
@@ -282,62 +277,102 @@ function get_allowed_statuses( $blog )
  */
 function echo_comment_buttons( $Form, $edited_Comment )
 {
-	global $Blog, $current_User, $highest_publish_status;
+	global $Blog, $AdminUI;
 
-	// ---------- SAVE ------------
-	$Form->submit( array( 'actionArray[update]', T_('Save Changes!'), 'SaveButton' ) );
-
-	// ---------- PUBLISH ---------
-	list( $highest_publish_status, $publish_text ) = get_highest_publish_status( 'comment', $Blog->ID );
-	$current_status_value = get_status_permvalue( $edited_Comment->status );
-	$highest_status_value = get_status_permvalue( $highest_publish_status );
-	$Form->hidden( 'publish_status', $highest_publish_status );
-	if( ( $current_status_value < $highest_status_value ) && ( $highest_publish_status != 'draft' )
-		&& $current_User->check_perm( 'comment!'.$highest_publish_status, 'edit', false, $edited_Comment ) )
-	{ // User may publish this comment with a "more public" status
-		 $publish_style = 'display: inline';
+	if( $edited_Comment->is_meta() )
+	{ // Meta comments don't have a status, Display only one button to update
+		$Form->submit( array( 'actionArray[update]', T_('Save Changes!'), 'SaveButton' ) );
 	}
 	else
-	{
-		$publish_style = 'display: none';
+	{ // Normal comments have a status, Display the buttons to change it and update
+		if( $edited_Comment->status != 'trash' )
+		{
+			// ---------- VISIBILITY ----------
+			echo T_('Visibility').get_manual_link( 'visibility-status' ).': ';
+			// Get those statuses which are not allowed for the current User to create comments in this blog
+			if( $edited_Comment->is_meta() )
+			{ // Don't restrict statuses for meta comments
+				$restricted_statuses = array();
+			}
+			else
+			{ // Restrict statuses for normal comments
+				$restricted_statuses = get_restricted_statuses( $Blog->ID, 'blog_comment!', 'edit' );
+			}
+			$exclude_statuses = array_merge( $restricted_statuses, array( 'redirected', 'trash' ) );
+			// Get allowed visibility statuses
+			$status_options = get_visibility_statuses( '', $exclude_statuses );
+
+			if( isset( $AdminUI, $AdminUI->skin_name ) && $AdminUI->skin_name == 'bootstrap' )
+			{ // Use dropdown for bootstrap skin
+				$Form->hidden( 'comment_status', $edited_Comment->status );
+				echo '<div class="btn-group dropup comment_status_dropdown">';
+				echo '<button type="button" class="btn btn-status-'.$edited_Comment->status.' dropdown-toggle" data-toggle="dropdown" aria-expanded="false" id="comment_status_dropdown">'
+								.'<span>'.$status_options[ $edited_Comment->status ].'</span>'
+							.' <span class="caret"></span></button>';
+				echo '<ul class="dropdown-menu" role="menu" aria-labelledby="comment_status_dropdown">';
+				foreach( $status_options as $status_key => $status_title )
+				{
+					echo '<li rel="'.$status_key.'" role="presentation"><a href="#" role="menuitem" tabindex="-1"><span class="fa fa-circle status_color_'.$status_key.'"></span> <span>'.$status_title.'</span></a></li>';
+				}
+				echo '</ul>';
+				echo '</div>';
+			}
+			else
+			{ // Use standard select element for other skins
+				echo '<select name="comment_status">';
+				foreach( $status_options as $status_key => $status_title )
+				{
+					echo '<option value="'.$status_key.'"'
+								.( $edited_Comment->status == $status_key ? ' selected="selected"' : '' )
+								.' class="btn-status-'.$status_key.'">'
+							.$status_title
+						.'</option>';
+				}
+				echo '</select>';
+			}
+		}
+
+		echo '<span class="btn-group">';
+
+		// ---------- SAVE BUTTONS ----------
+		$Form->submit( array( 'actionArray[update_edit]', /* TRANS: This is the value of an input submit button */ T_('Save & edit'), 'SaveEditButton btn-status-'.$edited_Comment->status ) );
+		$Form->submit( array( 'actionArray[update]', T_('Save'), 'SaveButton btn-status-'.$edited_Comment->status ) );
+
+		echo '</span>';
 	}
-	$Form->submit( array(
-		'actionArray[update_publish]',
-		$publish_text,
-		'SaveButton',
-		'',
-		$publish_style
-	) );
 }
 
 
 /**
- * JS Behaviour: Output JavaScript code to dynamically show or hide the "Publish!"
- * button depending on the selected comment status.
+ * Display buttons to update a comment
  *
- * This function is used by the comment edit screen.
+ * @param object Form
+ * @param object edited Comment
  */
-function echo_comment_publishbt_js()
+function echo_comment_status_buttons( $Form, $edited_Comment )
 {
-	global $next_action, $highest_publish_status;
-	?>
-	<script type="text/javascript">
-	jQuery( '#commentform_visibility input[type=radio]' ).click( function()
-	{
-		var commentpublish_btn = jQuery( '.edit_actions input[name="actionArray[update_publish]"]' );
-		var public_status = '<?php echo $highest_publish_status; ?>';
+	global $Blog;
 
-		if( this.value == public_status || public_status == 'draft' )
-		{	// Hide the "Publish NOW !" button:
-			commentpublish_btn.css( 'display', 'none' );
-		}
-		else
-		{	// Show the button:
-			commentpublish_btn.css( 'display', 'inline' );
-		}
-	} );
-	</script>
-	<?php
+	// Get those statuses which are not allowed for the current User to create posts in this blog
+	$exclude_statuses = array_merge( get_restricted_statuses( $Blog->ID, 'blog_comment!', 'edit' ), array( 'redirected', 'trash' ) );
+	// Get allowed visibility statuses
+	$status_options = get_visibility_statuses( 'button-titles', $exclude_statuses );
+
+	$Form->hidden( 'comment_status', $edited_Comment->status );
+	echo '<div class="btn-group dropup comment_status_dropdown">';
+	echo '<button type="submit" class="btn btn-status-'.$edited_Comment->status.'" name="actionArray[update]">'
+				.'<span>'.$status_options[ $edited_Comment->status ].'</span>'
+			.'</button>'
+			.'<button type="button" class="btn btn-status-'.$edited_Comment->status.' dropdown-toggle" data-toggle="dropdown" aria-expanded="false" id="comment_status_dropdown">'
+				.'<span class="caret"></span>'
+			.'</button>';
+	echo '<ul class="dropdown-menu" role="menu" aria-labelledby="comment_status_dropdown">';
+	foreach( $status_options as $status_key => $status_title )
+	{
+		echo '<li rel="'.$status_key.'" role="presentation"><a href="#" role="menuitem" tabindex="-1"><span class="fa fa-circle status_color_'.$status_key.'"></span> <span>'.$status_title.'</span></a></li>';
+	}
+	echo '</ul>';
+	echo '</div>';
 }
 
 
@@ -351,10 +386,10 @@ function add_jsban( $url )
 {
 	global $admin_url;
 
-	$url = rawurlencode( get_ban_domain( $url ) );
-	$ban_url = $admin_url.'?ctrl=antispam&amp;action=ban&amp;keyword='.$url.'&amp;'.url_crumb('antispam');
+	$ban_domain = get_ban_domain( $url );
+	$ban_url = $admin_url.'?ctrl=antispam&amp;action=ban&amp;keyword='.rawurlencode( $ban_domain ).'&amp;'.url_crumb('antispam');
 
-	return '<a id="ban_url" href="'.$ban_url.'" onclick="ban_url(\''.$url.'\'); return false;">'.get_icon( 'ban' ).'</a>';
+	return '<a id="ban_url" href="'.$ban_url.'" onclick="ban_url(\''.$ban_domain.'\'); return false;">'.get_icon( 'ban' ).'</a>';
 }
 
 
@@ -367,11 +402,33 @@ function add_jsban( $url )
 function add_ban_icons( $content )
 {
 	global $current_User;
+
 	if( ! $current_User->check_perm( 'spamblacklist', 'edit' ) )
-	{
+	{ // Current user has no permission to edit the spam contents
 		return $content;
 	}
 
+	if( stristr( $content, '<code' ) !== false || stristr( $content, '<pre' ) !== false )
+	{ // Add icons only outside <code> and <pre>
+		return callback_on_non_matching_blocks( $content,
+				'~<(code|pre)[^>]+class="codeblock"[^>]*>.*?</\1>~is',
+				'add_ban_icons_callback' );
+	}
+	else
+	{
+		return add_ban_icons_callback( $content );
+	}
+}
+
+
+/**
+ * Callback function to add a javascript ban action icon after each url in the given content
+ *
+ * @param string Comment content
+ * @return string the content with a ban icon after each url if the user has spamblacklist permission, the incoming content otherwise
+ */
+function add_ban_icons_callback( $content )
+{
 	$atags = get_atags( $content );
 	$imgtags = get_imgtags( $content );
 	$urls = get_urls( $content );
@@ -381,7 +438,24 @@ function add_ban_icons( $content )
 	$i = 0; // url counter
 	$j = 0; // "a" tag counter
 	$k = 0; // "img" tag counter
-	while( isset($urls[$i]) )
+
+	// Remove the duplicated <a> tags from array
+	$atags_fixed = array();
+	foreach( $atags as $atag )
+	{
+		if( preg_match( '#href="([^"]+)"#', $atag, $matches ) && ! isset( $atags_fixed[ $matches[1] ] ) )
+		{
+			$atags_fixed[ $matches[1] ] = $atag;
+		}
+	}
+	$atags = array();
+	foreach( $atags_fixed as $atag )
+	{
+		$atags[] = $atag;
+	}
+
+	$used_urls = array();
+	while( isset( $urls[$i] ) )
 	{ // there is unprocessed url
 		$url = $urls[$i];
 		if( validate_url( $url, 'posting', false ) )
@@ -389,13 +463,19 @@ function add_ban_icons( $content )
 			$i++;
 			continue;
 		}
+		if( in_array( $url, $used_urls ) )
+		{ // skip already passed url
+			$i++;
+			continue;
+		}
+		$used_urls[] = $url;
 		while( isset( $imgtags[$k] ) && ( strpos( $content, $imgtags[$k] ) < $from ) )
-		{ // skipp already passed img tags
+		{ // skip already passed img tags
 			$k++;
 		}
 
 		$pos = strpos( $content, $url, $from );
-		$length = evo_strlen($url);
+		$length = utf8_strlen($url);
 		$i++;
 
 		// check img tags
@@ -440,11 +520,18 @@ function add_ban_icons( $content )
  *
  * @param boolean check permission or not. Should be false only if it was already checked.
  * @param boolean show "Open recycle bin" link even if there is no comment with 'trash' status
+ * @param array Additional params
  * @return Open recycle bin link if user has the corresponding 'blogs' - 'editall' permission, empty string otherwise
  */
-function get_opentrash_link( $check_perm = true, $force_show = false )
+function get_opentrash_link( $check_perm = true, $force_show = false, $params = array() )
 {
 	global $admin_url, $current_User, $DB, $blog;
+
+	$params = array_merge( array(
+			'before' => '<div id="recycle_bin" class="floatright">',
+			'after'  => ' </div>',
+			'class'  => 'action_icon btn btn-default btn-sm',
+		), $params );
 
 	$show_recycle_bin = ( !$check_perm || $current_User->check_perm( 'blogs', 'editall' ) );
 	if( $show_recycle_bin && ( !$force_show ) )
@@ -462,7 +549,7 @@ function get_opentrash_link( $check_perm = true, $force_show = false )
 		$show_recycle_bin = ( $DB->get_var( $SQL->get() ) > 0 );
 	}
 
-	$result = '<div id="recycle_bin">';
+	$result = $params['before'];
 	if( $show_recycle_bin )
 	{ // show "Open recycle bin"
 		global $CommentList;
@@ -471,10 +558,10 @@ function get_opentrash_link( $check_perm = true, $force_show = false )
 		{
 			$comment_list_param_prefix = $CommentList->param_prefix;
 		}
-		$result .= '<span class="floatright">'.action_icon( T_('Open recycle bin'), 'recycle_full',
-						$admin_url.'?ctrl=comments&amp;blog='.$blog.'&amp;'.$comment_list_param_prefix.'show_statuses[]=trash', T_('Open recycle bin'), 5, 3 ).'</span> ';
+		$result .= action_icon( T_('Open recycle bin'), 'recycle_full',
+						$admin_url.'?ctrl=comments&amp;blog='.$blog.'&amp;'.$comment_list_param_prefix.'show_statuses[]=trash', ' '.T_('Open recycle bin'), 5, 3, array( 'class' => $params['class'] ) );
 	}
-	return $result.'</div>';
+	return $result.$params['after'];
 }
 
 
@@ -494,6 +581,7 @@ function echo_disabled_comments( $allow_comments_value, $item_url, $params = arr
 			'comments_disabled_text_registered' => T_( 'You must be logged in to leave a comment.' ),
 			'comments_disabled_text_validated'  => T_( 'You must activate your account before you can leave a comment.' ),
 			'form_comment_text'                 => T_('Comment text'),
+			'form_class_comment'                => 'bComment',
 		), $params );
 
 	if( empty( $params['form_params'] ) )
@@ -502,6 +590,8 @@ function echo_disabled_comments( $allow_comments_value, $item_url, $params = arr
 	}
 
 	$params['form_params'] = array_merge( array(
+			'comments_disabled_before' => '<div class="comment_posting_disabled_msg"><p>',
+			'comments_disabled_after' => '</p></div>',
 			'formstart'      => '',
 			'formend'        => '',
 			'fieldset_begin' => '<fieldset>',
@@ -534,39 +624,39 @@ function echo_disabled_comments( $allow_comments_value, $item_url, $params = arr
 	$is_logged_in = is_logged_in();
 	if( !$is_logged_in )
 	{ // user is not logged in
-		$login_link = '<a href="'.get_login_url( 'cannot comment', $item_url ).'">'.T_( 'Log in now!' ).'</a>';
+		$login_link = '<a class="btn btn-primary btn-sm" href="'.get_login_url( 'cannot comment', $item_url ).'">'.T_( 'Log in now!' ).'</a>';
 	}
 	elseif( $current_User->check_status( 'can_be_validated' ) )
 	{ // logged in but the account is not activated
 		$disabled_text = $params['comments_disabled_text_validated'];
-		$activateinfo_link = '<a href="'.get_activate_info_url( $item_url ).'">'.T_( 'More info &raquo;' ).'</a>';
+		$activateinfo_link = '<a href="'.get_activate_info_url( $item_url, '&amp;' ).'">'.T_( 'More info &raquo;' ).'</a>';
 	}
 	// else -> user is logged in and account was activated
 
 	$register_link = '';
-	if( ( !$is_logged_in ) && ( $Settings->get( 'newusers_canregister' ) ) && ( $Settings->get( 'registration_is_public' ) ) )
+	if( ( !$is_logged_in ) && ( $Settings->get( 'newusers_canregister' ) == 'yes' ) && ( $Settings->get( 'registration_is_public' ) ) )
 	{
 		$register_link = '<p>'.sprintf( T_( 'If you have no account yet, you can <a href="%s">register now</a>...<br />(It only takes a few seconds!)' ), get_user_register_url( $item_url, 'reg to post comment' ) ).'</p>';
 	}
 
 	// disabled comment form
-	echo '<form class="bComment" action="">';
+	echo '<form class="'.$params['form_class_comment'].'" action="">';
 
 	echo $params['form_params']['formstart'];
 
 	echo $params['form_params']['fieldset_begin'];
 
-	echo '<div class="comment_posting_disabled_msg">';
+	echo $params['form_params']['comments_disabled_before'];
 	if( $is_logged_in )
 	{
-		echo '<p>'.$disabled_text.' '.$activateinfo_link.'</p>';
+		echo $disabled_text.' '.$activateinfo_link;
 	}
 	else
 	{ // not logged in, add login and register links
-		echo '<p>'.$disabled_text.' '.$login_link.'</p>';
+		echo $disabled_text.' '.$login_link;
 		echo $register_link;
 	}
-	echo '</div>';
+	echo $params['form_params']['comments_disabled_after'];
 
 	echo $params['form_params']['fieldset_end'];
 
@@ -638,7 +728,7 @@ function display_comment_replies( $comment_ID, $params = array(), $level = 1 )
 			'comment_error_start' => '<div class="bComment" id="comment_error">',
 			'comment_error_end'   => '</div>',
 			'link_to'             => 'userurl>userpage', // 'userpage' or 'userurl' or 'userurl>userpage' or 'userpage>userurl'
-			'author_link_text'    => 'login', // avatar | only_avatar | login | nickname | firstname | lastname | fullname | preferredname
+			'author_link_text'    => 'name', // avatar_name | avatar_login | only_avatar | name | login | nickname | firstname | lastname | fullname | preferredname
 		), $params );
 
 	if( isset( $CommentReplies[ $comment_ID ] ) )
@@ -668,24 +758,21 @@ function display_comment_replies( $comment_ID, $params = array(), $level = 1 )
 
 			if( ! empty( $Comment->ID ) )
 			{ // Comment from DB
-				skin_include( $params['comment_template'], array(
+				skin_include( $params['comment_template'], array_merge( $params, array(
 						'Comment'          => & $Comment,
-						'comment_start'    => $comment_start,
-						'comment_end'      => $params['comment_end'],
-						'link_to'          => $params['link_to'],		// 'userpage' or 'userurl' or 'userurl>userpage' or 'userpage>userurl'
-						'author_link_text' => $params['author_link_text'],
-					) );
+						'comment_start'    => $comment_start
+					) ) );
 			}
 			else
 			{ // PREVIEW comment
-				skin_include( $params['comment_template'], array(
+				skin_include( $params['comment_template'], array_merge( $params, array(
 						'Comment'              => & $Comment,
 						'comment_block_start'  => $Comment->email_is_detected ? '' : $params['preview_block_start'],
 						'comment_start'        => $comment_start,
 						'comment_end'          => $Comment->email_is_detected ? $params['comment_error_end'] : $params['preview_end'],
 						'comment_block_end'    => $Comment->email_is_detected ? '' : $params['preview_block_end'],
 						'author_link_text'     => $params['author_link_text'],
-					) );
+					) ) );
 			}
 
 			// Display the rest replies recursively
@@ -772,150 +859,8 @@ function echo_comment_moderate_js()
 	{
 		return false;
 	}
-?>
-<script type="text/javascript">
-/* <![CDATA[ */
-function fadeIn( selector, color )
-{
-	if( jQuery( selector ).length == 0 )
-	{
-		return;
-	}
-	if( jQuery( selector ).get(0).tagName == 'TR' )
-	{ // Fix selector, <tr> cannot have a css property background-color
-		selector = selector + ' td';
-	}
-	var bg_color = jQuery( selector ).css( 'backgroundColor' );
-	jQuery( selector ).animate( { backgroundColor: color }, 200 );
-	return bg_color;
-}
 
-function fadeInStatus( selector, status )
-{
-	switch( status )
-	{
-		case 'published':
-			return fadeIn( selector, '#99EE44' );
-		case 'community':
-			return fadeIn( selector, '#2E8BB9' );
-		case 'protected':
-			return fadeIn( selector, '#FF9C2A' );
-		case 'review':
-			return fadeIn( selector, '#CC0099' );
-	}
-}
-
-// Display voting tool when JS is enable
-jQuery( '.vote_spam' ).show();
-
-// Set comments vote
-function setCommentVote( id, type, vote )
-{
-	var row_selector = '#comment_' + id;
-	var highlight_class = '';
-	var color = '';
-	switch(vote)
-	{
-		case 'spam':
-			color = fadeIn( row_selector, '#ffc9c9' );
-			highlight_class = 'roundbutton_red';
-			break;
-		case 'notsure':
-			color = fadeIn( row_selector, '#bbbbbb' );
-			break;
-		case 'ok':
-			color = fadeIn( row_selector, '#bcffb5' );
-			highlight_class = 'roundbutton_green';
-			break;
-	}
-
-	if( highlight_class != '' )
-	{
-		jQuery( '#vote_'+type+'_'+id ).find( 'a.roundbutton, span.roundbutton' ).addClass( highlight_class );
-	}
-
-	jQuery.ajax({
-	type: "POST",
-	url: "<?php echo get_samedomain_htsrv_url(); ?>anon_async.php",
-	data:
-		{ "blogid": "<?php echo $Blog->ID; ?>",
-			"commentid": id,
-			"type": type,
-			"vote": vote,
-			"action": "set_comment_vote",
-			"crumb_comment": "<?php echo get_crumb('comment'); ?>",
-		},
-	success: function(result)
-		{
-			if( color != '' )
-			{ // Revert the color
-				fadeIn( row_selector, color );
-			}
-			jQuery("#vote_"+type+"_"+id).after( ajax_debug_clear( result ) );
-			jQuery("#vote_"+type+"_"+id).remove();
-		}
-	});
-}
-
-// Set comment status
-function setCommentStatus( id, status, redirect_to )
-{
-	var row_selector = '[id=comment_' + id + ']';
-	var color = fadeInStatus( row_selector, status );
-
-	jQuery.ajax({
-	type: 'POST',
-	url: '<?php echo get_samedomain_htsrv_url(); ?>anon_async.php',
-	data:
-		{ 'blogid': '<?php echo $Blog->ID; ?>',
-			'commentid': id,
-			'status': status,
-			'action': 'moderate_comment',
-			'redirect_to': redirect_to,
-			'crumb_comment': '<?php echo get_crumb('comment'); ?>',
-		},
-	success: function(result)
-		{
-			if( color != '' )
-			{ // Revert the color
-				fadeIn( row_selector, color );
-			}
-			var statuses = ajax_debug_clear( result ).split( ':' );
-			var new_status = statuses[0];
-			if( new_status == '' )
-			{ // Status was not changed
-				return;
-			}
-			var class_name = jQuery( row_selector ).attr( 'class' );
-			class_name = class_name.replace( /vs_([a-z]+)/g, 'vs_' + new_status );
-			jQuery( row_selector ).attr( 'class', class_name );
-			update_moderation_buttons( row_selector, statuses[1], statuses[2] );
-		}
-	});
-}
-
-// Add classes for first and last roundbuttons, because css pseudo-classes don't support to exclude hidden elements
-function update_moderation_buttons( selector, raise_status, lower_status )
-{
-	var parent_selector = '.roundbutton_group ';
-	if( typeof( selector ) != 'undefined' )
-	{
-		parent_selector = selector + ' ' + parent_selector;
-	}
-	selector = parent_selector + '.roundbutton_text';
-
-	// Clear previous classes of first and last visible buttons
-	jQuery( selector ).removeClass( 'first-child last-child btn_next_status' );
-	// Make the raise and lower button are visible
-	jQuery( selector + '.btn_raise_' + raise_status ).addClass( 'btn_next_status' );
-	jQuery( selector + '.btn_lower_' + lower_status ).addClass( 'btn_next_status' );
-	// Add classes for first and last buttons to fix round corners
-	jQuery( selector + ':visible:first' ).addClass( 'first-child' );
-	jQuery( selector + ':visible:last' ).addClass( 'last-child' );
-}
-/* ]]> */
-</script>
-<?php
+	load_funcs( 'comments/model/_comment_js.funcs.php' );
 }
 
 
@@ -1046,132 +991,6 @@ function comment_mass_delete_process( $mass_type, $deletable_comments_query )
 
 
 /**
- * Delete the comments by keyword
- *
- * @param string SQL "where" clause
- * @param array comment ids to delete - it should be set when the ids are known instead of the "where" clause
- * @return mixed integer the number of the deleted comments on success, false on failure
- */
-function comments_delete_where( $sql_where, $comment_ids = NULL )
-{
-	global $DB;
-
-	if( !empty( $sql_where ) )
-	{ // Get all comments that should be deleted
-		$comments_SQL = new SQL();
-		$comments_SQL->SELECT( 'comment_ID' );
-		$comments_SQL->FROM( 'T_comments' );
-		$comments_SQL->WHERE( $sql_where );
-		$delete_comment_ids = $comments_SQL->get();
-	}
-	elseif( !empty( $comment_ids ) )
-	{
-		$delete_comment_ids = implode( ', ', $comment_ids );
-		$sql_where = 'comment_ID IN ( '.$delete_comment_ids.' )';
-	}
-	else
-	{ // Delete condition was not set
-		return 0;
-	}
-
-	$DB->begin();
-
-	// Get the files of these comments
-	$files_SQL = new SQL();
-	$files_SQL->SELECT( 'link_file_ID' );
-	$files_SQL->FROM( 'T_links' );
-	$files_SQL->WHERE( 'link_cmt_ID IN ( '.$delete_comment_ids.' )' );
-	$files_IDs = $DB->get_col( $files_SQL->get() );
-
-	// Delete the comment data from the related tables
-	$temp_Comment = new Comment();
-	if( ! empty( $temp_Comment->delete_cascades ) )
-	{
-		foreach( $temp_Comment->delete_cascades as $cascade )
-		{
-			$DB->query( 'DELETE
-				 FROM '.$cascade['table'].'
-				WHERE '.$cascade['fk'].' IN ( '.$delete_comment_ids.' )',
-				'Delete the related records of the comments' );
-		}
-	}
-
-	if( count( $files_IDs ) )
-	{ // The deleted comments have some files, we can delete the files only if they are not used by other side
-		$used_files_SQL = new SQL();
-		$used_files_SQL->SELECT( 'link_file_ID' );
-		$used_files_SQL->FROM( 'T_links' );
-		$used_files_SQL->WHERE( 'link_file_ID IN ( '.implode( ', ', $files_IDs ).' )' );
-		$used_files_IDs = $DB->get_col( $used_files_SQL->get() );
-
-		$delete_folders = array();
-		$unused_files_IDs = array_diff( $files_IDs, $used_files_IDs );
-		if( count( $unused_files_IDs ) )
-		{
-			$FileCache = & get_FileCache();
-			$index = 0; // use this counter to load only a portion of files into the cache
-			foreach( $unused_files_IDs as $unused_file_ID )
-			{
-				if( ( $index % 100 ) == 0 )
-				{ // Clear the cache to save memory and load the next portion list of files
-					$FileCache->clear();
-					$FileCache->load_list( array_slice( $unused_files_IDs, $index, 100 ) );
-				}
-				$index++;
-				if( $comment_File = & $FileCache->get_by_ID( $unused_file_ID, false ) )
-				{ // Delete a file from disk and from DB
-					$rdfp_rel_path = $comment_File->get_rdfp_rel_path();
-					$folder_path = dirname( $comment_File->get_full_path() );
-					if( $comment_File->unlink( false ) &&
-						( preg_match( '/^(anonymous_)?comments\/p(\d+)\/.*$/', $rdfp_rel_path ) ) &&
-					    ! in_array( $folder_path, $delete_folders ) )
-					{ // Collect comment attachments folders to delete the empty folders later
-						$delete_folders[] = $folder_path;
-					}
-				}
-			}
-		}
-
-		// Delete the empty folders
-		if( count( $delete_folders ) )
-		{
-			foreach( $delete_folders as $delete_folder )
-			{
-				if( file_exists( $delete_folder ) )
-				{ // Delete folder only if it is empty, Hide an error if folder is not empty
-					@rmdir( $delete_folder );
-				}
-			}
-		}
-	}
-
-	// Delete the comment prerendering contents
-	$DB->query( 'DELETE
-		 FROM T_comments__prerendering
-		WHERE cmpr_cmt_ID IN ( '.$delete_comment_ids.' )',
-		'Delete the comment prerendering contents' );
-
-	// Delete all comments
-	// asimo> If a comment with this keyword content was inserted here, the user will not even observe that (This is good)
-	$r = $DB->query( 'DELETE
-		 FROM T_comments
-		WHERE '.$sql_where,
-		'Delete the comments by where clause' );
-
-	if( $r !== false )
-	{ // Success on delete the comments
-		$DB->commit();
-		return $r;
-	}
-	else
-	{ // Failed
-		$DB->rollback();
-		return false;
-	}
-}
-
-
-/**
  * Move all child comments to new post by parent comment ID
  *
  * @param integer/array Parent comment IDs
@@ -1228,7 +1047,7 @@ function comments_results_block( $params = array() )
 	}
 
 	global $current_User;
-	if( !$current_User->check_perm( 'users', 'edit' ) )
+	if( !$current_User->check_perm( 'users', 'moderate' ) )
 	{	// Check minimum permission:
 		return;
 	}
@@ -1267,7 +1086,7 @@ function comments_results_block( $params = array() )
 
 	if( $comments_Results->get_total_rows() > 0 && $edited_User->has_comment_to_delete() )
 	{	// Display action icon to delete all records if at least one record exists & current user can delete at least one comment posted by user
-		$comments_Results->global_icon( sprintf( T_('Delete all comments posted by %s'), $edited_User->login ), 'delete', '?ctrl=user&amp;user_tab=activity&amp;action=delete_all_comments&amp;user_ID='.$edited_User->ID.'&amp;'.url_crumb('user'), ' '.T_('Delete all'), 3, 4 );
+		$comments_Results->global_icon( sprintf( T_('Delete all comments posted by %s'), $edited_User->login ), 'recycle', '?ctrl=user&amp;user_tab=activity&amp;action=delete_all_comments&amp;user_ID='.$edited_User->ID.'&amp;'.url_crumb('user'), ' '.T_('Delete all'), 3, 4 );
 	}
 
 	// Initialize Results object
@@ -1563,9 +1382,20 @@ function get_author_ip( $Comment, $param_prefix = '' )
 
 	if( $current_User->check_perm( 'comment!CURSTATUS', 'moderate', false, $Comment ) )
 	{
-		$filter_IP_url = regenerate_url( 'filter', $param_prefix.'author_IP='.$Comment->get( 'author_IP' ) );
-		$country = $Comment->get_ip_country( ' ' );
-		return '<a href="'.$filter_IP_url.'">'.$Comment->get( 'author_IP' ).'</a>'.$country;
+		if( empty( $Comment->author_IP ) )
+		{
+			return '';
+		}
+		else
+		{
+			$antispam_icon = get_icon( 'lightning', 'imgtag', array( 'title' => T_( 'Go to edit this IP address in antispam control panel' ) ) );
+			$antispam_link = ' '.implode( ', ', get_linked_ip_list( array( $Comment->author_IP ), NULL, $antispam_icon ) );
+
+			$filter_IP_url = regenerate_url( 'filter', $param_prefix.'author_IP='.$Comment->get( 'author_IP' ) );
+			$country = $Comment->get_ip_country( ' ' );
+
+			return '<a href="'.$filter_IP_url.'">'.$Comment->get( 'author_IP' ).'</a>'.$antispam_link.$country;
+		}
 	}
 	else
 	{
@@ -1612,13 +1442,15 @@ function get_colored_status( $Comment )
  *
  * @param string Status value
  * @param string Status title
+ * @param string Status class
  * @return string Styled template for status
  */
-function get_styled_status( $status_value, $status_title )
+// DEPRECATED: instead use something like: $Item->format_status( array(	'template' => '<div class="evo_status__banner evo_status__$status$">$status_title$</div>' ) );
+function get_styled_status( $status_value, $status_title, $status_class = '' )
 {
 	return '<div class="floatright">'
 		.'<span class="note status_'.$status_value.'">'
-		.'<span>'.format_to_output( $status_title ).'</span>'
+		.'<span'.( empty( $status_class ) ? '' : ' class="'.$status_class.'"' ).'>'.format_to_output( $status_title ).'</span>'
 		.'</span>'
 		.'</div>';
 }
@@ -1675,7 +1507,7 @@ function comment_edit_actions( $Comment )
 				$title = T_('Recycle this comment!');
 			}
 
-			$r .=  action_icon( $title, 'delete',
+			$r .=  action_icon( $title, 'recycle',
 				$admin_url.'?ctrl=comments&amp;comment_ID='.$Comment->ID.'&amp;action=delete&amp;'.url_crumb('comment')
 				.'&amp;redirect_to='.$redirect_to, NULL, NULL, NULL, $params );
 		}

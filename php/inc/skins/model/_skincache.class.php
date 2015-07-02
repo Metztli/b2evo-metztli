@@ -3,27 +3,15 @@
  * This file implements the SkinCache class.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evocore
  *
  * @author fplanque: Francois PLANQUE
- *
- * @version $Id: _skincache.class.php 6135 2014-03-08 07:54:05Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -55,7 +43,7 @@ class SkinCache extends DataObjectCache
 	function SkinCache()
 	{
 		parent::DataObjectCache( 'Skin', false, 'T_skins__skin', 'skin_', 'skin_ID', 'skin_name', NULL,
-			/* TRANS: "None" select option */ T_('No skin') );
+			/* TRANS: "None" select option */ NT_('No skin') );
 	}
 
 
@@ -135,9 +123,9 @@ class SkinCache extends DataObjectCache
 
 		$Debuglog->add( get_class($this).' - Loading <strong>'.$this->objtype.'('.$type.')</strong> into cache', 'dataobjects' );
 		$sql = 'SELECT *
-							FROM T_skins__skin
-						 WHERE skin_type = '.$DB->quote($type).'
-						 ORDER BY skin_name';
+					 FROM T_skins__skin
+				   WHERE skin_type = '.$DB->quote($type).'
+				   ORDER BY skin_name';
 
 		foreach( $DB->get_results( $sql, OBJECT, 'Loading Skins('.$type.') into cache' ) as $row )
 		{
@@ -166,7 +154,8 @@ class SkinCache extends DataObjectCache
 		{
 			global $skins_path;
 			require_once( $skins_path.$skin_folder.'/_skin.class.php' );
-			$objtype = $skin_folder.'_Skin';
+			$short_skin_folder = preg_replace( '/_skin$/', '', $skin_folder ); // Remove '_skin' suffix
+			$objtype = $short_skin_folder.'_Skin';
 			if( ! class_exists($objtype) )
 			{
 				debug_die( 'There seems to be a _skin.class.php file in the skin directory ['.$skin_folder.'], but it does not contain a properly named class. Expected class name is: '.$objtype );

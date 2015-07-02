@@ -3,33 +3,26 @@
  * This file implements the Comment form for mass deleting.
  *
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}.
  *
  * @package admin
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE
- *
- * @version $Id: _comment_mass.form.php 1273 2012-04-20 13:23:46Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
-global $Blog, $tab3;
+global $Blog, $tab3, $admin_url;
 
 $Form = new Form( regenerate_url( 'action', '', '', '&' ), 'comment_massdelete' );
-
-$Form->global_icon( T_('Cancel deleting!'), 'close', '?ctrl=comments&blog='.$Blog->ID.'&tab3='.$tab3, T_('cancel'), 4, 1 );
 
 $Form->begin_form( 'fform' );
 
 $Form->add_crumb( 'comment' );
 $Form->hidden( 'ctrl', 'comments' );
 
-	$Form->begin_fieldset( T_('Mass deleting') );
+	$Form->begin_fieldset( T_('Mass deleting').' '.action_icon( T_('Cancel deleting!'), 'close', $admin_url.'?ctrl=comments&blog='.$Blog->ID.'&tab3='.$tab3, '', 4, 1, array( 'class' => 'action_icon floatright btn btn-default btn-sm' ) ) );
 
 	$mass_type_value = 'delete';
 	$mass_types = array();
@@ -48,7 +41,8 @@ $Form->hidden( 'ctrl', 'comments' );
 			'id' => 'mass_submit',
 			'name' => 'actionArray[mass_delete]',
 			'value' => $mass_type_value == 'recycle' ? T_('Recycle Now!') : T_('Delete Now!'),
-			'style' => 'margin-left:25%'
+			'style' => 'margin-left:25%',
+			'class' => 'btn-danger'
 		) );
 
 	$Form->end_fieldset();

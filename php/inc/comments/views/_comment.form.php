@@ -3,18 +3,13 @@
  * This file implements the Comment form.
  *
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}.
  *
  * @package admin
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE
- *
- * @version $Id: _comment.form.php 7644 2014-11-14 08:12:53Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -38,7 +33,7 @@ $Form = new Form( NULL, 'comment_checkchanges', 'post' );
 $link_attribs = array( 'style' => 'margin-right: 3ex;' ); // Avoid misclicks by all means!
 if( $current_User->check_perm( 'blog_post!draft', 'edit', false, $Blog->ID ) )
 {
-	$Form->global_icon( T_( 'Elevate this comment into a post' ), '', '?ctrl=comments&amp;action=elevate&amp;comment_ID='.$edited_Comment->ID.'&amp;'.url_crumb('comment'),
+	$Form->global_icon( T_( 'Elevate this comment into a post' ), 'elevate', '?ctrl=comments&amp;action=elevate&amp;comment_ID='.$edited_Comment->ID.'&amp;'.url_crumb('comment'),
 				T_( 'Elevate into a post' ), 4, 3, $link_attribs );
 }
 
@@ -54,7 +49,7 @@ else
 	$delete_title = T_('Recycle this comment');
 	$delete_text = T_('recycle');
 }
-$Form->global_icon( $delete_title, 'delete', $delete_url, $delete_text, 4, 3, $link_attribs );
+$Form->global_icon( $delete_title, 'recycle', $delete_url, $delete_text, 4, 3, $link_attribs );
 
 $Form->global_icon( T_('Cancel editing!'), 'close', str_replace( '&', '&amp;', $redirect_to), T_('cancel'), 4, 1 );
 
@@ -76,7 +71,7 @@ $Form->hidden( 'comment_ID', $edited_Comment->ID );
 	<?php
 	$Form->begin_fieldset( T_('Comment contents') );
 
-	echo '<table cellspacing="0" class="compose_layout">';
+	echo '<table cellspacing="0" class="compose_layout" align="center">';
 
 	echo '<tr><td width="1%"><strong>'.T_('In response to').':</strong></td>';
 	echo '<td>';
@@ -105,7 +100,7 @@ $Form->hidden( 'comment_ID', $edited_Comment->ID );
 
 	if( $Blog->get_setting( 'threaded_comments' ) )
 	{ // Display a reply comment ID only when this feature is enabled in blog settings
-		echo '<table cellspacing="0" class="compose_layout">';
+		echo '<table cellspacing="0" class="compose_layout" align="center">';
 		echo '<tr><td width="1%"><strong>'.T_('In reply to comment ID').':</strong></td>';
 		echo '<td class="input">';
 		$Form->switch_layout( 'none' );
@@ -116,7 +111,7 @@ $Form->hidden( 'comment_ID', $edited_Comment->ID );
 		echo '</tr></table>';
 	}
 
-	echo '<table cellspacing="0" class="compose_layout">';
+	echo '<table cellspacing="0" class="compose_layout" align="center">';
 
 	if( ! $edited_Comment->get_author_User() )
 	{ // This is not a member comment
@@ -130,6 +125,11 @@ $Form->hidden( 'comment_ID', $edited_Comment->ID );
 		echo '<tr><td width="1%"><strong>'.T_('Email').':</strong></td>';
 		echo '<td class="input">';
 		$Form->text_input( 'newcomment_author_email', $edited_Comment->author_email, 20, '', '', array( 'maxlength' => 255, 'style' => 'width: 100%;' ) );
+		echo '</td></tr>';
+
+		echo '<tr><td width="1%"><strong>'.T_('Allow contact').':</strong></td>';
+		echo '<td class="input">';
+		$Form->checkbox( 'comment_allow_msgform', $edited_Comment->allow_msgform, '', T_('If checked, the comment author can be contacted through a form that will send him en email.') );
 		echo '</td></tr>';
 
 		echo '<tr><td width="1%"><strong>'.T_('Website URL').':</strong></td>';
@@ -165,7 +165,7 @@ $Form->hidden( 'comment_ID', $edited_Comment->ID );
 	$content = $comment_content;
 	$Form->fieldstart = '<div class="edit_area">';
 	$Form->fieldend = "</div>\n";
-	$Form->textarea_input( 'content', $content, 16, '', array( 'cols' => 40 , 'id' => 'commentform_post_content' ) );
+	$Form->textarea_input( 'content', $content, 16, '', array( 'cols' => 40 , 'id' => 'commentform_post_content', 'class' => 'autocomplete_usernames' ) );
 	$Form->fieldstart = '<div class="tile">';
 	$Form->fieldend = '</div>';
 	?>
@@ -180,16 +180,18 @@ $Form->hidden( 'comment_ID', $edited_Comment->ID );
 
 	<?php
 	// ---------- DELETE ----------
-	if( $action == 'editcomment' )
-	{	// Editing comment
+	if( $edited_Comment->status == 'trash' && ( $action == 'edit' || $action == 'update_edit' ) )
+	{ // Editing comment
 		// Display delete button if user has permission to:
-		$edited_Comment->delete_link( ' ', ' ', '#', '#', 'DeleteButton', true );
+		$edited_Comment->delete_link( ' ', ' ', '#', '#', 'DeleteButton btn btn-danger', true );
 	}
 
 	// CALL PLUGINS NOW:
 	$Plugins->trigger_event( 'AdminDisplayEditorButton', array( 'target_type' => 'Comment', 'edit_layout' => NULL ) );
 
+	echo '<div class="pull-right">';
 	echo_comment_buttons( $Form, $edited_Comment );
+	echo '</div>';
 
 	?>
 	</div>
@@ -205,41 +207,6 @@ $Form->hidden( 'comment_ID', $edited_Comment->ID );
 		attachment_iframe( $Form, $LinkOwner );
 	}
 
-	$Form->begin_fieldset( T_('Advanced properties') );
-
- 	$Form->switch_layout( 'linespan' );
-
-	if( $current_User->check_perm( 'blog_edit_ts', 'edit', false, $Blog->ID ) )
-	{	// ------------------------------------ TIME STAMP -------------------------------------
-		echo '<div id="itemform_edit_timestamp">';
-		$Form->date( 'comment_issue_date', $edited_Comment->date, T_('Comment date') );
-		echo ' '; // allow wrapping!
-		$Form->time( 'comment_issue_time', $edited_Comment->date, '' );
-		echo '</div>';
-	}
-
-	// --------------------------- ALLOW MESSAGE FORM ---------------------------
-	if( ! $edited_Comment->get_author_User() )
-	{	// Not a member comment
-		// TODO: move next to email address
-		?>
-		<input type="checkbox" class="checkbox" name="comment_allow_msgform" value="1"
-		<?php
-		if( $edited_Comment->allow_msgform )
-		{
-			echo ' checked="checked"';
-		}
-		?>
-			id="comment_allow_msgform" tabindex="7" />
-		<label for="comment_allow_msgform"><strong><?php echo T_('Allow message form'); ?></strong></label>
-		<span class="note"><?php echo T_( 'Comment author can be contacted directly via email' ); ?></span>
-		<?php
-	}
-
-	$Form->switch_layout( NULL );
-
-	$Form->end_fieldset();
-
 	// ####################### PLUGIN FIELDSETS #########################
 
 	$Plugins->trigger_event( 'AdminDisplayCommentFormFieldset', array( 'Form' => & $Form, 'Comment' => & $edited_Comment, 'edit_layout' => NULL ) );
@@ -247,9 +214,10 @@ $Form->hidden( 'comment_ID', $edited_Comment->ID );
 
 </div>
 
-<div class="right_col col-md-3 form-inline">
+<div class="right_col col-md-3">
 
 <?php
+	// ####################### RATING #########################
 	if( $comment_Item->can_rate()
 		|| !empty( $edited_Comment->rating ) )
 	{	// Rating is editable
@@ -259,44 +227,42 @@ $Form->hidden( 'comment_ID', $edited_Comment->ID );
 		$edited_Comment->rating_input( array( 'reset' => true ) );
 		echo '</p>';
 
- 		$Form->end_fieldset();
+		$Form->end_fieldset();
 	}
 	else
 	{
 		$Form->hidden( 'comment_rating', 0 );
 	}
 
-		/*
-		$Form->begin_fieldset( T_('Properties') );
-			echo '<p>';
-			$Form->checkbox_basic_input( 'comment_featured', $edited_Comment->featured, T_('Featured') );
-			echo '</p>';
-		$Form->end_fieldset();
-		*/
+	// ####################### ADVANCED PROPERTIES #########################
+	if( $current_User->check_perm( 'blog_edit_ts', 'edit', false, $Blog->ID ) )
+	{ // ------------------------------------ TIME STAMP -------------------------------------
+		$Form->begin_fieldset( T_('Date & Time') );
 
-		$Form->begin_fieldset( T_('Visibility'), array( 'id' => 'commentform_visibility' ) );
+		$Form->switch_layout( 'fieldset' );
 
-		$Form->switch_layout( 'linespan' );
-
-		// Get those statuses which are not allowed for the current User to create comments in this blog
-		$exclude_statuses = array_merge( get_restricted_statuses( $Blog->ID, 'blog_comment!', 'edit' ), array( 'redirected', 'trash' ) );
-		// Get allowed visibility statuses
-		$sharing_options = get_visibility_statuses( 'radio-options', $exclude_statuses );
-		$Form->radio( 'comment_status', $edited_Comment->status, $sharing_options, '', true );
+		echo '<div id="commentform_edit_timestamp">';
+		$Form->date_input( 'comment_issue_date', $edited_Comment->date, T_('Date'), array( 'add_date_format_note' => true ) );
+		$Form->time( 'comment_issue_time', $edited_Comment->date, T_('Time') );
+		echo '</div>';
 
 		$Form->switch_layout( NULL );
 
 		$Form->end_fieldset();
+	}
 
-		$Form->begin_fieldset( T_('Links') );
-			echo '<p>';
-			$Form->checkbox_basic_input( 'comment_nofollow', $edited_Comment->nofollow, T_('Nofollow website URL') );
-			// TODO: apply to all links  -- note: see basic antispam plugin that does this for x hours
-			echo '</p>';
-		$Form->end_fieldset();
+	// ####################### LINKS #########################
+	$Form->begin_fieldset( T_('Links') );
+		echo '<p>';
+		$Form->checkbox_basic_input( 'comment_nofollow', $edited_Comment->nofollow, T_('Nofollow website URL') );
+		// TODO: apply to all links  -- note: see basic antispam plugin that does this for x hours
+		echo '</p>';
+	$Form->end_fieldset();
 
-		$Form->begin_fieldset( T_('Feedback info') );
-	?>
+
+	// ####################### FEEDBACK INFO #########################
+	$Form->begin_fieldset( T_('Feedback info') );
+?>
 
 	<p><strong><?php echo T_('Type') ?>:</strong> <?php echo $edited_Comment->type; ?></p>
 	<p><strong><?php echo T_('IP address') ?>:</strong> <?php
@@ -307,13 +273,13 @@ $Form->hidden( 'comment_ID', $edited_Comment->ID );
 	<p><strong><?php echo T_('Spam Karma') ?>:</strong> <?php $edited_Comment->spam_karma(); ?></p>
 
 	<?php
-		$Form->end_fieldset();
+	$Form->end_fieldset();
 
-		// ####################### TEXT RENDERERS #########################
-		global $Plugins;
-		$Form->begin_fieldset( T_('Text Renderers'), array( 'id' => 'itemform_renderers' ) );
-		$edited_Comment->renderer_checkboxes();
-		$Form->end_fieldset();
+	// ####################### TEXT RENDERERS #########################
+	global $Plugins;
+	$Form->begin_fieldset( T_('Text Renderers'), array( 'id' => 'itemform_renderers' ) );
+	$edited_Comment->renderer_checkboxes();
+	$Form->end_fieldset();
 	?>
 </div>
 
@@ -324,7 +290,6 @@ $Form->hidden( 'comment_ID', $edited_Comment->ID );
 <?php
 $Form->end_form();
 
-// ####################### JS BEHAVIORS #########################
-echo_comment_publishbt_js();
-
+// JS code for status dropdown select button
+echo_status_dropdown_button_js( 'comment' );
 ?>

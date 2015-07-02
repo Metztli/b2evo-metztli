@@ -2,9 +2,9 @@
 /**
  * This file implements the cron job to extract keyphrase from the hit logs
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * @version $Id: _process_hitlog.job.php 7762 2014-12-06 06:23:15Z manuel $
+ * @copyright (c)2003-2013 by Francois Planque - {@link http://fplanque.com/}
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 

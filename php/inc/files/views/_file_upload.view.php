@@ -3,33 +3,14 @@
  * This file implements the UI for file upload.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package admin
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author blueyed: Daniel HAHLER.
- * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: _file_upload.view.php 6411 2014-04-07 15:17:33Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -54,29 +35,25 @@ global $fm_FileRoot;
 	 * @usedby addAnotherFileInput()
 	 */
 	function appendLabelAndInputElements( appendTo, labelText, labelBr, inputOrTextarea, inputName,
-	                                      inputSizeOrCols, inputMaxLengthOrRows, inputType, inputClass )
+	                                      inputSizeOrCols, inputMaxLengthOrRows, inputType, inputClass, fieldClass )
 	{
 		var id = inputName.replace(/\[(\d+)\]/, '_$1');
-		// LABEL:
-		var fileLabel = jQuery(appendTo).append(jQuery('<label for="'+id+'">'+labelText+'</label>'));
 
-		// Dow we want a BR after the label:
-		if( labelBr )
-		{ // We want a BR after the label:
-			appendTo.appendChild( document.createElement('br') );
-		}
-		else
-		{
-			appendTo.appendChild( document.createTextNode( ' ' ) );
-		}
+		// Field wrapper:
+		var div = document.createElement( 'div' );
+		div.className = 'form-group' + ( typeof( fieldClass ) == 'undefined' ? '' : ' ' + fieldClass );
+
+		// LABEL:
+		var label = document.createElement( 'label' );
+		label.innerHTML = labelText;
 
 		// INPUT:
-		var fileInput = document.createElement( inputOrTextarea );
+		var fileInput = document.createElement( inputOrTextarea == 'textarea' ? 'textarea' : 'input' );
 		fileInput.name = inputName;
 		fileInput.id = id;
-		if( inputOrTextarea == "input" )
+		if( inputOrTextarea == 'input' || inputOrTextarea == 'radio-input' )
 		{
-			fileInput.type = typeof( inputType ) !== 'undefined' ? inputType : "text";
+			fileInput.type = typeof( inputType ) !== 'undefined' ? inputType : 'text';
 			fileInput.size = inputSizeOrCols;
 			if( typeof( inputMaxLengthOrRows ) != 'undefined' )
 			{
@@ -88,10 +65,21 @@ global $fm_FileRoot;
 			fileInput.cols = inputSizeOrCols;
 			fileInput.rows = inputMaxLengthOrRows;
 		}
-
 		fileInput.className = inputClass;
 
-		appendTo.appendChild( fileInput );
+		if( inputOrTextarea == 'radio-input' )
+		{
+			label.appendChild( fileInput );
+			div.appendChild( label );
+		}
+		else
+		{
+			div.appendChild( label );
+			// Dow we want a BR after the label:
+			div.appendChild( labelBr ? document.createElement('br') : document.createTextNode( ' ' ) );
+			div.appendChild( fileInput );
+		}
+		appendTo.appendChild( div );
 		appendTo.appendChild( document.createElement('br') );
 	}
 
@@ -105,11 +93,12 @@ global $fm_FileRoot;
 		var newLI = document.createElement("li");
 		var closeLink = document.createElement("a");
 		closeLink.innerHTML = '<?php echo get_icon( 'close' ); ?>';
+		closeLink.className = 'btn btn-default pull-right';
 		var closeImage = jQuery( closeLink ).children( 'span' );
 
 		uploadfiles.appendChild( newLI );
 		newLI.appendChild( closeLink );
-		newLI.className = "clear";
+		newLI.className = 'clear';
 
 		<?php
 		if( get_icon( 'close', 'rollover' ) )
@@ -120,31 +109,18 @@ global $fm_FileRoot;
 		}
 		// add handler to image to close the parent LI and add css to float right.
 		?>
-		jQuery(closeImage)
-			.click( function() {jQuery(this).closest("li").remove()} )
-			.css('float', 'right');
+		jQuery( closeImage ).click( function() { jQuery( this ).closest( 'li' ).remove() } );
 
 		evo_upload_fields_count++;
-		// first radio
-		var radioFile = document.createElement('input');
-		radioFile.type = "radio";
-		radioFile.name = "uploadfile_source["+ evo_upload_fields_count +"]";
-		radioFile.value = "file";
 
-		// second radio
-		var radioURL = radioFile.cloneNode(true);
-		radioURL.value = "upload";
-
-		radioFile.checked = true;
-
-		newLI.appendChild( radioFile );
-		appendLabelAndInputElements( newLI, '<?php echo TS_('Choose a file'); ?>:', false, 'input', 'uploadfile['+evo_upload_fields_count+']', '70', '0', 'file', 'upload_file' );
-		newLI.appendChild( radioURL );
-		appendLabelAndInputElements( newLI, '<?php echo TS_('Upload by URL'); ?>:', false, 'input', 'uploadfile_url['+evo_upload_fields_count+']', '70', '0', 'text', 'upload_file' );
-		appendLabelAndInputElements( newLI, '<?php echo TS_('Filename on server (optional)'); ?>:', false, 'input', 'uploadfile_name[]', '50', '80', 'text', '' );
-		appendLabelAndInputElements( newLI, '<?php echo TS_('Long title'); ?>:', true, 'input', 'uploadfile_title[]', '50', '255', 'text', 'large' );
-		appendLabelAndInputElements( newLI, '<?php echo TS_('Alternative text (useful for images)'); ?>:', true, 'input', 'uploadfile_alt[]', '50', '255', 'text', 'large' );
-		appendLabelAndInputElements( newLI, '<?php echo TS_('Caption/Description of the file'); ?>:', true, 'textarea', 'uploadfile_desc[]', '38', '3', '', 'large' );
+		var radioFile = '<input type="radio" name="uploadfile_source[' + evo_upload_fields_count + ']" value="file" checked="checked" />';
+		appendLabelAndInputElements( newLI, radioFile + ' <?php echo TS_('Choose a file'); ?>: ', false, 'radio-input', 'uploadfile['+evo_upload_fields_count+']', '70', '0', 'file', 'upload_file', 'radio' );
+		var radioURL = '<input type="radio" name="uploadfile_source[' + evo_upload_fields_count + ']" value="upload" checked="checked" />';
+		appendLabelAndInputElements( newLI, radioURL + ' <?php echo TS_('Upload by URL'); ?>: ', false, 'radio-input', 'uploadfile_url['+evo_upload_fields_count+']', '70', '0', 'text', 'form-control upload_file', 'radio' );
+		appendLabelAndInputElements( newLI, '<?php echo TS_('Filename on server (optional)'); ?>:', false, 'input', 'uploadfile_name[]', '50', '80', 'text', 'form-control' );
+		appendLabelAndInputElements( newLI, '<?php echo TS_('Long title'); ?>:', true, 'input', 'uploadfile_title[]', '50', '255', 'text', 'form-control large', 'large' );
+		appendLabelAndInputElements( newLI, '<?php echo TS_('Alternative text (useful for images)'); ?>:', true, 'input', 'uploadfile_alt[]', '50', '255', 'text', 'form-control large', 'large' );
+		appendLabelAndInputElements( newLI, '<?php echo TS_('Caption/Description of the file'); ?>:', true, 'textarea', 'uploadfile_desc[]', '38', '3', '', 'form-control large', 'large' );
 	}
 	// -->
 </script>
@@ -155,6 +131,7 @@ global $fm_FileRoot;
 	$this->disp_payload_begin();
 
 	$Form = new Form( NULL, 'fm_upload_checkchanges', 'post', 'none', 'multipart/form-data' );
+	$Form->formclass = 'form-inline';
 	$Form->begin_form( 'fform' );
 	$Form->add_crumb( 'file' );
 	$Form->hidden_ctrl();
@@ -256,50 +233,67 @@ global $fm_FileRoot;
 						{
 							?>
 
-							<input type="radio" name="uploadfile_source[<?php echo $lKey ?>]" value="file"
-								<?php echo ! isset($uploadfile_source[$lKey]) || $uploadfile_source[$lKey] == 'file' ? ' checked="checked"' : '' ?> />
-							<label for="uploadfile_<?php echo $lKey ?>"><?php echo T_('Choose a file'); ?>:</label>
-							<input name="uploadfile[]" id="uploadfile_<?php echo $lKey ?>" size="70" type="file" class="upload_file" /><br />
+							<div class="form-group radio">
+								<label>
+									<input type="radio" name="uploadfile_source[<?php echo $lKey ?>]" value="file"
+										<?php echo ! isset($uploadfile_source[$lKey]) || $uploadfile_source[$lKey] == 'file' ? ' checked="checked"' : '' ?> />
+									<?php echo T_('Choose a file'); ?>:
+									<input name="uploadfile[]" id="uploadfile_<?php echo $lKey ?>" size="70" type="file" class="upload_file" />
+								</label>
+							</div><br />
 
-							<input type="radio" name="uploadfile_source[<?php echo $lKey ?>]" value="upload"
-								<?php echo isset($uploadfile_source[$lKey]) && $uploadfile_source[$lKey] == 'upload' ? ' checked="checked"' : '' ?> />
-							<label for="uploadfile_url_<?php echo $lKey ?>"><?php echo T_('Get from URL'); ?>:</label>
-							<input name="uploadfile_url[]" id="uploadfile_url_<?php echo $lKey ?>" size="70" type="text" class="upload_file"
-									value="<?php echo ( isset( $uploadfile_url[$lKey] ) ? format_to_output( $uploadfile_url[$lKey], 'formvalue' ) : '' );
-									?>" /><br />
+							<div class="form-group radio">
+								<label>
+									<input type="radio" name="uploadfile_source[<?php echo $lKey ?>]" value="upload"
+										<?php echo isset($uploadfile_source[$lKey]) && $uploadfile_source[$lKey] == 'upload' ? ' checked="checked"' : '' ?> />
+									<?php echo T_('Get from URL'); ?>:
+									<input name="uploadfile_url[]" id="uploadfile_url_<?php echo $lKey ?>" size="70" type="text" class="upload_file form-control"
+										value="<?php echo ( isset( $uploadfile_url[$lKey] ) ? format_to_output( $uploadfile_url[$lKey], 'formvalue' ) : '' ); ?>" />
+								</label>
+							</div><br />
 
 							<?php
 						}
 						else
 						{
 							?>
-							<input type="radio" name="<?php echo 'Renamed_'.$lKey ?>" value="Yes" id=" <?php echo 'Yes_'.$lKey ?>"/>
-							<label for="<?php echo 'Yes_'.$lKey ?>">
-							<?php echo sprintf( T_("Replace the old version %s with the new version %s and keep old version as %s."), $renamedMessages[$lKey]['oldThumb'], $renamedMessages[$lKey]['newThumb'], $renamedFiles[$lKey]['newName'] ) ?></label><br />
-							<input type="radio" name="<?php echo 'Renamed_'.$lKey ?>" value="No" id=" <?php echo 'No_'.$lKey ?>"  checked="checked"/>
-							<label for="<?php echo 'Yes_'.$lKey ?>"><?php echo sprintf( T_("Don't touch the old version and keep the new version as %s."), $renamedFiles[$lKey]['newName'] ) ?> </label><br />
+							<div class="form-group radio">
+								<label>
+									<input type="radio" name="<?php echo 'Renamed_'.$lKey ?>" value="Yes" id=" <?php echo 'Yes_'.$lKey ?>"/>
+									<?php echo sprintf( T_('Replace the old version %s with the new version %s and keep old version as %s.'), $renamedMessages[$lKey]['oldThumb'], $renamedMessages[$lKey]['newThumb'], $renamedFiles[$lKey]['newName'] ) ?>
+								</label><br />
+								<label>
+									<input type="radio" name="<?php echo 'Renamed_'.$lKey ?>" value="No" id=" <?php echo 'No_'.$lKey ?>"  checked="checked"/>
+									<?php echo sprintf( T_('Don\'t touch the old version and keep the new version as %s.'), $renamedFiles[$lKey]['newName'] ) ?>
+								</label>
+							</div><br />
 							<?php
 						}
 						// We want file properties on the upload form:
 						?>
-						<label><?php echo T_('Filename on server (optional)'); ?>:</label>
-						<input name="uploadfile_name[]" type="text" size="50" maxlength="80"
-							value="<?php echo ( isset( $uploadfile_name[$lKey] ) ? format_to_output( $uploadfile_name[$lKey], 'formvalue' ) : '' ) ?>" /><br />
+						<div class="form-group">
+							<label><?php echo T_('Filename on server (optional)'); ?>:</label>
+							<input name="uploadfile_name[]" type="text" size="50" maxlength="80" class="form-control"
+								value="<?php echo ( isset( $uploadfile_name[$lKey] ) ? format_to_output( $uploadfile_name[$lKey], 'formvalue' ) : '' ); ?>" />
+						</div><br />
 
-						<label><?php echo T_('Long title'); ?>:</label><br />
-						<input name="uploadfile_title[]" type="text" size="50" maxlength="255" class="large"
-							value="<?php echo ( isset( $uploadfile_title[$lKey] ) ? format_to_output( $uploadfile_title[$lKey], 'formvalue' ) : '' );
-							?>" /><br />
+						<div class="form-group large">
+							<label><?php echo T_('Long title'); ?>:</label><br />
+							<input name="uploadfile_title[]" type="text" size="50" maxlength="255" class="form-control large"
+								value="<?php echo ( isset( $uploadfile_title[$lKey] ) ? format_to_output( $uploadfile_title[$lKey], 'formvalue' ) : '' ); ?>" />
+						</div><br />
 
-						<label><?php echo T_('Alternative text (useful for images)'); ?>:</label><br />
-						<input name="uploadfile_alt[]" type="text" size="50" maxlength="255" class="large"
-							value="<?php echo ( isset( $uploadfile_alt[$lKey] ) ? format_to_output( $uploadfile_alt[$lKey], 'formvalue' ) : '' );
-							?>" /><br />
+						<div class="form-group large">
+							<label><?php echo T_('Alternative text (useful for images)'); ?>:</label><br />
+							<input name="uploadfile_alt[]" type="text" size="50" maxlength="255" class="form-control large"
+								value="<?php echo ( isset( $uploadfile_alt[$lKey] ) ? format_to_output( $uploadfile_alt[$lKey], 'formvalue' ) : '' ); ?>" />
+						</div><br />
 
-						<label><?php echo T_('Caption/Description of the file'); /* TODO: maxlength (DB) */ ?>:</label><br />
-						<textarea name="uploadfile_desc[]" rows="3" cols="38" class="form_textarea_input"><?php
-							echo ( isset( $uploadfile_desc[$lKey] ) ? $uploadfile_desc[$lKey] : '' )
-						?></textarea><br />
+						<div class="form-group large">
+							<label><?php echo T_('Caption/Description of the file'); /* TODO: maxlength (DB) */ ?>:</label><br />
+							<textarea name="uploadfile_desc[]" rows="3" cols="38" class="form-control large form_textarea_input"><?php
+								echo ( isset( $uploadfile_desc[$lKey] ) ? $uploadfile_desc[$lKey] : '' ); ?></textarea>
+						</div><br />
 						<?php
 						echo '</li>';
 						// no text after </li> or JS will bite you! (This is where additional blocks get inserted)
@@ -325,7 +319,7 @@ global $fm_FileRoot;
 			<p class="uploadfileinputs"><a href="#" onclick="addAnotherFileInput(); return false;" class="small"><?php echo T_('Add another file'); ?></a></p>
 
 			<div class="upload_foot">
-				<input type="submit" value="<?php echo format_to_output( T_('Upload to server now'), 'formvalue' ); ?>" class="ActionButton btn btn-default" >
+				<input type="submit" value="<?php echo format_to_output( T_('Upload to server now'), 'formvalue' ); ?>" class="ActionButton btn btn-primary" >
 
 				<p class="note">
 					<?php

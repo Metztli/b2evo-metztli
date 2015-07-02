@@ -3,7 +3,7 @@
  * This is the main/default page template.
  *
  * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://b2evolution.net/man/skin-structure}
+ * {@link http://b2evolution.net/man/skin-development-primer}
  *
  * The main page template is used to display the blog when no specific page template is available
  * to handle the request (based on $disp).
@@ -30,9 +30,7 @@ add_headline( <<<HEREDOC
 </style>
 HEREDOC
 );
-skin_include( '_html_header.inc.php' );
-// Note: You can customize the default HTML header by copying the generic
-// /skins/_html_header.inc.php file into the current skin folder.
+skin_include( '_html_header.inc.php', array() );
 // -------------------------------- END OF HEADER --------------------------------
 ?>
 
@@ -41,7 +39,7 @@ skin_include( '_html_header.inc.php' );
 // ------------------------- BODY HEADER INCLUDED HERE --------------------------
 skin_include( '_body_header.inc.php' );
 // Note: You can customize the default BODY header by copying the generic
-// /skins/_body_footer.inc.php file into the current skin folder.
+// /skins/_body_header.inc.php file into the current skin folder.
 // ------------------------------- END OF HEADER --------------------------------
 ?>
 
@@ -53,13 +51,15 @@ skin_include( '_body_header.inc.php' );
 		// Display container and contents:
 		skin_container( NT_('Menu'), array(
 				// The following params will be used as defaults for widgets included in this container:
-				'block_start' => '',
-				'block_end' => '',
+				'block_start'         => '',
+				'block_end'           => '',
 				'block_display_title' => false,
-				'list_start' => '',
-				'list_end' => '',
-				'item_start' => '<li>',
-				'item_end' => '</li>',
+				'list_start'          => '',
+				'list_end'            => '',
+				'item_start'          => '<li>',
+				'item_end'            => '</li>',
+				'item_title_before'   => '',
+				'item_title_after'    => '',
 			) );
 		// ----------------------------- END OF "Menu" CONTAINER -----------------------------
 	?>
@@ -99,6 +99,13 @@ skin_include( '_body_header.inc.php' );
 display_if_empty();
 
 echo '<div id="styled_content_block">'; // Beginning of posts display
+
+$item_class_params = array(
+		'item_class'        => 'post',
+		'item_type_class'   => 'post_ptyp',
+		'item_status_class' => 'post',
+	);
+
 while( $Item = & mainlist_get_item() )
 {	// For each blog post, do everything below up to the closing curly brace "}"
 	?>
@@ -107,11 +114,13 @@ while( $Item = & mainlist_get_item() )
 		$Item->locale_temp_switch(); // Temporarily switch to post locale (useful for multilingual blogs)
 	?>
 
-	<div id="<?php $Item->anchor_id() ?>" class="post post<?php $Item->status_raw() ?>" lang="<?php $Item->lang() ?>">
+	<div id="<?php $Item->anchor_id() ?>" class="<?php $Item->div_classes( $item_class_params ) ?>" lang="<?php $Item->lang() ?>">
 		<?php
 		if( $Item->status != 'published' )
 		{
-			$Item->status( array( 'format' => 'styled' ) );
+			$Item->format_status( array(
+					'template' => '<div class="floatright"><span class="note status_$status$"><span>$status_title$</span></span></div>',
+				) );
 		}
 		?>
 		<h2><?php
@@ -123,40 +132,12 @@ while( $Item = & mainlist_get_item() )
 		<?php
 			// ---------------------- POST CONTENT INCLUDED HERE ----------------------
 			skin_include( '_item_content.inc.php', array(
-					'image_size'	=>	'fit-400x320',
+					'image_size' => 'fit-400x320',
 				) );
-			// Note: You can customize the default item feedback by copying the generic
-			// /skins/_item_feedback.inc.php file into the current skin folder.
+			// Note: You can customize the default item content by copying the generic
+			// /skins/_item_content.inc.php file into the current skin folder.
 			// -------------------------- END OF POST CONTENT -------------------------
 		?>
-
-    <?php
-      // ------------------------- "Item - Single" CONTAINER EMBEDDED HERE --------------------------
-      // WARNING: EXPERIMENTAL -- NOT RECOMMENDED FOR PRODUCTION -- MAY CHANGE DRAMATICALLY BEFORE RELEASE.
-      // Display container contents:
-      skin_container( /* TRANS: Widget container name */ NT_('Item Single'), array(
-          // The following (optional) params will be used as defaults for widgets included in this container:
-          // This will enclose each widget in a block:
-          'block_start' => '<div class="$wi_class$">',
-          'block_end' => '</div>',
-          // This will enclose the title of each widget:
-          'block_title_start' => '<h3>',
-          'block_title_end' => '</h3>',
-          // If a widget displays a list, this will enclose that list:
-          'list_start' => '<ul>',
-          'list_end' => '</ul>',
-          // This will enclose each item in a list:
-          'item_start' => '<li>',
-          'item_end' => '</li>',
-          // This will enclose sub-lists in a list:
-          'group_start' => '<ul>',
-          'group_end' => '</ul>',
-          // This will enclose (foot)notes:
-          'notes_start' => '<div class="notes">',
-          'notes_end' => '</div>',
-        ) );
-      // ----------------------------- END OF "Sidebar" CONTAINER -----------------------------
-    ?>
 
 		<p class="postmetadata alt">
 			<small>
@@ -169,7 +150,7 @@ while( $Item = & mainlist_get_item() )
 						) );
 				?>
 				<?php
-					if( $Skin->get_setting( 'display_post_date') )
+					if( $Skin->get_setting( 'display_post_date' ) )
 					{	// We want to display the post date:
 						$Item->issue_time( array(
 								'before'      => /* TRANS: date */ T_('This entry was posted on '),
@@ -177,6 +158,7 @@ while( $Item = & mainlist_get_item() )
 							) );
 						$Item->issue_time( array(
 								'before'      => /* TRANS: time */ T_('at '),
+								'time_format' => '#short_time',
 							) );
 						$Item->author( array(
 								'before'    => T_('by '),

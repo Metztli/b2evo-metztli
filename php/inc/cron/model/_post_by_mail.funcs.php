@@ -3,18 +3,13 @@
  * This file implements the post by mail support functions.
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author Stephan Knauss
- * @author tblue246: Tilman Blumenbach
- * @author sam2kb: Alex
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
- *
- * @version $Id: _post_by_mail.funcs.php 8039 2015-01-21 11:33:57Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -269,7 +264,7 @@ function pbm_process_messages( & $mbox, $limit )
 		if( empty($html_body) )
 		{	// Plain-text message
 			pbm_msg('Message type: TEXT');
-			pbm_msg('Message body: <pre style="font-size:10px">'.evo_htmlspecialchars($strbody).'</pre>');
+			pbm_msg('Message body: <pre style="font-size:10px">'.htmlspecialchars($strbody).'</pre>');
 
 			// Process body. First fix different line-endings (dos, mac, unix), remove double newlines
 			$content = str_replace( array("\r", "\n\n"), "\n", trim($strbody) );
@@ -301,7 +296,7 @@ function pbm_process_messages( & $mbox, $limit )
 
 		// TODO: dh> should the password really get trimmed here?!
 		$user_pass = isset($auth[1]) ? trim( remove_magic_quotes($auth[1]) ) : NULL;
-		$user_login = trim( evo_strtolower(remove_magic_quotes($auth[0])) );
+		$user_login = trim( utf8_strtolower(remove_magic_quotes($auth[0])) );
 
 		if( empty($user_login) || empty($user_pass) )
 		{
@@ -317,7 +312,7 @@ function pbm_process_messages( & $mbox, $limit )
 		$pbmUser = & pbm_validate_user_password( $user_login, $user_pass );
 		if( ! $pbmUser )
 		{
-			pbm_msg( sprintf( T_( 'Authentication failed for user &laquo;%s&raquo;' ), evo_htmlspecialchars($user_login) ), true );
+			pbm_msg( sprintf( T_( 'Authentication failed for user &laquo;%s&raquo;' ), htmlspecialchars($user_login) ), true );
 			rmdir_r( $tmpDirMIME );
 			continue;
 		}
@@ -388,9 +383,9 @@ function pbm_process_messages( & $mbox, $limit )
 
 		// Remove content after terminator
 		$eblog_terminator = $Settings->get('eblog_body_terminator');
-		if( !empty( $eblog_terminator ) && ($os_terminator = evo_strpos( $content, $eblog_terminator )) !== false )
+		if( !empty( $eblog_terminator ) && ($os_terminator = utf8_strpos( $content, $eblog_terminator )) !== false )
 		{
-			$content = evo_substr( $content, 0, $os_terminator );
+			$content = utf8_substr( $content, 0, $os_terminator );
 		}
 
 		$post_title = pbm_get_post_title( $content, $subject );
@@ -445,7 +440,7 @@ function pbm_process_messages( & $mbox, $limit )
 		$params = array( 'object_type' => 'Item', 'object_Blog' => & $pbmBlog );
 		$Plugins_admin->filter_contents( $post_title /* by ref */, $content /* by ref */, $renderers, $params );
 
-		pbm_msg('Filtered post content: <pre style="font-size:10px">'.evo_htmlspecialchars($content).'</pre>');
+		pbm_msg('Filtered post content: <pre style="font-size:10px">'.htmlspecialchars($content).'</pre>');
 
 		$context = $Settings->get('eblog_html_tag_limit') ? 'commenting' : 'posting';
 		$post_title = check_html_sanity( $post_title, $context, $pbmUser );
@@ -495,7 +490,7 @@ function pbm_process_messages( & $mbox, $limit )
 			$edited_Item->set( 'renderers', $renderers );
 
 			// INSERT INTO DB:
-			$edited_Item->dbinsert( 'through_email' );
+			$edited_Item->dbinsert();
 
 			pbm_msg( sprintf('Item created?: '.(isset($edited_Item->ID) ? 'yes' : 'no') ) );
 
@@ -573,13 +568,13 @@ function pbm_process_header( $header, & $subject, & $post_date )
 	$prefix = $Settings->get( 'eblog_subject_prefix' );
 	pbm_msg('Subject: '.$subject);
 
-	if( evo_substr($subject, 0, evo_strlen($prefix)) !== $prefix )
+	if( utf8_substr($subject, 0, utf8_strlen($prefix)) !== $prefix )
 	{
 		pbm_msg('Subject prefix is not "'.$prefix.'", skip this email');
 		return false;
 	}
 
-	$subject = evo_substr($subject, evo_strlen($prefix));
+	$subject = utf8_substr($subject, utf8_strlen($prefix));
 
 	// Parse Date
 	if( !preg_match('#^(.{3}, )?(\d{2}) (.{3}) (\d{4}) (\d{2}):(\d{2}):(\d{2})#', $ddate, $match) )
@@ -651,7 +646,7 @@ function pbm_process_attachments( & $content, $mailAttachments, $mediadir, $medi
 	{
 		if( isset($attachment['FileName']) )
 		{
-			$filename = trim( evo_strtolower($attachment['FileName']) );
+			$filename = trim( utf8_strtolower($attachment['FileName']) );
 		}
 		else
 		{	// Related attachments may not have file name, we'll generate one below
@@ -661,13 +656,14 @@ function pbm_process_attachments( & $content, $mailAttachments, $mediadir, $medi
 		if( $filename == '' )
 		{
 			$filename = 'upload_'.uniqid().'.'.$attachment['SubType'];
-			pbm_msg( sprintf('Attachment without name. Using "%s".', evo_htmlspecialchars($filename)) );
+			pbm_msg( sprintf('Attachment without name. Using "%s".', htmlspecialchars($filename)) );
 		}
 
 		// Check valid filename/extension: (includes check for locked filenames)
 		if( $error_filename = process_filename( $filename, true ) )
 		{
 			pbm_msg('Invalid filename: '.$error_filename);
+			syslog_insert( sprintf( 'The posted by mail file %s has an unrecognized extension', '<b>'.$filename.'</b>' ), 'warning', 'file' );
 			continue;
 		}
 
@@ -687,6 +683,7 @@ function pbm_process_attachments( & $content, $mailAttachments, $mediadir, $medi
 				if( $error_in_filename = process_filename( $filename, true ) )
 				{ // The file name is not valid, this is an unexpected situation, because the file name was already validated before
 					pbm_msg('Invalid filename: '.$error_filename);
+					syslog_insert( sprintf( 'The posted by mail file %s has an unrecognized extension', '<b>'.$filename.'</b>' ), 'warning', 'file' );
 					break;
 				}
 			}
@@ -701,10 +698,10 @@ function pbm_process_attachments( & $content, $mailAttachments, $mediadir, $medi
 		$imginfo = NULL;
 		if( ! $Settings->get('eblog_test_mode') )
 		{
-			pbm_msg( 'Saving file to: '.evo_htmlspecialchars($mediadir.$filename) );
+			pbm_msg( 'Saving file to: '.htmlspecialchars($mediadir.$filename) );
 			if( !copy( $attachment['DataFile'], $mediadir.$filename ) )
 			{
-				pbm_msg( 'Unable to copy uploaded file to '.evo_htmlspecialchars($mediadir.$filename) );
+				pbm_msg( 'Unable to copy uploaded file to '.htmlspecialchars($mediadir.$filename) );
 				continue;
 			}
 
@@ -796,7 +793,7 @@ function pbm_get_auth_tag( & $content )
 
 function pbm_prepare_html_message( $message )
 {
-	pbm_msg('Message body (original): <pre style="font-size:10px">'.evo_htmlspecialchars($message).'</pre>');
+	pbm_msg('Message body (original): <pre style="font-size:10px">'.htmlspecialchars($message).'</pre>');
 
 	$marker = 0;
 	if( preg_match( '~<body[^>]*>(.*?)</body>~is', $message, $result ) )
@@ -839,7 +836,7 @@ function pbm_prepare_html_message( $message )
 	);
 	$content = preg_replace( $patterns, '', $content );
 
-	pbm_msg('Message body (processed): <pre style="font-size:10px">'.evo_htmlspecialchars($content).'</pre>');
+	pbm_msg('Message body (processed): <pre style="font-size:10px">'.htmlspecialchars($content).'</pre>');
 
 	return array( $auth, $content );
 }

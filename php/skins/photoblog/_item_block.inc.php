@@ -6,8 +6,8 @@
  * It is meant to be called by an include in the main.page.php template (or other templates)
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  */
@@ -52,7 +52,8 @@ $params = array_merge( array(
 				 * crop-15x15
 				 * See also the $thumbnail_sizes array in conf/_advanced.php.
 				 */
-				'restrict_to_image_position' => 'teaser',	// Optionally restrict to files/images linked to specific position: 'teaser'|'aftermore'
+				// Optionally restrict to files/images linked to specific position: 'teaser'|'teaserperm'|'teaserlink'|'aftermore'|'inline'|'cover'
+				'restrict_to_image_position' => 'cover,teaser,teaserperm,teaserlink',
 			) );
 	?>
 
@@ -64,7 +65,9 @@ $params = array_merge( array(
 			<?php
 				if( $Item->status != 'published' )
 				{
-					$Item->status( array( 'format' => 'styled' ) );
+					$Item->format_status( array(
+							'template' => '<div class="floatright"><span class="note status_$status$"><span>$status_title$</span></span></div>',
+						) );
 				}
 				// Link to comments, trackbacks, etc.:
 				$Item->feedback_link( array(
@@ -75,7 +78,6 @@ $params = array_merge( array(
 								'link_text_one' => get_icon( 'comments' ),
 								'link_text_more' => get_icon( 'comments' ),
 								'link_title' => '#',
-								'use_popup' => ( $Skin->get_setting( 'comments_display' ) == 'popup' ),
 							) );
 
 				$Item->permanent_link( array(
@@ -121,7 +123,8 @@ $params = array_merge( array(
 					'after_image' =>         '</div>',
 					'after' =>               '</div>',
 					'image_size' =>          'fit-520x390',
-					'restrict_to_image_position' => 'aftermore',	// Optionally restrict to files/images linked to specific position: 'teaser'|'aftermore'
+					// Optionally restrict to files/images linked to specific position: 'teaser'|'teaserperm'|'teaserlink'|'aftermore'|'inline'|'cover'
+					'restrict_to_image_position' => 'aftermore',
 				) );
 		?>
 
@@ -129,8 +132,8 @@ $params = array_merge( array(
 			// ---------------------- POST CONTENT INCLUDED HERE ----------------------
 			// Note: at the top of this file, we set: 'image_size' =>	'', // Do not display images in content block - Image is handled separately
 			skin_include( '_item_content.inc.php', $params );
-			// Note: You can customize the default item feedback by copying the generic
-			// /skins/_item_feedback.inc.php file into the current skin folder.
+			// Note: You can customize the default item content by copying the generic
+			// /skins/_item_content.inc.php file into the current skin folder.
 			// -------------------------- END OF POST CONTENT -------------------------
 		?>
 

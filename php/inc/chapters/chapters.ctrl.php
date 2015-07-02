@@ -3,25 +3,19 @@
  * This file implements ther UI controler for chapters management.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
- *
- * @version $Id: chapters.ctrl.php 7650 2014-11-15 13:37:36Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
+
+// We should activate toolbar menu items for this controller
+$activate_collection_toolbar = true;
 
 if( valid_blog_requested() )
 {
@@ -461,29 +455,20 @@ switch( $action )
 		break;
 }
 
+if( $action == 'list' )
+{ // Load JS to edit chapter order inline
+	require_js( 'jquery/jquery.jeditable.js', 'rsc_url' );
+}
+
 /**
  * Display page header, menus & messages:
  */
-$AdminUI->set_coll_list_params( 'blog_cats', 'edit',
-		array( 'ctrl' => $ctrl ),	NULL );
+$AdminUI->set_coll_list_params( 'blog_cats', 'edit', array( 'ctrl' => $ctrl ) );
 
+$AdminUI->set_path( 'collections', 'categories' );
 
-/**
- * We need make this call to build menu for all modules
- */
-$AdminUI->set_path( 'items' );
-
-/*
- * Add sub menu entries:
- * We do this here instead of _header because we need to include all filter params into regenerate_url()
- */
-attach_browse_tabs();
-
-$AdminUI->set_path( 'items', 'settings', 'chapters' );
-
-$AdminUI->breadcrumbpath_init( true, array( 'text' => T_('Contents'), 'url' => '?ctrl=items&amp;blog=$blog$&amp;tab=full&amp;filter=restore' ) );
-$AdminUI->breadcrumbpath_add( T_('Content settings'), '?ctrl=chapters&amp;blog=$blog$' );
-$AdminUI->breadcrumbpath_add( T_('Categories'), '?ctrl=chapters&amp;blog=$blog$' );
+$AdminUI->breadcrumbpath_init( true, array( 'text' => T_('Collections'), 'url' => $admin_url.'?ctrl=dashboard&amp;blog=$blog$' ) );
+$AdminUI->breadcrumbpath_add( T_('Categories'), $admin_url.'?ctrl=chapters&amp;blog=$blog$' );
 
 $AdminUI->set_page_manual_link( 'categories-tab' );
 
@@ -553,7 +538,7 @@ switch( $action )
 		}
 		else
 		{
-			$AdminUI->disp_view( 'generic/_generic_category.form.php' );
+			$AdminUI->disp_view( 'generic/views/_generic_category.form.php' );
 		}
 
 		// End payload block:

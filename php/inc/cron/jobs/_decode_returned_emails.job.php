@@ -25,8 +25,6 @@
  *	[end] – everything after this shortcode is ignored (i.e. signatures)
  *	[more] – more tag
  *	[nextpage] – pagination
- *
- * @version $Id: _decode_returned_emails.job.php 460 2011-12-01 10:09:16Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 

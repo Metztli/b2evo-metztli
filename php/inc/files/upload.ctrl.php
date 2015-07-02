@@ -3,31 +3,19 @@
  * This file implements the UI controller for file upload.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * (dh please re-add)
- *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
  *
  * {@internal Open Source relicensing agreement:
  * (dh please re-add)
  * }}
  *
  * @package admin
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
  * (dh please re-add)
- *
- * @version $Id: upload.ctrl.php 6334 2014-03-25 13:11:30Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -96,7 +84,7 @@ $fm_FileRoot = NULL;
 
 $FileRootCache = & get_FileRootCache();
 
-$available_Roots = $FileRootCache->get_available_FileRoots();
+$available_Roots = $FileRootCache->get_available_FileRoots( get_param( 'root' ) );
 
 if( ! empty($root) )
 { // We have requested a root folder by string:
@@ -238,12 +226,12 @@ $failedFiles = array();
  * Remember renamed files (and the messages)
  * @var array
  */
-param( 'renamedFiles', 'array/array/string', array(), true );
+param( 'renamedFiles', 'array:array:string', array(), true );
 $renamedMessages = array();
 
 // Process files we want to get from an URL:
-param( 'uploadfile_url', 'array/string', array() );
-param( 'uploadfile_source', 'array/string', array() );
+param( 'uploadfile_url', 'array:string', array() );
+param( 'uploadfile_source', 'array:string', array() );
 if( ( $action != 'switchtab' ) && $uploadfile_url )
 {
 	// Check that this action request is not a CSRF hacked request:
@@ -358,13 +346,13 @@ if( ( $action != 'switchtab' ) && isset($_FILES) && count( $_FILES ) )
 				$img_tag = format_to_output( $uploadedFile->get_tag(), 'formvalue' );
 				if( $uploadedFile->is_image() )
 				{
-					$link_msg = $LinkOwner->translate( 'Link this image to your owner' );
+					$link_msg = $LinkOwner->translate( 'Link this image to your xxx' );
 					$link_note = T_('recommended - allows automatic resizing');
 				}
 				else
 				{
-					$link_msg = $LinkOwner->translate( 'Link this file to your owner' );
-					$link_note = $LinkOwner->translate( 'The file will be linked for download at the end of the owner' );
+					$link_msg = $LinkOwner->translate( 'Link this file to your xxx' );
+					$link_note = $LinkOwner->translate( 'The file will be linked for download at the end of the xxx' );
 				}
 				$success_msg .= '<ul>'
 						.'<li>'.action_icon( T_('Link this file!'), 'link',
@@ -375,7 +363,7 @@ if( ( $action != 'switchtab' ) && isset($_FILES) && count( $_FILES ) )
 						.'<li>'.T_('or').' <a href="#" onclick="if( window.focus && window.opener ){'
 						.'window.opener.focus(); textarea_wrap_selection( window.opener.document.getElementById(\''.$LinkOwner->type.'form_post_content\'), \''
 						.format_to_output( $uploadedFile->get_tag(), 'formvalue' ).'\', \'\', 1, window.opener.document ); } return false;">'
-						.$LinkOwner->translate( 'Insert the following code snippet into your owner' ).'</a> : <input type="text" value="'.$img_tag.'" size="60" /></li>'
+						.$LinkOwner->translate( 'Insert the following code snippet into your xxx' ).'</a> : <input type="text" value="'.$img_tag.'" size="60" /></li>'
 						// fp> TODO: it would be supacool to have an ajaxy "tumbnail size selector" here that generates a thumnail of requested size on server and then changes the code in the input above
 					.'</ul>';
 			}
@@ -401,6 +389,11 @@ if( ( $action != 'switchtab' ) && isset($_FILES) && count( $_FILES ) )
 file_controller_build_tabs();
 
 $AdminUI->set_path( 'files', 'upload' );
+
+if( $mode == 'popup' )
+{ // Don't display navigation on popup mode
+	$AdminUI->clear_menu_entries( 'files' );
+}
 
 // fp> TODO: this here is a bit sketchy since we have Blog & fileroot not necessarilly in sync. Needs investigation / propositions.
 // Note: having both allows to post from any media dir into any blog.

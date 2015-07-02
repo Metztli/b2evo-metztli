@@ -2,7 +2,8 @@
 /**
  * This is the site header include template.
  *
- * If enabled, thiw will be included at the top of all skins to provide a common identity and site wide navigation.
+ * If enabled, this will be included at the top of all skins to provide a common identity and site wide navigation.
+ * NOTE: each skin is responsible for calling siteskin_include( '_site_body_header.inc.php' );
  *
  * @package site_skins
  */
@@ -11,7 +12,7 @@ if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.'
 global $baseurl, $Settings;
 ?>
 
-<div class="sitewide_header">
+<nav class="sitewide_header">
 
 <?php
 if( $Settings->get( 'notification_logo' ) != '' )
@@ -35,7 +36,7 @@ else
 						// CODE for the widget:
 						'widget' => 'colls_list_public',
 						// Optional display params
-						'block_start' => ' ',
+						'block_start' => '',
 						'block_end' => '',
 						'block_display_title' => false,
 						'list_start' => '',
@@ -50,7 +51,7 @@ else
 	// ---------------------------------- END OF BLOG LIST ---------------------------------
 
 	if( $Settings->get( 'info_blog_ID' ) > 0 )
-	{
+	{ // We have a collection for info pages:
 		// --------------------------------- START OF PAGES LIST --------------------------------
 		// Call widget directly (without container):
 		skin_widget( array(
@@ -71,11 +72,30 @@ else
 						'blog_ID' => $Settings->get( 'info_blog_ID' ),
 						'item_group_by' => 'none',
 						'order_by' => 'order',		// Order (as explicitly specified)
-
-
 				) );
 		// ---------------------------------- END OF PAGES LIST ---------------------------------
 	}
+
+	// --------------------------------- START OF CONTACT LINK --------------------------------
+	// Call widget directly (without container):
+	skin_widget( array(
+						// CODE for the widget:
+						'widget' => 'menu_link',
+						// Optional display params
+						'block_start' => '',
+						'block_end' => '',
+						'block_display_title' => false,
+						'list_start' => '',
+						'list_end' => '',
+						'item_start' => '',
+						'item_end' => '',
+						'item_selected_start' => '',
+						'item_selected_end' => '',
+						'link_selected_class' => 'swhead_item swhead_item_selected',
+						'link_default_class' => 'swhead_item ',
+						'link_type' => 'ownercontact',
+				) );
+	// --------------------------------- END OF CONTACT LINK --------------------------------
 ?>
 
 	<div class="floatright">
@@ -151,4 +171,4 @@ else
 	?>
 	</div>
 	<div class="clear"></div>
-</div>
+</nav>

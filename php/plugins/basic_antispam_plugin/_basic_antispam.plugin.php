@@ -4,30 +4,12 @@
  *
  * This file is part of the b2evolution project - {@link http://b2evolution.net/}
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package plugins
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author blueyed: Daniel HAHLER - {@link http://daniel.hahler.de/}
- *
- * @version $Id: _basic_antispam.plugin.php 7332 2014-09-29 11:31:08Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -184,6 +166,10 @@ class basic_antispam_plugin extends Plugin
 		if( $this->is_duplicate_comment( $params['Comment'] ) )
 		{
 			$this->msg( T_('The trackback seems to be a duplicate.'), 'error' );
+			if( $comment_Item = & $params['Comment']->get_Item() )
+			{
+				syslog_insert( 'The trackback seems to be a duplicate', 'info', 'item', $comment_Item->ID, 'plugin', $this->ID );
+			}
 		}
 	}
 
@@ -208,9 +194,15 @@ class basic_antispam_plugin extends Plugin
 	 */
 	function BeforeCommentFormInsert( & $params )
 	{
+		$comment_Item = & $params['Comment']->get_Item();
+
 		if( $this->is_duplicate_comment( $params['Comment'] ) )
 		{
 			$this->msg( T_('The comment seems to be a duplicate.'), 'error' );
+			if( $comment_Item )
+			{
+				syslog_insert( 'The comment seems to be a duplicate', 'info', 'item', $comment_Item->ID, 'plugin', $this->ID );
+			}
 		}
 
 		if( $this->Settings->get('block_common_spam') && preg_match_all( '~\[(link|url)=~', $params['Comment']->content, $m ) )
@@ -218,6 +210,10 @@ class basic_antispam_plugin extends Plugin
 			if( !empty($m[1]) && count($m[1]) > 1 )
 			{
 				$this->msg( T_('Your comment was rejected because it appeared to be spam.'), 'error' );
+				if( $comment_Item )
+				{
+					syslog_insert( 'The comment was rejected because it appeared to be spam', 'warning', 'item', $comment_Item->ID, 'plugin', $this->ID );
+				}
 			}
 		}
 	}

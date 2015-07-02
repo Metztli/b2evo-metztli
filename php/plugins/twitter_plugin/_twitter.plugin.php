@@ -7,10 +7,10 @@
  *
  * This file is part of the b2evolution project - {@link http://b2evolution.net/}
  *
- * @copyright (c)2009-2014 by Francois PLANQUE - {@link http://fplanque.net/}
- * @copyright (c)2007 by Lee Turner - {@link http://leeturner.org/}.
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * @license GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
+ * @copyright (c)2009-2015 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2007 by Lee Turner - {@link http://leeturner.org/}.
  *
  * @package plugins
  *
@@ -18,8 +18,6 @@
  * @author fplanque: Francois PLANQUE.
  *
  * @todo dh> use OAuth instead of username/password: http://apiwiki.twitter.com/Authentication
- *
- * @version $Id: _twitter.plugin.php 6225 2014-03-16 10:01:05Z attila $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -89,13 +87,13 @@ class twitter_plugin extends Plugin
 
 
 	/**
-	 * We require b2evo 3.2.0 or above.
+	 * We require b2evo 5.0 or above.
 	 */
 	function GetDependencies()
 	{
 		return array(
 				'requires' => array(
-					'app_min' => '3.2.0-beta',
+					'app_min' => '5.0',
 				),
 			);
 	}
@@ -252,7 +250,11 @@ class twitter_plugin extends Plugin
 		$connection = new TwitterOAuth(TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET);
 
 		// set callback url
-		$callback = $this->get_htsrv_url( 'twitter_callback', array( 'target_type' => $target_type, 'target_id' => $target_id ), '&', true );
+		$callback = $this->get_htsrv_url( 'twitter_callback', array(), '&', true );
+		// Use the separate params for this request instead of using
+		//     array $params(second param of the func above)
+		//     because twitter cannot redirects to this complex url with serialized data
+		$callback = url_add_param( $callback, 'target_type='.$target_type.'&target_id='.$target_id, '&' );
 
 		$req_token = $connection->getRequestToken( $callback );
 
@@ -335,13 +337,13 @@ class twitter_plugin extends Plugin
 	{
 		global $Session, $Messages, $admin_url;
 
-		if( ! isset( $params['target_type'] ) || ! isset( $params['target_id'] ) )
+		$target_type = param( 'target_type', 'string', NULL );
+		$target_id = param( 'target_id', 'integer', NULL );
+
+		if( is_null( $target_type ) || is_null( $target_id ) )
 		{
 			bad_request_die( 'Missing target params!' );
 		}
-
-		$target_type = $params['target_type'];
-		$target_id = $params['target_id'];
 
 		if( $target_type == 'blog' )
 		{ // redirect to blog settings
@@ -566,33 +568,33 @@ class twitter_plugin extends Plugin
 		// Replace the title and exerpt, but before replacing decode the html entities
 		$msg = str_replace(
 				array( '$title$', '$excerpt$' ),
-				array( evo_html_entity_decode( $content['title'] ), evo_html_entity_decode( $content['excerpt'] ) ),
+				array( html_entity_decode( $content['title'] ), html_entity_decode( $content['excerpt'] ) ),
 				$oauth['msg_format']
 			);
 
-		$msg_len = evo_strlen($msg);
-		$full_url_len = evo_strlen( $content['url'] );
-		$base_url_len = evo_strlen( $Item->get_Blog()->get_baseurl_root() );
+		$msg_len = utf8_strlen($msg);
+		$full_url_len = utf8_strlen( $content['url'] );
+		$base_url_len = utf8_strlen( $Item->get_Blog()->get_baseurl_root() );
 
-		if( (evo_strpos($msg, '$url$') === 0) && ($base_url_len + $msg_len - 5) > $this->message_length_limit )
+		if( (utf8_strpos($msg, '$url$') === 0) && ($base_url_len + $msg_len - 5) > $this->message_length_limit )
 		{	// The message is too long and is starting with $url$
 			$max_len = $this->message_length_limit + $full_url_len - $base_url_len;
 			$msg = strmaxlen( str_replace( '$url$', $content['url'], $msg ), $max_len, '...' );
 		}
-		elseif( (evo_strpos(strrev($msg), 'p2b# $lru$') === 0) && ($base_url_len + $msg_len - 10) > $this->message_length_limit )
+		elseif( (utf8_strpos(strrev($msg), 'p2b# $lru$') === 0) && ($base_url_len + $msg_len - 10) > $this->message_length_limit )
 		{	// The message is too long and is ending on '$url$ #b2p'
 			// Strip $url$, crop the message, and add URL to the end
 			$max_len = $this->message_length_limit - $base_url_len -1; // save room for space character
 			$msg = strmaxlen( str_replace( '$url$ #b2p', '', $msg ), $max_len, '...' );
 			$msg .= ' '.$content['url'].' #b2p';
 		}
-		elseif( (evo_strpos(strrev($msg), '$lru$') === 0) && ($base_url_len + $msg_len - 5) > $this->message_length_limit )
+		elseif( (utf8_strpos(strrev($msg), '$lru$') === 0) && ($base_url_len + $msg_len - 5) > $this->message_length_limit )
 		{	// Same as above, but without '#b2p' suffix
 			$max_len = $this->message_length_limit - $base_url_len -1; // save room for space character
 			$msg = strmaxlen( str_replace( '$url$', '', $msg ), $max_len, '...' );
 			$msg .= ' '.$content['url'];
 		}
-		elseif( (evo_strpos($msg, '$url$') !== false) && ($base_url_len + $msg_len - 5) > $this->message_length_limit )
+		elseif( (utf8_strpos($msg, '$url$') !== false) && ($base_url_len + $msg_len - 5) > $this->message_length_limit )
 		{	// Message is too long and $url$ is somewhere in the middle
 			// We can't do much, it will be rejected by Twitter
 			// TODO: find a way to trim X chars before the URL and Y chars after
@@ -609,7 +611,7 @@ class twitter_plugin extends Plugin
 
 		if( empty($result) )
 		{
-			$xmlrpcresp = 'Unknown error while posting "'.evo_htmlspecialchars( $msg ).'" to account @'.$oauth['contact'];
+			$xmlrpcresp = 'Unknown error while posting "'.htmlspecialchars( $msg ).'" to account @'.$oauth['contact'];
 			return false;
 		}
 		elseif( !empty($result->error) )

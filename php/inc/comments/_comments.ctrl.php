@@ -3,18 +3,10 @@
  * This file implements the UI controller for managing comments.
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
- *
- * {@internal Open Source relicensing agreement:
- * }}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: _comments.ctrl.php 8027 2015-01-19 11:58:16Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -30,6 +22,9 @@ global $UserSettings;
 
 $action = param_action( 'list' );
 
+// We should activate toolbar menu items for this controller
+$activate_collection_toolbar = true;
+
 /*
  * Init the objects we want to work on.
  */
@@ -37,6 +32,7 @@ switch( $action )
 {
 	case 'edit':
 	case 'update':
+	case 'update_edit':
 	case 'switch_view':
 	case 'publish':
 	case 'restrict':
@@ -58,7 +54,12 @@ switch( $action )
 		$Blog = & $BlogCache->get_by_ID( $blog );
 
 		// Some users can delete & change a status of comments in their own posts, set corresponding permlevel
-		if( $action == 'publish' || $action == 'update_publish' )
+		if( $edited_Comment->is_meta() )
+		{ // Use special permissions for meta comment
+			$check_permname = 'meta_comment';
+			$check_permlevel = 'delete';
+		}
+		elseif( $action == 'publish' || $action == 'update_publish' )
 		{ // Load the new comment status from publish request and set perm check values
 			$publish_status = param( 'publish_status', 'string', '' );
 			$check_permname = 'comment!'.$publish_status;
@@ -71,8 +72,8 @@ switch( $action )
 		}
 		else
 		{ // set default perm check values
-			$comment_status = param( 'comment_status', 'string', 'CURSTATUS' );
-			$check_permname = 'comment!'.$comment_status;
+			$comment_status = param( 'comment_status', 'string', NULL );
+			$check_permname = 'comment!'.( empty( $comment_status ) ? 'CURSTATUS' : $comment_status );
 			$check_permlevel = ( $action == 'delete' ) ? 'delete' : 'edit';
 		}
 		// Check permission:
@@ -87,7 +88,7 @@ switch( $action )
 		$Plugins_admin->unfilter_contents( $comment_title /* by ref */, $comment_content /* by ref */, $edited_Comment->get_renderers_validated(), $params );
 
 		// Where are we going to redirect to?
-		param( 'redirect_to', 'url', url_add_param( $admin_url, 'ctrl=items&blog='.$blog.'&p='.$edited_Comment_Item->ID, '&' ) );
+		param( 'redirect_to', 'url', url_add_param( $admin_url, 'ctrl=items&blog='.$blog.'&p='.$edited_Comment_Item->ID.( $edited_Comment->is_meta() ? '&comment_type=meta' : '' ), '&' ) );
 		break;
 
 	case 'elevate':
@@ -180,26 +181,20 @@ switch( $action )
 // Set the third level tab
 param( 'tab3', 'string', '', true );
 
-$AdminUI->breadcrumbpath_init( true, array( 'text' => T_('Contents'), 'url' => '?ctrl=items&amp;blog=$blog$&amp;tab=full&amp;filter=restore' ) );
-$AdminUI->breadcrumbpath_add( T_('Comments'), '?ctrl=comments&amp;blog=$blog$&amp;filter=restore' );
+$AdminUI->breadcrumbpath_init( true, array( 'text' => T_('Collections'), 'url' => $admin_url.'?ctrl=dashboard&amp;blog=$blog$' ) );
+$AdminUI->breadcrumbpath_add( T_('Comments'), $admin_url.'?ctrl=comments&amp;blog=$blog$&amp;filter=restore' );
 switch( $tab3 )
 {
 	case 'listview':
-		$AdminUI->breadcrumbpath_add( T_('List view'), '?ctrl=comments&amp;blog=$blog$&amp;tab3='.$tab3.'&amp;filter=restore' );
+		$AdminUI->breadcrumbpath_add( T_('List view'), $admin_url.'?ctrl=comments&amp;blog=$blog$&amp;tab3='.$tab3.'&amp;filter=restore' );
 		break;
 
 	case 'fullview':
-		$AdminUI->breadcrumbpath_add( T_('Full text view'), '?ctrl=comments&amp;blog=$blog$&amp;tab3='.$tab3.'&amp;filter=restore' );
+		$AdminUI->breadcrumbpath_add( T_('Full text view'), $admin_url.'?ctrl=comments&amp;blog=$blog$&amp;tab3='.$tab3.'&amp;filter=restore' );
 		break;
 }
 
-$AdminUI->set_path( 'items' );	// Sublevel may be attached below
-
-if( in_array( $action, array( 'edit', 'elevate', 'update_publish', 'update', 'switch_view' ) ) )
-{ // Page with comment edit form
-	// Set an url for manual page
-	$AdminUI->set_page_manual_link( 'editing-comments' );
-}
+$AdminUI->set_path( 'collections' );	// Sublevel may be attached below
 
 /**
  * Perform action:
@@ -215,8 +210,7 @@ switch( $action )
 		$AdminUI->title_titlearea = T_('Editing comment').' #'.$edited_Comment->ID;
 
 		// Generate available blogs list:
-		$AdminUI->set_coll_list_params( 'blog_comments', 'edit',
-						array( 'ctrl' => 'comments', 'filter' => 'restore' ), NULL, '' );
+		$AdminUI->set_coll_list_params( 'blog_comments', 'edit', array( 'ctrl' => 'comments', 'filter' => 'restore' ) );
 
 		/*
 		 * Add sub menu entries:
@@ -224,7 +218,7 @@ switch( $action )
 		 */
 		attach_browse_tabs( false );
 
-		$AdminUI->set_path( 'items', 'comments' );
+		$AdminUI->set_path( 'collections', 'comments' );
 
 		$AdminUI->breadcrumbpath_add( sprintf( T_('Comment #%s'), $edited_Comment->ID ), '?ctrl=comments&amp;comment_ID='.$edited_Comment->ID.'&amp;action=edit' );
 		$AdminUI->breadcrumbpath_add( T_('Edit'), '?ctrl=comments&amp;comment_ID='.$edited_Comment->ID.'&amp;action=edit' );
@@ -233,6 +227,7 @@ switch( $action )
 
 	case 'update_publish':
 	case 'update':
+	case 'update_edit':
 	case 'switch_view':
 		// fp> TODO: $edited_Comment->load_from_Request( true );
 
@@ -312,7 +307,7 @@ switch( $action )
 		if( param( 'renderers_displayed', 'integer', 0 ) )
 		{ // use "renderers" value only if it has been displayed (may be empty)
 			global $Plugins;
-			$renderers = $Plugins->validate_renderer_list( param( 'renderers', 'array/string', array() ), array( 'Comment' => & $edited_Comment ) );
+			$renderers = $Plugins->validate_renderer_list( param( 'renderers', 'array:string', array() ), array( 'Comment' => & $edited_Comment ) );
 			$edited_Comment->set_renderers( $renderers );
 		}
 
@@ -357,7 +352,8 @@ switch( $action )
 		param_check_not_empty( 'content', T_('Empty comment content is not allowed.') );
 		$edited_Comment->set( 'content', get_param( 'content' ) );
 
-		if( $current_User->check_perm( 'blog_edit_ts', 'edit', false, $Blog->ID ) )
+		if( $current_User->check_perm( 'admin', 'restricted' ) &&
+		    $current_User->check_perm( 'blog_edit_ts', 'edit', false, $Blog->ID ) )
 		{ // We use user date
 			param_date( 'comment_issue_date', T_('Please enter a valid comment date.'), true );
 			if( strlen(get_param('comment_issue_date')) )
@@ -370,13 +366,16 @@ switch( $action )
 		param( 'comment_rating', 'integer', NULL );
 		$edited_Comment->set_from_Request( 'rating' );
 
-		$comment_status = param( 'comment_status', 'string', 'published' );
+		$comment_status = param( 'comment_status', 'string', NULL );
 		if( $action == 'update_publish' )
 		{
 			$comment_status = $publish_status;
 		}
-		$old_comment_status = $edited_Comment->get( 'status' );
-		$edited_Comment->set( 'status', $comment_status );
+		if( ! empty( $comment_status ) )
+		{ // Update status only if it was defined on the submitted form
+			$old_comment_status = $edited_Comment->get( 'status' );
+			$edited_Comment->set( 'status', $comment_status );
+		}
 
 		param( 'comment_nofollow', 'integer', 0 );
 		$edited_Comment->set_from_Request( 'nofollow' );
@@ -386,7 +385,7 @@ switch( $action )
 			break;
 		}
 
-		if( $old_comment_status != $comment_status )
+		if( isset( $old_comment_status ) && $old_comment_status != $comment_status )
 		{ // Comment moderation is done, handle moderation "secret"
 			$edited_Comment->handle_qm_secret();
 		}
@@ -403,8 +402,11 @@ switch( $action )
 
 			$Messages->add( T_('Comment has been updated.'), 'success' );
 
-			header_redirect( $redirect_to );
-			/* exited */
+			if( $action != 'update_edit' )
+			{ // Redirect to previous page(e.g. comments list) after updating except of action "Save & Edit"
+				header_redirect( $redirect_to );
+				/* exited */
+			}
 		}
 
 		break;
@@ -503,7 +505,7 @@ switch( $action )
 		$Session->assert_received_crumb( 'comment' );
 
 		// fp> TODO: non JS confirm
-		$success_message = ( $edited_Comment->status == 'trash' ) ? T_('Comment has been deleted.') : T_('Comment has been recycled.');
+		$success_message = ( $edited_Comment->status == 'trash' || $edited_Comment->is_meta() ) ? T_('Comment has been deleted.') : T_('Comment has been recycled.');
 
 		// Delete from DB:
 		$edited_Comment->dbdelete();
@@ -521,16 +523,16 @@ switch( $action )
 		if( isset( $blog_ID ) && ( $blog_ID != 0 ) )
 		{ // delete by comment ids
 			$query = 'SELECT comment_ID
-					FROM T_blogs LEFT OUTER JOIN T_categories ON blog_ID = cat_blog_ID
-						LEFT OUTER JOIN T_items__item ON cat_ID = post_main_cat_ID
-						LEFT OUTER JOIN T_comments ON post_ID = comment_item_ID
-					WHERE comment_status = "trash" AND blog_ID = '.$blog_ID;
-			$comment_ids = $DB->query->get_col( $query, 'get trash comment ids' );
-			$result = comments_delete_where( NULL, $comment_ids );
+					 FROM T_comments
+					INNER JOIN T_items__item ON post_ID = comment_item_ID
+					INNER JOIN T_categories ON cat_ID = post_main_cat_ID
+					WHERE comment_status = "trash" AND cat_blog_ID = '.$DB->quote( $blog_ID );
+			$comment_ids = $DB->get_col( $query, 0, 'get trash comment ids' );
+			$result = Comment::db_delete_where( 'Comment', NULL, $comment_ids );
 		}
 		else
 		{ // delete by where clause
-			$result = comments_delete_where( 'comment_status = "trash"' );
+			$result = Comment::db_delete_where( 'Comment', 'comment_status = "trash"' );
 		}
 
 		if( $result !== false )
@@ -557,7 +559,7 @@ switch( $action )
 		 */
 		attach_browse_tabs( false );
 
-		$AdminUI->set_path( 'items', 'comments' );
+		$AdminUI->set_path( 'collections', 'comments' );
 
 		$AdminUI->breadcrumbpath_add( T_('Comment recycle bins'), '?ctrl=comments&amp;action=emptytrash' );
 		break;
@@ -598,8 +600,7 @@ switch( $action )
 		$AdminUI->title_titlearea = T_('Latest comments');
 
 		// Generate available blogs list:
-		$AdminUI->set_coll_list_params( 'blog_comments', 'edit',
-						array( 'ctrl' => 'comments', 'filter' => 'restore' ), NULL, '' );
+		$AdminUI->set_coll_list_params( 'blog_comments', 'edit', array( 'ctrl' => 'comments', 'filter' => 'restore' ) );
 
 		/*
 		 * Add sub menu entries:
@@ -614,7 +615,7 @@ switch( $action )
 			$tab3 = 'fullview';
 		}
 
-		$AdminUI->set_path( 'items', 'comments', $tab3 );
+		$AdminUI->set_path( 'collections', 'comments', $tab3 );
 
 		$comments_list_param_prefix = 'cmnt_';
 		if( !empty( $tab3 ) )
@@ -670,22 +671,30 @@ switch( $action )
  * Page navigation:
  */
 
-$AdminUI->set_path( 'items', 'comments' );
+$AdminUI->set_path( 'collections', 'comments' );
 
 if( $tab3 == 'fullview' )
 { // Load jquery UI to animate background color on change comment status and to transfer a comment to recycle bin
 	require_js( '#jqueryUI#' );
 }
 
-if( in_array( $action, array( 'edit', 'update_publish', 'update', 'elevate' ) ) )
+if( in_array( $action, array( 'edit', 'update_publish', 'update', 'update_edit', 'elevate' ) ) )
 { // Initialize date picker for _comment.form.php
 	init_datepicker_js();
 }
 
-require_css( 'rsc/css/blog_base.css', true ); // Default styles for the blog navigation
+require_css( $AdminUI->get_template( 'blog_base.css' ) ); // Default styles for the blog navigation
 require_js( 'communication.js' ); // auto requires jQuery
 // Colorbox (a lightweight Lightbox alternative) allows to zoom on images and do slideshows with groups of images:
 require_js_helper( 'colorbox' );
+
+if( in_array( $action, array( 'edit', 'elevate', 'update_publish', 'update', 'update_edit', 'switch_view' ) ) )
+{ // Page with comment edit form
+	// Initialize js to autocomplete usernames in comment form
+	init_autocomplete_usernames_js();
+	// Set an url for manual page
+	$AdminUI->set_page_manual_link( 'editing-comments' );
+}
 
 // Display <html><head>...</head> section! (Note: should be done early if actions do not redirect)
 $AdminUI->disp_html_head();
@@ -706,7 +715,8 @@ switch( $action )
 	case 'edit':
 	case 'elevate':
 	case 'update_publish':
-	case 'update':	// on error
+	case 'update': // on error
+	case 'update_edit': // on error
 	case 'switch_view':
 		// Begin payload block:
 		$AdminUI->disp_payload_begin();

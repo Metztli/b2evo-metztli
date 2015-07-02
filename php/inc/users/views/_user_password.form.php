@@ -3,38 +3,14 @@
  * This file implements the UI view for the user properties.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * The Evo Factory grants Francois PLANQUE the right to license
- * The Evo Factory's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- *
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package admin
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author efy-maxim: Evo Factory / Maxim.
- * @author fplanque: Francois PLANQUE
- * @author blueyed: Daniel HAHLER
- *
- * @version $Id: _user_password.form.php 7878 2014-12-23 11:54:05Z yura $
  */
 
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -66,17 +42,26 @@ global $current_User;
 
 global $Session;
 
+// check if reqID exists. If exists it means that this form is displayed because a password change request by email.
+$reqID = param( 'reqID', 'string', '' );
+
 // Default params:
 $default_params = array(
-		'skin_form_params' => array(),
+		'skin_form_params'     => array(),
+		'form_class_user_pass' => 'bComment',
+		'display_abandon_link' => true,
+		'button_class'         => '',
+		'form_button_action'   => 'update',
+		'form_hidden_crumb'    => 'user',
+		'form_hidden_reqID'    => $reqID,
 	);
 
 if( isset( $params ) )
-{	// Merge with default params
+{ // Merge with default params
 	$params = array_merge( $default_params, $params );
 }
 else
-{	// Use a default params
+{ // Use a default params
 	$params = $default_params;
 }
 
@@ -85,9 +70,6 @@ user_prevnext_links( array(
 		'user_tab' => 'pwdchange'
 	) );
 // ------------- END OF PREV/NEXT USER LINKS -------------------
-
-// check if reqID exists. If exists it means that this form is displayed because a password change request by email.
-$reqID = param( 'reqID', 'string', '' );
 
 $Form = new Form( $form_action, 'user_checkchanges' );
 
@@ -109,7 +91,7 @@ if( $is_admin )
 else
 {
 	$form_title = '';
-	$form_class = 'bComment';
+	$form_class = $params['form_class_user_pass'];
 }
 
 $has_full_access = $current_User->check_perm( 'users', 'edit' );
@@ -117,7 +99,7 @@ $has_full_access = $current_User->check_perm( 'users', 'edit' );
 
 $Form->begin_form( $form_class, $form_title, array( 'title' => ( isset( $form_text_title ) ? $form_text_title : $form_title ) ) );
 
-	$Form->add_crumb( 'user' );
+	$Form->add_crumb( $params['form_hidden_crumb'] );
 	$Form->hidden_ctrl();
 	$Form->hidden( 'user_tab', 'pwdchange' );
 	$Form->hidden( 'password_form', '1' );
@@ -147,11 +129,11 @@ if( $action != 'view' )
 			}
 			else
 			{ // Ask password of current admin
-				$Form->password_input( 'current_user_pass', '', 20, T_('Enter your current password'), array( 'maxlength' => 50, 'required' => ($edited_User->ID == 0), 'autocomplete'=>'off', 'style' => 'width:163px', 'note' => T_('We ask for <b>your</b> <i>current</i> password as an additional security measure.') ) );
+				$Form->password_input( 'current_user_pass', '', 20, T_('Enter your current password'), array( 'maxlength' => 50, 'required' => ($edited_User->ID == 0), 'autocomplete'=>'off', 'style' => 'width:163px', 'note' => sprintf( T_('We ask for <b>your</b> (%s) <i>current</i> password as an additional security measure.'), $current_User->get( 'login' ) ) ) );
 			}
 		}
 		$Form->password_input( 'edited_user_pass1', '', 20, T_('New password'), array( 'note' => sprintf( T_('Minimum length: %d characters.'), $Settings->get('user_minpwdlen') ), 'maxlength' => 50, 'required' => ($edited_User->ID == 0), 'autocomplete'=>'off' ) );
-		$Form->password_input( 'edited_user_pass2', '', 20, T_('Confirm new password'), array( 'maxlength' => 50, 'required' => ($edited_User->ID == 0), 'autocomplete'=>'off' ) );
+		$Form->password_input( 'edited_user_pass2', '', 20, T_('Confirm new password'), array( 'maxlength' => 50, 'required' => ($edited_User->ID == 0), 'autocomplete'=>'off', 'note' => '<span id="pass2_status" class="red"></span>' ) );
 
 	$Form->end_fieldset();
 }
@@ -160,10 +142,13 @@ if( $action != 'view' )
 
 if( $action != 'view' )
 { // Edit buttons
-	$Form->buttons( array( array( '', 'actionArray[update]', T_('Change password!'), 'SaveButton' ) ) );
+	$Form->buttons( array( array( '', 'actionArray['.$params['form_button_action'].']', T_('Change password!'), 'SaveButton'.$params['button_class'] ) ) );
 }
 
+if( $params['display_abandon_link'] )
+{ // Display a link to go away from this form
 	$Form->info( '', '<div><a href="'.regenerate_url( 'disp', 'disp=profile' ).'">'.T_( 'Abandon password change' ).'</a></div>' );
+}
 
 
 $Form->end_form();

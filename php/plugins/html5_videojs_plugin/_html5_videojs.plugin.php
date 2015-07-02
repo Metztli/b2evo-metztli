@@ -3,8 +3,8 @@
  * This file implements the HTML 5 VideoJS Player plugin for b2evolution
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @author fplanque: Francois PLANQUE.
  *
@@ -32,7 +32,10 @@ class html5_videojs_plugin extends Plugin
 	{
 		$this->short_desc = sprintf( T_('Media player for the these file formats: %s. Note: iOS supports only: %s; Android supports only: %s.'),
 			implode( ', ', $this->allow_ext ), 'mp4', 'mp4, webm' );
-		$this->long_desc = $this->short_desc;
+
+		$this->long_desc = $this->short_desc.' '
+			.sprintf( T_('This player can display a placeholder image of the same name as the video file with the following extensions: %s.'),
+			'jpg, jpeg, png, gif' );
 	}
 
 
@@ -43,15 +46,17 @@ class html5_videojs_plugin extends Plugin
 	{
 		global $Blog;
 
-		require_css( 'http://vjs.zencdn.net/c/video-js.css', 'relative' );
-		require_js( 'http://vjs.zencdn.net/c/video.js', 'relative' );
+		$relative_to = ( is_admin_page() ? 'rsc_url' : 'blog' );
+
+		require_css( '#videojs_css#', $relative_to );
+		require_js( '#videojs#', $relative_to );
 		$this->require_skin();
 
 		// Set a video size in css style, because option setting is ignored by some reason
 		$width = intval( $this->get_coll_setting( 'width', $Blog ) );
 		$width = empty( $width ) ? '100%' : $width.'px';
 		$height = intval( $this->get_coll_setting( 'height', $Blog ) );
-		add_css_headline( '.video-js{ width: '.$width.' !important; height: '.$height.'px !important; margin: auto; }
+		add_css_headline( '.video-js{ width: '.$width.' !important; max-width: 100% !important; height: '.$height.'px !important; margin: auto; }
 .videojs_block {
 	margin: 0 auto 1em;
 }
@@ -86,7 +91,7 @@ class html5_videojs_plugin extends Plugin
 					'label' => T_('Skin'),
 					'type' => 'select',
 					'options' => $this->get_skins_list(),
-					'defaultvalue' => 'tubecss',
+					'defaultvalue' => 'vjs-default-skin',
 					),
 				'width' => array(
 					'label' => T_('Video width (px)'),
@@ -172,9 +177,18 @@ class html5_videojs_plugin extends Plugin
 			$video_options['controls'] = true;
 			$video_options['preload'] = 'auto';
 
+			if( $placeholder_File = & $Item->get_placeholder_File( $File ) )
+			{ // Display placeholder/poster when image file is linked to the Item with same name as current video File
+				$video_placeholder_attr = ' poster="'.$placeholder_File->get_url().'"';
+			}
+			else
+			{ // No placeholder for current video File
+				$video_placeholder_attr = '';
+			}
+
 			$params['data'] .= '<div class="videojs_block">';
 
-			$params['data'] .= '<video id="html5_videojs_'.$html5_videojs_number.'" class="video-js '.$this->get_coll_setting( 'skin', $item_Blog ).'" data-setup=\''.evo_json_encode( $video_options ).'\'>'.
+			$params['data'] .= '<video id="html5_videojs_'.$html5_videojs_number.'" class="video-js '.$this->get_coll_setting( 'skin', $item_Blog ).'" data-setup=\''.evo_json_encode( $video_options ).'\''.$video_placeholder_attr.'>'.
 				'<source src="'.$File->get_url().'" type="'.$this->get_video_mimetype( $File ).'" />'.
 				'</video>';
 
@@ -244,11 +258,11 @@ class html5_videojs_plugin extends Plugin
 		global $Blog;
 
 		$skin = $this->get_coll_setting( 'skin', $Blog );
-		if( !empty( $skin ) && $skin != 'vjs-default-skin')
+		if( !empty( $skin ) && $skin != 'vjs-default-skin' )
 		{
 			$skins_path = dirname( $this->classfile_path ).'/skins';
 			if( file_exists( $skins_path.'/'.$skin.'/style.css' ) )
-			{	// Require css file only if it exists
+			{ // Require css file only if it exists
 				require_css( $this->get_plugin_url().'skins/'.$skin.'/style.css', 'relative' );
 			}
 		}

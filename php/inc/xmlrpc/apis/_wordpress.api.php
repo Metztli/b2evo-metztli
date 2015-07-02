@@ -3,15 +3,15 @@
  * XML-RPC : Wordpress API
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2009-2014 by Francois PLANQUE - {@link http://fplanque.net/}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2009-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @author waltercruz
  *
  * @see http://codex.wordpress.org/XML-RPC_wp
  *
  * @package xmlsrv
- * @version $Id: _wordpress.api.php 7482 2014-10-21 11:50:57Z yura $
+ * @version $Id: _wordpress.api.php 8935 2015-05-11 16:42:29Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -499,8 +499,8 @@ function wp_getpostformats( $m )
 	$all = $ItemTypeCache->get_option_array();
 	ksort($all);
 
-	logIO( "All item types:\n".var_export($all, true) );
-	logIO( "Supported item types:\n".var_export($supported, true) );
+	logIO( "All Post Types:\n".var_export($all, true) );
+	logIO( "Supported Post Types:\n".var_export($supported, true) );
 
 	$all_types = $supported_types = array();
 	foreach( $all as $k=>$v )
@@ -1345,7 +1345,7 @@ function wp_getoptions( $m )
 			'blog_tagline'			=> array( 'desc' => 'Site Tagline', 'value' => $Blog->get('tagline') ),
 			'date_format'			=> array( 'desc' => 'Date Format', 'value' => locale_datefmt() ),
 			'time_format'			=> array( 'desc' => 'Time Format', 'value' => locale_timefmt() ),
-			'users_can_register'	=> array( 'desc' => 'Allow new users to sign up', 'value' => $Settings->get('newusers_canregister') ),
+			'users_can_register'	=> array( 'desc' => 'Allow new users to sign up', 'value' => $Settings->get('newusers_canregister') == 'yes' ? '1' : '0' ),
 
 			// We are using default thumbnail sizes from config
 			'thumbnail_crop'		=> array( 'desc' => 'Crop thumbnail to exact dimensions', 'value' => false ),

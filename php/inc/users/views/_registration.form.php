@@ -1,33 +1,14 @@
 <?php
 /**
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2009-2014 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2009-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2009 by The Evo Factory - {@link http://www.evofactory.com/}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * The Evo Factory grants Francois PLANQUE the right to license
- * The Evo Factory's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author efy-bogdan: Evo Factory / Bogdan.
- * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: _registration.form.php 8027 2015-01-19 11:58:16Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -58,16 +39,33 @@ $Form->begin_form( 'fform', '',
 
 // --------------------------------------------
 
-$Form->begin_fieldset( T_('Default user permissions').get_manual_link('default-user-permissions') );
+$Form->begin_fieldset( T_('Default user permissions').get_manual_link('default-user-permissions-settings') );
 
-	$Form->checkbox( 'newusers_canregister', $Settings->get('newusers_canregister'), T_('New users can register'), T_('Check to allow new users to register themselves.' ) );
+	$Form->radio( 'newusers_canregister', $Settings->get( 'newusers_canregister' ), array(
+					array( 'no', T_( 'No (Only admins can create new users)' ) ),
+					array( 'invite', T_( 'Users can register only with an Invitation code/link' ) ),
+					array( 'yes', T_( 'Users can register themselves freely' ) )
+				), T_( 'New users can register' ), true );
 
-	$Form->checkbox( 'registration_is_public', $Settings->get('registration_is_public'), T_('Registration links'), T_('Check to show self-registration links to the public.' ), '', 1, ! $Settings->get('newusers_canregister') );
+	$disabled_param_links = array();
+	if( $Settings->get( 'newusers_canregister' ) == 'no' )
+	{ // Disable the field below when registration is not allowed 
+		$disabled_param_links['disabled'] = 'disabled';
+	}
+	$Form->checkbox_input( 'registration_is_public', $Settings->get( 'registration_is_public' ), T_('Registration links'), array_merge( array( 'note' => T_('Check to show self-registration links to the public.' ) ), $disabled_param_links ) );
+
+	$disabled_param_grouplevel = array();
+	if( $Settings->get( 'newusers_canregister' ) != 'yes' )
+	{ // Disable group and level fields below when registration is not allowed freely
+		$disabled_param_grouplevel['disabled'] = 'disabled';
+	}
+
+	$Form->checkbox_input( 'quick_registration', $Settings->get( 'quick_registration' ), T_('Quick registration'), array_merge( array( 'note' => T_('Check to allow registering with email only (no username, no password) using the quick registration widget.' ) ), $disabled_param_grouplevel ) );
 
 	$GroupCache = & get_GroupCache();
-	$Form->select_object( 'newusers_grp_ID', $Settings->get('newusers_grp_ID'), $GroupCache, T_('Group for new users'), T_('Groups determine user roles and permissions.') );
+	$Form->select_input_object( 'newusers_grp_ID', $Settings->get( 'newusers_grp_ID' ), $GroupCache, T_('Group for new users'), array_merge( array( 'note' => T_('Groups determine user roles and permissions.') ), $disabled_param_grouplevel ) );
 
-	$Form->text_input( 'newusers_level', $Settings->get('newusers_level'), 1, T_('Level for new users'), T_('Levels determine hierarchy of users in blogs.' ), array( 'maxlength'=>1, 'required'=>true ) );
+	$Form->text_input( 'newusers_level', $Settings->get( 'newusers_level' ), 1, T_('Level for new users'), T_('Levels determine hierarchy of users in blogs.' ), array_merge( array( 'maxlength' => 1, 'required' => true ), $disabled_param_grouplevel ) );
 
 $Form->end_fieldset();
 
@@ -87,6 +85,7 @@ $Form->begin_fieldset( T_('Default user settings').get_manual_link('default-user
 		array( 'notify_unread_messages', 1, /* TRANS: Here we imply "Notify me when:" */ T_( 'I have unread private messages for more than 24 hours.' ),  $Settings->get( 'def_notify_unread_messages' ), false, T_( 'This notification is sent only once every 3 days.' ) ),
 		array( 'notify_published_comments', 1, /* TRANS: Here we imply "Notify me when:" */ T_( 'a comment is published on one of <strong>my</strong> posts.' ), $Settings->get( 'def_notify_published_comments' ) ),
 		array( 'notify_comment_moderation', 1, /* TRANS: Here we imply "Notify me when:" */ T_( 'a comment is posted and I have permissions to moderate it.' ), $Settings->get( 'def_notify_comment_moderation' ) ),
+		array( 'notify_meta_comments', 1, /* TRANS: Here we imply "Notify me when:" */ T_( 'a meta comment is posted and I have permission to view it.' ), $Settings->get( 'def_notify_meta_comments' ) ),
 		array( 'notify_post_moderation', 1, /* TRANS: Here we imply "Notify me when:" */ T_( 'a post is created and I have permissions to moderate it.' ), $Settings->get( 'def_notify_post_moderation' ) ),
 	);
 	$Form->checklist( $notify_options, 'default_user_notification', T_( 'Notify me by email whenever' ) );
@@ -198,15 +197,24 @@ if( $current_User->check_perm( 'users', 'edit' ) )
 
 ?>
 <script type="text/javascript">
-jQuery( '#newusers_canregister' ).click( function()
+jQuery( 'input[name=newusers_canregister]' ).click( function()
 {
-	if( jQuery( this ).is( ':checked' ) )
+	if( jQuery( this ).val() == 'yes' )
 	{
-		jQuery( '#registration_is_public' ).removeAttr( 'disabled' );
+		jQuery( '#newusers_grp_ID, #newusers_level, #quick_registration' ).removeAttr( 'disabled' );
 	}
 	else
 	{
+		jQuery( '#newusers_grp_ID, #newusers_level, #quick_registration' ).attr( 'disabled', 'disabled' );
+	}
+
+	if( jQuery( this ).val() == 'no' )
+	{
 		jQuery( '#registration_is_public' ).attr( 'disabled', 'disabled' );
+	}
+	else
+	{
+		jQuery( '#registration_is_public' ).removeAttr( 'disabled' );
 	}
 } );
 </script>

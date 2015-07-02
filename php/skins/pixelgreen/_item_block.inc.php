@@ -6,8 +6,8 @@
  * It is meant to be called by an include in the main.page.php template (or other templates)
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  */
@@ -38,7 +38,9 @@ $params = array_merge( array(
 			) );
 		if( $Item->status != 'published' )
 		{
-			$Item->status( array( 'format' => 'styled' ) );
+			$Item->format_status( array(
+					'template' => '<div class="floatright"><span class="note status_$status$"><span>$status_title$</span></span></div>',
+				) );
 		}
 	?></h3>
 	<p><?php
@@ -52,8 +54,8 @@ $params = array_merge( array(
 	<?php
 		// ---------------------- POST CONTENT INCLUDED HERE ----------------------
 		skin_include( '_item_content.inc.php', $params );
-		// Note: You can customize the default item feedback by copying the generic
-		// /skins/_item_feedback.inc.php file into the current skin folder.
+		// Note: You can customize the default item content by copying the generic
+		// /skins/_item_content.inc.php file into the current skin folder.
 		// -------------------------- END OF POST CONTENT -------------------------
 	?>
 
@@ -89,8 +91,9 @@ $params = array_merge( array(
 				'after'     => ' ',
 			));
 		$Item->issue_time( array(
-				'before'    => ' ',
-				'after'     => ',</span> ',
+				'before'      => ' ',
+				'after'       => ',</span> ',
+				'time_format' => '#short_time',
 			));
 
 		/*$Item->wordcount();
@@ -111,7 +114,6 @@ $params = array_merge( array(
 						'link_text_one' => '#',
 						'link_text_more' => '#',
 						'link_title' => '#',
-						'use_popup' => false,
 						'class' => 'comments'
 					) );
 
@@ -124,7 +126,6 @@ $params = array_merge( array(
 						'link_text_one' => '#',
 						'link_text_more' => '#',
 						'link_title' => '#',
-						'use_popup' => false,
 					) );
 
 		$Item->edit_link( array( // Link to backoffice for editing

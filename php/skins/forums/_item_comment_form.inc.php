@@ -5,8 +5,8 @@
  * This file is not meant to be called directly.
  *
  * b2evolution - {@link http://b2evolution.net/}
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  */
@@ -41,6 +41,7 @@ $params = array_merge( array(
 		'after_comment_error'  => '</em></p>',
 		'before_comment_form'  => '',
 		'after_comment_form'   => '',
+		'comment_mode'         => '', // Can be 'quote' from GET request
 	), $params );
 
 $comment_reply_ID = param( 'reply_ID', 'integer', 0 );
@@ -125,7 +126,7 @@ if( $params['disp_comment_form'] && $Item->can_comment( $params['before_comment_
 			else
 			{ // Try to get params from $_COOKIE through the param() function
 				$comment_author = param_cookie( $cookie_name, 'string', '' );
-				$comment_author_email = evo_strtolower( param_cookie( $cookie_email, 'string', '' ) );
+				$comment_author_email = utf8_strtolower( param_cookie( $cookie_email, 'string', '' ) );
 				$comment_author_url = param_cookie( $cookie_url, 'string', '' );
 			}
 			if( empty($comment_author_url) )
@@ -264,7 +265,7 @@ function validateCommentForm(form)
 
 	if( check_user_status( 'is_validated' ) )
 	{ // User is logged in and activated:
-		$Form->info_field( T_('User'), '<strong>'.$current_User->get_identity_link( array( 'link_text' => 'login' ) ).'</strong>'
+		$Form->info_field( T_('User'), '<strong>'.$current_User->get_identity_link( array( 'link_text' => 'name' ) ).'</strong>'
 			.' '.get_user_profile_link( ' [', ']', T_('Edit profile') ) );
 	}
 	else
@@ -310,8 +311,8 @@ function validateCommentForm(form)
 		) );
 	// Message field:
 	$note = '';
-	// $note = T_('Allowed XHTML tags').': '.evo_htmlspecialchars(str_replace( '><',', ', $comment_allowed_tags));
-	$Form->textarea( $dummy_fields[ 'content' ], htmlspecialchars_decode( $comment_content ), $params['textarea_lines'], $params['form_comment_text'], $note, 38, 'bComment' );
+	// $note = T_('Allowed XHTML tags').': '.htmlspecialchars(str_replace( '><',', ', $comment_allowed_tags));
+	$Form->textarea( $dummy_fields[ 'content' ], htmlspecialchars_decode( $comment_content ), $params['textarea_lines'], $params['form_comment_text'], $note, 38, 'bComment autocomplete_usernames' );
 	$Form->switch_template_parts( $params['form_params'] );
 
 	// Display renderers

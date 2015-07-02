@@ -3,33 +3,14 @@
  * This file implements the GeneralSettings class, which handles Name/Value pairs.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE
- * @author blueyed: Daniel HAHLER
- *
- * @version $Id: _generalsettings.class.php 7172 2014-07-22 08:07:56Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -69,6 +50,9 @@ class GeneralSettings extends AbstractSettings
 		'auto_prune_stats' => '15',         // days (T_hitlog and T_sessions)
 		'auto_empty_trash' => '15',         // days (How many days to keep recycled comments)
 
+		'email_service' => 'mail', // Preferred email service: 'mail', 'smtp'
+		'force_email_sending' => '0', // Force email sending
+
 		'outbound_notifications_mode' => 'immediate', // 'immediate' is the safest mode for average installs (may be "off", "immediate" or "cron")
 		'notification_sender_email' => '', // notification emails will be sent from this email. The real default value is set in the constructor.
 		'notification_return_path' => '', // erroneous emails will be sent to this email address. The real default value is set in the constructor.
@@ -97,8 +81,9 @@ class GeneralSettings extends AbstractSettings
 		'fm_resize_height' => '1800',
 		'fm_resize_quality' => '95',
 
-		'newusers_canregister' => '0',
+		'newusers_canregister' => 'no',
 		'registration_is_public' => '1',
+		'quick_registration' => '0',
 		'newusers_mustvalidate' => '1',
 		'newusers_revalidate_emailchg' => '1',
 		'validation_process' => 'easy',
@@ -117,6 +102,7 @@ class GeneralSettings extends AbstractSettings
 		'def_notify_unread_messages' => '1',
 		'def_notify_published_comments' => '1',
 		'def_notify_comment_moderation' => '1',
+		'def_notify_meta_comments' => '1',
 		'def_notify_post_moderation' => '1',
 		'def_newsletter_news' => '1',
 		'def_newsletter_ads' => '0',
@@ -126,12 +112,19 @@ class GeneralSettings extends AbstractSettings
 		'allow_avatars' => 1,
 		'min_picture_size' => 160, // minimum profile picture dimensions in pixels (width and height)
 		'messages_link_to' => 'admin',		// message link on the notification email should link to the admin or to a blog
+		'allow_html_message' => 0, // Allow HTML in messages
 
 		// Welcome private message
 		'welcomepm_enabled' => 0,
 		'welcomepm_from'    => 'admin',	// User login
 		'welcomepm_title'   => 'Welcome to our community!',
 		'welcomepm_message' => '',
+
+		// Info message to reporters after account deletion
+		'reportpm_enabled' => 0,
+		'reportpm_from'    => 'admin',	// User login
+		'reportpm_title'   => 'The user account $reportedlogin$ that you have reported has just been deleted.',
+		'reportpm_message' => "You have reported the user account \$reportedlogin\$.\n\nThis is to inform you that we have just deleted this account.\n\nThank you for your help in keeping this site a friendly place!",
 
 		'regexp_filename' => '^[a-zA-Z0-9\-_. ]+$', // TODO: accept (spaces and) special chars / do full testing on this
 		'regexp_dirname' => '^[a-zA-Z0-9\-_]+$', // TODO: accept spaces and special chars / do full testing on this
@@ -140,7 +133,7 @@ class GeneralSettings extends AbstractSettings
 		'timeout_sessions' => '604800',             // seconds (604800 == 7 days)
 		'timeout_online' => '1200',                 // seconds (1200 == 20 minutes)
 		'upload_enabled' => '1',
-		'upload_maxkb' => '10000',					// 10 MB
+		'upload_maxkb' => '32000',					// 32 MB
 		'evocache_foldername' => '.evocache',
 		'blogs_order_by' => 'order',				// blogs order in backoffice menu and other places
 		'blogs_order_dir' => 'ASC',					// blogs order direction in backoffice menu and other places
@@ -150,10 +143,8 @@ class GeneralSettings extends AbstractSettings
 		'passwd_special' => '0',					// Do not require a special character in password by default
 		'strict_logins' => 1,						// Allow only plain ACSII characters in user login
 
-		'webhelp_enabled' => '1',
-
 		'allow_moving_chapters' => '0',				// Do not allow moving chapters by default
-		'chapter_ordering' => 'alpha',
+		'chapter_ordering' => 'alpha',              // TODO: Remove this when this global setting usage were removed from everywhere
 
 		'cross_posting' => 0,						// Allow additional categories from other blogs
 		'cross_posting_blog' => 0,					// Allow to choose main category from another blog
@@ -164,7 +155,7 @@ class GeneralSettings extends AbstractSettings
 		// Site settings
 		'system_lock' => 0,
 		'site_code' => 'b2evo',
-		'site_color' => '',
+		'site_color' => '#ff8c0f',
 		'site_footer_text' => 'Cookies are required to enable core site functionality. &copy;$year$ by $short_site_name$.',
 		'site_skins_enabled' => 1, // Enables a sitewide header and footer
 		'info_blog_ID' => 0, // Blog for info pages
@@ -287,6 +278,7 @@ C message size exceeds',
 	// Display options:
 		'use_gravatar' => 1, // Use gravatar if a user has not uploaded a profile picture
 		'default_gravatar' => 'b2evo', // Gravatar type: 'b2evo', '', 'identicon', 'monsterid', 'wavatar', 'retro'
+		'username_display' => 'login', // What to display as user name: 'login' - Usernames/Logins or 'name' - 'Friendly names'
 		'bubbletip' => 1, // Display bubletips in the Back-office
 		'bubbletip_size_admin' => 'fit-160x160', // Avatar size in the bubbletip in the Back-office
 		'bubbletip_size_front' => 'fit-160x160', // Avatar size in the bubbletip in the Front-office
@@ -295,6 +287,8 @@ C message size exceeds',
 		'bubbletip_overlay' => "Log in to\r\nsee this\r\nimage",// Overlay text on the profile image for anonymous users
 		'allow_anonymous_user_list' => 1, // Allow anonymous users to see user list (disp=users)
 		'allow_anonymous_user_profiles' => 0, // Allow anonymous users to see the user display ( disp=user )
+		'allow_anonymous_user_level_min' => 0, // Min value of user group level to display for anonymous users
+		'allow_anonymous_user_level_max' => 10, // Max value of user group level to display for anonymous users
 		'user_url_loggedin' => 'page', // Link an user url to 'page' or 'url' for logged-in users
 		'user_url_anonymous' => 'page', // Link an user url to 'page' or 'url' for anonymous users
 
@@ -337,10 +331,12 @@ C message size exceeds',
 		{ // Database is not up to date:
 			if( $DB->last_error )
 			{
+				$error_title = 'The database is not installed yet!';
 				$error_message = '<p>MySQL error:</p>'.$DB->last_error;
 			}
 			else
 			{
+				$error_title = 'Database schema is not up to date!';
 				$error_message = '<p>Database schema is not up to date!</p>'
 					.'<p>You have schema version &laquo;'.(integer)$this->get( 'db_version' ).'&raquo;, '
 					.'but we would need &laquo;'.(integer)$new_db_version.'&raquo;.</p>';

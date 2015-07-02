@@ -4,30 +4,15 @@
  *
  * This file is part of the b2evolution project - {@link http://b2evolution.net/}
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2005-2007 by Yabba/Scott - {@link http://astonishme.co.uk/contact/}.
- *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://cvs.sourceforge.net/viewcvs.py/evocms/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * Yabba/Scott grant Francois PLANQUE the right to license
- * Yabba's/Scott's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
  *
  * @package plugins
  *
  * @author Yabba: Paul Jones - {@link http://astonishme.co.uk/}
  * @author Stk: Scott Kimler - {@link http://astonishme.co.uk/}
- *
- * @version $Id: _code_highlight.plugin.php 7922 2015-01-06 23:29:21Z fplanque $
  */
 
 /**
@@ -112,7 +97,7 @@ class code_highlight_plugin extends Plugin
 
 	/**
 	 * TRUE when HTML tags are allowed for content of current rendered post/comment/message
-	 * In this case we should prepare a content with function evo_htmlspecialchars() to display a code as it is
+	 * In this case we should prepare a content with function htmlspecialchars() to display a code as it is
 	 *
 	 * @var boolean
 	 */
@@ -233,6 +218,25 @@ class code_highlight_plugin extends Plugin
 
 
 	/**
+	 * Event handler: Called when displaying editor toolbars for message.
+	 *
+	 * @param array Associative array of parameters
+	 * @return boolean did we display a toolbar?
+	 */
+	function DisplayMessageToolbar( & $params )
+	{
+		$apply_rendering = $this->get_msg_setting( 'msg_apply_rendering' );
+		if( !empty( $apply_rendering ) && $apply_rendering != 'never'
+		&& ( ( is_logged_in() && $this->UserSettings->get( 'display_toolbar' ) )
+			|| ( !is_logged_in() && $this->Settings->get( 'toolbar_default' ) ) ) )
+		{
+			return $this->DisplayCodeToolbar();
+		}
+		return false;
+	}
+
+
+	/**
 	 * Display a toolbar in admin
 	 *
 	 * @param array Associative array of parameters
@@ -257,9 +261,8 @@ class code_highlight_plugin extends Plugin
 
 		$coll_setting_name = ( $params['target_type'] == 'Comment' ) ? 'coll_apply_comment_rendering' : 'coll_apply_rendering';
 		$apply_rendering = $this->get_coll_setting( $coll_setting_name, $Blog );
-		if( empty( $apply_rendering ) || $apply_rendering == 'never' ||
-		    $params['edit_layout'] == 'simple' || !$this->UserSettings->get( 'display_toolbar' ) )
-		{	// This is too complex for simple mode, or user doesn't want the toolbar, don't display it:
+		if( empty( $apply_rendering ) || $apply_rendering == 'never' || ! $this->UserSettings->get( 'display_toolbar' ) )
+		{ // This plugin is disabled for this blog or user doesn't want the toolbar, don't display it:
 			return false;
 		}
 		$this->DisplayCodeToolbar();
@@ -268,29 +271,36 @@ class code_highlight_plugin extends Plugin
 
 	function DisplayCodeToolbar()
 	{
-		echo '<div class="edit_toolbar code_toolbar">';
+		echo $this->get_template( 'toolbar_before', array( '$toolbar_class$' => 'code_toolbar' ) );
+
 		// TODO: dh> make this optional.. just like with line numbers, this "Code" line is not feasible with oneliners.
-		echo T_('Code').': ';
-		echo '<input type="button" id="code_samp" title="'.T_('Insert &lt;samp&gt; tag').'" class="quicktags" data-func="code_tag|samp" value="samp" />';
-		echo '<input type="button" id="code_kbd" title="'.T_('Insert &lt;kbd&gt; tag').'" class="quicktags" data-func="code_tag|kbd" value="kbd" />';
-		echo '<input type="button" id="code_var" title="'.T_('Insert &lt;var&gt; tag').'" class="quicktags" data-func="code_tag|var" value="var" />';
-		echo '<input type="button" id="code_code" title="'.T_('Insert &lt;code&gt; tag').'" class="quicktags" data-func="code_tag|code" value="code" />';
-		/* space */
-		echo '<input type="button" id="codespan" title="'.T_('Insert codespan').'" style="margin-left:8px;" class="quicktags" data-func="codespan_tag| " value="codespan" />';
-		/* space */
-		echo '<input type="button" id="codeblock" title="'.T_('Insert codeblock').'" style="margin-left:8px;" class="quicktags" data-func="codeblock_tag| " value="codeblock" />';
-		echo '<input type="button" id="codeblock_xml" title="'.T_('Insert XML codeblock').'" class="quicktags" data-func="codeblock_tag|xml" value="XML" />';
-		echo '<input type="button" id="codeblock_html" title="'.T_('Insert HTML codeblock').'" class="quicktags" data-func="codeblock_tag|html" value="HTML" />';
-		echo '<input type="button" id="codeblock_php" title="'.T_('Insert PHP codeblock').'" class="quicktags" data-func="codeblock_tag|php" value="PHP" />';
-		echo '<input type="button" id="codeblock_css" title="'.T_('Insert CSS codeblock').'" class="quicktags" data-func="codeblock_tag|css" value="CSS" />';
-		echo '<input type="button" id="codeblock_shell" title="'.T_('Insert Shell codeblock').'" class="quicktags" data-func="codeblock_tag|shell" value="Shell" />';
-		echo '</div>';
+		echo $this->get_template( 'toolbar_title_before' ).T_('Code').': '.$this->get_template( 'toolbar_title_after' );
+		echo $this->get_template( 'toolbar_group_before' );
+		echo '<input type="button" id="code_samp" title="'.T_('Insert &lt;samp&gt; tag').'" class="'.$this->get_template( 'toolbar_button_class' ).'" data-func="code_tag|samp" value="samp" />';
+		echo '<input type="button" id="code_kbd" title="'.T_('Insert &lt;kbd&gt; tag').'" class="'.$this->get_template( 'toolbar_button_class' ).'" data-func="code_tag|kbd" value="kbd" />';
+		echo '<input type="button" id="code_var" title="'.T_('Insert &lt;var&gt; tag').'" class="'.$this->get_template( 'toolbar_button_class' ).'" data-func="code_tag|var" value="var" />';
+		echo '<input type="button" id="code_code" title="'.T_('Insert &lt;code&gt; tag').'" class="'.$this->get_template( 'toolbar_button_class' ).'" data-func="code_tag|code" value="code" />';
+		echo $this->get_template( 'toolbar_group_after' );
+
+		echo $this->get_template( 'toolbar_group_before' );
+		echo '<input type="button" id="codespan" title="'.T_('Insert codespan').'" class="'.$this->get_template( 'toolbar_button_class' ).'" data-func="codespan_tag| " value="codespan" />';
+		echo $this->get_template( 'toolbar_group_after' );
+
+		echo $this->get_template( 'toolbar_group_before' );
+		echo '<input type="button" id="codeblock" title="'.T_('Insert codeblock').'" class="'.$this->get_template( 'toolbar_button_class' ).'" data-func="codeblock_tag| " value="codeblock" />';
+		echo '<input type="button" id="codeblock_xml" title="'.T_('Insert XML codeblock').'" class="'.$this->get_template( 'toolbar_button_class' ).'" data-func="codeblock_tag|xml" value="XML" />';
+		echo '<input type="button" id="codeblock_html" title="'.T_('Insert HTML codeblock').'" class="'.$this->get_template( 'toolbar_button_class' ).'" data-func="codeblock_tag|html" value="HTML" />';
+		echo '<input type="button" id="codeblock_php" title="'.T_('Insert PHP codeblock').'" class="'.$this->get_template( 'toolbar_button_class' ).'" data-func="codeblock_tag|php" value="PHP" />';
+		echo '<input type="button" id="codeblock_css" title="'.T_('Insert CSS codeblock').'" class="'.$this->get_template( 'toolbar_button_class' ).'" data-func="codeblock_tag|css" value="CSS" />';
+		echo '<input type="button" id="codeblock_shell" title="'.T_('Insert Shell codeblock').'" class="'.$this->get_template( 'toolbar_button_class' ).'" data-func="codeblock_tag|shell" value="Shell" />';
+		echo $this->get_template( 'toolbar_group_after' );
+
+		echo $this->get_template( 'toolbar_after' );
 
 		// Load js to work with textarea
 		require_js( 'functions.js', 'blog', true, true );
 
-		?>
-		<script type="text/javascript">
+		?><script type="text/javascript">
 			//<![CDATA[
 			function code_tag( tag_name )
 			{
@@ -311,8 +321,7 @@ class code_highlight_plugin extends Plugin
 				textarea_wrap_selection( b2evoCanvas, tag, '[/codeblock]', 0 );
 			}
 			//]]>
-		</script>
-		<?php
+		</script><?php
 
 		return true;
 	}
@@ -402,6 +411,20 @@ class code_highlight_plugin extends Plugin
 			if( empty( $params['dont_remove_pre'] ) || !$params['dont_remove_pre'] )
 			{ // remove <pre>
 				$params['comment'] = preg_replace( '#(<\!--\s*codeblock[^-]*?\s*-->)<pre[^>]*><code>(.+?)</code></pre>(<\!--\s+/codeblock\s*-->)#is', '$1<code>$2</code>$3', $params['comment'] );
+			}
+		}
+	}
+
+
+	function MessageThreadFormSent( & $params )
+	{
+		$apply_rendering = $this->get_msg_setting( 'msg_apply_rendering' );
+		if( $this->is_renderer_enabled( $apply_rendering, $params['renderers'] ) )
+		{ // render code blocks in message
+			$this->FilterItemContents( $params );
+			if( empty( $params['dont_remove_pre'] ) || !$params['dont_remove_pre'] )
+			{ // remove <pre>
+				$params['content'] = preg_replace( '#(<\!--\s*codeblock[^-]*?\s*-->)<pre[^>]*><code>(.+?)</code></pre>(<\!--\s+/codeblock\s*-->)#is', '$1<code>$2</code>$3', $params['content'] );
 			}
 		}
 	}
@@ -519,7 +542,7 @@ class code_highlight_plugin extends Plugin
 	 */
 	function filter_codeblock_callback( $block )
 	{ // if code block exists then tidy everything up for the database, otherwise just remove the pointless tag
-		$attributes = str_replace( array( '"', '\'' ), '', evo_html_entity_decode( $block[2] ) );
+		$attributes = str_replace( array( '"', '\'' ), '', html_entity_decode( $block[2] ) );
 		return ( empty( $block[3] ) ||  !trim( $block[3] ) ? '' : '<!-- codeblock'.$attributes.' --><pre class="codeblock"><code>'
 						.$block[3]
 						.'</code></pre><!-- /codeblock -->' );
@@ -621,7 +644,7 @@ class code_highlight_plugin extends Plugin
 		foreach( $temp as $line )
 		{
 			$output .= '<tr class="amc_code_'.( ( $odd_line = !$odd_line ) ? 'odd' : 'even' ).'"><td class="amc_line">'
-									.$this->create_number( ++$count + $offset ).'</td><td><code>'.$line
+									.$this->create_number( ++$count + $offset ).'</td><td><code class="codeblock">'.$line
 									// add an &nbsp; to empty lines to stop them "collapsing"
 									.( empty( $line ) ? '&nbsp;' : '' )
 									.'</code></td></tr>';//."\n"; yura: I commented this because Auto-P plugin creates the tags <p></p> from this symbol

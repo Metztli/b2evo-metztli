@@ -3,27 +3,15 @@
  * This file implements the UI view for the Advanced blog properties.
  *
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2004-2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
- *
- * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author gorgeb: Bertrand GORGE / EPISTEMA
- * @author blueyed: Daniel HAHLER
  *
  * @package admin
  *
- *
- * @version $Id: _coll_advanced.form.php 7522 2014-10-27 10:18:40Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -32,9 +20,9 @@ if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.'
  */
 global $edited_Blog;
 
-global $Plugins;
+global $Plugins, $Settings;
 
-global $basepath, $rsc_url, $dispatcher;
+global $basepath, $rsc_url, $dispatcher, $admin_url;
 
 $Form = new Form( NULL, 'blogadvanced_checkchanges' );
 
@@ -47,13 +35,20 @@ $Form->hidden( 'tab', 'advanced' );
 $Form->hidden( 'blog', $edited_Blog->ID );
 
 
-$Form->begin_fieldset( T_('Multiple authors').get_manual_link('multiple_author_settings') );
-	$Form->checkbox( 'advanced_perms', $edited_Blog->get( 'advanced_perms' ), T_('Use advanced perms'), T_('This will turn on the advanced User and Group permissions tabs for this blog.') );
+$Form->begin_fieldset( T_('Workflow').get_manual_link('coll-workflow-settings') );
 	$Form->checkbox( 'blog_use_workflow', $edited_Blog->get_setting( 'use_workflow' ), T_('Use workflow'), T_('This will notably turn on the Tracker tab in the Posts view.') );
 $Form->end_fieldset();
 
 
 $Form->begin_fieldset( T_('After each new post...').get_manual_link('after_each_new_post') );
+	if( $edited_Blog->get_setting( 'allow_access' ) == 'users' )
+	{
+		echo '<p class="center orange">'.T_('This collection is for logged in users only.').' '.T_('It is recommended to keep pings disabled.').'</p>';
+	}
+	elseif( $edited_Blog->get_setting( 'allow_access' ) == 'members' )
+	{
+		echo '<p class="center orange">'.T_('This collection is for members only.').' '.T_('It is recommended to keep pings disabled.').'</p>';
+	}
 	$ping_plugins = preg_split( '~\s*,\s*~', $edited_Blog->get_setting('ping_plugins'), -1, PREG_SPLIT_NO_EMPTY);
 
 	$available_ping_plugins = $Plugins->get_list_by_event('ItemSendPing');
@@ -109,11 +104,11 @@ if( $current_User->check_perm( 'blog_admin', 'edit', false, $edited_Blog->ID ) )
 {	// Permission to edit advanced admin settings
 
 	$Form->begin_fieldset( T_('Aggregation').' ['.T_('Admin').']'.get_manual_link('collection_aggregation_settings') );
-		$Form->text( 'aggregate_coll_IDs', $edited_Blog->get_setting( 'aggregate_coll_IDs' ), 30, T_('Blogs to aggregate'), T_('List blog IDs separated by , or use * for all blogs'), 255 );
+		$Form->text( 'aggregate_coll_IDs', $edited_Blog->get_setting( 'aggregate_coll_IDs' ), 30, T_('Collections to aggregate'), T_('List collection IDs separated by \',\', \'*\' for all collections or leave empty for current collection.'), 255 );
 	$Form->end_fieldset();
 
 
-	$Form->begin_fieldset( T_('Caching').' ['.T_('Admin').']'.get_manual_link('collection_cache_settings') );
+	$Form->begin_fieldset( T_('Caching').' ['.T_('Admin').']'.get_manual_link('collection_cache_settings'), array( 'id' => 'caching' ) );
 		$ajax_enabled = $edited_Blog->get_setting( 'ajax_form_enabled' );
 		$ajax_loggedin_params = array( 'note' => T_('Also use JS forms for logged in users') );
 		if( !$ajax_enabled )
@@ -122,12 +117,19 @@ if( $current_User->check_perm( 'blog_admin', 'edit', false, $edited_Blog->ID ) )
 		}
 		$Form->checkbox_input( 'ajax_form_enabled', $ajax_enabled, T_('Enable AJAX forms'), array( 'note'=>T_('Comment and contacts forms will be fetched by javascript') ) );
 		$Form->checkbox_input( 'ajax_form_loggedin_enabled', $edited_Blog->get_setting('ajax_form_loggedin_enabled'), '', $ajax_loggedin_params );
-		$Form->checkbox_input( 'cache_enabled', $edited_Blog->get_setting('cache_enabled'), T_('Enable page cache'), array( 'note'=>T_('Cache rendered blog pages') ) );
-		$Form->checkbox_input( 'cache_enabled_widgets', $edited_Blog->get_setting('cache_enabled_widgets'), T_('Enable widget cache'), array( 'note'=>T_('Cache rendered widgets') ) );
+		$Form->checkbox_input( 'cache_enabled', $edited_Blog->get_setting('cache_enabled'), get_icon( 'page_cache_on' ).' '.T_('Enable page cache'), array( 'note'=>T_('Cache rendered blog pages') ) );
+		$Form->checkbox_input( 'cache_enabled_widgets', $edited_Blog->get_setting('cache_enabled_widgets'), get_icon( 'block_cache_on' ).' '.T_('Enable widget/block cache'), array( 'note'=>T_('Cache rendered widgets') ) );
 	$Form->end_fieldset();
 
 	$Form->begin_fieldset( T_('In-skin Actions').' ['.T_('Admin').']'.get_manual_link('in_skin_action_settings') );
-		$Form->checkbox_input( 'in_skin_login', $edited_Blog->get_setting( 'in_skin_login' ), T_( 'In-skin login' ), array( 'note' => T_( 'Use in-skin login form every time it\'s possible' ) ) );
+		if( $login_Blog = & get_setting_Blog( 'login_blog_ID' ) )
+		{ // The login blog is defined in general settings
+			$Form->info( T_( 'In-skin login' ), sprintf( T_('All login/registration functions are delegated to the collection: %s'), '<a href="'.$admin_url.'?ctrl=collections&tab=site_settings">'.$login_Blog->get( 'shortname' ).'</a>' ) );
+		}
+		else
+		{ // Allow to select in-skin login for this blog
+			$Form->checkbox_input( 'in_skin_login', $edited_Blog->get_setting( 'in_skin_login' ), T_( 'In-skin login' ), array( 'note' => T_( 'Use in-skin login form every time it\'s possible' ) ) );
+		}
 		$Form->checkbox_input( 'in_skin_editing', $edited_Blog->get_setting( 'in_skin_editing' ), T_( 'In-skin editing' ) );
 	$Form->end_fieldset();
 
@@ -226,6 +228,20 @@ $Form->end_form( array( array( 'submit', 'submit', T_('Save Changes!'), 'SaveBut
 		{
 			jQuery( '#ajax_form_enabled' ).attr( "checked", true );
 			jQuery( '#ajax_form_loggedin_enabled' ).attr( "disabled", false );
+		}
+	} );
+	jQuery( '#advanced_perms' ).click( function()
+	{
+		if( ! jQuery( this ).is( ':checked' ) && jQuery( 'input[name=blog_allow_access][value=members]' ).is( ':checked' ) )
+		{
+			jQuery( 'input[name=blog_allow_access][value=users]' ).attr( 'checked', true );
+		}
+	} );
+	jQuery( 'input[name=blog_allow_access][value=members]' ).click( function()
+	{
+		if( jQuery( this ).is( ':checked' ) )
+		{
+			jQuery( '#advanced_perms' ).attr( 'checked', true );
 		}
 	} );
 </script>

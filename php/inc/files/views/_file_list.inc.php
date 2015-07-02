@@ -3,33 +3,14 @@
  * This file implements the UI for file browsing.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package admin
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author blueyed: Daniel HAHLER.
- * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: _file_list.inc.php 6617 2014-05-06 13:39:35Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -209,7 +190,7 @@ $Form->begin_form();
 
 		/********************  Icon / File type:  *******************/
 
-		echo '<td class="icon_type">';
+		echo '<td class="icon_type text-nowrap">';
 		if( $UserSettings->get( 'fm_imglistpreview' ) )
 		{	// Image preview OR full type:
 			if( $lFile->is_dir() )
@@ -247,15 +228,16 @@ $Form->begin_form();
 		if( ! $fm_flatmode ||
 		    ( $selected_Filelist->get_rds_list_path() === false && dirname( $lFile->get_rdfs_rel_path() ) == '.' ) ||
 		    ( $selected_Filelist->get_rds_list_path() == dirname( $lFile->get_rdfs_rel_path() ).'/' ) )
-		{ // Use attribute "rel" only for current folder and not for subfolders
+		{ // Use a hidden field only for current folder and not for subfolders
 		  // It is used to detect a duplicate file on quick upload
-			$td_filename_rel_attr = ' rel="'.$lFile->get_name().'"';
+			$filename_hidden_field = '<input type="hidden" value="'.$lFile->get_root_and_rel_path().'" />';
 		}
 		else
-		{ // Don't set attribute "rel" for this file because it is from another folder
-			$td_filename_rel_attr = '';
+		{ // Don't use the hidden field for this file because it is from another folder
+			$filename_hidden_field = '';
 		}
-		echo '<td class="fm_filename"'.$td_filename_rel_attr.'>';
+		echo '<td class="fm_filename">'
+			.$filename_hidden_field;
 
 			/*************  Invalid filename warning:  *************/
 
@@ -264,11 +246,13 @@ $Form->begin_form();
 				if( $error_filename = validate_filename( $lFile->get_name() ) )
 				{ // TODO: Warning icon with hint
 					echo get_icon( 'warning', 'imgtag', array( 'class' => 'filenameIcon', 'title' => $error_filename ) );
+					syslog_insert( sprintf( 'The unrecognized extension is detected for file %s', '<b>'.$lFile->get_name().'</b>' ), 'warning', 'file', $lFile->ID );
 				}
 			}
 			elseif( $error_dirname = validate_dirname( $lFile->get_name() ) )
 			{ // TODO: Warning icon with hint
 				echo get_icon( 'warning', 'imgtag', array( 'class' => 'filenameIcon', 'title' => $error_dirname ) );
+				syslog_insert( sprintf( 'Invalid name is detected for folder %s', '<b>'.$lFile->get_name().'</b>' ), 'warning', 'file', $lFile->ID );
 			}
 
 			/****  Open in a new window  (only directories)  ****/
@@ -279,7 +263,7 @@ $Form->begin_form();
 				$popup_url = url_add_param( $browse_dir_url, 'mode=popup' );
 				$target = 'evo_fm_'.$lFile->get_md5_ID();
 
-				echo '<a href="'.$browse_dir_url.'" target="'.$target.' " class="filenameIcon"
+				echo '<a href="'.$browse_dir_url.'" target="'.$target.' " class="pull-right"
 							title="'.T_('Open in a new window').'" onclick="'
 							."return pop_up_window( '$popup_url', '$target' )"
 							.'">'.get_icon( 'window_new' ).'</a>';
@@ -299,6 +283,7 @@ $Form->begin_form();
 					if( $mode == 'upload' )
 					{	// We want the action to happen in the post attachments iframe:
 						$link_attribs['target'] = $iframe_name;
+						$link_attribs['class'] = 'action_icon link_file';
 						$link_action = 'link_inpost';
 					}
 					echo action_icon( T_('Link this file!'), 'link',
@@ -432,7 +417,7 @@ $Form->begin_form();
 
 		/*****************  Action icons  ****************/
 
-		echo '<td class="actions lastcol">';
+		echo '<td class="actions lastcol text-nowrap">';
 
 		if( $edit_perm )
 		{ // User can edit:
@@ -448,7 +433,8 @@ $Form->begin_form();
 
 		if( $edit_perm )
 		{ // User can edit:
-			echo action_icon( T_('Edit properties...'), 'properties', regenerate_url( 'fm_selected', 'action=edit_properties&amp;fm_selected[]='.rawurlencode($lFile->get_rdfp_rel_path() ).'&amp;'.url_crumb('file') ) );
+			echo action_icon( T_('Edit properties...'), 'properties', regenerate_url( 'fm_selected', 'action=edit_properties&amp;fm_selected[]='.rawurlencode( $lFile->get_rdfp_rel_path() ).'&amp;'.url_crumb('file') ), NULL, NULL, NULL,
+							array( 'onclick' => 'return file_properties( \''.get_param( 'root' ).'\', \''.get_param( 'path' ).'\', \''.rawurlencode( $lFile->get_rdfp_rel_path() ).'\' )' ) );
 			echo action_icon( T_('Move'), 'file_move', regenerate_url( 'fm_mode,fm_sources,fm_sources_root', 'fm_mode=file_move&amp;fm_sources[]='.rawurlencode( $lFile->get_rdfp_rel_path() ).'&amp;fm_sources_root='.$fm_Filelist->_FileRoot->ID ) );
 			echo action_icon( T_('Copy'), 'file_copy', regenerate_url( 'fm_mode,fm_sources,fm_sources_root', 'fm_mode=file_copy&amp;fm_sources[]='.rawurlencode( $lFile->get_rdfp_rel_path() ).'&amp;fm_sources_root='.$fm_Filelist->_FileRoot->ID ) );
 			echo action_icon( T_('Delete'), 'file_delete', regenerate_url( 'fm_selected', 'action=delete&amp;fm_selected[]='.rawurlencode( $lFile->get_rdfp_rel_path() ).'&amp;'.url_crumb('file') ) );
@@ -479,7 +465,7 @@ $Form->begin_form();
 	{ // Filelist errors or "directory is empty"
 		?>
 
-		<tr>
+		<tr class="noresults">
 			<td class="firstcol">&nbsp;</td> <?php /* blueyed> This empty column is needed so that the defaut width:100% style of the main column below makes the column go over the whole screen */ ?>
 			<td class="lastcol" colspan="<?php echo $filetable_cols - 1 ?>" id="fileman_error">
 				<?php
@@ -517,6 +503,7 @@ $Form->begin_form();
 				if( $mode == 'upload' )
 				{ // We want the action to happen in the post attachments iframe:
 					$link_attribs['target'] = $iframe_name;
+					$link_attribs['class'] = 'action_icon link_file';
 					$link_action = 'link_inpost';
 				}
 				$icon_to_link_files = action_icon( T_('Link this file!'), 'link',
@@ -603,7 +590,7 @@ $Form->begin_form();
 			 */
 			if( $fm_mode == 'link_object' && $mode != 'upload' )
 			{	// We are linking to an object...
-				$field_options['link'] = $LinkOwner->translate( 'Link files to current owner' );
+				$field_options['link'] = $LinkOwner->translate( 'Link files to current xxx' );
 			}
 
 			if( ( $fm_Filelist->get_root_type() == 'collection' || ( ! empty( $Blog )
@@ -751,16 +738,25 @@ $Form->begin_form();
 				else
 				{
 					// Remove last newline from snippet:
-					snippet = snippet.substring(0, snippet.length-1)
-					if (! (window.focus && window.opener))
+					snippet = snippet.substring(0, snippet.length-1);
+					if (! (window.focus && window.parent))
 					{
 						return true;
 					}
-					window.opener.focus();
-					textarea_wrap_selection( window.opener.document.getElementById("itemform_post_content"), snippet, '', 1, window.opener.document );
+					window.parent.focus();
+					textarea_wrap_selection( window.parent.document.getElementById("itemform_post_content"), snippet, '', 1, window.parent.document );
 					return true;
 				}
 			}
+
+			// Display a message to inform user after file was linked to object
+			jQuery( document ).ready( function()
+			{
+				jQuery( document ).on( 'click', 'a.link_file', function()
+				{
+					jQuery( this ).parent().append( '<div class="green"><?php echo TS_('The file has been linked.'); ?></div>' );
+				} );
+			} );
 			// -->
 		</script>
 		<?php

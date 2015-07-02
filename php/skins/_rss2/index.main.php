@@ -3,7 +3,7 @@
  * This template generates an RSS 2.0 feed for the requested blog's latest posts
  *
  * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://b2evolution.net/man/skin-structure}
+ * {@link http://b2evolution.net/man/skin-development-primer}
  *
  * See {@link http://backend.userland.com/rss092}
  *
@@ -12,8 +12,6 @@
  *
  * @package evoskins
  * @subpackage rss
- *
- * @version $Id: index.main.php 3157 2013-03-06 04:34:44Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -113,7 +111,7 @@ echo '<?xml version="1.0" encoding="'.$io_charset.'"?'.'>';
 			<guid isPermaLink="false"><?php $Item->ID() ?>@<?php echo $baseurl ?></guid>
 			<?php
 				// PODCAST ------------------------------------------------------------------------
-				if( $Item->ptyp_ID == 2000 )
+				if( $Item->ityp_ID == 2000 )
 				{	// This is a podcast Item !
 					echo '<enclosure url="'.$Item->url.'" />';
 					// TODO: add length="12216320" type="audio/mpeg"

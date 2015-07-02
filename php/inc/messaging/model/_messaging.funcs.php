@@ -1,26 +1,16 @@
 <?php
 /**
  * This file is part of b2evolution - {@link http://b2evolution.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2009-2014 by Francois PLANQUE - {@link http://fplanque.net/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2009-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2009 by The Evo Factory - {@link http://www.evofactory.com/}.
  *
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- *
- * {@internal Open Source relicensing agreement:
- * The Evo Factory grants Francois PLANQUE the right to license
- * The Evo Factory's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
  * @package messaging
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author efy-maxim: Evo Factory / Maxim.
- * @author fplanque: Francois Planque.
- *
- * @version $Id: _messaging.funcs.php 6411 2014-04-07 15:17:33Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -133,10 +123,24 @@ function set_contact_blocked( $user_ID, $blocked )
 {
 	global $current_User, $DB;
 
-	$sql = 'UPDATE T_messaging__contact
-				SET mct_blocked = '.$blocked.'
-					WHERE mct_from_user_ID = '.$current_User->ID.'
-					AND mct_to_user_ID = '.$user_ID;
+	// Check if user is in contact list
+	$is_contact = check_contact( $user_ID );
+
+	if( $is_contact === NULL )
+	{ // Add user to the contacts list
+		global $localtimenow;
+		$datetime = date( 'Y-m-d H:i:s', $localtimenow );
+		$sql = 'INSERT INTO T_messaging__contact
+			( mct_from_user_ID, mct_to_user_ID, mct_blocked, mct_last_contact_datetime ) VALUES
+			( '.$current_User->ID.', '.$DB->quote( $user_ID ).', '.$DB->quote( $blocked ).', '.$DB->quote( $datetime ).' )';
+	}
+	else
+	{ // Update the block status
+		$sql = 'UPDATE T_messaging__contact
+		    SET mct_blocked = '.$DB->quote( $blocked ).'
+		  WHERE mct_from_user_ID = '.$current_User->ID.'
+		    AND mct_to_user_ID = '.$DB->quote( $user_ID );
+	}
 
 	return $DB->query( $sql );
 }
@@ -149,7 +153,7 @@ function set_contact_blocked( $user_ID, $blocked )
  */
 function create_new_thread()
 {
-	global $Settings, $current_User, $Messages, $edited_Thread, $edited_Message;
+	global $Settings, $current_User, $Messages, $edited_Thread, $edited_Message, $action;
 
 	// Insert new thread:
 	$edited_Thread = new Thread();
@@ -171,25 +175,31 @@ function create_new_thread()
 	// Load data from request
 	if( $edited_Message->load_from_Request() )
 	{ // We could load data from form without errors:
-		// Insert in DB:
-		if( param( 'thrdtype', 'string', 'discussion' ) == 'discussion' )
-		{
-			$edited_Message->dbinsert_discussion();
-			// update author user last new thread setting
-			update_todays_thread_settings( 1 );
+		if( $action == 'preview' )
+		{ // Don't insert message in preview mode
+			$Messages->add( T_('This is a preview only! Do not forget to send your message!'), 'error' );
 		}
-		else
-		{
-			$edited_Message->dbinsert_individual();
-			// update author user last new thread setting
-			if( empty( $edited_Thread->recipients_list ) )
+		else//$action == 'create'
+		{ // Insert in DB:
+			if( param( 'thrdtype', 'string', 'discussion' ) == 'discussion' )
 			{
-				$edited_Thread->load_recipients();
+				$edited_Message->dbinsert_discussion();
+				// update author user last new thread setting
+				update_todays_thread_settings( 1 );
 			}
-			update_todays_thread_settings( count( $edited_Thread->recipients_list ) );
-		}
+			else
+			{
+				$edited_Message->dbinsert_individual();
+				// update author user last new thread setting
+				if( empty( $edited_Thread->recipients_list ) )
+				{
+					$edited_Thread->load_recipients();
+				}
+				update_todays_thread_settings( count( $edited_Thread->recipients_list ) );
+			}
 
-		$Messages->add( T_('Message sent.'), 'success' );
+			$Messages->add( T_('Message sent.'), 'success' );
+		}
 
 		return true;
 	}
@@ -205,7 +215,7 @@ function create_new_thread()
  */
 function create_new_message( $thrd_ID )
 {
-	global $Settings, $current_User, $Messages, $edited_Message;
+	global $Settings, $current_User, $Messages, $edited_Message, $action;
 
 	// Insert new message:
 	$edited_Message = new Message();
@@ -223,9 +233,15 @@ function create_new_message( $thrd_ID )
 	// Load data from request
 	if( $edited_Message->load_from_Request() )
 	{ // We could load data from form without errors:
-		// Insert in DB:
-		$edited_Message->dbinsert_message();
-		$Messages->add( T_('Message sent.'), 'success' );
+		if( $action == 'preview' )
+		{ // Don't insert message in preview mode
+			$Messages->add( T_('This is a preview only! Do not forget to send your message!'), 'error' );
+		}
+		else//$action == 'create'
+		{ // Insert in DB:
+			$edited_Message->dbinsert_message();
+			$Messages->add( T_('Message sent.'), 'success' );
+		}
 
 		return true;
 	}
@@ -318,7 +334,7 @@ function get_messages_link_to( $thread_ID = NULL )
 		if( $link_to_Blog )
 		{
 			$message_link = url_add_param( $link_to_Blog->gen_blogurl(), 'disp='.$link_tail );
-			$prefs_link =  url_add_param( $link_to_Blog->gen_blogurl(), 'disp=userprefs' );
+			$prefs_link = $link_to_Blog->get( 'userprefsurl' );
 			return array( $message_link, $prefs_link );
 		}
 	}
@@ -1035,6 +1051,95 @@ function remove_contacts_group_user( $group_ID, $user_ID )
 
 
 /**
+ * Update contact groups for user in database
+ *
+ * @param string Users ID
+ * @param array Group IDs
+ * @param boolean TRUE to block the contact, FALSE to unblock, NULL to don't touch the contact block status
+ * @return boolean TRUE if success, else FALSE
+ */
+function update_contacts_groups_user( $user_ID, $groups, $blocked = NULL )
+{
+	global $DB, $current_User, $Messages;
+
+	if( empty( $user_ID ) )
+	{ // No selected user
+		return false;
+	}
+
+	if( $blocked !== NULL )
+	{ // Update the contact block status
+		set_contact_blocked( $user_ID, intval( $blocked ) );
+	}
+
+	$insert_sql = 'REPLACE INTO T_messaging__contact_groupusers ( cgu_user_ID, cgu_cgr_ID ) VALUES ';
+
+	$records = array();
+	foreach( $groups as $group )
+	{
+		if( $group == 'new' || intval( $group ) < 0 )
+		{ // Add new group
+			if( intval( $group ) < 0 )
+			{ // Default group
+				$default_groups = get_contacts_groups_default();
+				if( isset( $default_groups[$group] ) )
+				{ // Get group name
+					$group_name = $default_groups[$group];
+				}
+			}
+			else
+			{ // New entered group
+				$group_name = param( 'contact_group_new', 'string' );
+				if( empty( $group_name ) )
+				{
+					$Messages->add( T_('Please enter name for new group.'), 'error' );
+				}
+			}
+
+			if( $group_ID = create_contacts_group( $group_name ) )
+			{ // Create new group
+				$Messages->add( T_('New contacts group has been created.'), 'success' );
+			}
+		}
+		else
+		{ // Existing group
+			$group_ID = intval( $group );
+		}
+
+		if( empty( $group_ID ) )
+		{ // No defined group ID
+			continue;
+		}
+
+		$records[] = '( '.$user_ID.', '.$DB->quote( $group_ID ).' )';
+	}
+
+	$current_user_groups = get_contacts_groups_array( false );
+	if( count( $current_user_groups ) > 0 )
+	{ // Clear previous selected groups for the user before new updating, in order to delete the user from the unchecked groups
+		$DB->query( 'DELETE FROM T_messaging__contact_groupusers
+			WHERE cgu_user_ID = '.$DB->quote( $user_ID ).'
+			  AND cgu_cgr_ID IN ( '.$DB->quote( array_keys( $current_user_groups ) ).' )' );
+	}
+
+	if( count( $records ) == 0 )
+	{ // No data to add
+		return true;
+	}
+
+	$insert_sql .= implode( ', ', $records );
+	if( $DB->query( $insert_sql, 'Insert user for contact groups' ) )
+	{ // Success query
+		return true;
+	}
+	else
+	{ // Failed query
+		return false;
+	}
+}
+
+
+/**
  * Get default groups for user contacts
  *
  * @return array Groups
@@ -1051,6 +1156,67 @@ function get_contacts_groups_default()
 
 
 /**
+ * Get all contact groups of the current User
+ *
+ * @param boolean TRUE to include the default groups
+ * @return array Groups
+ */
+function get_contacts_groups_array( $include_default_groups = true )
+{
+	global $DB, $current_User;
+
+	// Get user groups
+	$SQL = new SQL();
+	$SQL->SELECT( 'cgr_ID AS ID, cgr_name AS name' );
+	$SQL->FROM( 'T_messaging__contact_groups' );
+	$SQL->WHERE( 'cgr_user_ID = '.$DB->quote( $current_User->ID ) );
+	$SQL->ORDER_BY( 'cgr_name' );
+	$user_groups = $DB->get_assoc( $SQL->get() );
+
+	// Merge default and user groups (don't use a function array_merge() because it clears the keys)
+	$groups = array();
+	if( $include_default_groups )
+	{ // Include the default groups
+		$default_groups = get_contacts_groups_default();
+		foreach( $default_groups as $group_ID => $group_name )
+		{
+			if( ! in_array( $group_name, $user_groups ) )
+			{ // Set this default group If it doesn't exist in DB
+				$groups[ $group_ID ] = $group_name;
+			}
+		}
+	}
+	foreach( $user_groups as $group_ID => $group_name )
+	{
+		$groups[ $group_ID ] = $group_name;
+	}
+
+	return $groups;
+}
+
+
+/**
+ * Get what contact groups are selected for the user by current User
+ *
+ * @param integer
+ * @return array Group IDs
+ */
+function get_contacts_groups_by_user_ID( $user_ID )
+{
+	global $DB, $current_User;
+
+	// Get user groups
+	$SQL = new SQL();
+	$SQL->SELECT( 'cgu_cgr_ID' );
+	$SQL->FROM( 'T_messaging__contact_groups' );
+	$SQL->FROM_add( 'INNER JOIN T_messaging__contact_groupusers ON cgu_cgr_ID=cgr_ID' );
+	$SQL->WHERE( 'cgr_user_ID = '.$DB->quote( $current_User->ID ) );
+	$SQL->WHERE_and( 'cgu_user_ID = '.$DB->quote( $user_ID ) );
+	return $DB->get_col( $SQL->get() );
+}
+
+
+/**
  * Get tags <option> for contacts groups of current User
  *
  * @param integer Selected group ID
@@ -1059,46 +1225,12 @@ function get_contacts_groups_default()
  */
 function get_contacts_groups_options( $selected_group_ID = NULL, $value_null = true )
 {
-	global $DB, $current_User;
-
-	$default_groups = get_contacts_groups_default();
-	$selected_default_group_name = $default_groups[-1]; // Close Friends
-
-	// Get user groups
-	$SQL = new SQL();
-	$SQL->SELECT( 'cgr_ID AS ID, cgr_name AS name' );
-	$SQL->FROM( 'T_messaging__contact_groups' );
-	$SQL->WHERE( 'cgr_user_ID = '.$current_User->ID );
-	$SQL->ORDER_BY( 'cgr_name' );
-	$user_groups = $DB->get_assoc( $SQL->get() );
-
-	// Merge default and user groups (don't use a function array_merge() because it clears the keys)
-	$groups = array();
-	foreach( $default_groups as $group_ID => $group_name )
-	{
-		if( !in_array( $group_name, $user_groups ) )
-		{	// Set this default group If it doesn't exist in DB
-			$groups[$group_ID] = $group_name;
-		}
-	}
-	foreach( $user_groups as $group_ID => $group_name )
-	{
-		$groups[$group_ID] = $group_name;
-		if( $selected_default_group_name == $group_name )
-		{	// To know group ID of selected default group
-			$selected_default_group_ID = $group_ID;
-		}
-	}
-
-	if( isset( $selected_default_group_ID ) && $selected_group_ID == -1 )
-	{	// If default group already exists in DB we should use this group ID
-		$selected_group_ID = $selected_default_group_ID;
-	}
+	$groups = get_contacts_groups_array();
 
 	$options = '';
 
 	if( $value_null )
-	{	// Null option
+	{ // Null option
 		$options .= '<option value="0">'.T_('All').'</option>'."\n";
 	}
 
@@ -1106,7 +1238,7 @@ function get_contacts_groups_options( $selected_group_ID = NULL, $value_null = t
 	{
 		$selected = '';
 		if( $selected_group_ID == $group_ID )
-		{	// Group is selected
+		{ // Group is selected
 			$selected = ' selected="selected"';
 		}
 		$options .= '<option value="'.$group_ID.'"'.$selected.'>'.$group_name.'</option>'."\n";
@@ -1178,7 +1310,7 @@ function get_contacts_groups_list( $user_ID, $params = array() )
 
 	if( !empty( $Blog ) )
 	{	// Set url to contacts list
-		$contacts_url = url_add_param( $Blog->gen_blogurl(), 'disp=contacts' );
+		$contacts_url = $Blog->get( 'contactsurl' );
 	}
 
 	$groups_1st = array();
@@ -1251,7 +1383,7 @@ function check_contact( $to_user_ID )
 	$is_blocked = $DB->get_var( 'SELECT mct_blocked
 		 FROM T_messaging__contact
 		WHERE mct_from_user_ID = '.$current_User->ID.'
-		  AND mct_to_user_ID = '.$to_user_ID );
+		  AND mct_to_user_ID = '.$DB->quote( $to_user_ID ) );
 
 	if( is_null( $is_blocked ) )
 	{
@@ -1554,57 +1686,63 @@ function mark_as_read_by_user( $thrd_ID, $user_ID )
 /**
  * Delete orphan threads
  *
- * @param integer user_ID - to delete those orphan threads where this user was involved, leave it to NULL to delete all orphan threads
+ * @param integer or array of integers - one or multiple user ids - to delete those orphan threads where only the given user(s) was/were involved, leave it to NULL to delete all orphan threads
  * @return boolean true on success
  */
-function delete_orphan_threads( $user_ID = NULL )
+function delete_orphan_threads( $user_ids = NULL )
 {
 	global $DB;
 
 	$DB->begin();
 
-	// get orphan thread ids
-	$SQL = new SQL();
-	$SQL->SELECT( 'DISTINCT( tsta_thread_ID )' );
-	$SQL->FROM( 'T_messaging__threadstatus' );
-	// sub query to select not orphan thread ids
-	$sub_query = 'SELECT DISTINCT ( tsta_thread_ID )
-					FROM T_messaging__threadstatus
-					INNER JOIN T_users ON user_ID = tsta_user_ID';
-	if( empty( $user_ID ) )
+	if( is_array( $user_ids ) )
 	{
-		$SQL->WHERE( 'tsta_thread_ID NOT IN ( '.$sub_query.' )' );
+		$users = implode( ', ', $user_ids );
+		$in_users_condition = ' OR user_ID IN ( '.$users.' )';
+		$not_in_users_condition = ' AND user_ID NOT IN ( '.$users.' )';
 	}
 	else
 	{
-		$SQL->WHERE( 'tsta_user_ID = '.$user_ID );
-		$SQL->WHERE_and( 'tsta_thread_ID NOT IN ( '.$sub_query.' AND tsta_user_ID <> '.$user_ID.' )' );
+		$in_users_condition = is_number( $user_ids ) ? ' OR user_ID = '.$user_ids : '';
+		$not_in_users_condition = is_number( $user_ids ) ? ' AND user_ID != '.$user_ids : '';
 	}
 
-	$thread_ids = implode( ', ', $DB->get_col( $SQL->get(), 0, 'Get orphan threads' ) );
-	if( empty( $thread_ids ) )
-	{ // orphan threads not exists
-		$DB->commit();
+	// Get those thread ids which have already deleted participants or which participants will be deleted now
+	$affected_threads_ids = $DB->get_col(
+		'SELECT DISTINCT tsta_thread_ID
+		FROM T_messaging__threadstatus
+		LEFT JOIN T_users ON tsta_user_ID = user_ID
+		WHERE user_ID IS NULL'.$in_users_condition );
+
+	if( empty( $affected_threads_ids ) )
+	{ // There are no affected thread ids, nothing to delete
 		return true;
 	}
 
-	// Delete Messages
-	$ret = $DB->query( 'DELETE FROM T_messaging__message WHERE msg_thread_ID IN ( '.$thread_ids.')' );
+	// Filter previously collected thread ids to get those which have existing users outside of the deleted ones
+	$not_orphan_threads = $DB->get_col(
+		'SELECT DISTINCT tsta_thread_ID
+		FROM T_messaging__threadstatus
+		LEFT JOIN T_users ON tsta_user_ID = user_ID
+		WHERE tsta_thread_ID IN ( '.implode( ', ', $affected_threads_ids ).' )
+			AND user_ID IS NOT NULL'.$not_in_users_condition );
 
-	// Delete Statuses
-	$ret = $ret && $DB->query( 'DELETE FROM T_messaging__threadstatus WHERE tsta_thread_ID IN ( '.$thread_ids.')' );
+	// Orphan thread ids are the affected threads minus the ones with existing users
+	$orphan_thread_ids = array_diff( $affected_threads_ids, $not_orphan_threads );
 
-	// Delete Threads
-	$ret = $ret && $DB->query( 'DELETE FROM T_messaging__thread WHERE thrd_ID IN ( '.$thread_ids.')' );
-
-	if( $ret )
-	{
-		$DB->commit();
-		return true;
+	if( ! empty( $orphan_thread_ids ) )
+	{ // There are orphan threads ( or orphan thread targets )
+		load_class( 'messaging/model/_thread.class.php', 'Thread' );
+		// Delete all orphan threads with all cascade relations
+		if( Thread::db_delete_where( 'Thread', NULL, $orphan_thread_ids, array( 'use_transaction' => false ) ) === false )
+		{ // Deleting orphan threads failed
+			$DB->rollback();
+			return false;
+		}
 	}
 
-	$DB->rollback();
-	return false;
+	$DB->commit();
+	return true;
 }
 
 
@@ -1727,7 +1865,7 @@ function threads_results_block( $params = array() )
 	}
 
 	global $current_User;
-	if( !$current_User->check_perm( 'users', 'edit' ) || !$current_User->check_perm( 'perm_messaging', 'reply' ) )
+	if( !$current_User->check_perm( 'users', 'moderate' ) || !$current_User->check_perm( 'perm_messaging', 'reply' ) )
 	{	// Check minimum permission:
 		return;
 	}
@@ -2053,6 +2191,177 @@ function col_thread_delete_action( $thread_ID )
 	{
 		$redirect_to = get_dispctrl_url( 'threads' );
 		return action_icon( T_( 'Delete'), 'delete', $samedomain_htsrv_url.'action.php?mname=messaging&thrd_ID='.$thread_ID.'&action=delete&redirect_to='.$redirect_to.'&'.url_crumb( 'messaging_threads' ) );
+	}
+}
+
+/**
+ * Create author cell for message list table
+ *
+ * @param integer user ID
+ * @param string login
+ * @param string first name
+ * @param string last name
+ * @param integer avatar ID
+ * @param string datetime
+ */
+function col_msg_author( $user_ID, $datetime )
+{
+	$author = get_user_avatar_styled( $user_ID, array( 'size' => 'crop-top-80x80' ) );
+	return $author.'<div class="note black">'.mysql2date( locale_datefmt().'<\b\r />'.str_replace( ':s', '', locale_timefmt() ), $datetime ).'</div>';
+}
+
+
+/**
+ * Get formatted message text
+ *
+ * @param integer Message ID
+ * @param string Thread title
+ * @return string Formatted message text
+ */
+function col_msg_format_text( $msg_ID, $msg_text )
+{
+	$MessageCache = & get_MessageCache();
+	if( $Message = & $MessageCache->get_by_ID( $msg_ID, false, false ) )
+	{ // Get the prerendered content
+		$msg_text = $Message->get_content();
+	}
+
+	if( empty( $msg_text ) )
+	{
+		return format_to_output( $msg_text, 'htmlspecialchars' );
+	}
+
+	/**** yura> This below code is moved to the Plugins and to $Message->get_content() :
+
+	// WARNING: the messages may contain MALICIOUS HTML and javascript snippets. They must ALWAYS be ESCAPED prior to display!
+	$msg_text = htmlentities( $msg_text, ENT_COMPAT, $evo_charset );
+
+	$msg_text = make_clickable( $msg_text );
+	$msg_text = preg_replace( '#<a #i', '<a rel="nofollow" target="_blank"', $msg_text );
+	$msg_text = nl2br( $msg_text );
+
+	****/
+
+	return $msg_text;
+}
+
+
+/**
+ * Get authors list to display who already had read current message
+ *
+ * @param integer Message ID
+ * @return string Authors list with red/green bullet icons
+ */
+function col_msg_read_by( $message_ID )
+{
+	global $read_status_list, $leave_status_list, $Blog, $current_User, $perm_abuse_management;
+
+	$UserCache = & get_UserCache();
+
+	if( empty( $Blog ) )
+	{	// Set avatar size for a case when blog is not defined
+		$avatar_size = 'crop-top-32x32';
+	}
+	else
+	{	// Get avatar size from blog settings
+		$avatar_size = $Blog->get_setting('image_size_messaging');
+	}
+
+	$read_recipients = array();
+	$unread_recipients = array();
+	foreach( $read_status_list as $user_ID => $first_unread_msg_ID )
+	{
+		if( $user_ID == $current_User->ID )
+		{ // Current user status: current user should not be displayed except in case of abuse management
+			if( $perm_abuse_management )
+			{ // current user has seen all received messages for sure, set first unread msg to NULL
+				$first_unread_msg_ID = NULL;
+			}
+			else
+			{ // not abuse management
+				continue;
+			}
+		}
+
+		$recipient_User = $UserCache->get_by_ID( $user_ID, false );
+		if( !$recipient_User )
+		{ // user not exists
+			continue;
+		}
+
+		$leave_msg_ID = $leave_status_list[ $user_ID ];
+		if( !empty( $leave_msg_ID ) && ( $leave_msg_ID < $message_ID ) )
+		{ // user has left the conversation and didn't receive this message
+			$left_recipients[] = $recipient_User->login;
+		}
+		elseif( empty( $first_unread_msg_ID ) || ( $first_unread_msg_ID > $message_ID ) )
+		{ // user has read all message from this thread or at least this message
+			// user didn't leave the conversation before this message
+			$read_recipients[] = $recipient_User->login;
+		}
+		else
+		{ // User didn't read this message, but didn't leave the conversation either
+			$unread_recipients[] = $recipient_User->login;
+		}
+	}
+
+	$read_by = '';
+	if( !empty( $read_recipients ) )
+	{ // There are users who have read this message
+		asort( $read_recipients );
+		$read_by .= '<div>'.get_avatar_imgtags( $read_recipients, true, false, $avatar_size, '', '', true, false );
+		if( !empty ( $unread_recipients ) )
+		{
+			$read_by .= '<br />';
+		}
+		$read_by .= '</div>';
+	}
+
+	if( !empty ( $unread_recipients ) )
+	{ // There are users who didn't read this message
+		asort( $unread_recipients );
+		$read_by .= '<div>'.get_avatar_imgtags( $unread_recipients, true, false, $avatar_size, '', '', false, false ).'</div>';
+	}
+
+	if( !empty ( $left_recipients ) )
+	{ // There are users who left the conversation before this message
+		asort( $left_recipients );
+		$read_by .= '<div>'.get_avatar_imgtags( $left_recipients, true, false, $avatar_size, '', '', 'left_message', false ).'</div>';
+	}
+	return $read_by;
+}
+
+
+/**
+ *
+ *
+ * @param mixed $thrd_ID
+ * @param mixed $msg_ID
+ * @return string
+ */
+function col_msg_actions( $thrd_ID, $msg_ID )
+{
+	global $Blog, $samedomain_htsrv_url, $perm_abuse_management;
+
+	if( $msg_ID < 1 )
+	{ // Don't display actions in preview mode
+		return '&nbsp;';
+	}
+	else if( is_admin_page() )
+	{
+		$tab = '';
+		if( $perm_abuse_management )
+		{	// We are in Abuse Management
+			$tab = '&tab=abuse';
+		}
+		return action_icon( T_( 'Delete'), 'delete', regenerate_url( 'action', 'thrd_ID='.$thrd_ID.'&msg_ID='.$msg_ID.'&action=delete'.$tab.'&'.url_crumb( 'messaging_messages' ) ) );
+	}
+	else
+	{
+		$redirect_to = url_add_param( $Blog->gen_blogurl(), 'disp=messages&thrd_ID='.$thrd_ID );
+		$action_url = $samedomain_htsrv_url.'action.php?mname=messaging&disp=messages&thrd_ID='.$thrd_ID.'&msg_ID='.$msg_ID.'&action=delete';
+		$action_url = url_add_param( $action_url, 'redirect_to='.rawurlencode( $redirect_to ), '&' );
+		return action_icon( T_( 'Delete'), 'delete', $action_url.'&'.url_crumb( 'messaging_messages' ) );
 	}
 }
 

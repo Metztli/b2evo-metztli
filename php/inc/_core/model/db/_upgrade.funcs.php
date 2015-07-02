@@ -3,30 +3,17 @@
  * This file implements functions useful for upgrading DB schema.
  *
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2004-2005 by Daniel HAHLER - {@link https://thequod.de/}.
  *
  * {@link db_delta()} is based on dbDelta() from {@link http://wordpress.com Wordpress}, see
  * {@link http://trac.wordpress.org/file/trunk/wp-admin/upgrade-functions.php}.
  *
- * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE
- * @author blueyed: Daniel HAHLER
- * @author Wordpress team
- *
- * @version $Id: _upgrade.funcs.php 7516 2014-10-27 05:56:16Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -1688,18 +1675,18 @@ function get_columns_with_charset_definition( $query )
 
 
 /**
- * Convert table character set to utf8
+ * Convert table character set to utf8 and fix ascii fields
  * Those columns where the charset or the collation is explicitly defined will be skipped ( those won't be converted )
  *
  * @param sytring table
  */
-function convert_table_to_utf8( $table )
+function convert_table_to_utf8_ascii( $table )
 {
 	global $DB, $schema_queries;
 
 	// Get the table alias
 	$table_index = array_search( $table, $DB->dbreplaces );
-	if( $table_index === NULL )
+	if( $table_index === NULL || $table_index === false )
 	{ // The table doesn't exists in the configuration
 		return;
 	}
@@ -1753,33 +1740,71 @@ function convert_table_to_utf8( $table )
 	{ // Update the table default character set, but not convert the fields to utf8, since they were already converted
 		$DB->query( 'ALTER TABLE `'.$table.'`
 			DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci' );
+
+		// Fix/Normalize all fields with defined charsets/collations (ascii_bin, ascii_general_ci, utf8_bin)
+		$DB->query( 'ALTER TABLE `'.$table.'`
+			MODIFY '.implode( ',
+			MODIFY ', $columns_with_charset ) );
 	}
 }
 
 
 /**
- * Upgrade DB to UTF-8
- *
- * @param boolean TRUE to load DB scheme(used on install screen)
+ * Upgrade DB to UTF-8 and fix ASCII fields
  */
-function db_upgrade_to_utf8( $load_db_schema = false )
+function db_check_utf8_ascii()
+{
+	global $db_config, $tableprefix, $DB, $evo_charset;
+
+	echo '<h2 class="page-title">'.T_('Normalizing DB charsets...').'</h2>';
+	evo_flush();
+
+	// Get the tables that have different charset than what we expect
+	$expected_connection_charset = DB::php_to_mysql_charmap( $evo_charset );
+	$tables = $DB->get_col( 'SELECT T.table_name
+			FROM information_schema.`TABLES` T,
+				information_schema.`COLLATION_CHARACTER_SET_APPLICABILITY` CCSA
+			WHERE CCSA.collation_name = T.table_collation
+				AND T.table_schema = '.$DB->quote( $db_config['name'] ).'
+				AND T.table_name LIKE "'.$tableprefix.'%"
+				AND CCSA.character_set_name != '.$DB->quote( $expected_connection_charset ) );
+
+	if( empty( $tables ) )
+	{ // All tables are correct
+		echo '<p>'.T_('All your tables seem to be using UTF-8. You can still run the normalization tool to make a deep check.').'</p>';
+	}
+	else
+	{ // Display what tables should be normalized
+		echo '<p>'.T_('We have detected the following tables as not using UTF-8:').'</p>';
+		echo '<ul>';
+		foreach( $tables as $table )
+		{
+			echo '<li>'.$table.'</li>';
+		}
+		echo '</ul>';
+	}
+}
+
+
+/**
+ * Upgrade DB to UTF-8 and fix ASCII fields
+ */
+function db_upgrade_to_utf8_ascii()
 {
 	global $db_config, $tableprefix, $DB;
 
-	echo '<h2>'.T_('Upgrading all tables in b2evolution MySQL database to UTF-8...').'</h2>';
+	echo '<h2 class="page-title">'.T_('Normalizing DB charsets...').'</h2>';
 	evo_flush();
 
-	if( $load_db_schema )
-	{ // Load db schema to be able to check the original charset definition
-		load_db_schema();
-	}
+	// Load db schema to be able to check the original charset definition
+	load_db_schema();
 
 	$db_tables = $DB->get_col( 'SHOW TABLES FROM `'.$db_config['name'].'` LIKE "'.$tableprefix.'%"' );
 	foreach( $db_tables as $table )
 	{ // Convert all tables charset to utf8
-		echo sprintf( T_('Converting %s...'), $table );
+		echo sprintf( T_('Normalizing %s...'), $table );
 		evo_flush();
-		convert_table_to_utf8( $table );
+		convert_table_to_utf8_ascii( $table );
 		echo " OK<br />\n";
 	}
 

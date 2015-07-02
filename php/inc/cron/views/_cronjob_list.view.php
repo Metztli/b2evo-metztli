@@ -3,25 +3,13 @@
  * This file implements the UI view for the general settings.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
- *
- * {@internal Open Source relicensing agreement:
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
- *
- * @version $Id: _cronjob_list.view.php 8007 2015-01-15 12:33:19Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -63,14 +51,23 @@ if( !$ctst_pending && !$ctst_started && !$ctst_timeout && !$ctst_error && !$ctst
 	$ctst_error = 1;
 }
 
+// Create cron job names SELECT query from crong_jobs_config array
+$cron_job_name_query = cron_job_sql_query();
+
 /*
  * Create result set :
  */
 $SQL = new SQL();
-$SQL->SELECT( 'ctsk_ID, ctsk_start_datetime, ctsk_name, ctsk_controller, ctsk_repeat_after,
+$SQL->SELECT( 'ctsk_ID, ctsk_start_datetime, ctsk_key, ctsk_name, ctsk_params, ctsk_repeat_after,
   IFNULL( clog_status, "pending" ) as status,
-  IF( clog_realstop_datetime IS NULL, -1, UNIX_TIMESTAMP( clog_realstop_datetime ) - UNIX_TIMESTAMP( clog_realstart_datetime ) ) as duration' );
+  IF( clog_realstop_datetime IS NULL, -1, UNIX_TIMESTAMP( clog_realstop_datetime ) - UNIX_TIMESTAMP( clog_realstart_datetime ) ) as duration,
+  IFNULL( ctsk_name, task_name ) as final_name' );
 $SQL->FROM( 'T_cron__task LEFT JOIN T_cron__log ON ctsk_ID = clog_ctsk_ID' );
+if( !empty( $cron_job_name_query ) )
+{ // left join with the predefined cron job names, to be able to order correctly after the after the localized Name fields
+	// Note: ctsk_key field always has ascii_bin encoding, so make sure we convert the temp table field to ascii also, to prevent illegal mix of collation issues
+	$SQL->FROM_add( 'LEFT JOIN ( '.$cron_job_name_query. ' ) AS temp ON ctsk_key = CONVERT( temp.task_key USING ascii )');
+}
 // Filter by statuses
 $clog_statuses = array();
 if( $ctst_started )
@@ -100,7 +97,8 @@ if( ! empty( $clog_statuses ) )
 }
 if( ! empty( $s ) )
 { // Filter by name
-	$SQL->WHERE_and( 'ctsk_name LIKE '.$DB->quote( '%'.$s.'%' ) );
+	$SQL->WHERE_and( '( ( ctsk_name IS NULL AND task_name LIKE '.$DB->quote( '%'.$s.'%' ).' )
+		OR ( ctsk_name IS NOT NULL AND ctsk_name LIKE '.$DB->quote( '%'.$s.'%' ).' ) )' );
 }
 if( ! empty( $datestart ) )
 { // Filter by start date
@@ -163,6 +161,7 @@ $Results->filter_area = array(
 	'url_ignore' => 'results_crontab_page,ctst_pending,ctst_started,ctst_timeout,ctst_error,ctst_finished',	// ignor epage param and checkboxes
 	'presets' => array(
 			'schedule' => array( T_('Schedule'), '?ctrl=crontab&amp;ctst_pending=1&amp;ctst_started=1&amp;ctst_timeout=1&amp;ctst_error=1' ),
+			'finished' => array( T_('Finished'), '?ctrl=crontab&amp;ctst_finished=1' ),
 			'attention' => array( T_('Attention'), '?ctrl=crontab&amp;ctst_timeout=1&amp;ctst_error=1' ),
 			'all' => array( T_('All'), '?ctrl=crontab&amp;ctst_pending=1&amp;ctst_started=1&amp;ctst_timeout=1&amp;ctst_error=1&amp;ctst_finished=1' ),
 		)
@@ -186,8 +185,8 @@ $Results->cols[] = array(
 
 $Results->cols[] = array(
 						'th' => T_('Name'),
-						'order' => 'ctsk_name',
-						'td' => '<a href="%regenerate_url(\'action,cjob_ID\',\'action=view&amp;cjob_ID=$ctsk_ID$\')%">$ctsk_name$</a>%cron_job_manual_link( #ctsk_controller# )%',
+						'order' => 'final_name',
+						'td' => '<a href="%regenerate_url(\'action,cjob_ID\',\'action=view&amp;cjob_ID=$ctsk_ID$\')%">%cron_job_name( #ctsk_key#, #ctsk_name#, #ctsk_params# )%</a>%cron_job_manual_link( #ctsk_key# )%',
 					);
 
 $Results->cols[] = array(

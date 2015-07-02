@@ -3,20 +3,15 @@
  * This file implements the UI view for the Collection features other properties.
  *
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
- *
- * {@internal Open Source relicensing agreement:
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}.
  *
  * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
  *
  * @package admin
- *
- * @version $Id: _coll_other.form.php 7985 2015-01-14 18:41:51Z fplanque $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -38,6 +33,14 @@ $Form->hidden( 'blog', $edited_Blog->ID );
 
 
 $Form->begin_fieldset( T_('Sitemaps').get_manual_link( 'sitemaps-other' ) );
+	if( $edited_Blog->get_setting( 'allow_access' ) == 'users' )
+	{
+		echo '<p class="center orange">'.T_('This collection is for logged in users only.').' '.T_('It is recommended to keep sitemaps disabled.').'</p>';
+	}
+	elseif( $edited_Blog->get_setting( 'allow_access' ) == 'members' )
+	{
+		echo '<p class="center orange">'.T_('This collection is for members only.').' '.T_('It is recommended to keep sitemaps disabled.').'</p>';
+	}
 	$Form->checkbox( 'enable_sitemaps', $edited_Blog->get_setting( 'enable_sitemaps' ),
 						T_( 'Enable sitemaps' ), T_( 'Check to allow usage of skins with the "sitemap" type.' ) );
 $Form->end_fieldset();
@@ -50,8 +53,8 @@ $Form->begin_fieldset( T_('Subscriptions').get_manual_link( 'subscriptions-other
 	// TODO2: which feeds (skins)?
 $Form->end_fieldset();
 
-$Form->begin_fieldset( T_('List of public blogs').get_manual_link( 'public-blogs-other' ) );
-	$Form->checkbox( 'blog_in_bloglist', $edited_Blog->get( 'in_bloglist' ), T_('Include in public blog list'), T_('Check this if you want this blog to be advertised in the list of all public blogs on this system.') );
+$Form->begin_fieldset( T_('Tracking').get_manual_link( 'tracking-other' ) );
+	$Form->checkbox( 'track_unread_content', $edited_Blog->get_setting( 'track_unread_content' ), T_('Tracking of unread content'), T_('Check this if you want this blog to display special marks in case of unread posts and comments.') );
 $Form->end_fieldset();
 
 if( isset($GLOBALS['files_Module']) )

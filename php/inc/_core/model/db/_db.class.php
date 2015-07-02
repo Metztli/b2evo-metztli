@@ -13,20 +13,13 @@
  * and more...
  *
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2004 by Justin Vincent - {@link http://php.justinvincent.com}
  * Parts of this file are copyright (c)2004-2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
- *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
  *
  * {@internal Origin:
  * This file is based on the following package (excerpt from ezSQL's readme.txt):
@@ -44,20 +37,7 @@
  * this modified class under other licenses. "Just include a link to where you got it from."
  * }}
  *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
- *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author blueyed: Daniel HAHLER
- * @author fplanque: Francois PLANQUE
- * @author Justin VINCENT
- *
- * @version $Id: _db.class.php 8164 2015-02-05 07:43:16Z attila $
  * @todo transaction support
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
@@ -789,10 +769,13 @@ class DB
 
 			if( preg_match( '~^\s*(UPDATE\s+)(.*?)(\sSET\s.*)$~is', $query, $match ) )
 			{ // replace only between UPDATE and SET, but check subqueries:
-				if( preg_match( '~^(.*SELECT.*FROM\s+)(.*?)(\s.*)$~is', $match[3], $subquery_match ) )
+				$subquery_result = '';
+				while( preg_match( '~^(.*SELECT.*FROM\s+)(.*?)(\s.*)$~is', $match[3], $subquery_match ) )
 				{ // replace in subquery
-					$match[3] = $subquery_match[1].preg_replace( $this->dbaliases, $this->dbreplaces, $subquery_match[2] ).$subquery_match[3];
+					$match[3] = $subquery_match[1];
+					$subquery_result = preg_replace( $this->dbaliases, $this->dbreplaces, $subquery_match[2] ).$subquery_match[3].$subquery_result;
 				}
+				$match[3] = $match[3].$subquery_result;
 				if( preg_match( '~^(.*SELECT.*JOIN\s+)(.*?)(\s.*)$~is', $match[3], $subquery_match ) )
 				{ // replace in whole subquery, there can be any number of JOIN:
 					$match[3] = preg_replace( $this->dbaliases, $this->dbreplaces, $match[3] );
@@ -1177,6 +1160,7 @@ class DB
 		// ======================================================
 		// print main results
 		$i=0;
+		// fp> TODO: this should NOT try to print binary fields, eg: file hashes in the files table
 		// Rewind to first row (should be there already).
 		mysql_data_seek($this->result, 0);
 		while( $one_row = $this->get_row(NULL, ARRAY_N) )
@@ -1558,7 +1542,15 @@ class DB
 	 * Note 2: standard syntax would be START TRANSACTION but it's not supported by older
 	 * MySQL versions whereas BEGIN is...
 	 *
-	 * Note 3: The default isolation level is REPEATABLE READ.
+	 * Note 3: The default isolation level is REPEATABLE READ (Default for InnoDB)
+	 *
+	 * - REPEATABLE READ: (most frequent use) several SELECTs in the same transaction will always return identical values
+	 * - READ COMMITTED: no good use?
+	 * - READ UNCOMMITED: dirty reads - no good use?
+	 * - SERIALIZABLE: (less frequent use) all SELECTs are automatically changed to SELECT .. LOCK IN SHARE MODE
+	 * IMPORTANT: SERIALIZABLE does NOT use the max isolation level which would be SELECT ... LOCK FOR UPDATE which you cna only do by manually changing the SELECTs
+	 * ex: SELECT counter_field FROM child_codes FOR UPDATE;
+	 *     UPDATE child_codes SET counter_field = counter_field + 1;
 	 */
 	function begin( $transaction_isolation_level = 'REPEATABLE READ' )
 	{

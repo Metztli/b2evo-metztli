@@ -3,26 +3,13 @@
  * This file implements the Comment List Widget class.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- * @author Yabba	- {@link http://www.astonishme.co.uk/}
- *
- * @version $Id: _coll_comment_list.widget.php 8229 2015-02-11 09:41:33Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -47,9 +34,9 @@ class coll_comment_list_Widget extends ComponentWidget
 	}
 
 
-  /**
-   * Get definitions for editable params
-   *
+	/**
+	 * Get definitions for editable params
+	 *
 	 * @see Plugin::GetDefaultSettings()
 	 * @param local params like 'for_editing' => true
 	 */
@@ -89,8 +76,8 @@ class coll_comment_list_Widget extends ComponentWidget
 				'type' => 'text',
 			),
 			'blog_ID' => array(
-				'label' => T_( 'Blog' ),
-				'note' => T_( 'ID of the blog to use, leave empty for the current blog.' ),
+				'label' => T_( 'Collection' ),
+				'note' => T_( 'ID of the collection to use, leave empty for the current collection.' ),
 				'size' => 4,
 				'type' => 'integer',
 				'allow_empty' => true,
@@ -98,6 +85,17 @@ class coll_comment_list_Widget extends ComponentWidget
 		), parent::get_param_definitions( $params )	);
 
 		return $r;
+	}
+
+
+	/**
+	 * Get help URL
+	 *
+	 * @return string URL
+	 */
+	function get_help_url()
+	{
+		return get_manual_url( 'comment-list-widget' );
 	}
 
 

@@ -3,25 +3,13 @@
  * This file implements the xyz Widget class.
  *
  * This file is part of the evoCore framework - {@link http://evocore.net/}
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * {@internal License choice
- * - If you have received this file as part of a package, please find the license.txt file in
- *   the same folder or the closest folder above for complete license terms.
- * - If you have received this file individually (e-g: from http://evocms.cvs.sourceforge.net/)
- *   then you must choose one of the following licenses before using the file:
- *   - GNU General Public License 2 (GPL) - http://www.opensource.org/licenses/gpl-license.php
- *   - Mozilla Public License 1.1 (MPL) - http://www.opensource.org/licenses/mozilla1.1.php
- * }}
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evocore
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: _coll_title.widget.php 6135 2014-03-08 07:54:05Z manuel $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -47,11 +35,43 @@ class coll_title_Widget extends ComponentWidget
 
 
 	/**
+	 * Get definitions for editable params
+	 *
+	 * @see Plugin::GetDefaultSettings()
+	 * @param local params like 'for_editing' => true
+	 */
+	function get_param_definitions( $params )
+	{
+		$r = array_merge( array(
+				'add_tagline' => array(
+					'label' => T_('Add tagline'),
+					'note' => T_('check to add the collection tagline after the title.'),
+					'type' => 'checkbox',
+					'defaultvalue' => false,
+				),
+			), parent::get_param_definitions( $params ) );
+
+		return $r;
+	}
+
+
+	/**
+	 * Get help URL
+	 *
+	 * @return string URL
+	 */
+	function get_help_url()
+	{
+		return get_manual_url( 'collection-title-widget' );
+	}
+
+
+	/**
 	 * Get name of widget
 	 */
 	function get_name()
 	{
-		return T_('Blog title');
+		return T_('Collection title');
 	}
 
 
@@ -91,9 +111,13 @@ class coll_title_Widget extends ComponentWidget
 		// Collection title:
 		echo $this->disp_params['block_start'];
 
-		$title = '<a href="'.$Blog->get( 'url', 'raw' ).'">'
+		$title = '<a href="'.$Blog->get( 'url' ).'">'
 							.$Blog->dget( 'name', 'htmlbody' )
 							.'</a>';
+		if( $this->disp_params['add_tagline'] )
+		{ // Add a tagline after blog title
+			$title .= ' <small>'.$Blog->dget( 'tagline', 'htmlbody' ).'</small>';
+		}
 		$this->disp_title( $title );
 
 		echo $this->disp_params['block_end'];

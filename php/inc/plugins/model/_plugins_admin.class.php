@@ -4,24 +4,16 @@
  * handling of the {@link Plugin Plugins}.
  *
  * This file is part of the b2evolution/evocms project - {@link http://b2evolution.net/}.
- * See also {@link http://sourceforge.net/projects/evocms/}.
+ * See also {@link https://github.com/b2evolution/b2evolution}.
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}.
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2006 by Daniel HAHLER - {@link http://daniel.hahler.de/}.
- *
- * @license http://b2evolution.net/about/license.html GNU General Public License (GPL)
- *
- * {@internal Open Source relicensing agreement:
- * Daniel HAHLER grants Francois PLANQUE the right to license
- * Daniel HAHLER's contributions to this file and the b2evolution project
- * under any OSI approved OSS license (http://www.opensource.org/licenses/).
- * }}
  *
  * @package plugins
  *
  * @author blueyed: Daniel HAHLER
- *
- * @version $Id: _plugins_admin.class.php 7298 2014-09-09 07:16:07Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -141,10 +133,10 @@ class Plugins_admin extends Plugins
 				'AfterItemUpdate' => 'This gets called after an item has been updated in the database.',
 				'AppendItemPreviewTransact' => 'This gets called when instantiating an item for preview.',
 
- 				'FilterItemContents' => 'Filters the content of a post/item right after input.',
- 				'UnfilterItemContents' => 'Unfilters the content of a post/item right before editing.',
+				'FilterItemContents' => 'Filters the content of a post/item right after input.',
+				'UnfilterItemContents' => 'Unfilters the content of a post/item right before editing.',
 
- 				// fp> rename to "PreRender"
+				// fp> rename to "PreRender"
 				'RenderItemAsHtml' => 'Renders content when generated as HTML.',
 				'RenderItemAsXml' => 'Renders content when generated as XML.',
 				'RenderItemAsText' => 'Renders content when generated as plain text.',
@@ -163,6 +155,8 @@ class Plugins_admin extends Plugins
 				'FilterCommentAuthor' => 'Filters the comment author.',
 				'FilterCommentAuthorUrl' => 'Filters the URL of the comment author.',
 				'FilterCommentContent' => 'Filters the content of a comment.',
+
+				'FilterMsgContent' => 'Filters the content of a message.',
 
 				'AfterUserDelete' => 'This gets called after an user has been deleted from the database.',
 				'AfterUserInsert' => 'This gets called after an user has been inserted into the database.',
@@ -186,6 +180,7 @@ class Plugins_admin extends Plugins
 				'DisplayCommentToolbar' => 'Display a toolbar on the public feedback form',
 				'DisplayCommentFormButton' => 'Called in the submit button section of the frontend comment form.',
 				'DisplayCommentFormFieldset' => 'Called at the end of the frontend comment form.',
+				'DisplayMessageToolbar' => 'Display a toolbar on the message form',
 				'DisplayMessageFormButton' => 'Called in the submit button section of the frontend message form.',
 				'DisplayMessageFormFieldset' => 'Called at the end of the frontend message form.',
 				'DisplayLoginFormFieldset' => 'Called when displaying the "Login" form.',
@@ -205,6 +200,7 @@ class Plugins_admin extends Plugins
 				'LoginAttempt' => 'Called when a user tries to login.',
 				'LoginAttemptNeedsRawPassword' => 'A plugin has to return true here, if it needs a raw (un-hashed) password in LoginAttempt.',
 				'AlternateAuthentication' => 'Called at the end of the login process, if the user did not try to login, the session has no user attached or only the username and no password is given (see Plugin::AlternateAuthentication() for more info).',
+				'MessageThreadFormSent' => 'Called when the message of thread form has been submitted.',
 				'MessageFormSent' => 'Called when the "Message to user" form has been submitted.',
 				'MessageFormSentCleanup' => 'Called after a email message has been sent through public form.',
 				'Logout' => 'Called when a user logs out.',
@@ -448,6 +444,7 @@ class Plugins_admin extends Plugins
 		if( $Plugin->group == 'rendering' )
 		{ // All Plugin from 'rendering' groups handle the FilterCommentContent
 			$plugin_class_methods[] = 'FilterCommentContent';
+			$plugin_class_methods[] = 'FilterMsgContent';
 		}
 
 		if( ! function_exists('token_get_all') )
@@ -717,13 +714,18 @@ class Plugins_admin extends Plugins
 		$this->index_event_IDs = array();
 
 		$Debuglog->add( 'Loading plugin events.', 'plugins' );
-		foreach( $DB->get_results( '
-				SELECT pevt_plug_ID, pevt_event
-					FROM T_pluginevents INNER JOIN T_plugins ON pevt_plug_ID = plug_ID
-				 WHERE pevt_enabled > 0
-				 ORDER BY plug_priority, plug_classname', OBJECT, 'Loading plugin events' ) as $l_row )
+
+		$plugins_events = $DB->get_results( '
+			SELECT pevt_plug_ID, pevt_event
+				FROM T_pluginevents INNER JOIN T_plugins ON pevt_plug_ID = plug_ID
+			 WHERE pevt_enabled > 0
+			 ORDER BY plug_priority, plug_classname', OBJECT, 'Loading plugin events' );
+		if( !empty( $plugins_events ) )
 		{
-			$this->index_event_IDs[$l_row->pevt_event][] = $l_row->pevt_plug_ID;
+			foreach( $plugins_events as $l_row )
+			{
+				$this->index_event_IDs[$l_row->pevt_event][] = $l_row->pevt_plug_ID;
+			}
 		}
 	}
 
@@ -988,7 +990,7 @@ class Plugins_admin extends Plugins
 			$DB->query( 'UPDATE T_widget
 				  SET wi_code = '.$DB->quote( $code ).'
 				WHERE wi_code = '.$DB->quote( $old_code ) );
-			// Update the renderer fields in the tables of Items, Comments:
+			// Update the renderer fields in the tables of Items, Comments and Messages:
 			$renderer_fields = array(
 					// Items
 					'T_items__item'             => 'post_renderers',
@@ -996,6 +998,9 @@ class Plugins_admin extends Plugins
 					// Comments
 					'T_comments'                => 'comment_renderers',
 					'T_comments__prerendering'  => 'cmpr_renderers',
+					// Messages
+					'T_messaging__message'      => 'msg_renderers',
+					'T_messaging__prerendering' => 'mspr_renderers',
 				);
 			foreach( $renderer_fields as $renderer_table => $renderer_field )
 			{
@@ -1475,7 +1480,8 @@ class Plugins_admin extends Plugins
 			return false;
 		}
 
-		if( !isset( $params['object_Blog'] ) )
+		if( !isset( $params['object_Blog'] ) &&
+		    ( !isset( $params['object_type'] ) || ( isset( $params['object_type'] ) && $params['object_type'] != 'Message' ) ) )
 		{
 			global $Blog;
 			if( empty( $Blog ) )
@@ -1485,12 +1491,12 @@ class Plugins_admin extends Plugins
 			$params['object_Blog'] = & $Blog;
 		}
 
-		if( isset( $params['object_type'] ) && ( $params['object_type'] == 'Comment' ) )
-		{
+		if( isset( $params['object_type'] ) && $params['object_type'] == 'Comment' )
+		{ // Comment
 			$rendering_setting_name = 'coll_apply_comment_rendering';
 		}
 		else
-		{
+		{ // Item
 			$rendering_setting_name = 'coll_apply_rendering';
 		}
 
@@ -1505,7 +1511,14 @@ class Plugins_admin extends Plugins
 
 		foreach( $filter_Plugins as $loop_filter_Plugin )
 		{ // Go through whole list of renders
-			$rendering_setting_value = $loop_filter_Plugin->get_coll_setting( $rendering_setting_name, $params['object_Blog'] );
+			if( isset( $params['object_type'] ) && $params['object_type'] == 'Message' )
+			{ // Message
+				$rendering_setting_value = $loop_filter_Plugin->get_msg_setting( 'msg_apply_rendering' );
+			}
+			else
+			{ // Item OR Comment
+				$rendering_setting_value = $loop_filter_Plugin->get_coll_setting( $rendering_setting_name, $params['object_Blog'] );
+			}
 
 			if( $loop_filter_Plugin->is_renderer_enabled( $rendering_setting_value, $renderers ) )
 			{ // Plugin is enabled to call method

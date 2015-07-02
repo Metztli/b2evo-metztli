@@ -4,20 +4,14 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  *
- * @copyright (c)2003-2014 by Francois Planque - {@link http://fplanque.com/}
+ * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
+ *
+ * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
- * Released under GNU GPL License - {@link http://b2evolution.net/about/license.html}
- *
- * {@internal Open Source relicensing agreement:
- * }}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
  * @package admin
- *
- * {@internal Below is a list of authors who have contributed to design/coding of this file: }}
- * @author fplanque: Francois PLANQUE.
- *
- * @version $Id: skins.ctrl.php 7178 2014-07-23 08:11:33Z yura $
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -32,10 +26,11 @@ $current_User->check_perm( 'options', 'view', true );
 
 
 param( 'action', 'string', 'list' );
+param( 'tab', 'string', 'manage', true );
 
-param( 'redirect_to', 'url', '?ctrl=skins' );
+param( 'redirect_to', 'url', $admin_url.'?ctrl=skins&tab='.$tab.( isset( $blog ) ? '&blog='.$blog : '' ) );
 
-if( param( 'skin_ID', 'integer', '', true) )
+if( param( 'skin_ID', 'integer', '', true ) )
 {// Load file type:
 	$SkinCache = & get_SkinCache();
 	if( ($edited_Skin = & $SkinCache->get_by_ID( $skin_ID, false )) === false )
@@ -78,6 +73,40 @@ switch( $action )
 
 		// Replace a mask by value. Used for install skin on creating of new blog
 		$redirect_to = str_replace( '$skin_ID$', $edited_Skin->ID, $redirect_to );
+
+		// PREVENT RELOAD & Switch to list mode:
+		header_redirect( $redirect_to );
+		break;
+
+
+	case 'install':
+		// Install several skins
+
+		// Check that this action request is not a CSRF hacked request:
+		$Session->assert_received_crumb( 'skin' );
+
+		// Check permission to edit:
+		$current_User->check_perm( 'options', 'edit', true );
+
+		param( 'skin_folders', 'array:/([-A-Za-z0-9._]|\.\.)/', array() );
+
+		if( empty( $skin_folders ) )
+		{ // No selected skins
+			$Messages->add( T_('Please select at least one skin to install.'), 'error' );
+			header_redirect( $admin_url.'?ctrl=skins&action=new' );
+		}
+
+		$new_installed_skin_IDs = array();
+		foreach( $skin_folders as $skin_folder )
+		{ // CREATE NEW SKIN:
+			$edited_Skin = & skin_install( $skin_folder );
+			$new_installed_skin_IDs[] = $edited_Skin->ID;
+		}
+
+		$Messages->add( T_('The selected skins have been installed.'), 'success' );
+
+		// We want to highlight the edited object on next list display:
+		$Session->set( 'fadeout_array', array( 'skin_ID' => $new_installed_skin_IDs ) );
 
 		// PREVENT RELOAD & Switch to list mode:
 		header_redirect( $redirect_to );
@@ -129,7 +158,7 @@ switch( $action )
 		$edited_Skin->db_save_containers();
 
 		// We want to highlight the edited object on next list display:
- 		$Session->set( 'fadeout_array', array( 'skin_ID' => array($edited_Skin->ID) ) );
+		$Session->set( 'fadeout_array', array( 'skin_ID' => array($edited_Skin->ID) ) );
 
 		// Redirect so that a reload doesn't write to the DB twice:
 		header_redirect( $redirect_to, 303 ); // Will EXIT
@@ -152,7 +181,7 @@ switch( $action )
 		if( param( 'confirm', 'integer', 0 ) )
 		{ // confirmed, Delete from DB:
 			$msg = sprintf( T_('Skin &laquo;%s&raquo; uninstalled.'), $edited_Skin->dget('name') );
-			$edited_Skin->dbdelete( true );
+			$edited_Skin->dbdelete();
 			//unset( $edited_Skin );
 			//forget_param( 'skin_ID' );
 			$Messages->add( $msg, 'success' );
@@ -178,7 +207,7 @@ switch( $action )
 		// Check that this action request is not a CSRF hacked request:
 		$Session->assert_received_crumb( 'skin' );
 
- 		// Check permission:
+		// Check permission:
 		$current_User->check_perm( 'options', 'edit', true );
 
 		// Make sure we got skin and blog IDs:
@@ -199,21 +228,32 @@ switch( $action )
 }
 
 
-$AdminUI->set_path( 'blogs', 'skin', 'manage_skins' );
+if( $tab == 'system' )
+{ // From System tab
+	$AdminUI->set_path( 'options', 'skins' );
 
+	$AdminUI->breadcrumbpath_init( false );
+	$AdminUI->breadcrumbpath_add( T_('System'), $admin_url.'?ctrl=system',
+		T_('Global settings are shared between all blogs; see Blog settings for more granular settings.') );
+	$AdminUI->breadcrumbpath_add( T_('Skins'), $admin_url.'?ctrl=skins' );
+}
+else
+{ // From Blog settings
 
-/**
- * Display page header, menus & messages:
- */
-$AdminUI->set_coll_list_params( 'blog_properties', 'edit',
-											array( 'ctrl' => 'skins' ),
-											T_('Site'), '?ctrl=collections&amp;blog=0' );
+	// We should activate toolbar menu items for this controller and tab
+	$activate_collection_toolbar = true;
 
+	$AdminUI->set_path( 'collections', 'skin', 'manage_skins' );
 
-$AdminUI->breadcrumbpath_init();
-$AdminUI->breadcrumbpath_add( T_('Settings'), '?ctrl=coll_settings&amp;blog=$blog$' );
-$AdminUI->breadcrumbpath_add( T_('Skin'), '?ctrl=coll_settings&amp;tab=skin&amp;blog=$blog$' );
-$AdminUI->breadcrumbpath_add( T_('Skin configuration'), '?ctrl=skins' );
+	/**
+	 * Display page header, menus & messages:
+	 */
+	$AdminUI->set_coll_list_params( 'blog_properties', 'edit', array( 'ctrl' => 'skins' ) );
+
+	$AdminUI->breadcrumbpath_init( true, array( 'text' => T_('Collections'), 'url' => $admin_url.'?ctrl=dashboard&amp;blog=$blog$' ) );
+	$AdminUI->breadcrumbpath_add( T_('Skin'), $admin_url.'?ctrl=coll_settings&amp;tab=skin&amp;blog=$blog$' );
+	$AdminUI->breadcrumbpath_add( T_('Manage skins'), $admin_url.'?ctrl=skins' );
+}
 
 
 // Display <html><head>...</head> section! (Note: should be done early if actions do not redirect)
