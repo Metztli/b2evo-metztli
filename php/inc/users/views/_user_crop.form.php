@@ -41,7 +41,7 @@ global $current_User;
  */
 global $cropped_File;
 
-global $window_width, $window_height;
+global $image_width, $image_height;
 
 if( $display_mode != 'js' )
 {
@@ -122,7 +122,7 @@ $Form->begin_fieldset( T_('Crop profile picture').$close_icon, array( 'class' =>
 $cropped_image_tag = $cropped_File->get_tag( '', '', '', '', 'original', '' );
 
 echo '<p class="crop_button top">';
-$Form->button( array( 'submit', 'actionArray[crop]', T_('Crop'), 'SaveButton' ) );
+$Form->button( array( 'submit', 'actionArray[crop]', T_('Crop'), 'SaveButton btn-primary' ) );
 echo '</p>';
 
 echo '<div id="image_crop_block"'.( ( ! is_admin_page() && $display_mode != 'js' ) ? ' class="short_width"' : '' ).'><div>';
@@ -132,18 +132,27 @@ echo '<div id="target_cropped_image">'.$cropped_image_tag.'</div>';
 
 echo '</div><div>';
 
+// Check if we should display big preview images, Hide them on small screens:
+$display_big_preview = ( empty( $image_width ) || $image_width > 400 ) && ( empty( $image_height ) || $image_height > 400 );
+
 // Preview thumbnails
-echo '<div class="preview_cropped_images" style="display:none">';
-	echo '<div class="preview_cropped_image" style="width:128px;height:128px">'.$cropped_image_tag.'</div>';
+echo '<div class="preview_cropped_images'.( ! $display_big_preview ? ' only_small_preview' : '' ).'" style="display:none">';
+	if( $display_big_preview )
+	{
+		echo '<div class="preview_cropped_image" style="width:128px;height:128px">'.$cropped_image_tag.'</div>';
+	}
 	echo '<div class="preview_cropped_image" style="width:64px;height:64px">'.$cropped_image_tag.'</div>';
-	echo '<div class="preview_cropped_image circle" style="width:128px;height:128px">'.$cropped_image_tag.'</div>';
+	if( $display_big_preview )
+	{
+		echo '<div class="preview_cropped_image circle" style="width:128px;height:128px">'.$cropped_image_tag.'</div>';
+	}
 	echo '<div class="preview_cropped_image circle" style="width:64px;height:64px">'.$cropped_image_tag.'</div>';
 echo '</div>';
 
 echo '</div></div>';
 
 echo '<p class="crop_button bottom" style="display:none">';
-$Form->button( array( 'submit', 'actionArray[crop]', T_('Crop'), 'SaveButton' ) );
+$Form->button( array( 'submit', 'actionArray[crop]', T_('Crop'), 'SaveButton btn-primary' ) );
 echo '</p>';
 
 $Form->end_fieldset();
@@ -154,13 +163,13 @@ $Form->end_form();
 $file_size = $cropped_File->get_image_size( 'widthheight' );
 $file_size = min( $file_size[0], $file_size[1] );
 
-if( ! empty( $window_width ) && ! empty( $window_height ) )
+if( ! empty( $image_width ) && ! empty( $image_height ) )
 { // Limit the cropping image with window size
 ?>
 <style>
 #target_cropped_image img {
-	max-width: <?php echo $window_width; ?>px !important;
-	max-height: <?php echo $window_height; ?>px !important;
+	max-width: <?php echo $image_width; ?>px !important;
+	max-height: <?php echo $image_height; ?>px !important;
 }
 </style>
 <?php
@@ -238,10 +247,14 @@ function init_jcrop_tool( image_obj )
 	} );
 
 	// Display the crop elements only after initialization
-	jQuery( '.preview_cropped_images, .crop_button' ).show();
+	jQuery( '.preview_cropped_images' ).show();
 	if( jQuery( '#modal_window' ).length > 0 )
-	{
+	{ // Crop button on bootstrap skins
 		jQuery( '#modal_window .modal-footer button[type=submit]' ).attr( 'style', 'display:inline-block !important' );
+	}
+	else
+	{ // Crop button on other skins
+		jQuery( '.crop_button' ).show();
 	}
 }
 

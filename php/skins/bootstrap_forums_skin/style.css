@@ -315,14 +315,22 @@ ol.breadcrumb {
 .legends legend {
   text-align: center;
   border: none;
+  text-transform: uppercase;
+  font-variant: small-caps;
+  font-size: 82%;
+  margin-bottom: 10px;
 }
-.legend {
+.legend,
+.legend-item {
   text-align: center;
-  margin: 20px auto;
 }
-.legend div {
+.legend div,
+.legend-item div {
   padding: 0 20px 0 5px;
   display: inline-block;
+}
+.legend-item {
+  margin: 0px 5px 12px 5px;
 }
 ul.legend {
   list-style: none;
@@ -331,14 +339,14 @@ ul.legend {
   padding: 0;
 }
 ul.legend.evo_posts.evo_forums {
-  margin: 10px 0;
+  margin: 0 auto 14px;
 }
 ul.legend li {
   list-style: none;
   display: inline-block;
   white-space: nowrap;
   vertical-align: middle;
-  margin: 5px;
+  margin: 0px 5px 5px 5px;
 }
 ul.legend li span {
   vertical-align: middle;
@@ -534,6 +542,7 @@ body.round_avatars .single_topic #styled_content_block .ft_avatar a > img {
 }
 .vote_spam {
   float: left;
+  line-height: 22px;
 }
 .vote_spam .action_icon {
   margin: 0;
@@ -545,6 +554,7 @@ a.btn + .vote_spam {
   float: left;
   display: block;
   margin-right: 10px;
+  line-height: 22px;
 }
 label.control-label[for=post_title] {
   width: auto;
@@ -877,4 +887,11 @@ label.control-label[for=post_title] {
   display: table-cell;
   padding: 20px 0 10px 30px;
   vertical-align: middle;
+}
+.popover img {
+  -webkit-border-radius: 4px !important;
+  -moz-border-radius: 4px !important;
+  -ms-border-radius: 4px !important;
+  -o-border-radius: 4px !important;
+  border-radius: 4px !important;
 }

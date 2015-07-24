@@ -156,7 +156,7 @@ switch( $action )
 			}
 
 			$avatar_overlay_text = '';
-			$link_overlay_class = '';
+			$link_class = '';
 			if( is_admin_page() )
 			{	// Set avatar size for Back-office
 				$avatar_size = $Settings->get('bubbletip_size_admin');
@@ -169,7 +169,7 @@ switch( $action )
 			{	// Set avatar size for Anonymous users
 				$avatar_size = $Settings->get('bubbletip_size_anonymous');
 				$avatar_overlay_text = $Settings->get('bubbletip_overlay');
-				$link_overlay_class = 'overlay_link';
+				$link_class = 'overlay_link';
 			}
 
 			$width = $thumbnail_sizes[$avatar_size][1];
@@ -177,7 +177,7 @@ switch( $action )
 			// Display user avatar with login
 			// Attributes 'w' & 'h' we use for following js-scale div If image is downloading first time (Fix bubbletip)
 			echo '<div class="center" w="'.$width.'" h="'.$height.'">';
-			echo get_avatar_imgtag( $User->login, 'login', true, $avatar_size, 'avatar_above_login', '', $avatar_overlay_text, $link_overlay_class );
+			echo get_avatar_imgtag( $User->login, 'login', true, $avatar_size, 'avatar_above_login', '', $avatar_overlay_text, $link_class, true, '' );
 			echo '</div>';
 
 			if( ! ( $Settings->get( 'allow_anonymous_user_profiles' ) || ( is_logged_in() && $current_User->check_perm( 'user', 'view', false, $User ) ) ) )
@@ -272,7 +272,7 @@ switch( $action )
 			echo '<div class="bubbletip_anon">';
 
 			echo $Comment->get_avatar( 'fit-160x160', 'bCommentAvatarCenter' );
-			echo '<div>'.$Comment->get_author_name_anonymous().'</div>';
+			echo '<div>'.$Comment->get_author_name_anonymous( 'htmlbody', array( 'rel' => '' ) ).'</div>';
 			echo '<div>'.T_('This user is not registered on this site.').'</div>';
 			echo $Comment->get_author_url_link( '', '<div>', '</div>');
 
@@ -305,6 +305,9 @@ switch( $action )
 			break;
 		}
 
+		// Use the glyph or font-awesome icons if requested by skin
+		param( 'b2evo_icons_type', 'string', '' );
+
 		if( param( 'is_backoffice', 'integer', 0 ) )
 		{ // Set admin skin, used for buttons, @see button_class()
 			global $current_User, $UserSettings, $is_admin_page, $adminskins_path;
@@ -313,9 +316,17 @@ switch( $action )
 			require_once $adminskins_path.$admin_skin.'/_adminUI.class.php';
 			$AdminUI = new AdminUI();
 		}
+		else
+		{
+			$BlogCache = &get_BlogCache();
+			$Blog = & $BlogCache->get_by_ID( $blog_ID, true );
+			$skin_ID = $Blog->get_skin_ID();
+			$SkinCache = & get_SkinCache();
+			$Skin = & $SkinCache->get_by_ID( $skin_ID );
+		}
 
 		// Check permission for spam voting
-		$current_User->check_perm( 'blog_vote_spam_comments', 'edit', true, param( 'blogid', 'integer' ) );
+		$current_User->check_perm( 'blog_vote_spam_comments', 'edit', true, $blog_ID );
 
 		$type = param( 'type', 'string' );
 		$commentid = param( 'commentid', 'integer' );
@@ -1168,9 +1179,6 @@ switch( $action )
 		{ // Wrong file for cropping
 			break;
 		}
-
-		require_js( '#jcrop#', 'blog', false, true );
-		require_css( '#jcrop_css#', 'blog', NULL, NULL, '#', true );
 
 		$BlogCache = &get_BlogCache();
 		$Blog = & $BlogCache->get_by_ID( $blog_ID, true );

@@ -323,14 +323,19 @@ function output_image( $imh, $mimetype )
  * It is useful to fix thumbnail sizes for images less than requested thumbnail
  *
  * @param string Thumbnail type ('crop'|'crop-top'|'fit')
- * @param integer Thumbnail width
- * @param integer Thumbnail height
+ * @param integer Thumbnail width (by reference)
+ * @param integer Thumbnail height (by reference)
  * @param integer Original image width
  * @param integer Original image height
  * @return boolean TRUE if no need to resample
  */
 function check_thumbnail_sizes( $thumb_type, & $thumb_width, & $thumb_height, $src_width, $src_height )
 {
+	if( empty( $src_width ) || empty( $src_height ) )
+	{ // We don't know how this case can happen but it has been reported, so division by zero:
+		return true;
+	}
+
 	if( $src_width <= $thumb_width && $src_height <= $thumb_height )
 	{ // If original image sizes are less than thumbnail sizes
 		if( $thumb_type == 'fit' )

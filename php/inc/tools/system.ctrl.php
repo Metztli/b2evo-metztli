@@ -424,6 +424,10 @@ if( $post_max_size > $upload_max_filesize )
 {
 	disp_system_check( 'ok' );
 }
+elseif( $post_max_size == $upload_max_filesize )
+{
+	disp_system_check( 'warning', T_('post_max_size should be larger than upload_max_filesize') );
+}
 else
 {
 	disp_system_check( 'error', T_('post_max_size should be larger than upload_max_filesize') );
@@ -439,13 +443,13 @@ if( empty($memory_limit) )
 else
 {
 	init_system_check( 'PHP memory_limit', ini_get('memory_limit') );
-	if( $memory_limit < get_php_bytes_size( '8M' ) )
+	if( $memory_limit < get_php_bytes_size( '256M' ) )
 	{
-		disp_system_check( 'error', T_('The memory_limit is very low. Some features of b2evolution will fail to work;') );
+		disp_system_check( 'error', T_('The memory_limit is too low. Some features like image manipulation will fail to work.') );
 	}
-	elseif( $memory_limit < get_php_bytes_size( '12M' ) )
+	elseif( $memory_limit < get_php_bytes_size( '384M' ) )
 	{
-		disp_system_check( 'warning', T_('The memory_limit is low. Some features of b2evolution may fail to work;') );
+		disp_system_check( 'warning', T_('The memory_limit is low. Some features like image manipulation of large files may fail to work.') );
 	}
 	else
 	{
@@ -461,25 +465,24 @@ if( empty( $max_execution_time ) )
 	disp_system_check( 'ok' );
 }
 else
-{
-	init_system_check( 'PHP max_execution_time', sprintf( T_('%s seconds'), $max_execution_time ) );
-	if( $max_execution_time <= 5 * 60 )
+{	// Time is limited, can we request more?:
+	$can_force_time = ini_set( 'max_execution_time', 600 ); // Try to force max_execution_time to 10 minutes
+
+	if( $can_force_time !== false )
 	{
-		disp_system_check( 'error' );
+		$forced_max_execution_time = system_check_max_execution_time();
+		init_system_check( 'PHP forced max_execution_time', sprintf( T_('%s seconds'), $forced_max_execution_time ) );
+		disp_system_check( 'ok', sprintf( T_('b2evolution was able to request more time (than the default %s seconds) to execute complex tasks.'), $max_execution_time ) );
+	}	
+	elseif( $max_execution_time <= 5 * 60 )
+	{
+		init_system_check( 'PHP max_execution_time', sprintf( T_('%s seconds'), $max_execution_time ) );
+		disp_system_check( 'error', T_('b2evolution may frequently run out of time to execute properly.') );
 	}
 	elseif( $max_execution_time > 5 * 60 )
 	{
-		disp_system_check( 'warning' );
-	}
-}
-if( $max_execution_time < 600 )
-{ // Force max_execution_time to 10 minutes
-	$result = ini_set( 'max_execution_time', 600 );
-	if( $result !== false )
-	{
-		$max_execution_time = system_check_max_execution_time();
-		init_system_check( 'PHP forced max_execution_time', sprintf( T_('%s seconds'), $max_execution_time ) );
-		disp_system_check( 'warning' );
+		init_system_check( 'PHP max_execution_time', sprintf( T_('%s seconds'), $max_execution_time ) );
+		disp_system_check( 'warning', T_('b2evolution may sometimes run out of time to execute properly.' ) );
 	}
 }
 

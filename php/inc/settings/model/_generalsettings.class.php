@@ -111,7 +111,6 @@ class GeneralSettings extends AbstractSettings
 
 		'allow_avatars' => 1,
 		'min_picture_size' => 160, // minimum profile picture dimensions in pixels (width and height)
-		'messages_link_to' => 'admin',		// message link on the notification email should link to the admin or to a blog
 		'allow_html_message' => 0, // Allow HTML in messages
 
 		// Welcome private message
@@ -144,7 +143,6 @@ class GeneralSettings extends AbstractSettings
 		'strict_logins' => 1,						// Allow only plain ACSII characters in user login
 
 		'allow_moving_chapters' => '0',				// Do not allow moving chapters by default
-		'chapter_ordering' => 'alpha',              // TODO: Remove this when this global setting usage were removed from everywhere
 
 		'cross_posting' => 0,						// Allow additional categories from other blogs
 		'cross_posting_blog' => 0,					// Allow to choose main category from another blog

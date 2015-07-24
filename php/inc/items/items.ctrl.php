@@ -370,6 +370,41 @@ switch( $action )
 		$selected_Filelist = new Filelist( $fm_Filelist->get_FileRoot(), false );
 		break;
 
+	case 'hide_quick_button':
+	case 'show_quick_button':
+		// Show/Hide quick button to publish a post
+
+		// Check that this action request is not a CSRF hacked request:
+		$Session->assert_received_crumb( 'item' );
+
+		// Update setting:
+		$UserSettings->set( 'show_quick_publish_'.$blog, ( $action == 'show_quick_button' ? 1 : 0 ) );
+		$UserSettings->dbupdate();
+
+		$prev_action = param( 'prev_action', 'string', '' );
+		$item_ID = param( 'p', 'integer', 0 );
+
+		// REDIRECT / EXIT
+		header_redirect( $admin_url.'?ctrl=items&action='.$prev_action.( $item_ID > 0 ? '&p='.$item_ID : '' ).'&blog='.$blog );
+		break;
+
+	case 'reset_quick_settings':
+		// Reset quick default settings for current user on the edit item screen:
+
+		// Check that this action request is not a CSRF hacked request:
+		$Session->assert_received_crumb( 'item' );
+
+		// Reset settings to default values
+		$DB->query( 'DELETE FROM T_users__usersettings
+			WHERE uset_name LIKE "fold_itemform_%_'.$blog.'"
+			   OR uset_name = "show_quick_publish_'.$blog.'"' );
+
+		$prev_action = param( 'prev_action', 'string', '' );
+		$item_ID = param( 'p', 'integer', 0 );
+
+		// REDIRECT / EXIT
+		header_redirect( $admin_url.'?ctrl=items&action='.$prev_action.( $item_ID > 0 ? '&p='.$item_ID : '' ).'&blog='.$blog );
+		break;
 
 	default:
 		debug_die( 'unhandled action 1:'.htmlspecialchars($action) );
@@ -714,7 +749,7 @@ switch( $action )
 		check_perm_posttype( $post_extracats );
 
 		// Update the folding positions for current user
-		save_fieldset_folding_values();
+		save_fieldset_folding_values( $Blog->ID );
 
 		// CREATE NEW POST:
 		load_class( 'items/model/_item.class.php', 'Item' );
@@ -857,7 +892,7 @@ switch( $action )
 		$current_User->check_perm( 'item_post!CURSTATUS', 'edit', true, $edited_Item );
 
 		// Update the folding positions for current user
-		save_fieldset_folding_values();
+		save_fieldset_folding_values( $Blog->ID );
 
 		// We need early decoding of these in order to check permissions:
 		param( 'post_status', 'string', 'published' );
@@ -1000,8 +1035,10 @@ switch( $action )
 		// Load post from Session
 		$edited_Item = get_session_Item( $post_ID );
 
-		// Set new post type
-		$edited_Item->set( 'ityp_ID', $ityp_ID );
+		if( $Blog->is_item_type_enabled( $ityp_ID ) )
+		{ // Set new post type only if it is enabled for the Blog:
+			$edited_Item->set( 'ityp_ID', $ityp_ID );
+		}
 
 		// Unset old object of Post Type to reload it on next page
 		unset( $edited_Item->ItemType );
@@ -1012,17 +1049,21 @@ switch( $action )
 		set_session_Item( $edited_Item );
 
 		if( ! empty( $from_tab ) && $from_tab == 'type' )
-		{ // It goes from items lists to update item type immediately
-			$Messages->add( T_('Post type has been updated.'), 'success' );
+		{ // It goes from items lists to update item type immediately:
 
-			// Update item to set new type right now
-			$edited_Item->dbupdate();
+			if( $Blog->is_item_type_enabled( $ityp_ID ) )
+			{ // Update only when the selected item type is enabled for the Blog:
+				$Messages->add( T_('Post type has been updated.'), 'success' );
+
+				// Update item to set new type right now
+				$edited_Item->dbupdate();
+
+				// Highlight the updated item in list
+				$Session->set( 'highlight_id', $edited_Item->ID );
+			}
 
 			// Set redirect back to items list with new item type tab
 			$redirect_to = $admin_url.'?ctrl=items&blog='.$Blog->ID.'&tab=type&tab_type='.$edited_Item->get_type_setting( 'backoffice_tab' ).'&filter=restore';
-
-			// Highlight the updated item in list
-			$Session->set( 'highlight_id', $edited_Item->ID );
 		}
 		else
 		{ // Set default redirect urls (It goes from the item edit form)
@@ -1056,7 +1097,9 @@ switch( $action )
 
 		if( $edited_Item->get( 'status' ) == 'redirected' && empty( $edited_Item->url ) )
 		{ // Note: post_url is not part of the simple form, so this message can be a little bit awkward there
-			param_error( 'post_url', T_('If you want to redirect this post, you must specify an URL! (Expert mode)') );
+			param_error( 'post_url',
+				T_('If you want to redirect this post, you must specify an URL!').' ('.T_('Advanced properties panel').')',
+				T_('If you want to redirect this post, you must specify an URL!') );
 		}
 
 		if( param_errors_detected() )
@@ -1318,7 +1361,7 @@ switch( $action )
  */
 function init_list_mode()
 {
-	global $tab, $tab_type, $Blog, $UserSettings, $ItemList, $AdminUI, $posttypes_perms;
+	global $tab, $tab_type, $Blog, $UserSettings, $ItemList, $AdminUI;
 
 	// set default itemslist param prefix
 	$items_list_param_prefix = 'items_';

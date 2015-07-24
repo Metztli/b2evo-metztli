@@ -138,6 +138,28 @@ class bootstrap_manual_Skin extends Skin
 				'section_username_end' => array(
 					'layout' => 'end_fieldset',
 				),
+
+
+				'section_access_start' => array(
+					'layout' => 'begin_fieldset',
+					'label'  => T_('When access is denied or requires login...')
+				),
+					'access_login_containers' => array(
+						'label' => T_('Display on login screen'),
+						'note' => '',
+						'type' => 'checklist',
+						'options' => array(
+							array( 'header',   sprintf( T_('"%s" container'), NT_('Header') ),    1 ),
+							array( 'page_top', sprintf( T_('"%s" container'), NT_('Page Top') ),  1 ),
+							array( 'menu',     sprintf( T_('"%s" container'), NT_('Menu') ),      0 ),
+							array( 'sidebar',  sprintf( T_('"%s" container'), NT_('Sidebar') ),   0 ),
+							array( 'sidebar2', sprintf( T_('"%s" container'), NT_('Sidebar 2') ), 0 ),
+							array( 'footer',   sprintf( T_('"%s" container'), NT_('Footer') ),    1 ) ),
+						),
+				'section_access_end' => array(
+					'layout' => 'end_fieldset',
+				),
+
 			), parent::get_param_definitions( $params ) );
 
 		return $r;
@@ -155,14 +177,15 @@ class bootstrap_manual_Skin extends Skin
 
 		// Request some common features that the parent function (Skin::display_init()) knows how to provide:
 		parent::display_init( array(
-				'jquery', 							// Load jQuery
-				'font_awesome', 					// Load Font Awesome (and use its icons as a priority over the Bootstrap glyphicons)
-				'bootstrap', 						// Load Bootstrap (without 'bootstrap_theme_css')
-				'bootstrap_evo_css', 			// Load the b2evo_base styles for Bootstrap (instead of the old b2evo_base styles)
-				'bootstrap_messages',			// Initialize $Messages Class to use Bootstrap styles
-				'style_css', 						// Load the style.css file of the current skin
-				'colorbox',							// Load Colorbox (a lightweight Lightbox alternative + customizations for b2evo)
-				'bootstrap_init_tooltips', 	// Inline JS to init Bootstrap tooltips (E.g. on comment form for allowed file extensions)
+				'jquery',                  // Load jQuery
+				'font_awesome',            // Load Font Awesome (and use its icons as a priority over the Bootstrap glyphicons)
+				'bootstrap',               // Load Bootstrap (without 'bootstrap_theme_css')
+				'bootstrap_evo_css',       // Load the b2evo_base styles for Bootstrap (instead of the old b2evo_base styles)
+				'bootstrap_messages',      // Initialize $Messages Class to use Bootstrap styles
+				'style_css',               // Load the style.css file of the current skin
+				'colorbox',                // Load Colorbox (a lightweight Lightbox alternative + customizations for b2evo)
+				'bootstrap_init_tooltips', // Inline JS to init Bootstrap tooltips (E.g. on comment form for allowed file extensions)
+				'disp_auto',               // Automatically include additional CSS and/or JS required by certain disps (replace with 'disp_off' to disable this)
 			) );
 
 		// Skin specific initializations:
@@ -171,19 +194,19 @@ class bootstrap_manual_Skin extends Skin
 		switch( $disp )
 		{
 			case 'front':
-				// Init star rating for intro posts
+				// Init star rating for intro posts:
 				init_ratings_js( 'blog', true );
 				break;
 
 			case 'posts':
 				global $cat, $bootstrap_manual_posts_text;
 
-				// Init star rating for intro posts
+				// Init star rating for intro posts:
 				init_ratings_js( 'blog', true );
 
 				$bootstrap_manual_posts_text = T_('Posts');
 				if( ! empty( $cat ) )
-				{ // Init the <title> for categories page
+				{ // Init the <title> for categories page:
 					$ChapterCache = & get_ChapterCache();
 					if( $Chapter = & $ChapterCache->get_by_ID( $cat, false ) )
 					{
@@ -191,6 +214,11 @@ class bootstrap_manual_Skin extends Skin
 					}
 				}
 				break;
+		}
+
+		if( $this->is_left_navigation_visible() )
+		{ // Include JS code for left navigation panel only when it is displayed:
+			require_js( $this->get_url().'left_navigation.js' );
 		}
 	}
 
@@ -532,9 +560,9 @@ class bootstrap_manual_Skin extends Skin
 						'block_end'             => '</ul></div>',
 						'page_current_template' => '<span><b>$page_num$</b></span>',
 						'page_item_before'      => '<li>',
-						'page_item_after'       => '</li>',
-						'prev_text'             => '&lt;&lt;',
-						'next_text'             => '&gt;&gt;',
+						'page_item_after'       => '</li>',		
+						'prev_text'             => '<i class="fa fa-angle-double-left"></i>',
+						'next_text'             => '<i class="fa fa-angle-double-right"></i>',
 					),
 					// Form params for the forms below: login, register, lostpassword, activateinfo and msgform
 					'skin_form_before'      => '<div class="panel panel-default skin-form">'
@@ -619,8 +647,28 @@ class bootstrap_manual_Skin extends Skin
 	{
 		global $disp;
 
-		// Display left navigation column only on these pages
+		if( in_array( $disp, array( 'access_requires_login', 'access_denied' ) ) )
+		{ // Display left navigation column on this page when at least one sidebar container is visible:
+			return $this->is_visible_container( 'sidebar' ) || $this->is_visible_container( 'sidebar2' );
+		}
+
+		// Display left navigation column only on these pages:
 		return in_array( $disp, array( 'front', 'posts', 'single', 'search', 'edit', 'edit_comment', 'catdir', 'search', '404' ) );
+	}
+
+
+	/**
+	 * Check if we can display a widget container
+	 *
+	 * @param string Widget container key: 'header', 'page_top', 'menu', 'sidebar', 'sidebar2', 'footer'
+	 * @param string Skin setting name
+	 * @return boolean TRUE to display
+	 */
+	function is_visible_container( $container_key, $setting_name = 'access_login_containers' )
+	{
+		$access = $this->get_setting( $setting_name );
+
+		return ( ! empty( $access ) && ! empty( $access[ $container_key ] ) );
 	}
 }
 

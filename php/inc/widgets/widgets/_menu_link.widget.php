@@ -229,6 +229,11 @@ class menu_link_Widget extends ComponentWidget
 			$current_Blog = & $Blog;
 		}
 
+		if( empty( $current_Blog ) )
+		{ // We cannot use this widget without a current collection:
+			return false;
+		}
+
 		switch( $this->disp_params['link_type'] )
 		{
 			case 'recentposts':
@@ -352,8 +357,12 @@ class menu_link_Widget extends ComponentWidget
 				break;
 
 			case 'login':
-				if( is_logged_in() ) return false;
-				$url = get_login_url( 'menu link', NULL, false, $current_Blog->ID );
+				if( is_logged_in() )
+				{ // Don't display this link for already logged in users
+					return false;
+				}
+				global $Settings;
+				$url = get_login_url( 'menu link', $Settings->get( 'redirect_to_after_login' ), false, $current_Blog->ID );
 				if( isset( $this->BlockCache ) )
 				{ // Do NOT cache because some of these links are using a redirect_to param, which makes it page dependent.
 					// so this will be cached by the PageCache; there is no added benefit to cache it in the BlockCache

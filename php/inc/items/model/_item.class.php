@@ -601,10 +601,11 @@ class Item extends ItemLight
 			param_check_not_empty( 'post_url', T_('Please provide a link to url.'), '' );
 		}
 
-		if( $this->status == 'redirected' && empty($this->url) )
-		{
-			// Note: post_url is not part of the simple form, so this message can be a little bit awkward there
-			param_error( 'post_url', T_('If you want to redirect this post, you must specify an URL! (Expert mode)') );
+		if( $this->status == 'redirected' && empty( $this->url ) )
+		{ // Note: post_url is not part of the simple form, so this message can be a little bit awkward there
+			param_error( 'post_url',
+				T_('If you want to redirect this post, you must specify an URL!').' ('.T_('Advanced properties panel').')',
+				T_('If you want to redirect this post, you must specify an URL!') );
 		}
 
 		// ISSUE DATE / TIMESTAMP:
@@ -3053,9 +3054,11 @@ class Item extends ItemLight
 	 */
 	function & get_placeholder_File( $video_File )
 	{
+		$r = NULL;
+
 		if( empty( $video_File ) )
 		{ // No File for placeholder
-			return NULL;
+			return $r;
 		}
 
 		if( ! isset( $this->placeholder_FileList ) )
@@ -3063,7 +3066,7 @@ class Item extends ItemLight
 			$LinkOwner = new LinkItem( $this );
 			if( ! $this->placeholder_FileList = & $LinkOwner->get_attachment_FileList( 1000 ) )
 			{ // No attached files
-				return NULL;
+				return $r;
 			}
 		}
 
@@ -3082,7 +3085,7 @@ class Item extends ItemLight
 			}
 		}
 
-		return NULL;
+		return $r;
 	}
 
 

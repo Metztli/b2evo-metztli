@@ -6273,14 +6273,155 @@ function upgrade_b2evo_tables( $upgrade_action = 'evoupgrade' )
 	}
 
 	if( $old_db_version < 11440 )
-	{ // part 18.n trunk aka 14th part of "i7"
+	{ // part 18.n trunk aka 16th part of "i7"
 
 		task_begin( 'Upgrading base domains table...' );
 		$DB->query( "ALTER TABLE T_basedomains
 			MODIFY dom_name VARCHAR(250) COLLATE utf8_bin NOT NULL DEFAULT ''" );
 		task_end();
 
-		// set_upgrade_checkpoint( '11440' );
+		set_upgrade_checkpoint( '11440' );
+	}
+
+	if( $old_db_version < 11450 )
+	{ // part 18.o trunk aka 17th part of "i7"
+
+		task_begin( 'Upgrading blog-group permissions table...' );
+		$DB->query( "ALTER TABLE T_coll_group_perms
+			ADD COLUMN bloggroup_perm_item_type ENUM('standard','restricted','admin') COLLATE ascii_general_ci NOT NULL default 'standard' AFTER bloggroup_perm_poststatuses,
+			DROP COLUMN bloggroup_perm_page,
+			DROP COLUMN bloggroup_perm_intro,
+			DROP COLUMN bloggroup_perm_podcast,
+			DROP COLUMN bloggroup_perm_sidebar" );
+		task_end();
+
+		task_begin( 'Upgrading blog-user permissions table...' );
+		$DB->query( "ALTER TABLE T_coll_user_perms
+			ADD COLUMN bloguser_perm_item_type ENUM('standard','restricted','admin') COLLATE ascii_general_ci NOT NULL default 'standard' AFTER bloguser_perm_poststatuses,
+			DROP COLUMN bloguser_perm_page,
+			DROP COLUMN bloguser_perm_intro,
+			DROP COLUMN bloguser_perm_podcast,
+			DROP COLUMN bloguser_perm_sidebar" );
+		task_end();
+
+		task_begin( 'Upgrade post types table... ' );
+		$DB->query( "ALTER TABLE T_items__type
+			ADD COLUMN ityp_perm_level ENUM( 'standard', 'restricted', 'admin' ) COLLATE ascii_general_ci NOT NULL default 'standard'" );
+		task_end();
+
+		set_upgrade_checkpoint( '11450' );
+	}
+
+	if( $old_db_version < 11460 )
+	{ // part 18.p trunk aka 18th part of "i7"
+
+		task_begin( 'Creating table for PostType-to-Collection relationships...' );
+		$DB->query( "CREATE TABLE T_items__type_coll (
+			itc_ityp_ID int(11) unsigned NOT NULL,
+			itc_coll_ID int(11) unsigned NOT NULL,
+			PRIMARY KEY (itc_ityp_ID, itc_coll_ID),
+			UNIQUE itemtypecoll ( itc_ityp_ID, itc_coll_ID )
+		) ENGINE = innodb" );
+		task_end();
+
+		task_begin( 'Updating collection permissions... ' );
+		$DB->query( 'UPDATE T_coll_group_perms
+			  SET bloggroup_perm_item_type = "restricted"
+			WHERE bloggroup_perm_item_type = "standard"' );
+		$DB->query( 'UPDATE T_coll_user_perms
+			  SET bloguser_perm_item_type = "restricted"
+			WHERE bloguser_perm_item_type = "standard"' );
+		task_end();
+
+		task_begin( 'Updating post types table... ' );
+		$DB->query( 'UPDATE T_items__type SET
+			ityp_perm_level = CASE
+				WHEN ityp_ID = "1"    THEN "standard"
+				WHEN ityp_ID = "100"  THEN "standard"
+				WHEN ityp_ID = "200"  THEN "standard"
+				WHEN ityp_ID = "1000" THEN "restricted"
+				WHEN ityp_ID = "1400" THEN "restricted"
+				WHEN ityp_ID = "1500" THEN "restricted"
+				WHEN ityp_ID = "1520" THEN "restricted"
+				WHEN ityp_ID = "1530" THEN "restricted"
+				WHEN ityp_ID = "1570" THEN "restricted"
+				WHEN ityp_ID = "1600" THEN "restricted"
+				WHEN ityp_ID = "2000" THEN "standard"
+				WHEN ityp_ID = "3000" THEN "admin"
+				WHEN ityp_ID = "4000" THEN "admin"
+				ELSE ityp_perm_level
+			END' );
+		task_end();
+
+		set_upgrade_checkpoint( '11460' );
+	}
+
+	if( $old_db_version < 11470 )
+	{ // part 18.r trunk aka 19th part of "i7"
+
+		task_begin( 'Updating widgets table... ' );
+		// Disable all widgets of Menu container for all "Main" collections
+		$DB->query( 'UPDATE '.$tableprefix.'widget
+			INNER JOIN T_blogs ON blog_ID = wi_coll_ID AND blog_type = "main"
+			  SET wi_enabled = 0
+			WHERE wi_sco_name = "Menu"' );
+		task_end();
+
+		set_upgrade_checkpoint( '11470' );
+	}
+
+	if( $old_db_version < 11480 )
+	{ // part 18.s trunk aka 20th part of "i7"
+
+		task_begin( 'Updating table for PostType-to-Collection relationships... ' );
+		// Get all collections:
+		$collections_SQL = new SQL();
+		$collections_SQL->SELECT( 'blog_ID, blog_type' );
+		$collections_SQL->FROM( 'T_blogs' );
+		$collections = $DB->get_assoc( $collections_SQL->get() );
+		// Get all post types:
+		$posttypes_SQL = new SQL();
+		$posttypes_SQL->SELECT( 'ityp_ID' );
+		$posttypes_SQL->FROM( 'T_items__type' );
+		$posttypes = $DB->get_col( $posttypes_SQL->get() );
+		// Enable post types for the collections:
+		$posttypes_collections = array();
+		foreach( $collections as $collection_ID => $collection_type )
+		{
+			switch( $collection_type )
+			{ // Set what post types should not be enabled depending on the collection type:
+				case 'main':
+				case 'photo':
+					$skip_posttypes = array( 100, 200, 2000, 5000 );
+					break;
+				case 'forum':
+					$skip_posttypes = array( 1, 100, 2000, 5000 );
+					break;
+				case 'manual':
+					$skip_posttypes = array( 1, 200, 2000, 5000 );
+					break;
+				default: // 'std'
+					$skip_posttypes = array( 100, 200, 5000 );
+					break;
+			}
+			foreach( $posttypes as $posttype_ID )
+			{
+				if( in_array( $posttype_ID, $skip_posttypes ) )
+				{ // Skip(Don't enable) this post type for the collection:
+					continue;
+				}
+				$posttypes_collections[] = '( '.$posttype_ID.', '.$collection_ID.' )';
+			}
+		}
+		if( count( $posttypes_collections ) )
+		{ // Update the relationships only when at least one is required:
+			$DB->query( 'REPLACE INTO T_items__type_coll
+				( itc_ityp_ID, itc_coll_ID )
+				VALUES '.implode( ', ', $posttypes_collections ) );
+		}
+		task_end();
+
+		// set_upgrade_checkpoint( '11480' );
 	}
 
 	/*
@@ -6338,7 +6479,7 @@ function upgrade_b2evo_tables( $upgrade_action = 'evoupgrade' )
 		{ // Display errors of the cache checking
 			foreach( $check_cache_messages as $check_cache_message )
 			{
-				echo '<br /><span class="text-warning">'.$check_cache_message.'</span>';
+				echo '<br /><span class="text-danger"><evo:error>'.$check_cache_message.'</evo:error></span>';
 			}
 			echo '<br />';
 		}
@@ -6483,9 +6624,9 @@ function upgrade_b2evo_tables( $upgrade_action = 'evoupgrade' )
 			{ // received confirmation from form
 				if( $upgrade_db_deltas_confirm_md5 != md5( implode('', $upgrade_db_deltas) ) )
 				{ // unlikely to happen
-					echo '<p class="text-danger">'
+					echo '<p class="text-danger"><evo:error>'
 						.T_('The DB schema has been changed since confirmation.')
-						.'</p>';
+						.'</evo:error></p>';
 				}
 				else
 				{

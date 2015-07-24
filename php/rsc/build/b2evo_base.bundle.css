@@ -544,7 +544,6 @@ span.loader_img.loader_user_deldata {
   display: inline-block;
   vertical-align: middle;
   margin: 1px;
-  text-shadow: 0 1px rgba(0, 0, 0, 0.4), 1px 0 1px #000000;
 }
 .filter_item div {
   margin: 0;
@@ -1023,7 +1022,7 @@ div.avatartag.main .avatar_actions {
 #image_crop_block.short_width .preview_cropped_image {
   margin-right: 10px;
 }
-@media only screen and (max-width: 800px) {
+@media only screen and (max-width: 900px) {
   #fieldset_wrapper_image_crop fieldset,
   #overlay_page form.bComment {
     padding: 0 !important;
@@ -1492,10 +1491,25 @@ table.widget_grid .note {
 #sidebar table.widget_grid .note {
   margin: 0;
 }
-.widget_flow_blocks > div {
-  display: inline-block;
-  margin: 2px;
-  padding: 0;
+.widget_flow_blocks,
+table.widget_grid {
+  display: -webkit-box;
+  display: -moz-box;
+  display: -ms-flexbox;
+  display: -webkit-flex;
+  display: flex;
+  flex-flow: row wrap;
+  -webkit-flex-flow: row wrap;
+  justify-content: space-around;
+  -webkit-justify-content: space-around;
+}
+.widget_flow_blocks div,
+table.widget_grid div {
+  margin-bottom: 15px;
+}
+.widget_flow_blocks div:last-child,
+table.widget_grid div:last-child {
+  margin-bottom: 0px !important;
 }
 .widget_flow_blocks > div img {
   border-radius: 3px;

@@ -173,7 +173,7 @@ function create_default_data()
 
 
 	task_begin( 'Creating admin user... ' );
-	global $timestamp, $admin_email, $default_locale, $default_country, $install_password;
+	global $timestamp, $admin_email, $default_locale, $default_country, $install_login, $install_password;
 	global $random_password;
 
 	// Create organization
@@ -210,7 +210,7 @@ function create_default_data()
 	}
 
 	create_user( array(
-			'login'     => 'admin',
+			'login'     => isset( $install_login ) ? $install_login : 'admin',
 			'firstname' => 'Johnny',
 			'lastname'  => 'Admin',
 			'level'     => 10,
@@ -243,21 +243,34 @@ function create_default_data()
 	// added in Phoenix-Alpha
 	task_begin( 'Creating default Post Types... ' );
 	$DB->query( "
-		INSERT INTO T_items__type ( ityp_ID, ityp_name, ityp_backoffice_tab, ityp_template_name, ityp_allow_html )
-		VALUES ( 1,    'Post',          'Posts',         'single', 1 ),
-					 ( 100,  'Manual Page',   'Posts',         'single', 0 ),
-					 ( 200,  'Forum Topic',   'Posts',         'single', 0 ),
-					 ( 1000, 'Page',          'Pages',         'page',   1 ),
-					 ( 1400, 'Intro-Front',   'Intros',        NULL,     1 ),
-					 ( 1500, 'Intro-Main',    'Intros',        NULL,     1 ),
-					 ( 1520, 'Intro-Cat',     'Intros',        NULL,     1 ),
-					 ( 1530, 'Intro-Tag',     'Intros',        NULL,     1 ),
-					 ( 1570, 'Intro-Sub',     'Intros',        NULL,     1 ),
-					 ( 1600, 'Intro-All',     'Intros',        NULL,     1 ),
-					 ( 2000, 'Podcast',       'Podcasts',      'single', 1 ),
-					 ( 3000, 'Sidebar link',  'Sidebar links', NULL,     1 ),
-					 ( 4000, 'Advertisement', 'Advertisement', NULL,     1 ),
-					 ( 5000, 'Reserved',      NULL,            NULL,     1 )" );
+		INSERT INTO T_items__type ( ityp_ID, ityp_name, ityp_backoffice_tab, ityp_template_name, ityp_allow_html, ityp_perm_level )
+		VALUES ( 1,    'Post',          'Posts',         'single', 1, 'standard' ),
+					 ( 100,  'Manual Page',   'Posts',         'single', 0, 'standard' ),
+					 ( 200,  'Forum Topic',   'Posts',         'single', 0, 'standard' ),
+					 ( 1000, 'Page',          'Pages',         'page',   1, 'restricted' ),
+					 ( 1400, 'Intro-Front',   'Intros',        NULL,     1, 'restricted' ),
+					 ( 1500, 'Intro-Main',    'Intros',        NULL,     1, 'restricted' ),
+					 ( 1520, 'Intro-Cat',     'Intros',        NULL,     1, 'restricted' ),
+					 ( 1530, 'Intro-Tag',     'Intros',        NULL,     1, 'restricted' ),
+					 ( 1570, 'Intro-Sub',     'Intros',        NULL,     1, 'restricted' ),
+					 ( 1600, 'Intro-All',     'Intros',        NULL,     1, 'restricted' ),
+					 ( 2000, 'Podcast',       'Podcasts',      'single', 1, 'standard' ),
+					 ( 3000, 'Sidebar link',  'Sidebar links', NULL,     1, 'admin' ),
+					 ( 4000, 'Advertisement', 'Advertisement', NULL,     1, 'admin' ),
+					 ( 5000, 'Reserved',      NULL,            NULL,     1, 'standard' )" );
+	task_end();
+
+
+	task_begin( 'Creating default Post Statuses... ' );
+	$DB->query( "
+		INSERT INTO T_items__status ( pst_name )
+		VALUES ( 'New' ),
+					 ( 'In Progress' ),
+					 ( 'Duplicate' ),
+					 ( 'Not A Bug' ),
+					 ( 'In Review' ),
+					 ( 'Fixed' ),
+					 ( 'Closed' )" );
 	task_end();
 
 
@@ -1252,11 +1265,13 @@ function create_user( $params = array() )
 
 /**
  * Associate a profile picture with a user.
+ *
+ * @param object User
+ * @param string File name, NULL to use user login as file name
  */
-function assign_profile_picture( & $User )
+function assign_profile_picture( & $User, $login = NULL )
 {
-
-	$File = new File( 'user', $User->ID, $User->login.'.jpg' );
+	$File = new File( 'user', $User->ID, ( is_null( $login ) ? $User->login : $login ).'.jpg' );
 
 	// Load meta data AND MAKE SURE IT IS CREATED IN DB:
 	$File->load_meta( true );
@@ -1266,7 +1281,6 @@ function assign_profile_picture( & $User )
 	// Set link between user and avatar file
 	$LinkOwner = new LinkUser( $User );
 	$File->link_to_Object( $LinkOwner );
-
 }
 
 
@@ -1302,26 +1316,53 @@ function create_demo_contents()
 	load_class( 'files/model/_filetype.class.php', 'FileType' );
 	load_class( 'links/model/_link.class.php', 'Link' );
 
+
 	task_begin('Assigning avatar to Admin... ');
 	$UserCache = & get_UserCache();
 	$User_Admin = & $UserCache->get_by_ID( 1 );
-	assign_profile_picture( $User_Admin );
 
-	// Associate secondary picture:
-	$File = new File( 'user', $User_Admin->ID, 'faceyourmanga_admin_boy.png' );
-	// Load meta data AND MAKE SURE IT IS CREATED IN DB:
-	$File->load_meta( true );
-	// Set link between user and avatar file
-	$LinkOwner = new LinkUser( $User_Admin );
-	$File->link_to_Object( $LinkOwner );
+	global $media_path;
+	if( $User_Admin->login != 'admin' )
+	{ // If admin login is not "admin" we should try to rename folder of the admin avatars
+		if( ! file_exists( $media_path.'users/admin' ) ||
+		    ! is_dir( $media_path.'users/admin' ) ||
+		    ! @rename( $media_path.'users/admin', $media_path.'users/'.$User_Admin->login ) )
+		{ // Impossible to rename the admin folder to another name
 
-	// Associate secondary picture:
-	$File = new File( 'user', $User_Admin->ID, 'faceyourmanga_admin_girl.png' );
-	// Load meta data AND MAKE SURE IT IS CREATED IN DB:
-	$File->load_meta( true );
-	// Set link between user and avatar file
-	$LinkOwner = new LinkUser( $User_Admin );
-	$File->link_to_Object( $LinkOwner );
+			// Display the errors:
+			echo '<span class="text-danger"><evo:error>'.sprintf( 'ERROR: Impossible to rename <code>/media/users/admin/</code> to <code>/media/users/%s/</code>.', $User_Admin->login ).'</evo:error></span> ';
+			echo '<span class="text-danger"><evo:error>'.sprintf( 'ERROR: Impossible to use "%s" for the admin account. Using "admin" instead.', $User_Admin->login ).'</evo:error></span> ';
+
+			// Change admin login to "admin":
+			$User_Admin->set( 'login', 'admin' );
+			if( $User_Admin->dbupdate() )
+			{ // Change global var of admin login for report:
+				global $install_login;
+				$install_login = 'admin';
+			}
+		}
+	}
+
+	if( file_exists( $media_path.'users/'.$User_Admin->login ) )
+	{ // Do assign avatars to admin only if it the admin folder exists on the disk
+		assign_profile_picture( $User_Admin, 'admin' );
+
+		// Associate secondary picture:
+		$File = new File( 'user', $User_Admin->ID, 'faceyourmanga_admin_boy.png' );
+		// Load meta data AND MAKE SURE IT IS CREATED IN DB:
+		$File->load_meta( true );
+		// Set link between user and avatar file
+		$LinkOwner = new LinkUser( $User_Admin );
+		$File->link_to_Object( $LinkOwner );
+
+		// Associate secondary picture:
+		$File = new File( 'user', $User_Admin->ID, 'faceyourmanga_admin_girl.png' );
+		// Load meta data AND MAKE SURE IT IS CREATED IN DB:
+		$File->load_meta( true );
+		// Set link between user and avatar file
+		$LinkOwner = new LinkUser( $User_Admin );
+		$File->link_to_Object( $LinkOwner );
+	}
 
 	task_end();
 
@@ -1523,6 +1564,9 @@ function create_demo_contents()
 			$DB->query( 'INSERT INTO T_settings ( set_name, set_value )
 				VALUES ( '.$DB->quote( 'info_blog_ID' ).', '.$DB->quote( $blog_home_ID ).' )' );
 		}
+
+		// Enable item types for blog:
+		enable_item_types_for_blog( $blog_home_ID, array( 100, 200, 2000, 5000 ) );
 	}
 
 	if( $install_collection_bloga )
@@ -1544,13 +1588,9 @@ function create_demo_contents()
 			true,
 			'public',
 			$jay_moderator_ID );
-		$BlogCache = & get_BlogCache();
-		if( $a_Blog = $BlogCache->get_by_ID( $blog_a_ID, false, false ) )
-		{
-			$a_Blog->set_setting( 'front_disp', 'front' );
-			$a_Blog->set_setting( 'skin2_layout', 'single_column' );
-			$a_Blog->dbupdate();
-		}
+
+		// Enable item types for blog:
+		enable_item_types_for_blog( $blog_a_ID, array( 100, 200, 5000 ) );
 	}
 
 	if( $install_collection_blogb )
@@ -1572,6 +1612,17 @@ function create_demo_contents()
 			true,
 			'public',
 			$paul_blogger_ID );
+
+		$BlogCache = & get_BlogCache();
+		if( $b_Blog = $BlogCache->get_by_ID( $blog_b_ID, false, false ) )
+		{
+			$b_Blog->set_setting( 'front_disp', 'front' );
+			$b_Blog->set_setting( 'skin2_layout', 'single_column' );
+			$b_Blog->dbupdate();
+		}
+
+		// Enable item types for blog:
+		enable_item_types_for_blog( $blog_b_ID, array( 100, 200, 5000 ) );
 	}
 
 	if( $install_collection_photos )
@@ -1590,6 +1641,9 @@ function create_demo_contents()
 			3, // Skin ID
 			'photo', '', 0, 'relative', true, 'public',
 			$dave_blogger_ID );
+
+		// Enable item types for blog:
+		enable_item_types_for_blog( $blog_photoblog_ID, array( 100, 200, 2000, 5000 ) );
 	}
 
 	if( $install_collection_forums )
@@ -1605,6 +1659,9 @@ function create_demo_contents()
 			4, // Skin ID
 			'forum', 'any', 1, 'relative', false, 'public',
 			$paul_blogger_ID );
+
+		// Enable item types for blog:
+		enable_item_types_for_blog( $blog_forums_ID, array( 1, 100, 2000, 5000 ) );
 	}
 
 	if( $install_collection_manual )
@@ -1620,6 +1677,9 @@ function create_demo_contents()
 			5, // Skin ID
 			'manual', 'any', 1, $default_blog_access_type, false, 'public',
 			$dave_blogger_ID );
+
+		// Enable item types for blog:
+		enable_item_types_for_blog( $blog_manual_ID, array( 1, 200, 2000, 5000 ) );
 	}
 
 	$BlogCache = & get_BlogCache();
@@ -1791,7 +1851,7 @@ function create_demo_contents()
 
 <p>If needed, skins can format info pages differently from regular posts.</p>"), $now, $cat_home_b2evo,
 			array( $cat_home_b2evo ), 'published', '#', '', '', 'open', array('default'), 1000 );
-		$edit_File = new File( 'shared', 0, 'logos/b2evolution8.png' );
+		$edit_File = new File( 'shared', 1, 'logos/b2evolution_272x64.png' );
 		$LinkOwner = new LinkItem( $edited_Item );
 		$edit_File->link_to_Object( $LinkOwner );
 
@@ -1820,15 +1880,8 @@ function create_demo_contents()
 		$now = date('Y-m-d H:i:s', ($timestamp++ - 31536000) ); // A year ago
 		$edited_Item = new Item();
 		$edited_Item->set_tags_from_string( 'intro' );
-		$edited_Item->insert( 1, T_('Welcome to Blog A'), sprintf( T_('<p>This is the intro post for the front page of Blog A.</p>
-
-<p>Blog A is currently configured to show a front page like this one instead of directly showing the blog\'s posts.</p>
-
-<ul>
-<li>To view the blog\'s posts, click on "News" in the menu above.</li>
-<li>If you don\'t want to have such a front page, you can disable it in the Blog\'s settings > Features > <a %s>Front Page</a>. You can also see an example of a blog without a Front Page in Blog B</li>
-</ul>'), 'href="'.$admin_url.'?ctrl=coll_settings&amp;tab=home&amp;blog='.$blog_a_ID.'"' ),
-				$now, $cat_ann_a, array(), 'published', '#', '', '', 'open', array('default'), 1400 );
+		$edited_Item->insert( 1, T_('Main Intro post'), T_('This is the main intro post. It appears on the homepage only.'),
+			$now, $cat_ann_a, array(), 'published', '#', '', '', 'open', array('default'), 1500 );
 
 		// Insert a post:
 		$now = date('Y-m-d H:i:s',$timestamp++);
@@ -1933,7 +1986,7 @@ function create_demo_contents()
 </ul>
 
 <p>You can add new collections of any type (blog, photos, forums, etc.), delete unwanted one and customize existing collections (title, sidebar, blog skin, widgets, etc.) from the admin interface.</p>"), $now, $cat_ann_a );
-		$edit_File = new File( 'shared', 0, 'logos/b2evolution8.png' );
+		$edit_File = new File( 'shared', 0, 'logos/b2evolution_272x64.png' );
 		$LinkOwner = new LinkItem( $edited_Item );
 		$edit_File->link_to_Object( $LinkOwner );
 
@@ -1966,8 +2019,15 @@ function create_demo_contents()
 		$now = date('Y-m-d H:i:s', ($timestamp++ - 31536000) ); // A year ago
 		$edited_Item = new Item();
 		$edited_Item->set_tags_from_string( 'intro' );
-		$edited_Item->insert( 1, T_("Main Intro post"), T_("This is the main intro post. It appears on the homepage only."),
-			$now, $cat_b2evo, array(), 'published', '#', '', '', 'open', array('default'), 1500 );
+		$edited_Item->insert( 1, T_('Welcome to Blog B'), sprintf( T_('<p>This is the intro post for the front page of Blog B.</p>
+
+<p>Blog B is currently configured to show a front page like this one instead of directly showing the blog\'s posts.</p>
+
+<ul>
+<li>To view the blog\'s posts, click on "News" in the menu above.</li>
+<li>If you don\'t want to have such a front page, you can disable it in the Blog\'s settings > Features > <a %s>Front Page</a>. You can also see an example of a blog without a Front Page in Blog A</li>
+</ul>'), 'href="'.$admin_url.'?ctrl=coll_settings&amp;tab=home&amp;blog='.$blog_a_ID.'"' ),
+				$now, $cat_b2evo, array(), 'published', '#', '', '', 'open', array('default'), 1400 );
 
 		// Insert a post:
 		$now = date('Y-m-d H:i:s', ($timestamp++ - 31536000) ); // A year ago
@@ -2262,7 +2322,7 @@ The rain---not the reign---in Spain.');
 </ul>
 
 <p>You can add new collections of any type (blog, photos, forums, etc.), delete unwanted one and customize existing collections (title, sidebar, blog skin, widgets, etc.) from the admin interface.</p>"), $now, $cat_forums_ann );
-		$edit_File = new File( 'shared', 0, 'logos/b2evolution8.png' );
+		$edit_File = new File( 'shared', 0, 'logos/b2evolution_272x64.png' );
 		$LinkOwner = new LinkItem( $edited_Item );
 		$edit_File->link_to_Object( $LinkOwner );
 
@@ -2654,7 +2714,7 @@ Hello
 
 <p>You can add new collections of any type (blog, photos, forums, etc.), delete unwanted one and customize existing collections (title, sidebar, blog skin, widgets, etc.) from the admin interface.</p>"), $now, $cat_manual_intro, array( $cat_manual_everyday ),
 			'published', '#', '', '', 'open', array('default'), 1, NULL, 30 );
-		$edit_File = new File( 'shared', 0, 'logos/b2evolution8.png' );
+		$edit_File = new File( 'shared', 0, 'logos/b2evolution_272x64.png' );
 		$LinkOwner = new LinkItem( $edited_Item );
 		$edit_File->link_to_Object( $LinkOwner );
 
@@ -2708,7 +2768,10 @@ Hello
 				$DB->query( 'INSERT INTO T_comments( comment_item_ID, comment_author_user_ID, comment_author_IP,
 						comment_date, comment_last_touched_ts, comment_content, comment_renderers, comment_notif_status )
 					VALUES( '.$DB->quote( $additional_comments_item_ID ).', '.$DB->quote( $i_user_ID ).', "127.0.0.1", '
-						.$DB->quote( $now ).', '.$DB->quote( $now ).', '.$DB->quote( T_('Hi, this is my comment.') ).', "default", "finished" )' );
+						.$DB->quote( $now ).', '.$DB->quote( $now ).', '.$DB->quote( T_('Hi!
+
+This is a sample comment that has been approved by default!
+Admins and moderators can very quickly approve or reject comments from the collection dashboard.') ).', "default", "finished" )' );
 			}
 		}
 	}
@@ -2729,7 +2792,7 @@ Hello
 	task_begin( 'Creating default group/blog permissions... ' );
 	$query = '
 		INSERT INTO T_coll_group_perms( bloggroup_blog_ID, bloggroup_group_ID, bloggroup_ismember, bloggroup_can_be_assignee,
-			bloggroup_perm_poststatuses, bloggroup_perm_edit, bloggroup_perm_delpost, bloggroup_perm_edit_ts,
+			bloggroup_perm_poststatuses, bloggroup_perm_item_type, bloggroup_perm_edit, bloggroup_perm_delpost, bloggroup_perm_edit_ts,
 			bloggroup_perm_delcmts, bloggroup_perm_recycle_owncmts, bloggroup_perm_vote_spam_cmts, bloggroup_perm_cmtstatuses, bloggroup_perm_edit_cmt,
 			bloggroup_perm_cats, bloggroup_perm_properties,
 			bloggroup_perm_media_upload, bloggroup_perm_media_browse, bloggroup_perm_media_change )
@@ -2738,9 +2801,9 @@ Hello
 	// Init the permissions for all blogs
 	$all_statuses = "'published,community,deprecated,protected,private,review,draft'";
 	$gp_user_groups = array(
-			'admins'     => $Group_Admins->ID.",     1, 1, $all_statuses, 'all', 1, 1, 1, 1, 1, $all_statuses, 'all', 1, 1, 1, 1, 1",
-			'privileged' => $Group_Privileged->ID.", 1, 1, $all_statuses, 'le', 1, 0, 1, 1, 1, $all_statuses, 'le', 0, 0, 1, 1, 1",
-			'bloggers'   => $Group_Bloggers->ID.",   1, 0, '', 'no', 0, 0, 0, 0, 1, '', 'no', 0, 0, 1, 1, 0",
+			'admins'     => $Group_Admins->ID.",     1, 1, $all_statuses, 'admin', 'all', 1, 1, 1, 1, 1, $all_statuses, 'all', 1, 1, 1, 1, 1",
+			'privileged' => $Group_Privileged->ID.", 1, 1, $all_statuses, 'restricted', 'le', 1, 0, 1, 1, 1, $all_statuses, 'le', 0, 0, 1, 1, 1",
+			'bloggers'   => $Group_Bloggers->ID.",   1, 0, '', 'standard', 'no', 0, 0, 0, 0, 1, '', 'no', 0, 0, 1, 1, 0",
 		);
 
 	$gp_blogs_IDs = array();
@@ -2765,9 +2828,9 @@ Hello
 		$gp_blogs_IDs[] = $blog_forums_ID;
 		// Init the special permissions for Forums
 		$gp_user_groups_forums = array(
-				'bloggers'   => $Group_Bloggers->ID.",   1, 0, 'community,draft', 'no', 0, 0, 0, 0, 1, 'community,draft', 'no', 0, 0, 1, 1, 0",
-				'users'      => $Group_Users->ID.",      1, 0, 'community,draft', 'no', 0, 0, 0, 0, 0, 'community,draft', 'no', 0, 0, 0, 0, 0",
-				'suspect'    => $Group_Suspect->ID.",    1, 0, 'review,draft', 'no', 0, 0, 0, 0, 0, 'review,draft', 'no', 0, 0, 0, 0, 0"
+				'bloggers'   => $Group_Bloggers->ID.",   1, 0, 'community,draft', 'standard', 'no', 0, 0, 0, 0, 1, 'community,draft', 'no', 0, 0, 1, 1, 0",
+				'users'      => $Group_Users->ID.",      1, 0, 'community,draft', 'standard', 'no', 0, 0, 0, 0, 0, 'community,draft', 'no', 0, 0, 0, 0, 0",
+				'suspect'    => $Group_Suspect->ID.",    1, 0, 'review,draft', 'standard', 'no', 0, 0, 0, 0, 0, 'review,draft', 'no', 0, 0, 0, 0, 0"
 			);
 		$gp_user_groups_forums = array_merge( $gp_user_groups, $gp_user_groups_forums );
 	}
@@ -2870,11 +2933,17 @@ function create_demo_comment( $item_ID, $status )
 	// Set demo content depending on status
 	if( $status == 'published' )
 	{
-		$content = T_('Hi!<br />This is a sample comment that has been approved by default!<br />Admins and moderators can very quickly approve or reject comments from the collection dashboard.');
+		$content = T_('Hi!
+
+This is a sample comment that has been approved by default!
+Admins and moderators can very quickly approve or reject comments from the collection dashboard.');
 	}
 	else
 	{ // draft
-		$content = T_('Hi!<br />This is a sample comment that has not been approved by default.<br />Admins and moderators can very quickly approve or reject comments from the collection dashboard.');
+		$content = T_('Hi!
+
+This is a sample comment that has **not** been approved by default!
+Admins and moderators can very quickly approve or reject comments from the collection dashboard.');
 	}
 
 	$now = date( 'Y-m-d H:i:s' );
@@ -2903,6 +2972,47 @@ function create_default_posts_location()
 			post_ctry_ID = '.$DB->quote( '74'/* France */ ).',
 			post_rgn_ID = '.$DB->quote( '60'/* �le-de-France */ ).',
 			post_subrg_ID = '.$DB->quote( '76'/* Paris */ ) );
+	}
+}
+
+
+/**
+ * Enable item types for blog
+ *
+ * @param integer Blog ID
+ * @param array Exclude item types (Make these types disabled)
+ */
+function enable_item_types_for_blog( $blog_ID, $exclude_ityp_IDs = array() )
+{
+	if( empty( $blog_ID ) )
+	{ // Wrong function calling
+		return;
+	}
+
+	global $DB, $cache_all_item_type_IDs;
+
+	if( ! isset( $cache_all_item_type_IDs ) )
+	{ // Get all item type IDs only first time to save execution time
+		$cache_all_item_type_IDs = $DB->get_col( 'SELECT ityp_ID FROM T_items__type' );
+	}
+
+	$insert_sql = 'INSERT INTO T_items__type_coll ( itc_ityp_ID, itc_coll_ID ) VALUES ';
+	$i = 0;
+	foreach( $cache_all_item_type_IDs as $item_type_ID )
+	{
+		if( ! in_array( $item_type_ID, $exclude_ityp_IDs ) )
+		{ // Item type is not excluded
+			if( $i > 0 )
+			{ // Serator between rows
+				$insert_sql .= ', ';
+			}
+			$insert_sql .= '( '.$item_type_ID.', '.$blog_ID.' )';
+			$i++;
+		}
+	}
+	if( $i > 0 )
+	{ // Insert records to enable the item types for the blog:
+		$DB->query( $insert_sql );
 	}
 }
 

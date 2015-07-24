@@ -233,6 +233,26 @@ class bootstrap_main_Skin extends Skin
 				'4_end' => array(
 					'layout' => 'end_fieldset',
 				),
+
+
+				'section_access_start' => array(
+					'layout' => 'begin_fieldset',
+					'label'  => T_('When access is denied or requires login...')
+				),
+					'access_login_containers' => array(
+						'label' => T_('Display on login screen'),
+						'note' => '',
+						'type' => 'checklist',
+						'options' => array(
+							array( 'header',   sprintf( T_('"%s" container'), NT_('Header') ),   1 ),
+							array( 'page_top', sprintf( T_('"%s" container'), NT_('Page Top') ), 1 ),
+							array( 'menu',     sprintf( T_('"%s" container'), NT_('Menu') ),     0 ),
+							array( 'footer',   sprintf( T_('"%s" container'), NT_('Footer') ),   1 )
+							),
+						),
+				'section_access_end' => array(
+					'layout' => 'end_fieldset',
+				),
 			), parent::get_param_definitions( $params ) );
 
 		return $r;
@@ -250,14 +270,15 @@ class bootstrap_main_Skin extends Skin
 
 		// Request some common features that the parent function (Skin::display_init()) knows how to provide:
 		parent::display_init( array(
-				'jquery', 							// Load jQuery
-				'font_awesome', 					// Load Font Awesome (and use its icons as a priority over the Bootstrap glyphicons)
-				'bootstrap', 						// Load Bootstrap (without 'bootstrap_theme_css')
-				'bootstrap_evo_css', 			// Load the b2evo_base styles for Bootstrap (instead of the old b2evo_base styles)
-				'bootstrap_messages',			// Initialize $Messages Class to use Bootstrap styles
-				'style_css', 						// Load the style.css file of the current skin
-				'colorbox',							// Load Colorbox (a lightweight Lightbox alternative + customizations for b2evo)
-				'bootstrap_init_tooltips', 	// Inline JS to init Bootstrap tooltips (E.g. on comment form for allowed file extensions)
+				'jquery',                  // Load jQuery
+				'font_awesome',            // Load Font Awesome (and use its icons as a priority over the Bootstrap glyphicons)
+				'bootstrap',               // Load Bootstrap (without 'bootstrap_theme_css')
+				'bootstrap_evo_css',       // Load the b2evo_base styles for Bootstrap (instead of the old b2evo_base styles)
+				'bootstrap_messages',      // Initialize $Messages Class to use Bootstrap styles
+				'style_css',               // Load the style.css file of the current skin
+				'colorbox',                // Load Colorbox (a lightweight Lightbox alternative + customizations for b2evo)
+				'bootstrap_init_tooltips', // Inline JS to init Bootstrap tooltips (E.g. on comment form for allowed file extensions)
+				'disp_auto',               // Automatically include additional CSS and/or JS required by certain disps (replace with 'disp_off' to disable this)
 			) );
 
 		// Skin specific initializations:
@@ -709,6 +730,21 @@ class bootstrap_main_Skin extends Skin
 				// Delegate to parent class:
 				return parent::get_template( $name );
 		}
+	}
+
+
+	/**
+	 * Check if we can display a widget container
+	 *
+	 * @param string Widget container key: 'header', 'page_top', 'menu', 'sidebar', 'sidebar2', 'footer'
+	 * @param string Skin setting name
+	 * @return boolean TRUE to display
+	 */
+	function is_visible_container( $container_key, $setting_name = 'access_login_containers' )
+	{
+		$access = $this->get_setting( $setting_name );
+
+		return ( ! empty( $access ) && ! empty( $access[ $container_key ] ) );
 	}
 
 }

@@ -201,7 +201,7 @@ class Blog extends DataObject
 				array( 'table'=>'T_subscriptions', 'fk'=>'sub_coll_ID', 'msg'=>T_('%d subscriptions') ),
 				array( 'table'=>'T_widget', 'fk'=>'wi_coll_ID', 'msg'=>T_('%d widgets') ),
 				array( 'table'=>'T_hitlog', 'fk'=>'hit_coll_ID', 'msg'=>T_('%d hits') ),
-				array( 'table'=>'T_categories', 'fk'=>'cat_blog_ID', 'msg'=>T_('%d related categories with all of its content recursively'),
+				array( 'table'=>'T_categories', 'fk'=>'cat_blog_ID', 'msg'=>T_('%d related categories with all of their content recursively'),
 						'class'=>'Chapter', 'class_path'=>'chapters/model/_chapter.class.php' ),
 				array( 'table'=>'T_files', 'fk'=>'file_root_ID', 'and_condition'=>'file_root_type = "collection"', 'msg'=>T_('%d files in this blog file root'),
 						'class'=>'File', 'class_path'=>'files/model/_file.class.php' ),
@@ -2480,11 +2480,13 @@ class Blog extends DataObject
 		$PageCache = new PageCache( $this );
 		$PageCache->cache_delete();
 
-		// Delete blog's media folder recursively
+		// Delete blog's media folder recursively:
 		$FileRootCache = & get_FileRootCache();
-		$root_directory = $FileRootCache->get_root_dir( 'collection', $old_ID );
-		rmdir_r( $root_directory );
-		$Messages->add( T_('Deleted blog\'s files'), 'success' );
+		if( $root_directory = $FileRootCache->get_root_dir( 'collection', $old_ID ) )
+		{ // Delete the folder only when it is detected
+			rmdir_r( $root_directory );
+			$Messages->add( T_('Deleted blog\'s files'), 'success' );
+		}
 
 		// re-set the ID for the Plugin event
 		$this->ID = $old_ID;
@@ -3147,7 +3149,7 @@ class Blog extends DataObject
 		 */
 		if( ! is_logged_in() )
 		{ // Only logged in users have an access to this blog
-			$Messages->add( T_( 'You need to log in before you can access this collection.' ), 'error' );
+			$Messages->add( T_( 'You need to log in before you can access this section.' ), 'error' );
 
 			// Redirect to login form on "access_requires_login.main.php"
 			header_redirect( get_login_url( 'no access to blog', NULL, false, NULL, 'access_requires_loginurl' ), 302 );
@@ -3161,7 +3163,7 @@ class Blog extends DataObject
 			{ // Force disp to restrict access for current user
 				$disp = 'access_denied';
 
-				$Messages->add( T_( 'You are not a member of this collection, therefore you are not allowed to access it.' ), 'error' );
+				$Messages->add( T_( 'You are not a member of this section, therefore you are not allowed to access it.' ), 'error' );
 
 				$blog_skin_ID = $this->get_skin_ID();
 				if( ! empty( $blog_skin_ID ) )
@@ -3176,11 +3178,6 @@ class Blog extends DataObject
 					if( file_exists( $skin_template_name ) )
 					{ // Display a special template of this skin
 						require $skin_template_name;
-						exit;
-					}
-					elseif( $global_template_name = skin_fallback_path( $template ) )
-					{ // Display a special template for all skins
-						require $global_template_name;
 						exit;
 					}
 					else
@@ -3291,6 +3288,35 @@ class Blog extends DataObject
 
 		$Messages->add( T_('The media directory and all of its content were successfully moved to the new location.'), 'note' );
 		return true;
+	}
+
+
+	/**
+	 * Check if item type is enabled for this blog
+	 *
+	 * @param integer Item type ID
+	 * @return boolean TRUE if enabled
+	 */
+	function is_item_type_enabled( $item_type_ID )
+	{
+		if( empty( $this->ID ) )
+		{ // This is new blog, it doesn't have the enabled item types
+			return false;
+		}
+
+		if( ! isset( $this->enabled_item_types ) )
+		{ // Get all enabled item types by one sql query and only first time to cache result
+			global $DB;
+
+			$SQL = new SQL();
+			$SQL->SELECT( 'itc_ityp_ID' );
+			$SQL->FROM( 'T_items__type_coll' );
+			$SQL->WHERE( 'itc_coll_ID = '.$this->ID );
+
+			$this->enabled_item_types = $DB->get_col( $SQL->get() );
+		}
+
+		return in_array( $item_type_ID, $this->enabled_item_types );
 	}
 }
 

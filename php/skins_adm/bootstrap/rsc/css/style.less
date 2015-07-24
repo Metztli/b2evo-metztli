@@ -74,7 +74,8 @@ div.status_icon {
 }
 // Remove spaces between the spam voting buttons
 .btn-group .action_icon {
-	margin: 0;
+	margin-left: 0;
+	margin-right: 0;
 }
 // Fix a blog menus for Safari (to remove spaces between menus)
 .btn-group.blogs-menu {
@@ -165,6 +166,9 @@ div.avatartag {
 .edit_actions {
 	clear: both;
 	padding-top: 7px;
+	.PreviewButton {
+		margin-right: 10px;
+	}
 }
 
 .compose_layout{
@@ -240,13 +244,14 @@ div.bPost {
 .bCommentContent, .bFeedback {
 	margin: 1ex;
 }
-#comments_container.full_comment_list {
+#comments_container {
 	border: none;
 	.bCommentAvatar {
 		border: 0;
 		.border-radius(50%);
 		padding: 0;
-		margin-top: 0;
+		margin: 4px 10px 10px 0;
+		float: left;
 	}
 }
 .bFeedback {
@@ -659,6 +664,7 @@ fieldset ul {
 	}
 	ul.token-input-list-facebook {
 		width: 100%;
+		max-width: 100%;
 	}
 }
 #itemform_comments {
@@ -1006,8 +1012,11 @@ table.table {
 }
 // Set min-height because dropdown menu(to quick change a post status from table
 // list) is cropped by css rule overflow:auto
-#items_type_ajax_content div.table_scroll {
+#items_type_ajax_content {
 	min-height: 500px;
+	div.table_scroll {
+		min-height: 500px;
+	}
 }
 
 // Widgets table
@@ -1364,12 +1373,25 @@ form#thread_checkchanges ul.token-input-list-facebook {
 	text-align: center;
 }
 
-// Edit comment form
-#comment_checkchanges > .pull-right {
-	margin-bottom: 22px;
+// Global icons above form
+.global_icons {
+	float: right;
+	&.no_title {
+		margin-bottom: 22px;
+	}
 }
 
 // Input field to edit order in table column by ajax
 input[name=new_cat_order] {
 	width: 100%;
+}
+
+// Revert font size to normal from 84% on posts filters
+.filters_item_list_table {
+	font-size: 14px;
+}
+
+// Fix space under submit button on blog permission pages
+form#blogperm_checkchanges {
+	padding-bottom: 20px;
 }

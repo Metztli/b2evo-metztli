@@ -73,13 +73,16 @@ class bootstrap_blog_Skin extends Skin
 						'note' => '',
 						'defaultvalue' => 'right_sidebar',
 						'options' => array(
-								'single_column' => T_('Single column'),
-								'left_sidebar'  => T_('Left Sidebar'),
-								'right_sidebar' => T_('Right Sidebar'),
+								'single_column'              => T_('Single Column Large'),
+								'single_column_normal'       => T_('Single Column'),
+								'single_column_narrow'       => T_('Single Column Narrow'),
+								'single_column_extra_narrow' => T_('Single Column Extra Narrow'),
+								'left_sidebar'               => T_('Left Sidebar'),
+								'right_sidebar'              => T_('Right Sidebar'),
 							),
 						'type' => 'select',
 					),
-				'section_username_end' => array(
+				'section_layout_end' => array(
 					'layout' => 'end_fieldset',
 				),
 
@@ -160,6 +163,27 @@ class bootstrap_blog_Skin extends Skin
 					'layout' => 'end_fieldset',
 				),
 
+
+				'section_access_start' => array(
+					'layout' => 'begin_fieldset',
+					'label'  => T_('When access is denied or requires login...')
+				),
+					'access_login_containers' => array(
+						'label' => T_('Display on login screen'),
+						'note' => '',
+						'type' => 'checklist',
+						'options' => array(
+							array( 'header',   sprintf( T_('"%s" container'), NT_('Header') ),    1 ),
+							array( 'page_top', sprintf( T_('"%s" container'), NT_('Page Top') ),  1 ),
+							array( 'menu',     sprintf( T_('"%s" container'), NT_('Menu') ),      0 ),
+							array( 'sidebar',  sprintf( T_('"%s" container'), NT_('Sidebar') ),   0 ),
+							array( 'sidebar2', sprintf( T_('"%s" container'), NT_('Sidebar 2') ), 0 ),
+							array( 'footer',   sprintf( T_('"%s" container'), NT_('Footer') ),    1 ) ),
+						),
+				'section_access_end' => array(
+					'layout' => 'end_fieldset',
+				),
+
 			), parent::get_param_definitions( $params ) );
 
 		return $r;
@@ -177,14 +201,15 @@ class bootstrap_blog_Skin extends Skin
 
 		// Request some common features that the parent function (Skin::display_init()) knows how to provide:
 		parent::display_init( array(
-				'jquery', 							// Load jQuery
-				'font_awesome', 					// Load Font Awesome (and use its icons as a priority over the Bootstrap glyphicons)
-				'bootstrap', 						// Load Bootstrap (without 'bootstrap_theme_css')
-				'bootstrap_evo_css', 			// Load the b2evo_base styles for Bootstrap (instead of the old b2evo_base styles)
-				'bootstrap_messages',			// Initialize $Messages Class to use Bootstrap styles
-				'style_css', 						// Load the style.css file of the current skin
-				'colorbox',							// Load Colorbox (a lightweight Lightbox alternative + customizations for b2evo)
-				'bootstrap_init_tooltips', 	// Inline JS to init Bootstrap tooltips (E.g. on comment form for allowed file extensions)
+				'jquery',                  // Load jQuery
+				'font_awesome',            // Load Font Awesome (and use its icons as a priority over the Bootstrap glyphicons)
+				'bootstrap',               // Load Bootstrap (without 'bootstrap_theme_css')
+				'bootstrap_evo_css',       // Load the b2evo_base styles for Bootstrap (instead of the old b2evo_base styles)
+				'bootstrap_messages',      // Initialize $Messages Class to use Bootstrap styles
+				'style_css',               // Load the style.css file of the current skin
+				'colorbox',                // Load Colorbox (a lightweight Lightbox alternative + customizations for b2evo)
+				'bootstrap_init_tooltips', // Inline JS to init Bootstrap tooltips (E.g. on comment form for allowed file extensions)
+				'disp_auto',               // Automatically include additional CSS and/or JS required by certain disps (replace with 'disp_off' to disable this)
 			) );
 
 		// Skin specific initializations:
@@ -532,6 +557,84 @@ class bootstrap_blog_Skin extends Skin
 		}
 	}
 
+
+	/**
+	 * Check if we can display a widget container
+	 *
+	 * @param string Widget container key: 'header', 'page_top', 'menu', 'sidebar', 'sidebar2', 'footer'
+	 * @param string Skin setting name
+	 * @return boolean TRUE to display
+	 */
+	function is_visible_container( $container_key, $setting_name = 'access_login_containers' )
+	{
+		$access = $this->get_setting( $setting_name );
+
+		return ( ! empty( $access ) && ! empty( $access[ $container_key ] ) );
+	}
+
+
+	/**
+	 * Check if we can display a sidebar for the current layout
+	 *
+	 * @param boolean TRUE to check if at least one sidebar container is visible
+	 * @return boolean TRUE to display a sidebar
+	 */
+	function is_visible_sidebar( $check_containers = false )
+	{
+		$layout = $this->get_setting( 'layout' );
+
+		if( $layout != 'left_sidebar' && $layout != 'right_sidebar' )
+		{ // Sidebar is not displayed for selected skin layout
+			return false;
+		}
+
+		if( $check_containers )
+		{ // Check if at least one sidebar container is visible
+			return ( $this->is_visible_container( 'sidebar' ) ||  $this->is_visible_container( 'sidebar2' ) );
+		}
+		else
+		{ // We should not check the visibility of the sidebar containers for this case
+			return true;
+		}
+	}
+
+
+	/**
+	 * Get value for attbiute "class" of column block
+	 * depending on skin setting "Layout"
+	 *
+	 * @return string
+	 */
+	function get_column_class()
+	{
+		switch( $this->get_setting( 'layout' ) )
+		{
+			case 'single_column':
+				// Single Column Large
+				return 'col-md-12';
+
+			case 'single_column_normal':
+				// Single Column
+				return 'col-xs-12 col-sm-12 col-md-12 col-lg-10 col-lg-offset-1';
+
+			case 'single_column_narrow':
+				// Single Column Narrow
+				return 'col-xs-12 col-sm-12 col-md-10 col-md-offset-1 col-lg-8 col-lg-offset-2';
+
+			case 'single_column_extra_narrow':
+				// Single Column Extra Narrow
+				return 'col-xs-12 col-sm-10 col-sm-offset-1 col-md-8 col-md-offset-2 col-lg-6 col-lg-offset-3';
+
+			case 'left_sidebar':
+				// Left Sidebar
+				return 'col-md-9 pull-right';
+
+			case 'right_sidebar':
+				// Right Sidebar
+			default:
+				return 'col-md-9';
+		}
+	}
 }
 
 ?>

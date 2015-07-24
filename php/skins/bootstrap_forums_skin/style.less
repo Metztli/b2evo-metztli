@@ -349,14 +349,20 @@ ol.breadcrumb {
 .legends legend {
 	text-align: center;
 	border: none;
+	text-transform: uppercase;
+    font-variant: small-caps;
+	font-size: 82%;
+	margin-bottom: 10px;
 }
-.legend {
+.legend, .legend-item {
 	text-align: center;
-	margin: 20px auto;
 	div {
 		padding: 0 20px 0 5px;
 		display:inline-block;
 	}
+}
+.legend-item {
+	margin: 0px 5px 12px 5px;
 }
 ul.legend {
 	list-style: none;
@@ -364,14 +370,14 @@ ul.legend {
 	text-align: center;
 	padding: 0;
 	&.evo_posts.evo_forums {
-		margin: 10px 0;
+		margin: 0 auto 14px;
 	}
 	li {
 		list-style: none;
 		display: inline-block;
 		white-space: nowrap;
 		vertical-align: middle;
-		margin: 5px;
+		margin: 0px 5px 5px 5px;
 		span {
 			vertical-align: middle;
 		}
@@ -571,6 +577,7 @@ body.round_avatars .single_topic #styled_content_block .ft_avatar {
 // Voting panels
 .vote_spam {
 	float: left;
+	line-height: 22px;
 	.action_icon {
 		margin: 0;
 	}
@@ -582,6 +589,7 @@ a.btn+.vote_spam {
 	float: left;
 	display: block;
 	margin-right: 10px;
+	line-height: 22px;
 }
 
 // Form elements on item edit page
@@ -964,4 +972,9 @@ label.control-label[for=post_title] {
 		padding: 20px 0 10px 30px;
 		vertical-align: middle;
 	}
+}
+
+// 
+.popover img {
+	.border-radius !important;
 }

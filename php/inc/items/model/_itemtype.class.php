@@ -48,6 +48,7 @@ class ItemType extends DataObject
 	var $allow_closing_comments = 1;
 	var $allow_disabling_comments = 0;
 	var $use_comment_expiration = 'optional';
+	var $perm_level = 'standard';
 
 	/**
 	 * Custom fields
@@ -108,6 +109,7 @@ class ItemType extends DataObject
 			$this->allow_closing_comments = $db_row->ityp_allow_closing_comments;
 			$this->allow_disabling_comments = $db_row->ityp_allow_disabling_comments;
 			$this->use_comment_expiration = $db_row->ityp_use_comment_expiration;
+			$this->perm_level = $db_row->ityp_perm_level;
 		}
 	}
 
@@ -121,6 +123,20 @@ class ItemType extends DataObject
 	{
 		return array(
 				array( 'table'=>'T_items__item', 'fk'=>'post_ityp_ID', 'msg'=>T_('%d related items') ), // "Lignes de visit reports"
+			);
+	}
+
+
+	/**
+	 * Get delete cascade settings
+	 *
+	 * @return array
+	 */
+	static function get_delete_cascades()
+	{
+		return array(
+				array( 'table' => 'T_items__type_coll', 'fk' => 'itc_ityp_ID', 'msg' => T_('%d item type to collection relationships') ),
+				array( 'table' => 'T_items__type_custom_field', 'fk' => 'itcf_ityp_ID', 'msg' => T_('%d item type custom fields') ),
 			);
 	}
 
@@ -149,6 +165,10 @@ class ItemType extends DataObject
 		// Description
 		param( 'ityp_description', 'text' );
 		$this->set_from_Request( 'description', NULL, true );
+
+		// Permission level
+		param( 'ityp_perm_level', 'string' );
+		$this->set_from_Request( 'perm_level' );
 
 		// Back-office tab
 		param( 'ityp_backoffice_tab', 'string' );
@@ -381,8 +401,17 @@ class ItemType extends DataObject
 
 		if( parent::dbinsert() )
 		{
-			// Update/Insert/Delete custom fields
+			global $Blog;
+
+			// Update/Insert/Delete custom fields:
 			$this->dbsave_custom_fields();
+
+			if( ! empty( $Blog ) )
+			{ // Enable this item type only for selected Blog:
+				$DB->query( 'INSERT INTO T_items__type_coll
+					       ( itc_ityp_ID, itc_coll_ID )
+					VALUES ( '.$this->ID.', '.$Blog->ID.' )' );
+			}
 		}
 
 		$DB->commit();
@@ -514,7 +543,7 @@ class ItemType extends DataObject
 	 * @param integer Use this param ID of post type when object is not created
 	 * @return boolean
 	 */
-	function is_reserved( $ID = NULL )
+	static function is_reserved( $ID = NULL )
 	{
 		global $posttypes_reserved_IDs;
 

@@ -57,12 +57,11 @@ if( ! empty( $legend_icons ) || ! empty( $legend_statuses ) )
 { // Display the legend icons/badges only when at least one exists on the current page
 ?>
 <fieldset class="legends">
-	<legend class="small dimmed"><?php echo T_('Legend'); ?></legend>
+	<legend class="dimmed"><?php echo T_('Legend'); ?></legend>
 <?php
 foreach( $legends as $l => $legend )
 { // Print out all legends
 ?>
-<div class="legend">
 	<?php
 	foreach( $legend as $legend_key => $legend_data )
 	{ // Display legend icon with description
@@ -77,7 +76,6 @@ foreach( $legends as $l => $legend )
 		}
 	}
 	?>
-</div>
 <?php } ?>
 
 <?php

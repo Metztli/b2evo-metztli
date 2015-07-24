@@ -101,7 +101,7 @@ a.btn.action_icon {
 		}
 		// Every textareas and spec inputs should be full width
 		input.large, textarea.form_textarea_input {
-			width: 97%;
+			width: 100%;
 		}
 	}
 	.radio-group .controls > .help-inline {
@@ -236,7 +236,7 @@ a.btn.action_icon {
 			width: 97%;
 		}
 	}
-	.form-group {
+	.form-group, #criteria_type_A2 {
 		margin-top: 2px;
 		&.large {
 			width: 100%;
@@ -348,6 +348,18 @@ div.results {
 		th {
 			border-bottom: none;
 		}
+	}
+	.page_size_selector {
+		margin-bottom: 5px;
+		display: block;
+		select.form-control {
+			display: inline-block;
+			width: auto;
+		}
+	}
+	.pagination {
+		margin-top: 5px;
+		margin-bottom: 5px;
 	}
 }
 // Filters in results table
@@ -495,6 +507,9 @@ select:focus:invalid:focus {
 	.btn {
 		margin: -6px 0 0 6px;
 	}
+	.btn-group {
+		margin-left: 6px;
+	}
 }
 legend.panel-heading {
 	font-size: 16px;
@@ -597,6 +612,13 @@ div.edit_toolbars, div.message_toolbars {
 		float: left;
 		font-weight: bold;
 	}
+	&.disabled span.btn {
+		opacity: 0.5;
+		cursor: default;
+		&:hover {
+			background: #FFF;
+		}
+	}
 }
 // Plugin buttons
 .edit_plugin_actions {
@@ -643,6 +665,10 @@ div.edit_toolbars, div.message_toolbars {
 }
 .modal-backdrop {
 	position: fixed;
+}
+.modal-dialog {
+	// Set this for all screen sizes(especially for small screens) in order to fix a moving modal over evo_toolbar
+	margin: 30px auto;
 }
 
 // Typeahead plugin

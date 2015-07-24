@@ -119,8 +119,8 @@ class videoplug_plugin extends Plugin
 			return false;
 		}
 
-		echo $this->get_template( 'toolbar_before', array( '$toolbar_class$' => 'video_toolbar' ) );
-		
+		echo $this->get_template( 'toolbar_before', array( '$toolbar_class$' => $this->code.'_toolbar' ) );
+
 		echo $this->get_template( 'toolbar_title_before' ).T_('Video').': '.$this->get_template( 'toolbar_title_after' );
 		echo $this->get_template( 'toolbar_group_before' );
 		echo '<input type="button" id="video_rutube" title="'.T_('Insert Rutube video').'" class="'.$this->get_template( 'toolbar_button_class' ).'" data-func="videotag|rutube" value="RuTube" />';

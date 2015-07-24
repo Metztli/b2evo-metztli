@@ -189,13 +189,14 @@ function get_login_url( $source, $redirect_to = NULL, $force_normal_login = fals
 {
 	global $secure_htsrv_url;
 
-	if( ! empty( $redirect_to ) )
+	// This URL is used to redirect after SUCCESS login action
+	$redirect_url = empty( $redirect_to ) ? regenerate_url( '', '', '', '&' ) : $redirect_to;
+
+	// This URL is used to redirect after ABORT login action
+	$return_url = param( 'return_to', 'url', '' );
+	if( empty( $return_url ) )
 	{
-		$redirect = $redirect_to;
-	}
-	else
-	{
-		$redirect = regenerate_url( '', '', '', '&' );
+		$return_url = url_rel_to_same_host( regenerate_url( '', '', '', '&' ), $secure_htsrv_url );
 	}
 
 	if( ! $force_normal_login && use_in_skin_login() )
@@ -207,22 +208,32 @@ function get_login_url( $source, $redirect_to = NULL, $force_normal_login = fals
 		}
 		$BlogCache = & get_BlogCache();
 		$Blog = $BlogCache->get_by_ID( $blog_ID );
-		if( ! empty( $redirect ) )
+		if( ! empty( $redirect_url ) )
 		{
-			$redirect = url_rel_to_same_host( $redirect, $Blog->get( $blog_page, array( 'glue' => '&' ) ) );
+			$redirect_url = url_rel_to_same_host( $redirect_url, $Blog->get( $blog_page, array( 'glue' => '&' ) ) );
+		}
+		if( ! empty( $redirect_url ) )
+		{
+			$return_url = url_rel_to_same_host( $return_url, $Blog->get( $blog_page, array( 'glue' => '&' ) ) );
 		}
 		$url = $Blog->get( $blog_page, array( 'glue' => '&' ) );
 	}
 	else
 	{ // Use normal/standard login form (without blog skin)
-		if( ! empty( $redirect ) )
+		if( ! empty( $redirect_url ) )
 		{
-			$redirect = url_rel_to_same_host( $redirect, $secure_htsrv_url );
+			$redirect_url = url_rel_to_same_host( $redirect_url, $secure_htsrv_url );
+		}
+		if( ! empty( $redirect_url ) )
+		{
+			$return_url = url_rel_to_same_host( $return_url, $secure_htsrv_url );
 		}
 		$url = $secure_htsrv_url.'login.php';
 	}
 
-	return url_add_param( $url, 'redirect_to='.rawurlencode( $redirect ).'&source='.rawurlencode( $source ), '&' );
+	return url_add_param( $url, 'redirect_to='.rawurlencode( $redirect_url )
+			.'&return_to='.rawurlencode( $return_url )
+			.'&source='.rawurlencode( $source ), '&' );
 }
 
 
@@ -231,15 +242,22 @@ function get_login_url( $source, $redirect_to = NULL, $force_normal_login = fals
  *
  * @param string URL to redirect, FALSE - don't use a redirect
  * @param string delimiter to use for more url params
+ * @param string URL to return after ABORT login action, FALSE - don't use a return url
  * @return string URL
  */
-function get_lostpassword_url( $redirect_to = NULL, $glue = '&amp;' )
+function get_lostpassword_url( $redirect_to = NULL, $glue = '&amp;', $return_to = NULL )
 {
 	global $Blog, $secure_htsrv_url;
 
 	if( empty( $redirect_to ) && $redirect_to !== false )
 	{ // Redirect back to current URL
 		$redirect_to = url_rel_to_same_host( regenerate_url( '', '', '', $glue ), $secure_htsrv_url );
+	}
+
+	// This URL is used to redirect after ABORT login action:
+	if( empty( $return_to ) && $return_to !== false  )
+	{
+		$return_to = url_rel_to_same_host( regenerate_url( '', '', '', $glue ), $secure_htsrv_url );
 	}
 
 	if( use_in_skin_login() )
@@ -252,8 +270,13 @@ function get_lostpassword_url( $redirect_to = NULL, $glue = '&amp;' )
 	}
 
 	if( $redirect_to !== false )
-	{ // Append redirect URL only when it is not restricted
+	{ // Append redirect URL only when it is not restricted:
 		$lostpassword_url = url_add_param( $lostpassword_url, 'redirect_to='.rawurlencode( $redirect_to ), $glue );
+	}
+
+	if( $return_to !== false )
+	{ // Append return URL only when it is not restricted:
+		$lostpassword_url = url_add_param( $lostpassword_url, 'return_to='.rawurlencode( $return_to ), $glue );
 	}
 
 	return $lostpassword_url;
@@ -673,6 +696,15 @@ function get_user_register_url( $redirect_to = NULL, $default_source_string = ''
 	{
 		$register_url = url_add_param( $register_url, 'redirect_to='.rawurlencode( url_rel_to_same_host( $redirect_to, $secure_htsrv_url ) ), $glue );
 	}
+
+	// This URL is used to redirect after ABORT login action
+	$return_url = param( 'return_to', 'url', '' );
+	if( empty( $return_url ) )
+	{
+		$return_url = url_rel_to_same_host( regenerate_url( '', '', '', '&' ), $secure_htsrv_url );
+	}
+
+	$register_url = url_add_param( $register_url, 'return_to='.$return_url, $glue );
 
 	return $register_url;
 }
@@ -1527,18 +1559,19 @@ function profile_check_params( $params, $User = NULL )
 /**
  * Get avatar <img> tag by user login
  *
- * @param user login
- * @param if true show user preferred name after avatar, if 'login' show user login
- * @param if true link to user profile
- * @param avatar size
- * @param style class of image
- * @param image align
- * @param avatar overlay text
- * @param style class of link
- * @param if true show user avatar
+ * @param string user login
+ * @param boolean if true show user preferred name after avatar, if 'login' show user login
+ * @param boolean if true link to user profile
+ * @param string avatar size
+ * @param string style class of image
+ * @param string image align
+ * @param string avatar overlay text
+ * @param string style class of link
+ * @param boolean if true show user avatar
+ * @param string Value for html attribute, NULL - to use default to init bubbletip on mouseover
  * @return login <img> tag
  */
-function get_avatar_imgtag( $user_login, $show_login = true, $link = true, $size = 'crop-top-15x15', $img_class = 'avatar_before_login', $align = '', $avatar_overlay_text = '', $link_class = '', $show_avatar = true )
+function get_avatar_imgtag( $user_login, $show_login = true, $link = true, $size = 'crop-top-15x15', $img_class = 'avatar_before_login', $align = '', $avatar_overlay_text = '', $link_class = '', $show_avatar = true, $rel = NULL )
 {
 	global $current_User;
 
@@ -1565,15 +1598,25 @@ function get_avatar_imgtag( $user_login, $show_login = true, $link = true, $size
 		$img_tag = '<span class="nowrap">'.$img_tag.'<b>'.$login.'</b></span>';
 	}
 
+	if( is_null( $rel ) )
+	{ // Set default rel:
+		$rel = 'bubbletip_user_'.$User->ID;
+	}
+
+	if( ! empty( $rel ) )
+	{ // Initialize attribure "rel"
+		$rel = ' rel="'.$rel.'"';
+	}
+
 	$identity_url = get_user_identity_url( $User->ID );
 	if( empty( $identity_url ) )
 	{ // Current user has not permissions to view other user profile
-		$img_tag = '<span class="'.$login_class.$User->get_gender_class().'" rel="bubbletip_user_'.$User->ID.'">'.$img_tag.'</span>';
+		$img_tag = '<span class="'.$login_class.$User->get_gender_class().'"'.$rel.'>'.$img_tag.'</span>';
 	}
 	else if( !empty( $img_tag ) )
 	{ // Show avatar & user login as link to the profile page
 		$link_class = ( $link_class != '' ) ? ' '.$link_class : '';
-		$img_tag = '<a href="'.$identity_url.'" class="'.$login_class.$User->get_gender_class().$link_class.'" rel="bubbletip_user_'.$User->ID.'">'.$img_tag.'</a>';
+		$img_tag = '<a href="'.$identity_url.'" class="'.$login_class.$User->get_gender_class().$link_class.'"'.$rel.'>'.$img_tag.'</a>';
 	}
 
 	return $img_tag;
@@ -2040,6 +2083,7 @@ function load_blog_advanced_perms( & $blog_perms, $perm_target_blog, $perm_targe
 				'blog_ismember' => '0',
 				'blog_can_be_assignee' => '0',
 				'blog_post_statuses' => 0,
+				'blog_item_type' => 'standard',
 				'blog_edit' => 'no',
 				'blog_del_post' => '0',
 				'blog_edit_ts' => '0',
@@ -2051,10 +2095,6 @@ function load_blog_advanced_perms( & $blog_perms, $perm_target_blog, $perm_targe
 				'blog_cats' => '0',
 				'blog_properties' => '0',
 				'blog_admin' => '0',
-				'blog_page' => '0',
-				'blog_intro' => '0',
-				'blog_podcast' => '0',
-				'blog_sidebar' => '0',
 				'blog_media_upload' => '0',
 				'blog_media_browse' => '0',
 				'blog_media_change' => '0',
@@ -2068,6 +2108,7 @@ function load_blog_advanced_perms( & $blog_perms, $perm_target_blog, $perm_targe
 		$blog_perms['blog_post_statuses'] = $row['perm_poststatuses_bin'];
 		$blog_perms['blog_cmt_statuses'] = $row['perm_cmtstatuses_bin'];
 
+		$blog_perms['blog_item_type'] = $row[$prefix.'_perm_item_type'];
 		$blog_perms['blog_edit'] = $row[$prefix.'_perm_edit'];
 		$blog_perms['blog_del_post'] = $row[$prefix.'_perm_delpost'];
 		$blog_perms['blog_edit_ts'] = $row[$prefix.'_perm_edit_ts'];
@@ -2078,10 +2119,6 @@ function load_blog_advanced_perms( & $blog_perms, $perm_target_blog, $perm_targe
 		$blog_perms['blog_cats'] = $row[$prefix.'_perm_cats'];
 		$blog_perms['blog_properties'] = $row[$prefix.'_perm_properties'];
 		$blog_perms['blog_admin'] = $row[$prefix.'_perm_admin'];
-		$blog_perms['blog_page'] = $row[$prefix.'_perm_page'];
-		$blog_perms['blog_intro'] = $row[$prefix.'_perm_intro'];
-		$blog_perms['blog_podcast'] = $row[$prefix.'_perm_podcast'];
-		$blog_perms['blog_sidebar'] = $row[$prefix.'_perm_sidebar'];
 		$blog_perms['blog_media_upload'] = $row[$prefix.'_perm_media_upload'];
 		$blog_perms['blog_media_browse'] = $row[$prefix.'_perm_media_browse'];
 		$blog_perms['blog_media_change'] = $row[$prefix.'_perm_media_change'];
@@ -2219,6 +2256,16 @@ function check_blog_advanced_perm( & $blog_perms, $user_ID, $permname, $permleve
 					return false;
 			}
 
+		case 'blog_item_type_standard':
+			// Standard item types are allowed for all
+			return true;
+		case 'blog_item_type_restricted':
+			// Restricted item types - ONLY for admin and restricted permissions
+			return ( $blog_perms['blog_item_type'] == 'admin' || $blog_perms['blog_item_type'] == 'restricted' );
+		case 'blog_item_type_admin':
+			// Admin item types - ONLY for admin permissions
+			return ( $blog_perms['blog_item_type'] == 'admin' );
+
 		default:
 			return $blog_perms[$permname];
 	}
@@ -2299,7 +2346,7 @@ function echo_user_actions( $Widget, $edited_User, $action )
 				$report_text_title = $report_text = T_('You have reported this user');
 				$report_text = '<span class="red">'.$report_text.'</span>';
 			}
-			$Widget->global_icon( $report_text_title, 'warning_yellow', $admin_url.'?ctrl=user&amp;user_tab=report&amp;user_ID='.$edited_User->ID.'&amp;'.url_crumb('user'), ' '.$report_text, 3, 4, array( 'onclick' => 'return user_report( '.$edited_User->ID.', \''.$user_tab.'\')' ) );
+			$Widget->global_icon( $report_text_title, 'warning_yellow', $admin_url.'?ctrl=user&amp;user_tab=report&amp;user_ID='.$edited_User->ID.'&amp;'.url_crumb('user'), ' '.$report_text, 3, 4, array( 'onclick' => 'return user_report( '.$edited_User->ID.', \''.( empty( $user_tab ) ? 'profile' : $user_tab ).'\')' ) );
 		}
 		if( ( $current_User->check_perm( 'users', 'edit', false ) ) && ( $current_User->ID != $edited_User->ID )
 			&& ( $edited_User->ID != 1 ) )
@@ -3595,6 +3642,30 @@ function user_send_report_message( $report_user_IDs, $reported_user_login )
 
 
 /**
+ * Increase spam fighter score for the users who reported the deleted account
+ *
+ * @param array User IDs who reported for the deleted user
+ */
+function user_increase_spam_score( $report_user_IDs )
+{
+	global $UserSettings;
+
+	if( empty( $report_user_IDs ) )
+	{ // No users to update spam score
+		return false;
+	}
+
+	foreach( $report_user_IDs as $report_user_ID )
+	{
+		$score = intval( $UserSettings->get( 'spam_fighter_score', $report_user_ID ) ) + 1;
+		$UserSettings->set( 'spam_fighter_score', $score, $report_user_ID );
+	}
+
+	$UserSettings->dbupdate();
+}
+
+
+/**
  * Get form to quick users search
  *
  * @param array Params
@@ -4182,11 +4253,48 @@ echo_modalwindow_js();
 		{
 			user_tab_from = 'avatar';
 		}
-		var window_width = jQuery( window ).width();
+
+		var max_size = 750;
+		var min_size = 320;
+
+		var viewport_width = jQuery( window ).width();
+		var viewport_height = jQuery( window ).height();
+		//console.log( 'viewport', viewport_width, viewport_height );
+
+		// Set sizes for modal window:
+		var window_width = viewport_width;
+		var window_height = viewport_height;
+		// Limit window with max & min sizes:
+		window_height = ( window_height > max_size ) ? max_size : ( ( window_height < min_size ) ? min_size : window_height );
+		window_width = ( window_width > max_size ) ? max_size : ( ( window_width < min_size ) ? min_size : window_width );
+		//console.log( 'window', window_width, window_height );
+
+		// Set margins for normal view of wide screens:
+		var margin_size_width = 100;
+		var margin_size_height = viewport_height > max_size ? 170 : 205;
+		if( viewport_width <= 900 )
+		{ // When width is less than 900px then preview thumbnails are located under big picture, so height margin should be more
+			margin_size_width = 35;
+			margin_size_height = 325;
+		}
+		//console.log( 'margins', margin_size_width, margin_size_height );
+
+		// Set image sizes:
+		var image_width = window_width - margin_size_width;
+		var image_height = window_height - margin_size_height;
+		var image_min_size = 130;
+		// Limit image with min size:
+		image_width = ( image_width < image_min_size ) ? image_min_size : image_width;
+		image_height = ( image_height < image_min_size ) ? image_min_size : image_height;
+		//console.log( 'image', image_width, image_height );
+
+		// Open modal window with loading animation while ajax request is executing below:
 		openModalWindow( '<span class="loader_img loader_user_report absolute_center" title="<?php echo T_('Loading...'); ?>"></span>',
-			'auto', '', true,
+			window_width+'px', window_height+'px', true,
 			'<?php echo TS_('Crop profile picture'); ?>',
 			[ '<?php echo TS_('Crop'); ?>', 'btn-primary hide' ], true );
+
+		// Execute ajax request to load a crop tool:
 		jQuery.ajax(
 		{
 			type: 'POST',
@@ -4196,14 +4304,14 @@ echo_modalwindow_js();
 				<?php echo $ajax_params; ?>
 				'user_ID': user_ID,
 				'file_ID': file_ID,
-				'window_width'  : Math.round( window_width > 790 ? ( window_width * 0.9 - 128 ): window_width ),
-				'window_height' : Math.round( jQuery( window ).height() * 0.8 ),
+				'image_width'  : image_width,
+				'image_height' : image_height,
 				'display_mode': 'js',
 				'crumb_user': '<?php echo get_crumb( 'user' ); ?>',
 			},
 			success: function( result )
 			{
-				openModalWindow( result, 'auto', '',true,
+				openModalWindow( result, window_width+'px', window_height+'px', true,
 				'<?php echo TS_('Crop profile picture'); ?>',
 				[ '<?php echo TS_('Crop'); ?>', 'btn-primary hide' ] );
 			}
@@ -4545,7 +4653,7 @@ function user_reports_results_block( $params = array() )
 
 
 	$SQL = new SQL();
-	$SQL->SELECT( 'user_login, urep_datetime, urep_status, urep_info' );
+	$SQL->SELECT( 'user_login, urep_datetime, urep_status, urep_info, urep_reporter_ID, urep_target_user_ID' );
 	$SQL->FROM( 'T_users__reports' );
 	$SQL->FROM_add( 'LEFT JOIN T_users ON user_ID = urep_reporter_ID' );
 	$SQL->WHERE( 'urep_target_user_ID = '.$DB->quote( $edited_User->ID ) );
@@ -4594,6 +4702,8 @@ function user_reports_results_block( $params = array() )
  */
 function user_reports_results( & $reports_Results, $params = array() )
 {
+	global $admin_url, $current_User;
+
 	$reports_Results->cols[] = array(
 		'th' => T_('Date and time'),
 		'order' => 'urep_datetime',
@@ -4623,6 +4733,16 @@ function user_reports_results( & $reports_Results, $params = array() )
 		'td_class' => 'left',
 		'td' => '$urep_info$',
 	);
+
+	if( $current_User->check_perm( 'users', 'edit', false ) )
+	{ // Allow actions if current user has a permission to edit the users
+		$reports_Results->cols[] = array(
+			'th' => T_('Actions'),
+			'th_class' => 'shrinkwrap',
+			'td_class' => 'shrinkwrap',
+			'td' => action_icon( T_('Remove this report!'), 'remove', $admin_url.'?ctrl=users&amp;action=remove_report&amp;user_ID=$urep_target_user_ID$&amp;reporter_ID=$urep_reporter_ID$&amp;'.url_crumb( 'users' ) ),
+		);
+	}
 }
 
 

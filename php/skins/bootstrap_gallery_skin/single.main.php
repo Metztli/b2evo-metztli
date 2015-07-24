@@ -142,21 +142,9 @@ siteskin_include( '_site_body_header.inc.php' );
 							'after'     => '',
 						) );
 				?>
-				<div class="nav_album_number hidden-xs">
-					<?php printf( T_('%s photos'), $single_Item->get_number_of_images() ); ?>
-				</div>
 				<?php 	
 					if( $Skin->enabled_status_banner( $single_Item->status ) )
 					{ // Status banner
-/* OLD:						
-						$single_Item->status( array(
-								'before' => '<div class="post_status">',							
-								'class' => 'badge',
-								'after'  => '</div>',
-								'format' => 'styled',
-							) );
-NEW:
-*/
 						$single_Item->format_status( array( 'template' => '<div class="evo_status evo_status__$status$ badge">$status_title$</div>' ) );						
 					}
 					$single_Item->edit_link( array( // Link to backoffice for editing
@@ -212,23 +200,24 @@ NEW:
 		$Item->locale_temp_switch(); // Temporarily switch to post locale (useful for multilingual blogs)
 	?>
 
-	<div class="post_images col-xl-9 col-lg-8 col-md-6 col-sm-6">
+	<div class="post_images col-xl-9 col-lg-9 col-md-8 col-sm-7">
 		<?php
 			// Display images that are linked to this post:
 			$Item->images( array(
 					'before'              => '',
-					'before_image'        => '<figure class="single-image">',
+					'before_image'        => '<figure class="single-image col-xl-4 col-lg-4 col-md-6 col-sm-12">',
 					'before_image_legend' => '<figcaption class="evo_image_legend">',
 					'after_image_legend'  => '</figcaption>',
 					'after_image'         => '</figure>',
 					'after'               => '<div class="clear"></div>',
 					'image_size'          => $Skin->get_setting( 'single_thumb_size' ),
 					'image_align'         => 'middle',
+					'image_class'		  => 'img-responsive',
 				) );
 		?>
 	</div>
 
-	<div class="evo_post_content col-xl-3 col-lg-4 col-md-6 col-sm-6">
+	<div class="evo_post_content col-xl-3 col-lg-3 col-md-4 col-sm-5">
 
 		<div class="evo_details">
 
@@ -247,18 +236,6 @@ NEW:
 				// Note: You can customize the default item content by copying the generic
 				// /skins/_item_content.inc.php file into the current skin folder.
 				// -------------------------- END OF POST CONTENT -------------------------
-			?>
-
-			<?php
-				// URL link, if the post has one:
-				$Item->url_link( array(
-						'before'        => '<div class="small evo_print">'.T_('Link').': ',
-						'after'         => '</div>',
-						'text_template' => '$url$',
-						'url_template'  => '$url$',
-						'target'        => '',
-						'podcast'       => false,        // DO NOT display mp3 player if post type is podcast
-					) );
 			?>
 
 			<div class="item_comments">

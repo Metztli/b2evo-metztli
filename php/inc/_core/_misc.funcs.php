@@ -70,9 +70,12 @@ function modules_call_method( $method_name, $params = NULL )
  * This gets updated through {@link db_delta()} which generates the queries needed to get
  * to this scheme.
  *
+ * @param boolean set true to load installed plugins table as well, leave it on false otherwise
+ *        - currently used only on table normalization
+ *
  * Please see {@link db_delta()} for things to take care of.
  */
-function load_db_schema()
+function load_db_schema( $inlcude_plugins = false )
 {
 	global $schema_queries;
 	global $modules, $inc_path;
@@ -88,6 +91,34 @@ function load_db_schema()
 	{
 		echo 'Loading module: <code>'.$module.'/model/_'.$module.'.install.php</code><br />';
 		require_once $inc_path.$module.'/model/_'.$module.'.install.php';
+	}
+
+	if( $inlcude_plugins )
+	{ // Load all plugins table into the schema queries
+		global $Plugins;
+
+		if( empty( $Plugins ) )
+		{
+			load_class( 'plugins/model/_plugins.class.php', 'Plugins' );
+			$Plugins = new Plugins();
+		}
+
+		$admin_Plugins = & get_Plugins_admin();
+		$admin_Plugins->restart();
+		while( $loop_Plugin = & $admin_Plugins->get_next() )
+		{ // loop through all installed plugins
+			$create_table_queries = $loop_Plugin->GetDbLayout();
+			foreach( $create_table_queries as $create_table_query )
+			{
+				if( ! preg_match( '|^\s*CREATE TABLE\s+(IF NOT EXISTS\s+)?([^\s(]+).*$|is', $create_table_query, $match) )
+				{ // Could not parse the CREATE TABLE command
+					continue;
+				}
+				$schema_queries[$match[2]] = array( 'Creating table for plugin', $create_table_query );
+				$DB->dbaliases[] = '#\b'.$match[2].'\b#';
+				$DB->dbreplaces[] = $match[2];
+			}
+		}
 	}
 }
 
@@ -212,7 +243,7 @@ function shutdown()
 	// Auto pruning of old HITS, old SESSIONS and potentially MORE analytics data:
 	if( $Settings->get( 'auto_prune_stats_mode' ) == 'page' )
 	{ // Autopruning is requested
-		load_class('sessions/model/_hitlist.class.php', 'Hitlist' );
+		load_class( 'sessions/model/_hitlist.class.php', 'Hitlist' );
 		Hitlist::dbprune(); // will prune once per day, according to Settings
 	}
 
@@ -1871,7 +1902,7 @@ function is_valid_login( $login, $force_strict_logins = false )
 {
 	global $Settings;
 
-	$strict_logins = $Settings->get('strict_logins');
+	$strict_logins = isset( $Settings ) ? $Settings->get('strict_logins') : 1;
 
 	// NOTE: in some places usernames are typed in by other users (messaging) or admins.
 	// Having cryptic logins with hard to type letters is a PITA.
@@ -6944,6 +6975,7 @@ function openModalWindow( body_html, width, height, transparent, title, buttons,
 	var style_width = ( typeof( width ) == 'undefined' || width == 'auto' ) ? '' : 'width:' + width + ';';
 	var style_height = ( typeof( height ) == 'undefined' || height == 0 || height == '' ) ? '': 'height:' + height;
 	var style_height_fixed = style_height.match( /%$/i ) ? ' style="height:100%;overflow:hidden;"' : '';
+	var style_body_height = height.match( /px/i ) ? ' style="min-height:' + ( height.replace( 'px', '' ) - 157 ) + 'px"' : '';
 	var use_buttons = ( typeof( buttons ) == 'undefined' || buttons != false );
 
 	if( typeof( buttons ) != 'undefined' && buttons != '' )
@@ -6977,7 +7009,7 @@ function openModalWindow( body_html, width, height, transparent, title, buttons,
 					'<h4 class="modal-title">' + title + '</h4>' +
 				'</div>';
 		}
-		modal_html += '<div class="modal-body"' + style_height_fixed + '>' + body_html + '</div>';
+		modal_html += '<div class="modal-body"' + style_height_fixed + style_body_height + '>' + body_html + '</div>';
 
 		if( use_buttons )
 		{
@@ -7069,6 +7101,23 @@ function openModalWindow( body_html, width, height, transparent, title, buttons,
 
 	modal_window_js_initialized = true;
 }
+
+/**
+ * Close modal window
+ *
+ * @param object Document object
+ */
+function closeModalWindow( document_obj )
+{
+	if( typeof( document_obj ) == 'undefined' )
+	{
+		document_obj = window.document;
+	}
+
+	jQuery( '#modal_window', document_obj ).remove();
+
+	return false;
+}
 <?php
 } // end of echo_modalwindow_js_bootstrap
 
@@ -7121,8 +7170,15 @@ function get_fieldset_folding_icon( $id, $params = array() )
 	}
 	else
 	{ // Get the fold value from user settings
-		global $UserSettings;
-		$value = intval( $UserSettings->get( 'fold_'.$id ) );
+		global $UserSettings, $Blog;
+		if( empty( $Blog ) )
+		{ // Get user setting value
+			$value = intval( $UserSettings->get( 'fold_'.$id ) );
+		}
+		else
+		{ // Get user-collection setting
+			$value = intval( $UserSettings->get_collection_setting( 'fold_'.$id, $Blog->ID ) );
+		}
 	}
 
 	// Icon
@@ -7243,8 +7299,10 @@ jQuery( '.field_error' ).closest( '.fieldset_wrapper.folded' ).find( 'span[id^=i
 
 /**
  * Save the values of fieldset folding into DB
+ *
+ * @param integer Blog ID is used to save setting per blog, NULL- to don't save per blog
  */
-function save_fieldset_folding_values()
+function save_fieldset_folding_values( $blog_ID = NULL )
 {
 	if( ! is_logged_in() )
 	{ // Only loggedin users can fold fieldset
@@ -7262,7 +7320,12 @@ function save_fieldset_folding_values()
 
 	foreach( $folding_values as $key => $value )
 	{
-		$UserSettings->set( 'fold_'.$key, $value );
+		$setting_name = 'fold_'.$key;
+		if( $blog_ID !== NULL )
+		{ // Save setting per blog
+			$setting_name .= '_'.$blog_ID;
+		}
+		$UserSettings->set( $setting_name, $value );
 	}
 
 	// Update the folding setting for current user

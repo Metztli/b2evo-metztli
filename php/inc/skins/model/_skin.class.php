@@ -508,7 +508,9 @@ class Skin extends DataObject
 	 *
 	 * Including for NON installed skins.
 	 *
-	 * @static
+	 * @param string Skin folder
+	 * @param string Skin name
+	 * @param array Params
 	 */
 	static function disp_skinshot( $skin_folder, $skin_name, $disp_params = array() )
 	{
@@ -657,8 +659,10 @@ class Skin extends DataObject
 
 
 	/**
- 	 * Get a skin specific param value from current Blog
- 	 *
+	 * Get a skin specific param value from current Blog
+	 *
+	 * @param string Setting name
+	 * @return string|array|NULL
 	 */
 	function get_setting( $parname )
 	{
@@ -679,9 +683,23 @@ class Skin extends DataObject
 
 		// Try default values:
 		$params = $this->get_param_definitions( NULL );
-		if( isset( $params[$parname]['defaultvalue'] ) )
-		{	// We ahve a default value:
-			return $params[$parname]['defaultvalue'] ;
+		if( isset( $params[ $parname ]['defaultvalue'] ) )
+		{ // We have a default value:
+			return $params[ $parname ]['defaultvalue'] ;
+		}
+		elseif( isset( $params[ $parname ]['type'] ) &&
+		        $params[ $parname ]['type'] == 'checklist' &&
+		        ! empty( $params[ $parname ]['options'] ) )
+		{ // Get default values for checkbox list:
+			$options = array();
+			foreach( $params[ $parname ]['options'] as $option )
+			{
+				if( isset( $option[2] ) )
+				{ // Set default value only if it is defined by skin:
+					$options[ $option[0] ] = $option[2];
+				}
+			}
+			return $options;
 		}
 
 		return NULL;
@@ -775,15 +793,25 @@ class Skin extends DataObject
 	 */
 	function display_init( $features = array() )
 	{
-		global $debug, $Messages;
+		global $debug, $Messages, $disp;
 
 		if( empty($features) )
 		{	// Fall back to v5 default set of features:
-			$features = array( 'b2evo_base_css', 'style_css', 'colorbox' );
+			$features = array( 'b2evo_base_css', 'style_css', 'colorbox', 'disp_auto' );
 		}
 
-		foreach( $features as $feature )
+		// "Temporary" patch to at least have disp_auto unless another disp_xxx was specified. Use 'disp_off' to NOT include anuthing.
+		if( !preg_grep( '/disp_.*/', $features ) )
 		{
+			$features[] = 'disp_auto';
+		}
+
+		// We're NOT using foreach so that the array can continue to grow during parsing: (see 'disp_auto')
+		for( $i = 0; isset($features[$i]); $i++ )
+		{
+			// Get next feature to include:
+			$feature = $features[$i];
+
 			switch( $feature ) 
 			{
 				case 'jquery':
@@ -880,9 +908,220 @@ class Skin extends DataObject
 					}
 					break;
 
+				case 'disp_auto':
+					// Automatically add a disp_xxx for current $disp:
+					$features[] = 'disp_'.$disp;
+					break;
+
+				case 'disp_single':
+					// Specific features for disp=single:
+				case 'disp_page':
+					// Specific features for disp=page:
+
+					global $Blog;
+
+					// Used to init functions for AJAX forms to add a comment:
+					init_ajax_forms( 'blog' );
+
+					// Used to set rating for a new comment:
+					init_ratings_js( 'blog' );
+
+					// Used to vote on the comments:
+					init_voting_comment_js( 'blog' );
+
+					// Used to display a tooltip to the right of plugin help icon:
+					init_plugins_js( 'blog', $this->get_template( 'tooltip_plugin' ) );
+
+					// Used to autocomplete usernames in textarea:
+					init_autocomplete_usernames_js( 'blog' );
+
+					if( $Blog->get_setting( 'allow_rating_comment_helpfulness' ) )
+					{ // Load jquery UI to animate background color on change comment status or on vote:
+						require_js( '#jqueryUI#', 'blog' );
+					}
+					break;
+
+				case 'disp_users':
+					// Specific features for disp=users:
+
+					// Used to add new search field "Specific criteria":
+					require_js( '#jqueryUI#', 'blog' );
+					require_css( '#jqueryUI_css#', 'blog' );
+
+					// Require results.css to display thread query results in a table:
+					if( ! in_array( 'bootstrap', $features ) )
+					{ // Only for NON-bootstrap skins
+						require_css( 'results.css', 'blog' ); // Results/tables styles
+					}
+
+					// Require functions.js to show/hide a panel with filters:
+					require_js( 'functions.js', 'blog' );
+
+					// Include this file to expand/collapse the filters panel when JavaScript is disabled
+					global $inc_path;
+					require_once $inc_path.'_filters.inc.php';
+					break;
+
+				case 'disp_messages':
+					// Specific features for disp=messages:
+
+					// Used to display a tooltip to the right of plugin help icon:
+					init_plugins_js( 'blog', $this->get_template( 'tooltip_plugin' ) );
+
+					// Require results.css to display message query results in a table
+					if( ! in_array( 'bootstrap', $features ) )
+					{ // Only for NON-bootstrap skins
+						require_css( 'results.css', 'blog' ); // Results/tables styles
+					}
+
+					// Require functions.js to show/hide a panel with filters:
+					require_js( 'functions.js', 'blog' );
+
+					// Include this file to expand/collapse the filters panel when JavaScript is disabled
+					global $inc_path;
+					require_once $inc_path.'_filters.inc.php';
+					break;
+
+				case 'disp_contacts':
+					// Specific features for disp=contacts:
+
+					// Used for combo box "Add all selected contacts to this group":
+					require_js( 'form_extensions.js', 'blog' );
+
+					// Require results.css to display contact query results in a table
+					if( ! in_array( 'bootstrap', $features ) )
+					{ // Only for NON-bootstrap skins
+						require_css( 'results.css', 'blog' ); // Results/tables styles
+					}
+
+					// Require functions.js to show/hide a panel with filters:
+					require_js( 'functions.js', 'blog' );
+
+					// Include this file to expand/collapse the filters panel when JavaScript is disabled
+					global $inc_path;
+					require_once $inc_path.'_filters.inc.php';
+					break;
+
+				case 'disp_threads':
+					// Specific features for disp=threads:
+
+					if( get_param( 'action' ) == 'new' )
+					{ // Used to suggest usernames for the field "Recipients":
+						init_tokeninput_js( 'blog' );
+					}
+
+					// Used to display a tooltip to the right of plugin help icon:
+					init_plugins_js( 'blog', $this->get_template( 'tooltip_plugin' ) );
+
+					// Require results.css to display thread query results in a table:
+					if( ! in_array( 'bootstrap', $features ) )
+					{ // Only for NON-bootstrap skins
+						require_css( 'results.css', 'blog' ); // Results/tables styles
+					}
+
+					// Require functions.js to show/hide a panel with filters:
+					require_js( 'functions.js', 'blog' );
+
+					// Include this file to expand/collapse the filters panel when JavaScript is disabled
+					global $inc_path;
+					require_once $inc_path.'_filters.inc.php';
+					break;
+
+				case 'disp_login':
+					// Specific features for disp=threads:
+
+					global $Settings, $Plugins;
+
+					$transmit_hashed_password = (bool)$Settings->get( 'js_passwd_hashing' ) && !(bool)$Plugins->trigger_event_first_true( 'LoginAttemptNeedsRawPassword' );
+					if( $transmit_hashed_password )
+					{ // Include JS for client-side password hashing:
+						require_js( 'build/sha1_md5.bmin.js', 'blog' );
+					}
+					break;
+
+				case 'disp_profile':
+					// Specific features for disp=profile:
+
+					// Used to add new user fields:
+					init_userfields_js( 'blog', $this->get_template( 'tooltip_plugin' ) );
+
+					// Used to crop profile pictures:
+					require_js( '#jquery#', 'blog' );
+					require_js( '#jcrop#', 'blog' );
+					require_css( '#jcrop_css#', 'blog' );
+					break;
+
+				case 'disp_avatar':
+					// Specific features for disp=avatar:
+
+					// Used to crop profile pictures:
+					require_js( '#jquery#', 'blog' );
+					require_js( '#jcrop#', 'blog' );
+					require_css( '#jcrop_css#', 'blog' );
+					break;
+
+				case 'disp_edit':
+					// Specific features for disp=edit:
+
+					// Require results.css to display attachments as a result table:
+					require_css( 'results.css' );
+
+					init_tokeninput_js( 'blog' );
+
+					// Used to display a date picker for date form fields:
+					init_datepicker_js( 'blog' );
+
+					// Used to display a tooltip to the right of plugin help icon:
+					init_plugins_js( 'blog', $this->get_template( 'tooltip_plugin' ) );
+
+					// Used to switch to advanced editing:
+					require_js( 'backoffice.js', 'blog' );
+
+					// Used to automatically checks the matching extracat when we select a new main cat:
+					require_js( 'extracats.js', 'blog' );
+
+					// Used to autocomplete usernames in textarea:
+					init_autocomplete_usernames_js( 'blog' );
+					break;
+
+				case 'disp_edit_comment':
+					// Specific features for disp=edit_comment:
+
+					// Require results.css to display attachments as a result table:
+					require_css( 'results.css' );
+
+					// Used to set rating for a new comment:
+					init_ratings_js( 'blog' );
+
+					// Used to display a date picker for date form fields:
+					init_datepicker_js( 'blog' );
+
+					// Used to display a tooltip to the right of plugin help icon:
+					init_plugins_js( 'blog', $this->get_template( 'tooltip_plugin' ) );
+
+					// Used to autocomplete usernames in textarea:
+					init_autocomplete_usernames_js( 'blog' );
+					break;
+
+				case 'disp_useritems':
+					// Specific features for disp=useritems:
+				case 'disp_usercomments':
+					// Specific features for disp=usercomments:
+
+					// Require results.css to display item/comment query results in a table
+					require_css( 'results.css' ); // Results/tables styles
+
+					// Require functions.js to show/hide a panel with filters
+					require_js( 'functions.js', 'blog' );
+
+					// Include this file to expand/collapse the filters panel when JavaScript is disabled
+					global $inc_path;
+					require_once $inc_path.'_filters.inc.php';
+					break;
 
 				default:
-					debug_die( 'This skin has requested an unknown feature: \''.$feature.'\'. Maybe this skin requires a more recent version of b2evolution.' );
+					// We no longer want to do this because of 'disp_auto':
+					// debug_die( 'This skin has requested an unknown feature: \''.$feature.'\'. Maybe this skin requires a more recent version of b2evolution.' );
 			}
 		}
 	}

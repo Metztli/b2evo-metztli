@@ -44,14 +44,15 @@ class UserSettings extends AbstractSettings
 		'pref_browse_tab' => 'full',
 
 		// Folding settings, 1 - Hide, 0 - Show
-		'fold_itemform_workflow_props' => 1,
 		'fold_itemform_links' => 1,
-		'fold_itemform_plugin_googlemap' => 1,
+		'fold_itemform_googlemap' => 1,
 		'fold_itemform_meta_cmnt' => 1,
 		'fold_itemform_extra' => 1,
 		'fold_itemform_comments' => 1,
 		'fold_itemform_goals' => 1,
 		'fold_upgrade_backup_options' => 1,
+
+		'show_quick_publish' => 1, // Show the quick "Publish!" button on item form edit screen in back-office
 
 		'fm_imglistpreview' => 1,
 		'fm_showdate'       => 'compact',
@@ -298,6 +299,49 @@ class UserSettings extends AbstractSettings
 		{
 			$this->delete( $k, $user_ID );
 		}
+	}
+
+
+	/** Get user setting per collection
+	 *
+	 * @param string name of setting
+	 * @param integer Collection ID (by default global $Blog->ID will be used)
+	 * @param integer User ID (by default $current_User->ID will be used)
+	 */
+	function get_collection_setting( $setting, $coll_ID = NULL, $user_ID = NULL )
+	{
+		if( $coll_ID === NULL )
+		{ // Use current blog ID by default
+			global $Blog;
+
+			if( ! empty( $Blog ) )
+			{
+				$coll_ID = $Blog->ID;
+			}
+		}
+
+		if( $coll_ID === NULL )
+		{ // Collection is not detected
+			return NULL;
+		}
+
+		// Try to get user-collection setting from DB
+		$value = $this->get( $setting.'_'.$coll_ID, $user_ID );
+
+		if( $value === NULL )
+		{ // The user-collection setting is not defined in DB
+			// Try to get a default value for this setting:
+			if( isset( $this->_defaults[ $setting ] ) )
+			{ // Default value is defined
+				$value = $this->_defaults[ $setting ];
+			}
+			else
+			{ // No default value
+				$value = NULL;
+			}
+		}
+
+		return $value;
 	}
 }
 

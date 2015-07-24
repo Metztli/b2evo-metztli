@@ -2174,6 +2174,7 @@ function display_login_form( $params )
 			'login_required' => true,
 			'validate_required' => NULL,
 			'redirect_to' => '',
+			'return_to' => '',
 			'login' => '',
 			'action' => '',
 			'reqID' => '',
@@ -2185,22 +2186,23 @@ function display_login_form( $params )
 			'display_reg_link'    => false, // Display registration link after login button
 		), $params );
 
-	$inskin = $params[ 'inskin' ];
-	$login = $params[ 'login' ];
-	$redirect_to = $params[ 'redirect_to' ];
+	$inskin = $params['inskin'];
+	$login = $params['login'];
+	$redirect_to = $params['redirect_to'];
+	$return_to = $params['return_to'];
 	$links = array();
 	$form_links = array();
 
 	if( $params['display_abort_link']
-		&& empty( $params[ 'login_required' ] )
-		&& $params[ 'action' ] != 'req_validatemail'
-		&& strpos($redirect_to, $admin_url) !== 0
-		&& strpos($ReqHost.$redirect_to, $admin_url ) !== 0 )
+		&& empty( $params['login_required'] )
+		&& $params['action'] != 'req_validatemail'
+		&& strpos( $return_to, $admin_url ) !== 0
+		&& strpos( $ReqHost.$return_to, $admin_url ) !== 0 )
 	{ // No login required, allow to pass through
-		// TODO: dh> validate redirect_to param?!
-		// check if redirect_to url requires logged in user
-		if( empty( $redirect_to) || require_login( $redirect_to, true ) )
-		{ // logged in user require for redirect_to url
+		// TODO: dh> validate return_to param?!
+		// check if return_to url requires logged in user
+		if( empty( $return_to ) || require_login( $return_to, true ) )
+		{ // logged in user require for return_to url
 			if( !empty( $blog ) )
 			{ // blog is set
 				if( empty( $Blog ) )
@@ -2217,8 +2219,8 @@ function display_login_form( $params )
 			}
 		}
 		else
-		{ // logged in user isn't required for redirect_to url, set abort url to redirect_to
-			$abort_url = $redirect_to;
+		{ // logged in user isn't required for return_to url, set abort url to return_to
+			$abort_url = $return_to;
 		}
 		// Gets displayed as link to the location on the login form if no login is required
 		$abort_link = '<a href="'.htmlspecialchars( url_rel_to_same_host( $abort_url, $ReqHost ) ).'">'.$params['abort_link_text'].'</a>';
@@ -2256,6 +2258,7 @@ function display_login_form( $params )
 	$source = param( 'source', 'string', $params['source'].' login form' );
 	$Form->hidden( 'source', $source );
 	$Form->hidden( 'redirect_to', $redirect_to );
+	$Form->hidden( 'return_to', $return_to );
 	if( $inskin || $params['inskin_urls'] )
 	{ // inskin login form
 		$Form->hidden( 'inskin', true );
@@ -2310,7 +2313,7 @@ function display_login_form( $params )
 					array( 'maxlength' => 255, 'class' => 'input_text', 'input_required' => 'required', 'placeholder' => T_('Username (or email address)') ) );
 	}
 
-	$lost_password_url = get_lostpassword_url( $redirect_to );
+	$lost_password_url = get_lostpassword_url( $redirect_to, '&amp;', $return_to );
 	if( ! empty( $login ) )
 	{
 		$lost_password_url = url_add_param( $lost_password_url, $dummy_fields['login'].'='.rawurlencode( $login ) );
@@ -2711,6 +2714,12 @@ function display_activateinfo( $params )
 
 	if( $current_User->grp_ID == 1 )
 	{ // allow admin users to validate themselves by a single click:
+		global $Session, $redirect_to;
+
+		if( empty( $redirect_to ) )
+		{ // Set where to redirect
+			$redirect_to = regenerate_url();
+		}
 
 		echo $params['use_form_wrapper'] ? $params['form_before'] : '';
 

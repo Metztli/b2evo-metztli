@@ -2279,10 +2279,9 @@ class User extends DataObject
 			case 'cats_post!draft':
 			case 'cats_post!deprecated':
 			case 'cats_post!redirected':
-			case 'cats_page':
-			case 'cats_intro':
-			case 'cats_podcast':
-			case 'cats_sidebar':
+			case 'cats_item_type_standard':
+			case 'cats_item_type_restricted':
+			case 'cats_item_type_admin':
 				// Category permissions...
 				if( ! is_array( $perm_target ) )
 				{	// We need an array here:
@@ -2367,10 +2366,9 @@ class User extends DataObject
 			case 'blog_comment!draft':
 			case 'blog_properties':
 			case 'blog_cats':
-			case 'blog_page':
-			case 'blog_intro':
-			case 'blog_podcast':
-			case 'blog_sidebar':
+			case 'blog_item_type_standard':
+			case 'blog_item_type_restricted':
+			case 'blog_item_type_admin':
 			case 'blog_edit_ts':
 				// Blog permission to edit its properties...
 				if( $this->check_perm_blogowner( $perm_target_ID ) )
@@ -2761,7 +2759,7 @@ class User extends DataObject
 		if( ! $perm && $assert )
 		{ // We can't let this go on!
 			global $app_name;
-			debug_die( sprintf( /* %s is the application name, usually "b2evolution" */ T_('Group/user permission denied by %s!'), $app_name )." ($permname:$permlevel:".( is_object( $perm_target ) ? get_class( $perm_target ).'('.$perm_target_ID.')' : $perm_target ).")" );
+			debug_die( sprintf( /* %s is the application name, usually "b2evolution" */ T_('Group/user permission denied by %s!'), $app_name )." ($permname:$permlevel:".( is_object( $perm_target ) ? get_class( $perm_target ).'('.$perm_target_ID.')' : ( is_array( $perm_target ) ? implode( ', ', $perm_target ) : $perm_target ) ).")" );
 		}
 
 		if( isset($perm_target_ID) )
@@ -3350,8 +3348,10 @@ class User extends DataObject
 			$FileRootCache = & get_FileRootCache();
 			foreach( $object_ids as $user_ID )
 			{
-				$root_directory = $FileRootCache->get_root_dir( 'user', $user_ID );
-				rmdir_r( $root_directory );
+				if( $root_directory = $FileRootCache->get_root_dir( 'user', $user_ID ) )
+				{ // Delete the folder only when it is detected:
+					rmdir_r( $root_directory );
+				}
 			}
 		}
 
@@ -4033,35 +4033,14 @@ class User extends DataObject
 			global $thumbnail_sizes;
 			if( isset( $thumbnail_sizes[ $thumb_size ] ) )
 			{ // Set a sizes
-				$thumb_width = $thumbnail_sizes[ $thumb_size ][1];
-				$thumb_height = $thumbnail_sizes[ $thumb_size ][2];
-				if( is_null( $File ) )
-				{ // Use the size of thumbnail config if File is not defined
-					$width = $thumb_width;
-					$height = $thumb_height;
+				if( ! is_null( $File ) && $thumb_sizes = $File->get_thumb_size( $thumb_size ) )
+				{ // Get sizes that are used for thumbnail really
+					list( $width, $height ) = $thumb_sizes;
 				}
 				else
-				{ // Try to calculate what sizes are used for thumbnail really
-					list( $orig_width, $orig_height ) = $File->get_image_size( 'widthheight' );
-
-					load_funcs('files/model/_image.funcs.php');
-					if( check_thumbnail_sizes( $thumbnail_sizes[ $thumb_size ][0], $thumb_width, $thumb_height, $orig_width, $orig_height ) )
-					{ // Use the sizes of the original image
-						$width = $orig_width;
-						$height = $orig_height;
-					}
-					else
-					{ // Calculate the sizes depending on thumbnail type
-						if( $thumbnail_sizes[ $thumb_size ][0] == 'fit' )
-						{
-							list( $width, $height ) = scale_to_constraint( $orig_width, $orig_height, $thumb_width, $thumb_height );
-						}
-						else
-						{ // crop & crop-top
-							$width = $thumb_width;
-							$height = $thumb_height;
-						}
-					}
+				{ // Use the size of thumbnail config if File is not defined
+					$width = $thumbnail_sizes[ $thumb_size ][1];
+					$height = $thumbnail_sizes[ $thumb_size ][2];
 				}
 			}
 		}
@@ -4789,14 +4768,16 @@ class User extends DataObject
 		{ // user is only allowed to update him/herself
 			$Messages->add( T_('You are only allowed to update your own profile!'), 'error' );
 			$error_code = 'only_own_profile';
-			return false;
+			$r = false;
+			return $r;
 		}
 
 		if( empty( $file_ID ) )
 		{ // File ID is empty
 			$Messages->add( T_('You did not specify a file.'), 'error' );
 			$error_code = 'wrong_file';
-			return false;
+			$r = false;
+			return $r;
 		}
 
 		$FileCache = & get_FileCache();
@@ -4805,14 +4786,16 @@ class User extends DataObject
 		{ // File does't exist
 			$Messages->add( T_('The requested file does not exist!'), 'error' );
 			$error_code = 'wrong_file';
-			return false;
+			$r = false;
+			return $r;
 		}
 
 		if( $File->_FileRoot->type != 'user' || ( $File->_FileRoot->in_type_ID != $this->ID && ! $can_moderate_user ) )
 		{ // don't allow use the pictures from other users
 			$Messages->add( T_('The requested file doesn\'t belong to this user.'), 'error' );
 			$error_code = 'other_user';
-			return false;
+			$r = false;
+			return $r;
 		}
 
 		return $File;
@@ -5810,10 +5793,10 @@ class User extends DataObject
 	{
 		// Make sure we are not missing any param:
 		$params = array_merge( array(
-				'text' => T_( '%s successfully reported %s spams!' ),
+				'text' => T_( '%s successfully reported %s spams and/or spammers!' ),
 			), $params );
 
-		global $DB;
+		global $DB, $UserSettings;
 
 		$comments_SQL = new SQL( 'Get number of spam votes on comments by this user' );
 		$comments_SQL->SELECT( 'COUNT(*) AS cnt' );
@@ -5829,6 +5812,9 @@ class User extends DataObject
 
 		$votes = $DB->get_var( 'SELECT SUM( cnt )
 			FROM ('.$comments_SQL->get().' UNION ALL '.$links_SQL->get().') AS tbl' );
+
+		// Get spam fighter score for the users that were reported and deleted
+		$votes += intval( $UserSettings->get( 'spam_fighter_score', $this->ID ) );
 
 		return sprintf( $params['text'], $this->login, '<b>'.$votes.'</b>' );
 	}
