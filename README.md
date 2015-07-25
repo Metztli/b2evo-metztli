@@ -1,9 +1,8 @@
 b2evolution on OpenShift
 =========================
-b2evolution is a downloadable, open source (GPL licensed) powerful free blog/CMS engine you can install on Red Hat OpenShift online
-platform as a service (PaaS).
+b2evolution is a downloadable, open source (GPL licensed) powerful free CMS / content / blogs / photos galleries / community / forums / email marketing engine you can quickly install on Red Hat OpenShift online platform as a service (PaaS).
 
-b2evolution is an open source security-conscious -- full-featured -- alternative to WordPress.
+b2evolution is an open source security-conscious, full-featured alternative superseding WordPress.
 
 More information can be found on the official b2evolution website at http://b2evolution.net
 
@@ -43,17 +42,15 @@ rhc cartridge add -c mysql-5.5 -a b2evo
 
 Make a note of the username, password, and host name (for reference purposes since your b2evolution instance will be provided with relevant values).
 
-Add this upstream b2evolution quickstart repo:
+Change to your newly created directory -- which has the same name as your app:
 
 cd b2evo/.
 
+And remove the file:
+
 rm -v index.php
 
-or
-
-rm -v ./*
-
-(please note the leading dot before the frontslash)
+Add this upstream b2evolution quickstart repo:
 
 git remote add upstream -m master git://github.com/Metztli/b2evo-metztli.git
 
@@ -69,24 +66,40 @@ http://b2evo-yourNameSpace.rhcloud.com
 
 Please disregard if you get a message similar to:
 
+..........................................................................................
+The database is not installed yet!
+
+The b2evolution files are present on your server, but it seems the database is not yet set up as expected.
+
+[...]
+
 "You cannot use the application before you finish configuration and installation.
 
 MySQL error:
 Table 'yourAppNameDB.evo_settings' doesn't exist(Errno=1146)"
 
-It only means that the values where taken directly from your OpenShift environment.
+Please use the installer to finish your configuration/installation now.
 
-Proceed to click either of the 'here' links to finish the b2evolution install.
+On most installations, the installer should be here (but I can't be sure since I have no config info available! :P)
+..........................................................................................
+
+It only means that the values were taken directly from your OpenShift environment.
+
+Proceed to select (click) either the above message referenced 'here' link OR the 'Installer' link -- at the upper right options in the page -- to finish the b2evolution install.
 
 Select your language from the upper left cascading menu.
 
-If you are not familiar with blogging in b2evolution, allow the preselected defaults to install three(3) sample blogs.
+Leave the default radio button selected: New Install
 
-Then press the 'GO!'-labeled button at your lower left. Wait a couple of seconds and you will be provided with your
+Select rectangle labeled 'Next' to proceed.
+
+If you are not familiar with blogging in b2evolution, leave check mark on the 6 preselected sample collections/contents.
+
+Then press the 'INSTALL!'-labeled button at your lower left. Wait a couple of seconds for installation to complete and you will be provided with your
 
 default login username: admin
 
-please make a note of your random password and use it for your initial login procedure --you can change it upon logging in.
+Please make a note of your random password and use it for your initial login procedure --you can change it upon logging in.
 
 For security change your default login username and your email address.
 
