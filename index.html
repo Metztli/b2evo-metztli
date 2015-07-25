@@ -18,7 +18,7 @@
 
       <header>
         <h1>B2evo-metztli</h1>
-        <p>b2evolution is a powerful free blog/CMS engine you can install on the OpenShift online platform as a service (PaaS)</p>
+        <p>b2evolution is a powerful free blog/CMS/photo galleries/forums/doc engine you can install on OpenShift online platform as a service (PaaS)</p>
       </header>
 
       <div id="banner">
@@ -42,19 +42,31 @@
         <h1>
 <a id="b2evolution-on-openshift" class="anchor" href="#b2evolution-on-openshift" aria-hidden="true"><span class="octicon octicon-link"></span></a>b2evolution on OpenShift</h1>
 
-<p>b2evolution is a downloadable, open source (GPL licensed) powerful free blog/CMS engine you can install on Red Hat OpenShift online
-platform as a service (PaaS).</p>
+<h1></h1>
 
-<p>b2evolution is an open source security-conscious -- full-featured -- alternative to WordPress.</p>
+<p>b2evolution is a downloadable, open source (GPL licensed), powerful, free PHP engine enabling:
+-CMS
+-content
+-blogs
+-photos galleries
+-community
+-forums
+-email marketing
+-documentation
+With a few clicks you can quickly install on Red Hat OpenShift online platform as a service (PaaS).</p>
 
-<p>More information can be found on the official <a href="http://b2evolution.net">b2evolution website</a></p>
+<p>b2evolution is an open source <strong>security</strong>-conscious, full-featured alternative <em>superseding</em> WordPress.</p>
+
+<p>More information can be found on the official <a href="http://b2evolution.net">b2evolution website</a>.</p>
 
 <h2>
 <a id="running-on-openshift" class="anchor" href="#running-on-openshift" aria-hidden="true"><span class="octicon octicon-link"></span></a>Running on OpenShift</h2>
 
-<p>Create an account at <a href="https://www.openshift.com/">OpenShift by Red Hat</a></p>
+<hr>
 
-<p>I assume that you have installed the rhc command line tools for your operating system, as guided in <a href="https://developers.openshift.com/en/getting-started-overview.html">Getting Started With OpenShift</a></p>
+<p>Create an account at <a href="https://www.openshift.com/">OpenShift</a></p>
+
+<p>I assume that you have installed the rhc command line tools for your operating system, as guided in Getting <a href="https://developers.openshift.com/en/getting-started-overview.html">Started With OpenShift</a></p>
 
 <p>Create a PHP application. Evidently and to make your task ahead easier, create a working directory and change to that location.
 All the rhc commands below are relative to your working directory location.</p>
@@ -69,8 +81,8 @@ All the rhc commands below are relative to your working directory location.</p>
 
 <p>(since as of January 2014, OpenShift added PHP 5.4.)</p>
 
-<p>A new directory named as your application (i.e. b2evo in this case) will be created at your current location. You may examine its content
-for instance: ls -a b2evo/</p>
+<p>A new directory named as your application (i.e. b2evo in this case) will be created at your current location. You may examine its content for instance:
+<code>ls -a b2evo/</code></p>
 
 <p>Add mysql support to your application</p>
 
@@ -84,50 +96,67 @@ for instance: ls -a b2evo/</p>
 
 <p>Make a note of the username, password, and host name (for reference purposes since your b2evolution instance will be provided with relevant values).</p>
 
-<p>Add this upstream b2evolution quickstart repo:</p>
+<p>Change to your newly created directory -- which has the same name as your app:</p>
 
 <p><code>cd b2evo/.</code></p>
 
+<p>And remove the file:</p>
+
 <p><code>rm -v index.php</code></p>
 
-<p>or</p>
-
-<p><code>rm -v ./*</code></p>
-
-<p>(please note the leading dot <em>before</em> the frontslash)</p>
+<p>Add this upstream b2evolution quickstart repo:</p>
 
 <p><code>git remote add upstream -m master git://github.com/Metztli/b2evo-metztli.git</code></p>
 
+<p>Proceed with:</p>
+
 <p><code>git pull -s recursive -X theirs upstream master</code></p>
+
+<p>A subsequent dialog or editor may be activated prompting you to '<em>enter a commit message</em>': you may simply close the dialog or editor.</p>
 
 <p>Then push the repo upstream to OpenShift</p>
 
 <p><code>git push</code></p>
 
-<p>That's it, you can now instantiate your b2evolution application at:</p>
+<p>That's it! You can now instantiate your b2evolution application at:</p>
 
-<p><a href="http://b2evo-yourNameSpace.rhcloud.com">http://b2evo-yourNameSpace.rhcloud.com</a></p>
+<p><a href="http://b2evo-_yourNameSpace_.rhcloud.com">http://b2evo-_yourNameSpace_.rhcloud.com</a></p>
 
 <p>Please disregard if you get a message similar to:</p>
 
-<p>"<em>You cannot use the application before you finish configuration and installation.</em></p>
+<pre><code>The database is not installed yet!
 
-<p><em>MySQL error:</em>
-<em>Table 'yourAppNameDB.evo_settings' doesn't exist(Errno=1146)</em>"</p>
+The b2evolution files are present on your server, but it seems the database is not yet set up as expected.
 
-<p>It only means that the values where taken directly from your OpenShift environment.</p>
+[...]
 
-<p>Proceed to click either of the '<em>here</em>' links to finish the b2evolution install.</p>
+"You cannot use the application before you finish configuration and installation.
+
+MySQL error:
+Table 'yourAppNameDB.evo_settings' doesn't exist(Errno=1146)"
+
+Please use the installer to finish your configuration/installation now.
+
+On most installations, the installer should be **here** (but I can't be sure since I have no config info available! :P)
+</code></pre>
+
+<p>It only means that the values were taken directly from your OpenShift environment.</p>
+
+<p>Proceed to select (click) either the above message referenced '<em>here</em>' link OR the '<em>Installer</em>' link -- at the upper right options in the page -- to finish the b2evolution install.</p>
 
 <p>Select your language from the upper left cascading menu.</p>
 
-<p>If you are not familiar with blogging in b2evolution, allow the preselected defaults to install three(3) sample blogs.</p>
+<p>Leave the default radio button selected: New Install</p>
 
-<p>Then press the '<strong>GO!</strong>'-labeled button at your lower left. Wait a couple of seconds and you will be provided with your</p>
+<p>Select rectangle labeled '<strong>Next</strong>' to proceed.</p>
+
+<p>If you are not familiar with blogging in b2evolution, leave check mark on the 6 preselected sample collections/contents.</p>
+
+<p>Then press the '<strong>INSTALL!</strong>'-labeled button at your lower left. Wait a couple of seconds for installation to complete and you will be provided with your</p>
 
 <p>default login username: <em>admin</em></p>
 
-<p><strong><em>please make a note of your random password and use it for your initial login procedure</em></strong> --you can change it upon logging in.</p>
+<p>Please make a note of your random password and use it for your initial login procedure --you can change it upon logging in.</p>
 
 <p>For security change your default login username and your email address.</p>
 
@@ -140,13 +169,13 @@ application by accessing your (sub)domain URL.</p>
 
 <p>Accordingly, if you have and want to point a domain name (or subdomain) to your b2evo application (recently created), then use form of command below:</p>
 
-<p>rhc alias add b2evo b2evolution.yourDomainName.xyz</p>
+<p><code>rhc alias add b2evo b2evolution._yourDomainName.xyz_</code></p>
 
 <p>Don't forget that you must first modify the CNAME at your domain DNS service provider and it usually takes at least 12hours for it to propagate.</p>
 
 <p>Thus, as an example to guide you in your CNAME settings:</p>
 
-<p>b2evolution.yourDomainName.xyz       should point to        b2evo-yourNameSpace.rhcloud.com</p>
+<p>b2evolution.<em>yourDomainName.xyz</em>    should point to     b2evo-<em>yourNameSpace</em>.rhcloud.com</p>
 
 <hr>
 
