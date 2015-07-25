@@ -44,16 +44,20 @@
 
 <h1></h1>
 
-<p>b2evolution is a downloadable, open source (GPL licensed), powerful, free PHP engine enabling:
--CMS
--content
--blogs
--photos galleries
--community
--forums
--email marketing
--documentation
-With a few clicks you can quickly install on Red Hat OpenShift online platform as a service (PaaS).</p>
+<p>b2evolution is a downloadable, open source (GPL licensed), powerful, free PHP engine enabling:</p>
+
+<ul>
+<li>CMS</li>
+<li>content</li>
+<li>blogs</li>
+<li>photos galleries</li>
+<li>community</li>
+<li>forums</li>
+<li>email marketing</li>
+<li>documentation</li>
+</ul>
+
+<p>With a few clicks you can quickly install on Red Hat OpenShift online platform as a service (PaaS).</p>
 
 <p>b2evolution is an open source <strong>security</strong>-conscious, full-featured alternative <em>superseding</em> WordPress.</p>
 
@@ -81,8 +85,9 @@ All the rhc commands below are relative to your working directory location.</p>
 
 <p>(since as of January 2014, OpenShift added PHP 5.4.)</p>
 
-<p>A new directory named as your application (i.e. b2evo in this case) will be created at your current location. You may examine its content for instance:
-<code>ls -a b2evo/</code></p>
+<p>A new directory named as your application (i.e. b2evo in this case) will be created at your current location. You may examine its content for instance:</p>
+
+<p><code>ls -a b2evo/</code></p>
 
 <p>Add mysql support to your application</p>
 
@@ -120,7 +125,7 @@ All the rhc commands below are relative to your working directory location.</p>
 
 <p>That's it! You can now instantiate your b2evolution application at:</p>
 
-<p><a href="http://b2evo-_yourNameSpace_.rhcloud.com">http://b2evo-_yourNameSpace_.rhcloud.com</a></p>
+<p>http:\/\/b2evo-<em>yourNameSpace</em>.rhcloud.com</p>
 
 <p>Please disregard if you get a message similar to:</p>
 
@@ -162,14 +167,14 @@ On most installations, the installer should be **here** (but I can't be sure sin
 
 <hr>
 
-<p>Huelmati [enjoy]!</p>
+<p><em><em>Huelmati</em></em> [<em>enjoy</em>]!</p>
 
 <p>Note: of course, if you used CNAME to point your (sub)domain name to your OpenShift application, then setup your b2evolution
 application by accessing your (sub)domain URL.</p>
 
 <p>Accordingly, if you have and want to point a domain name (or subdomain) to your b2evo application (recently created), then use form of command below:</p>
 
-<p><code>rhc alias add b2evo b2evolution._yourDomainName.xyz_</code></p>
+<p><code>rhc alias add b2evo b2evolution.yourDomainName.xyz</code></p>
 
 <p>Don't forget that you must first modify the CNAME at your domain DNS service provider and it usually takes at least 12hours for it to propagate.</p>
 
