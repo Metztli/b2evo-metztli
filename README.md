@@ -56,6 +56,8 @@ git remote add upstream -m master git://github.com/Metztli/b2evo-metztli.git
 
 git pull -s recursive -X theirs upstream master
 
+A subsequent dialog or editor may be activated prompting you to 'enter a commit message': you may simply close the dialog or editor.
+
 Then push the repo upstream to OpenShift
 
 git push
@@ -67,6 +69,7 @@ http://b2evo-yourNameSpace.rhcloud.com
 Please disregard if you get a message similar to:
 
 ..........................................................................................
+
 The database is not installed yet!
 
 The b2evolution files are present on your server, but it seems the database is not yet set up as expected.
