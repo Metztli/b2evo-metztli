@@ -41,13 +41,13 @@ $Form->hidden( 'action', 'settings' );
 
 if( $current_User->check_perm( 'emails', 'edit' ) )
 {
-	$Form->begin_fieldset( T_('Test saved settings') );
+	$Form->begin_fieldset( T_('Test saved settings').get_manual_link( 'return-path-configuration' ) );
 
 		$url = '?ctrl=email&amp;tab=settings&amp;tab3=returned&amp;'.url_crumb('emailsettings').'&amp;action=';
 		$Form->info_field( T_('Perform tests'),
 					'<a href="'.$url.'test_1">['.T_('server connection').']</a>&nbsp;&nbsp;'.
 					'<a href="'.$url.'test_2">['.T_('get one returned email').']</a>&nbsp;&nbsp;'.
-					'<a href="'.$url.'test_3">['.T_('Copy/Paste an error message').']</a>' );
+					'<a href="'.$url.'test_3">['.T_('Paste an error message/returned email').']</a>' );
 
 		if( $action == 'test_3' )
 		{ // Display a textarea to fill a sample error message

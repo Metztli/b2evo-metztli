@@ -155,7 +155,7 @@ class messaging_Module extends Module
 				$max_new_threads = ''; // empty = no limit
 				break;
 			case 2: // Moderators group equals 2
-			case 3: // Trusted users group ID equals 3
+			case 3: // Editors group ID equals 3
 				$perm_messaging = 'write'; // Messaging permissions
 				$max_new_threads = '10'; // Maximum number of new threads per day
 				break;
@@ -544,8 +544,8 @@ class messaging_Module extends Module
 						else
 						{
 							$delete_url = $samedomain_htsrv_url.'action.php?mname=messaging&thrd_ID='.$edited_Thread->ID.'&action=delete&confirmed=1&redirect_to='.$redirect_to.'&'.url_crumb( 'messaging_threads' );
-							$ok_button = '<span class="linkbutton"><a href="'.$delete_url.'">'.T_( 'I am sure!' ).'!</a></span>';
-							$cancel_button = '<span class="linkbutton"><a href="'.$redirect_to.'">CANCEL</a></span>';
+							$ok_button = '<a href="'.$delete_url.'" class="btn btn-danger">'.T_( 'I am sure!' ).'</a>';
+							$cancel_button = '<a href="'.$redirect_to.'" class="btn btn-default">CANCEL</a>';
 							$msg = sprintf( T_( 'You are about to delete all messages in the conversation &laquo;%s&raquo;.' ), $edited_Thread->dget('title') );
 							$msg .= '<br />'.T_( 'This CANNOT be undone!').'<br />'.T_( 'Are you sure?' ).'<br /><br />'.$ok_button."\t".$cancel_button;
 							$Messages->add( $msg, 'error' );
@@ -650,10 +650,14 @@ class messaging_Module extends Module
 						else
 						{
 							$delete_url = $samedomain_htsrv_url.'action.php?mname=messaging&disp=messages&thrd_ID='.$thrd_ID.'&msg_ID='.$msg_ID.'&action=delete&confirmed=1';
+							if( ! empty( $Blog ) )
+							{ // Add blog ID to correctly redirect after deleting:
+								$delete_url .= '&blog='.$Blog->ID;
+							}
 							$delete_url = url_add_param( $delete_url, 'redirect_to='.rawurlencode( $redirect_to ), '&' ).'&'.url_crumb( 'messaging_messages' );
-							$ok_button = '<span class="linkbutton"><a href="'.$delete_url.'">'.T_( 'I am sure!' ).'!</a></span>';
-							$cancel_button = '<span class="linkbutton"><a href="'.$redirect_to.'">CANCEL</a></span>';
-							$msg = T_('You are about to delete this message. ').'<br /> '.T_('This CANNOT be undone!').'<br />'.T_( 'Are you sure?' ).'<br /><br />'.$ok_button.$cancel_button;
+							$ok_button = '<a href="'.$delete_url.'" class="btn btn-danger">'.T_('I am sure!').'</a>';
+							$cancel_button = '<a href="'.$redirect_to.'" class="btn btn-default">'.T_('CANCEL').'</a>';
+							$msg = T_('You are about to delete this message. ').'<br /> '.T_('This CANNOT be undone!').'<br />'.T_( 'Are you sure?' ).'<br /><br />'.$ok_button."\t".$cancel_button;
 							$Messages->add( $msg, 'error' );
 						}
 						break;

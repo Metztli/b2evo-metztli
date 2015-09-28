@@ -282,14 +282,14 @@ switch( $action )
 		if( $edited_Itemtype && ! ItemType::is_reserved( $edited_Itemtype->ID ) )
 		{ // Do only when item type exists in DB
 			if( $action == 'enable' )
-			{ // Enable item type for the blog
+			{ // Enable item type for the collection
 				$DB->query( 'REPLACE INTO T_items__type_coll
 								 ( itc_ityp_ID, itc_coll_ID )
 					VALUES ( '.$DB->quote( $edited_Itemtype->ID ).', '.$DB->quote( $blog ).' )' );
 				$Messages->add( T_('Post type has been enabled for this collection.'), 'success' );
 			}
-			else
-			{ // Disable item type for the blog
+			elseif( $Blog->can_be_item_type_disabled( $edited_Itemtype->ID, true ) )
+			{ // Disable item type for the collection only if it is allowed:
 				$DB->query( 'DELETE FROM T_items__type_coll
 					WHERE itc_ityp_ID = '.$DB->quote( $edited_Itemtype->ID ).'
 					  AND itc_coll_ID = '.$DB->quote( $blog ) );
@@ -310,7 +310,22 @@ $AdminUI->breadcrumbpath_init( true, array( 'text' => T_('Collections'), 'url' =
 $AdminUI->breadcrumbpath_add( T_('Settings'), $admin_url.'?ctrl=coll_settings&amp;blog=$blog$&amp;tab=general' );
 $AdminUI->breadcrumbpath_add( T_('Post Types'), $admin_url.'?ctrl=itemtypes&amp;blog=$blog$&amp;tab=settings&amp;tab3=types' );
 
-$AdminUI->set_page_manual_link( 'managing-item-types' );
+// Set an url for manual page:
+switch( $action )
+{
+	case 'delete':
+	case 'new':
+	case 'create':
+	case 'create_new':
+	case 'create_copy':
+	case 'edit':
+	case 'update':
+		$AdminUI->set_page_manual_link( 'item-custom-fields' );
+		break;
+	default:
+		$AdminUI->set_page_manual_link( 'managing-item-types' );
+		break;
+}
 
 // Display <html><head>...</head> section! (Note: should be done early if actions do not redirect)
 $AdminUI->disp_html_head();

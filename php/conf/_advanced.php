@@ -805,13 +805,17 @@ $failed_logins_lockout = 600; // 10 minutes
 
 
 /**
- * Allow redirects to different domain. Usually it should not be allowed to redirect to an external URL.
+ * Most of the time, the best security practice is to NOT allow redirects from your current site to another domain.
+ * That is, unless you specifically configured a redirected post.
+ * If this doesn't work for you, you can change this security policy here.
+ *
  * Possible values:
- *  - 'always' : Always allow redirect to a different domain
- *  - 'only_redirected_posts' ( Default ): Allow redirects to a different domain only in case of posts with redirected status
- *  - 'never' : Force redirects to the same domain in all of the cases, and never allow redirect to a different domain
+ *  - 'always' : Always allow redirects to a different domain
+ *  - 'all_collections_and_redirected_posts' ( Default ): Allow redirects to all collection domains or redirect of posts with redirected status
+ *  - 'only_redirected_posts' : Allow redirects to a different domain only in case of posts with redirected status
+ *  - 'never' : Force redirects to the current domain in all case, and never allow redirects to a different domain
  */
-$allow_redirects_to_different_domain = 'only_redirected_posts';
+$allow_redirects_to_different_domain = 'all_collections_and_redirected_posts';
 
 
 /**
@@ -830,8 +834,7 @@ $sendmail_additional_params = '-r $return-address$';
  *
  * @global boolean $use_cdns
  */
-$use_cdns = true;
-
+$use_cdns = false;		// Use false by default so b2evo works on intranets, local tests on laptops and in countries with firewalls...
 
 /**
  * Which CDN do you want to use for loading common libraries?
@@ -839,9 +842,11 @@ $use_cdns = true;
  * If you don't want to use a CDN and want to use the local version, comment out the line.
  * Each line starts with the js or css alias.
  * The first string is the production (minified URL), the second is the development URL (optional).
+ * By default, only the most trusted CDNs are enabled while the other ones are commented out.
  */
 $library_cdn_urls = array(
 		'#jquery#' => array( '//code.jquery.com/jquery-1.11.1.min.js', '//code.jquery.com/jquery-1.11.1.js' ),
+		// jqueryUI is commented out because b2evo uses only a subset... ?
 		//'#jqueryUI#' => array( '//code.jquery.com/ui/1.10.4/jquery-ui.min.js', '//code.jquery.com/ui/1.10.4/jquery-ui.js' ),
 		//'#jqueryUI_css#' => array( '//code.jquery.com/ui/1.10.4/themes/smoothness/jquery-ui.min.css', '//code.jquery.com/ui/1.10.4/themes/smoothness/jquery-ui.css' ),
 		'#bootstrap#' => array( '//netdna.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js', '//netdna.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.js' ),
@@ -913,6 +918,17 @@ $library_local_urls = array(
 		'#jcrop#' => array( 'jquery/jquery.jcrop.min.js', 'jquery/jquery.jcrop.js' ),
 		'#jcrop_css#' => array( 'jquery/jcrop/jquery.jcrop.min.css', 'jquery/jcrop/jquery.jcrop.css' ),
 	);
+
+
+/**
+ * Proxy configuration for all outgoing connections (like pinging b2evolution.net or twitter, etc...)
+ * Leave empty if you don't want to use a proxy.
+ */
+$outgoing_proxy_hostname = '';
+$outgoing_proxy_port = '';
+$outgoing_proxy_username = '';
+$outgoing_proxy_password = '';
+
 
 // ----- CHANGE THE FOLLOWING SETTINGS ONLY IF YOU KNOW WHAT YOU'RE DOING! -----
 $evonetsrv_host = 'rpc.b2evo.net';

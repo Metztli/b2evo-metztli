@@ -81,7 +81,7 @@ while( $Item = & mainlist_get_item() )
 						'time_format' => 'F jS, Y',
 					) );
 				$Item->issue_time( array(
-						'before'      => /* TRANS: time */ T_('at '),
+						'before'      => /* TRANS: at (time) */ T_('at').' ',
 						'time_format' => '#short_time',
 					) );
 				$Item->author( array(
@@ -117,7 +117,7 @@ while( $Item = & mainlist_get_item() )
 			}
 			// ---------------------- POST CONTENT INCLUDED HERE ----------------------
 			skin_include( '_item_content.inc.php', array(
-					'image_size' => 'fit-400x320',
+					'image_size' => 'fit-256x256',
 				) );
 			// Note: You can customize the default item content by copying the generic
 			// /skins/_item_content.inc.php file into the current skin folder.

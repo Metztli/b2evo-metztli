@@ -147,6 +147,7 @@ function antispam_report_abuse( $abuse_string )
 {
 	global $debug, $antispamsrv_host, $antispamsrv_port, $antispamsrv_uri, $antispam_test_for_real;
 	global $baseurl, $Messages, $Settings;
+	global $outgoing_proxy_hostname, $outgoing_proxy_port, $outgoing_proxy_username, $outgoing_proxy_password;
 
 	if( ! $Settings->get('antispam_report_to_central') )
 	{
@@ -165,6 +166,12 @@ function antispam_report_abuse( $abuse_string )
 	$client = new xmlrpc_client( $antispamsrv_uri, $antispamsrv_host, $antispamsrv_port );
 	// yura: I commented this because xmlrpc_client prints the debug info on screen and it breaks header_redirect()
 	// $client->debug = $debug;
+
+	// Set proxy for outgoing connections:
+	if( ! empty( $outgoing_proxy_hostname ) )
+	{
+		$client->setProxy( $outgoing_proxy_hostname, $outgoing_proxy_port, $outgoing_proxy_username, $outgoing_proxy_password );
+	}
 
 	// Construct XML-RPC message:
 	$message = new xmlrpcmsg(
@@ -201,12 +208,19 @@ function antispam_report_abuse( $abuse_string )
 function antispam_poll_abuse()
 {
 	global $Messages, $Settings, $baseurl, $debug, $antispamsrv_host, $antispamsrv_port, $antispamsrv_uri;
+	global $outgoing_proxy_hostname, $outgoing_proxy_port, $outgoing_proxy_username, $outgoing_proxy_password;
 
 	// Construct XML-RPC client:
 	load_funcs('xmlrpc/model/_xmlrpc.funcs.php');
 	$client = new xmlrpc_client( $antispamsrv_uri, $antispamsrv_host, $antispamsrv_port );
 	// yura: I commented this because xmlrpc_client prints the debug info on screen and it breaks header_redirect()
 	// $client->debug = $debug;
+
+	// Set proxy for outgoing connections:
+	if( ! empty( $outgoing_proxy_hostname ) )
+	{
+		$client->setProxy( $outgoing_proxy_hostname, $outgoing_proxy_port, $outgoing_proxy_username, $outgoing_proxy_password );
+	}
 
 	// Get datetime from last update, because we only want newer stuff...
 	$last_update = $Settings->get( 'antispam_last_update' );
@@ -501,8 +515,7 @@ function antispam_block_request()
 		    $Domain->get( 'status' ) == 'blocked' )
 		{ // The request from this domain must be blocked
 			$debug_message = sprintf( 'A request from \'%s\' domain was blocked because of this domain is blocked.', $user_domain );
-			syslog_insert( $debug_message, 'warning' );
-			debug_die( 'This request has been blocked.', array( 'debug_info' => $debug_message ) );
+			exit_blocked_request( 'Domain', $debug_message ); // WILL exit();
 		}
 
 		load_funcs('sessions/model/_hitlog.funcs.php');
@@ -512,8 +525,7 @@ function antispam_block_request()
 		    $Domain->get( 'status' ) == 'blocked' )
 		{ // The request from this domain must be blocked
 			$debug_message = sprintf( 'A request from \'%s\' initial referer was blocked because of a blocked domain.', $initial_referer );
-			syslog_insert( $debug_message, 'warning' );
-			debug_die( 'This request has been blocked.', array( 'debug_info' => $debug_message ) );
+			exit_blocked_request( 'Domain', $debug_message ); // WILL exit();
 		}
 	}
 
@@ -560,8 +572,7 @@ function antispam_block_by_ip()
 			WHERE aipr_ID = '.$DB->quote( $ip_range_ID ) );
 
 		$debug_message = sprintf( 'A request with ( %s ) ip addresses was blocked because of a blocked IP range ID#%s.', implode( ', ', $request_ip_list ), $ip_range_ID );
-		syslog_insert( $debug_message, 'warning' );
-		debug_die( 'This request has been blocked.', array( 'debug_info' => $debug_message ) );
+		exit_blocked_request( 'IP', $debug_message ); // WILL exit();
 	}
 }
 
@@ -585,8 +596,7 @@ function antispam_block_by_country( $country_ID, $assert = true )
 		if( $assert )
 		{ // block the request
 			$debug_message = sprintf( 'A request from \'%s\' was blocked because of this country is blocked.', $Country->get_name() );
-			syslog_insert( $debug_message, 'warning' );
-			debug_die( 'This request has been blocked.', array( 'debug_info' => $debug_message ) );
+			exit_blocked_request( 'Country', $debug_message ); // WILL exit();
 		}
 		// Update the number of requests from blocked countries
 		$DB->query( 'UPDATE T_regional__country

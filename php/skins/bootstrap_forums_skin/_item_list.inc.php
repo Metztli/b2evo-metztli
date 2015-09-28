@@ -35,15 +35,17 @@ if( ! is_array( $legend_icons ) )
 	$legend_icons = array();
 }
 
+// Calculate what comments has the Item:
 $comments_number = generic_ctp_number( $Item->ID, 'comments', get_inskin_statuses( $Item->get_blog_ID(), 'comment' ) );
 
 $status_icon = 'fa-comments';
 $status_title = '';
-$status_alt = T_('No new posts');
+$status_alt = T_('Discussion topic');
 $legend_icons['topic_default'] = 1;
 if( $Item->is_featured() || $Item->is_intro() )
 { // Special icon for featured & intro posts
 	$status_icon = 'fa-bullhorn';
+	$status_alt = T_('Sticky topic / Announcement');
 	$status_title = '<strong>'.T_('Sticky').':</strong> ';
 	$legend_icons['topic_sticky'] = 1;
 }
@@ -54,8 +56,9 @@ elseif( $Item->comment_status == 'closed' || $Item->comment_status == 'disabled'
 	$legend_icons['topic_locked'] = 1;
 }
 elseif( $comments_number > 25 )
-{ // Popular topic
+{ // Popular topic is when coummnets number is more than 25
 	$status_icon = 'fa-star';
+	$status_alt = T_('Popular topic');
 	$legend_icons['topic_popular'] = 1;
 }
 ?>
@@ -70,6 +73,16 @@ elseif( $comments_number > 25 )
 					if( $Item->Blog->get_setting( 'track_unread_content' ) )
 					{ // Display icon about unread status
 						$Item->display_unread_status();
+						// Update legend array to display the unread status icons in footer legend:
+						switch( $Item->get_read_status() )
+						{
+							case 'new':
+								$legend_icons['topic_new'] = 1;
+								break;
+							case 'updated':
+								$legend_icons['topic_updated'] = 1;
+								break;
+						}
 					}
 					// Title:
 					$Item->title( array(
@@ -125,7 +138,8 @@ elseif( $comments_number > 25 )
 								'before_user' => '',
 								'after_user'  => '',
 								'link_text'   => 'only_avatar',
-								'link_class'  => 'ft_author_avatar'
+								'link_class'  => 'ft_author_avatar',
+								'thumb_class' => 'ft_author_avatar',
 							) );
 					$latest_Comment->date('D M j, Y H:i');
 					$latest_Comment->author2( array(

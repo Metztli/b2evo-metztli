@@ -1,5 +1,3 @@
-/* Designed by Francois PLANQUE - http://fplanque.net/ */
-
 body {
 	background: #fff;
 	padding: 0px;
@@ -284,7 +282,8 @@ div.pageTop a.selected:hover {
 	background-color: #D1D7DC;
 	font-size: 12px;
 }
-.bForums td.row2 a, .bForums td.row3 a{
+.bForums td.row2 a, .bForums td.row3 a,
+.bForums td.row2 .user, .bForums td.row3 .user{
 	font-weight: normal;
 }
 .bForums td.left{
@@ -462,8 +461,8 @@ textarea.bComment
 	padding: 2px;
 	margin: 0ex;
 }
-select.bComment  /* Used by the profile form */
-{
+select.bComment {
+	/* Used by the profile form */
 	background-color: #eee;
 	border: 1px solid #ccc;
 	padding: 1px;

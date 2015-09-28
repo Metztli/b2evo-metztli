@@ -187,6 +187,9 @@ else
 	$AdminUI->set_path( 'messaging', 'threads' );
 }
 
+// Set an url for manual page:
+$AdminUI->set_page_manual_link( 'messages-view-thread' );
+
 init_plugins_js( 'rsc_url', $AdminUI->get_template( 'tooltip_plugin' ) );
 
 // Display messages depending on user email status
@@ -224,10 +227,10 @@ switch( $action )
 		// Display messages list:
 		$action = $action == 'preview' ? $action : 'create';
 		$AdminUI->disp_view( 'messaging/views/_message_list.view.php', array(
-				'messages_list_title_start' => '',
-				'messages_list_title_end'   => '',
 				'messages_list_form_start'  => '',
 				'messages_list_form_end'    => '',
+				'messages_list_body_start'  => '',
+				'messages_list_body_end'    => '',
 			) );
 		break;
 }

@@ -685,6 +685,12 @@ class User extends DataObject
 
 			foreach( $userfield_IDs as $userfield )
 			{
+				if( ! isset( $this->userfield_defs[$userfield->uf_ufdf_ID] ) )
+				{	// If user field definition doesn't exist in DB then delete field value of this user:
+					$this->userfield_update( $userfield->uf_ID, NULL );
+					continue;
+				}
+
 				$field_type = ( $this->userfield_defs[$userfield->uf_ufdf_ID][0] == 'text' ) ? 'text' : 'string';
 				$uf_val = param( 'uf_'.$userfield->uf_ID, $field_type, '' );
 
@@ -1880,13 +1886,13 @@ class User extends DataObject
 		global $Blog;
 
 		if( ! $Settings->get( 'fm_enable_roots_user' ) )
-		{	// User directories are disabled:
+		{ // User directories are disabled:
 			$Debuglog->add( 'Attempt to access user media URL, but this feature is disabled', 'files' );
 			return false;
 		}
 
-		if( isset($Blog) )
-		{	// We are currently looking at a blog. We are going to consider (for now) that we want the users and their files
+		if( ! empty( $Blog ) )
+		{ // We are currently looking at a blog. We are going to consider (for now) that we want the users and their files
 			// to appear as being part of that blog.
 			return $Blog->get_local_media_url().$this->get_media_subpath();
 		}
@@ -2882,9 +2888,9 @@ class User extends DataObject
 
 
 	/**
-	 * Check if user status permit the give action
+	 * Check if user status permits the requested action
 	 *
-	 * @param string action
+	 * @param string requested action
 	 * @param integger target ID - can be a post ID, user ID
 	 * @return boolean true if the action is permitted, false otherwise
 	 */
@@ -3070,11 +3076,13 @@ class User extends DataObject
 
 
 	/**
-	 * Get messaging possibilities between current user and this user
+	 * Get messaging possibilities between current user and $this user
 	 *
+	 * @param object Current User (the one trying to send the PM)
+	 * @param string Type of contact method to check first: 'PM' > 'email'  
 	 * @return NULL|string allowed messaging possibility: PM > email > login > NULL
 	 */
-	function get_msgform_possibility( $current_User = NULL )
+	function get_msgform_possibility( $current_User = NULL, $check_level = 'PM' )
 	{
 		global $DB;
 
@@ -3085,16 +3093,16 @@ class User extends DataObject
 		$check_owner_SQL->LIMIT( '1' );
 
 		if( $DB->get_var( $check_owner_SQL->get() ) )
-		{ // Allow to contact with this user because he is owner of at least one blog
-			$force_contact_blog_owner = true;
+		{ // Always allow to contact this user because he is owner of at least one collection:
+			$is_collection_owner = true;
 		}
 		else
 		{
-			$force_contact_blog_owner = false;
+			$is_collection_owner = false;
 		}
 
-		if( ! $force_contact_blog_owner && ! $this->check_status( 'can_receive_any_message' ) )
-		{ // there is no way to send a message to a user with closed account
+		if( ! $is_collection_owner && ! $this->check_status( 'can_receive_any_message' ) )
+		{ // In case of a closed account:
 			return NULL;
 		}
 
@@ -3104,11 +3112,13 @@ class User extends DataObject
 			{
 				global $current_User;
 			}
-			if( ! $force_contact_blog_owner && has_cross_country_restriction( 'contact' ) && ( empty( $current_User->ctry_ID ) || ( $current_User->ctry_ID !== $this->ctry_ID ) ) )
+
+			if( ! $is_collection_owner && has_cross_country_restriction( 'contact' ) && ( empty( $current_User->ctry_ID ) || ( $current_User->ctry_ID !== $this->ctry_ID ) ) )
 			{ // Contat to this user is not enabled
 				return NULL;
 			}
-			if( $this->accepts_pm() && $current_User->accepts_pm() && ( $this->ID != $current_User->ID ) )
+
+			if( $check_level == 'PM' && $this->accepts_pm() && $current_User->accepts_pm() && ( $this->ID != $current_User->ID ) )
 			{ // both user has permission to send or receive private message and not the same user
 				// check if current_User is allowed to create a new conversation with this user.
 				$blocked_contact = check_blocked_contacts( array( $this->ID ) );
@@ -3117,17 +3127,19 @@ class User extends DataObject
 					return 'PM';
 				}
 			}
-			if( $force_contact_blog_owner || $this->accepts_email() )
-			{ // this user allows email => send email OR Force to allow to contact with this user because he is owner of the selected blog
+
+			if( $is_collection_owner || $this->accepts_email() )
+			{ // This User allows email => send email OR Force to allow to contact with this user because he is owner of the selected collection:
 				return 'email';
 			}
 		}
 		else
 		{ // current User is not logged in
-			if( $force_contact_blog_owner || $this->accepts_email() )
-			{ // this user allows email OR Force to allow to contact with this user because he is owner of the selected blog
+			if( $is_collection_owner || $this->accepts_email() )
+			{ // This User allows email => send email OR Force to allow to contact with this user because he is owner of the selected collection:
 				return 'email';
 			}
+
 			if( $this->accepts_pm() )
 			{ // no email option - try to log in and send private message (only registered users can send PM)
 				return 'login';
@@ -5537,12 +5549,31 @@ class User extends DataObject
 		}
 
 		if( $total_num_posts > 0 )
-		{ // Make a link to page with user's posts
-			$total_num_posts = '<a href="'.get_dispctrl_url( 'useritems', 'user_ID='.$this->ID ).'"><b>'.$total_num_posts.'</b></a>';
+		{	// Make a link to page with user's posts:
+			global $current_User;
+			if( is_admin_page() && is_logged_in() &&
+			    ( $this->ID == $current_User->ID || $current_User->check_perm( 'users', 'view' ) ) )
+			{	// For back-office
+				global $admin_url;
+				$total_num_posts_url = $admin_url.'?ctrl=user&amp;user_tab=activity&amp;user_ID='.$this->ID;
+			}
+			else
+			{	// For front-office
+				global $Blog;
+				if( ! empty( $Blog ) )
+				{	// Only if blog is defined
+					$total_num_posts_url = url_add_param( $Blog->gen_blogurl(), 'disp=useritems&amp;user_ID='.$this->ID );
+				}
+			}
+		}
+
+		if( empty( $total_num_posts_url ) )
+		{	// No link to view posts
+			$total_num_posts = '<b>'.$total_num_posts.'</b>';
 		}
 		else
-		{
-			$total_num_posts = '<b>'.$total_num_posts.'</b>';
+		{	// Set a posts number as link if it is allowed:
+			$total_num_posts = '<a href="'.$total_num_posts_url.'"><b>'.$total_num_posts.'</b></a>';
 		}
 
 		return sprintf( $params['text'], $total_num_posts, $public_percent );
@@ -5849,6 +5880,11 @@ class User extends DataObject
 	 */
 	function can_moderate_user( $user_ID, $assert = false )
 	{
+		if( $this->ID == $user_ID )
+		{	// User can edit own profile
+			return true;
+		}
+
 		if( $this->check_perm( 'users', 'edit' ) )
 		{ // User can edit all users
 			return true;

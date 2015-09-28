@@ -1,4 +1,3 @@
-/* Designed by Francois PLANQUE - http://fplanque.net/ */
 body {
 	padding: 0px;
 	margin: 0px;
@@ -292,8 +291,8 @@ textarea.bComment
 	padding: 2px;
 	margin: 0ex;
 }
-select.bComment  /* Used by the profile form */
-{
+select.bComment {
+	/* Used by the profile form */
 	background-color: #eee;
 	border: 1px solid #ccc;
 	padding: 1px;
@@ -476,6 +475,9 @@ ul.posts_list {
 }
 ul.chapters_list ul {
 	padding: 0;
+}
+ul.chapters_list > ul ul {
+	margin: 0 0 0 20px;
 }
 ul.chapters_list li,
 ul.posts_list li {

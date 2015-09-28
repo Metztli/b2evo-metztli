@@ -280,7 +280,13 @@ switch( $action )
 		$Settings->set( 'site_footer_text', param( 'site_footer_text', 'string', '' ) );
 
 		// Enable site skins
+		$old_site_skins_enabled = $Settings->get( 'site_skins_enabled' );
 		$Settings->set( 'site_skins_enabled', param( 'site_skins_enabled', 'integer', 0 ) );
+		if( $old_site_skins_enabled != $Settings->get( 'site_skins_enabled' ) )
+		{ // If this setting has been changed we should clear all page caches:
+			load_funcs( 'tools/model/_dbmaintenance.funcs.php' );
+			dbm_delete_pagecache( false );
+		}
 
 		// Default blog
 		$Settings->set( 'default_blog_ID', param( 'default_blog_ID', 'integer', 0 ) );
@@ -338,6 +344,9 @@ switch( $tab )
 		$AdminUI->breadcrumbpath_init( false );
 		$AdminUI->breadcrumbpath_add( T_('Site'), $admin_url.'?ctrl=dashboard' );
 		$AdminUI->breadcrumbpath_add( T_('Site Settings'), $admin_url.'?ctrl=collections&amp;tab=site_settings' );
+
+		$AdminUI->set_page_manual_link( 'site-settings' );
+
 		init_colorpicker_js();
 		break;
 
@@ -354,6 +363,9 @@ switch( $tab )
 		$AdminUI->breadcrumbpath_add( T_('Settings'), $admin_url.'?ctrl=coll_settings&amp;tab=general&amp;blog=$blog$' );
 		$AdminUI->breadcrumbpath_add( T_('Common Settings'), $admin_url.'?ctrl=collections&amp;tab=blog_settings&amp;blog=$blog$' );
 
+		// Set an url for manual page:
+		$AdminUI->set_page_manual_link( 'global-collection-settings' );
+
 		// Init params to display a panel with blog selectors
 		$AdminUI->set_coll_list_params( 'blog_ismember', 'view', array( 'ctrl' => 'collections', 'tab' => 'blog_settings' ) );
 		break;
@@ -367,6 +379,20 @@ switch( $tab )
 
 		$AdminUI->breadcrumbpath_init( false, array( 'text' => T_('Collections'), 'url' => $admin_url.'?ctrl=dashboard&amp;blog=$blog$' ) );
 		$AdminUI->breadcrumbpath_add( T_('New Collection'), $admin_url.'?ctrl=collections&amp;action=new' );
+
+		// Set an url for manual page:
+		switch( $action )
+		{
+			case 'new-selskin':
+				$AdminUI->set_page_manual_link( 'pick-skin-for-new-collection' );
+				break;
+			case 'new-name':
+				$AdminUI->set_page_manual_link( 'new-collection-settings' );
+				break;
+			default:
+				$AdminUI->set_page_manual_link( 'create-collection-select-type' );
+				break;
+		}
 		break;
 
 	case 'delete':

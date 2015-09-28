@@ -283,14 +283,42 @@ span.loader_img.loader_user_report,
 span.loader_img.loader_user_deldata {
   background-image: url(../img/ajax-loader/777.gif);
 }
+.widget_core_coll_category_list label {
+  font-weight: normal;
+}
+.widget_core_coll_category_list ul {
+  margin-left: 0;
+}
+.widget_core_coll_category_list ul ul {
+  margin-left: 19px;
+}
+.widget_core_coll_category_list li {
+  list-style: none;
+}
+.widget_core_coll_category_list input[type="checkbox"],
+.widget_core_coll_category_list input[type="radio"] {
+  margin: 0;
+  display: inline-block;
+}
 .widget_core_coll_category_list .meta {
   font-weight: bold;
+  color: #000;
+  list-style: square;
+  margin-left: 20px;
+}
+.widget_core_coll_category_list .meta label,
+.widget_core_coll_category_list .meta a {
+  font-weight: bold;
+  color: #000;
 }
 .widget_core_coll_category_list .meta ul {
   font-weight: normal;
 }
 .widget_core_coll_category_list .meta input[disabled="disabled"] {
-  visibility: hidden;
+  display: none;
+}
+.widget_core_coll_category_list .tile label {
+  display: inline;
 }
 .filter_item {
   display: inline-block;
@@ -560,7 +588,7 @@ div.dev-blocks--widget--notincache > .dev-blocks-name {
 div.dev-blocks--belowtoolbar {
   margin: 27px 0 -27px 0;
 }
-a[rel~=nofollow]:hover {
+a[rel~=nofollow]:not([class~=btn]):hover {
   background: #f8e0e0;
   -moz-border-radius: 2px;
   -webkit-border-radius: 2px;
@@ -1025,31 +1053,6 @@ textarea.form_textarea_input {
 label.radiooption {
   margin-right: 1em;
 }
-.linkbutton {
-  border: 1px solid #bbb;
-  margin-right: 5px;
-  padding: 2px 3px;
-  font: normal 12px Arial, Sans-serif;
-  height: 30px;
-  background-color: #EEEEEE;
-  cursor: pointer;
-  -moz-border-radius: 3px;
-  -khtml-border-radius: 3px;
-  -webkit-border-radius: 3px;
-  border-radius: 3px;
-}
-.linkbutton:hover {
-  background-color: #DEF2FC;
-}
-.linkbutton a {
-  background-color: transparent;
-  text-decoration: none;
-  color: #000;
-}
-.linkbutton a:hover {
-  text-decoration: none;
-  color: #000;
-}
 div.log_container ul,
 div.action_messages ul,
 div.log_container ol,
@@ -1322,15 +1325,6 @@ ul.jslog_error {
   border: 1px solid #d99;
   background: #fbf2ee;
   color: #e00;
-}
-.item_custom_fields {
-  border: none;
-  margin-bottom: 10px;
-  border-collapse: collapse;
-}
-.item_custom_fields th,
-.item_custom_fields td {
-  padding: 0 10px 0 0;
 }
 .item_custom_fields th {
   text-align: left;
@@ -1720,28 +1714,35 @@ div.results {
 .pager li a {
   margin-bottom: 4px;
 }
-table.rating_summary {
-  float: left;
+.evo_content_block table.ratings_table td {
+  border: none;
 }
-table.rating_summary th,
-table.rating_summary td {
+.evo_content_block table.rating_summary {
+  float: left;
+  margin: 0;
+}
+.evo_content_block table.rating_summary th,
+.evo_content_block table.rating_summary td {
+  border: none;
   font-size: 10px;
   line-height: 13px;
   font-weight: normal;
   padding: 0;
 }
-table.rating_summary th {
+.evo_content_block table.rating_summary th {
   padding-right: 5px;
+  background-color: transparent;
 }
-table.rating_summary .progress {
+.evo_content_block table.rating_summary .progress {
   width: 60px;
   background: #eeeecc;
   padding: 0;
+  box-shadow: none;
 }
-table.rating_summary .progress div {
+.evo_content_block table.rating_summary .progress div {
   background: #ffcc66;
 }
-table.rating_summary td {
+.evo_content_block table.rating_summary td {
   text-align: right;
   padding-left: 5px;
 }
@@ -1795,7 +1796,7 @@ form.inskin .edit_area textarea {
   width: 100%;
 }
 #itemform_categories .extracats {
-  max-height: 500px;
+  max-height: 310px;
   overflow: auto;
 }
 table.catselect {
@@ -1930,8 +1931,8 @@ div.item_location {
 .evo_private_messages_list .messages_navigation {
   padding: 5px;
 }
-.evo_private_messages_list h2 {
-  margin: 0;
+.evo_private_messages_list > h2 {
+  margin-top: 0;
 }
 .evo_private_messages_list .messages_list_actions {
   text-align: center;
@@ -1943,7 +1944,6 @@ div.item_location {
   text-align: center;
 }
 .evo_private_messages_list .messages_list_actions a {
-  margin-bottom: 1ex;
   display: inline-block;
 }
 .evo_private_messages_list .messages_list_actions a:last-child {
@@ -1955,6 +1955,9 @@ div.item_location {
   padding: 10px;
   text-align: center;
   display: block;
+}
+.evo_private_messages_list .panel {
+  margin-bottom: 0;
 }
 #styled_content_block span[class*=status_] {
   background: transparent;
@@ -2068,6 +2071,18 @@ div.results .status_meta span {
 .search_info {
   font-size: 8pt;
 }
+.search_result_score {
+  float: left;
+  width: 40px;
+  font-size: 100%;
+  line-height: 27px;
+}
+.search_content_wrap {
+  margin-left: 40px;
+}
+.search_score_map {
+  margin-left: 55px;
+}
 .track_content {
   margin: 5px;
 }
@@ -2146,6 +2161,10 @@ div.results .status_meta span {
 }
 form#comment_edit {
   clear: both;
+}
+#post_attachments .panel-body,
+#comment_attachments .panel-body {
+  padding: 0;
 }
 input.btn-lg {
   font-size: 120%;
@@ -2240,6 +2259,19 @@ input.btn-lg {
     margin-bottom: 4px;
   }
 }
+.evo_content_block table {
+  margin: 1em 0;
+}
+.evo_content_block table th {
+  border: 1px solid #ddd;
+  padding: 8px;
+  background-color: #eee;
+}
+.evo_content_block table td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  vertical-align: top;
+}
 
 /**
  * item_base.css 
@@ -2331,6 +2363,9 @@ ul,
 ol {
   margin: 0 0 10px 25px;
   padding: 0;
+}
+.table-hover > tbody > tr:hover {
+  background-color: #ffc;
 }
 .btn.btn-success .fa,
 .btn.btn-danger .fa {

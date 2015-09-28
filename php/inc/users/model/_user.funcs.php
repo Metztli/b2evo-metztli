@@ -350,27 +350,25 @@ function get_notifications_url( $glue = '&amp;', $user_ID = NULL )
 
 	if( $use_admin_page_url )
 	{ // Use backoffice form of notifications form
-		$notifications_url = $admin_url.'?ctrl=user'.$glue.'user_tab=subs#subs';
+		return $admin_url.'?ctrl=user'.$glue.'user_tab=subs#subs';
 	}
 	else
-	{ // Use in-skin form of notifications form
+	{ // Use in-skin form of notifications form:
 		if( empty( $Blog ) )
-		{ // If no current blog, try to use a default blog
+		{ // If no current blog, try to use a default blog:
 			$url_Blog = & get_setting_Blog( 'default_blog_ID' );
 			if( empty( $url_Blog ) )
-			{ // No default blog, Use base url
+			{ // No default blog, Use base url:
 				global $baseurl;
-				$notifications_url = url_add_param( $baseurl, 'disp=subs#subs' );
+				return url_add_param( $baseurl, 'disp=subs#subs' );
 			}
 		}
 		else
-		{ // Use current blog
+		{ // Use current blog:
 			$url_Blog = & $Blog;
 		}
-		$notifications_url = $url_Blog->get( 'subsurl', array( 'glue' => $glue ) );
+		return $url_Blog->get( 'subsurl', array( 'glue' => $glue ) );
 	}
-
-	return $notifications_url;
 }
 
 
@@ -540,7 +538,7 @@ function check_setting( $setting_name )
 {
 	global $Settings, $Blog;
 
-	if( is_admin_page() || ! isset( $Blog ) )
+	if( is_admin_page() || empty( $Blog ) )
 	{ // Check setting in the Back office or when Blog is not defined
 		if( $Settings->get( $setting_name ) )
 		{ // Set TRUE if the setting is ON
@@ -704,7 +702,7 @@ function get_user_register_url( $redirect_to = NULL, $default_source_string = ''
 		$return_url = url_rel_to_same_host( regenerate_url( '', '', '', '&' ), $secure_htsrv_url );
 	}
 
-	$register_url = url_add_param( $register_url, 'return_to='.$return_url, $glue );
+	$register_url = url_add_param( $register_url, 'return_to='.rawurlencode( $return_url ), $glue );
 
 	return $register_url;
 }
@@ -1994,15 +1992,12 @@ function load_user_read_statuses( $post_ids = NULL )
 
 	// SELECT current User's post and comment read statuses for all post with the given ids
 	$SQL = new SQL();
-	$SQL->SELECT( 'uprs_post_ID as post_ID, uprs_read_post_ts AS `post`, uprs_read_comment_ts AS `comment`' );
+	$SQL->SELECT( 'uprs_post_ID, uprs_read_post_ts' );
 	$SQL->FROM( 'T_users__postreadstatus' );
 	$SQL->WHERE( 'uprs_user_ID = '.$DB->quote( $current_User->ID ) );
 	$SQL->WHERE_and( $post_condition );
-	// Set those post read statuses which were opened before
-	foreach( $DB->get_results( $SQL->get() ) as $row )
-	{ // Load $user_post_read_statuses by post
-		$user_post_read_statuses[$row->post_ID] = array( 'post' => $row->post, 'comment' => $row->comment );
-	}
+	// Set those post read statuses which were opened before:
+	$user_post_read_statuses = $DB->get_assoc( $SQL->get() );
 
 	if( empty( $post_ids ) )
 	{ // The load was not requested for specific posts, so we have loaded all information what we have, ther rest of the posts were not read by this user
@@ -2012,9 +2007,9 @@ function load_user_read_statuses( $post_ids = NULL )
 	// Set new posts read statuses
 	foreach( $post_ids as $post_ID )
 	{ // Make sure to set read statuses for each requested post ID
-		if( ! isset( $user_post_read_statuses[$post_ID] ) )
+		if( ! isset( $user_post_read_statuses[ $post_ID ] ) )
 		{ // Set each read status to 0
-			$user_post_read_statuses[$post_ID] = array( 'post' => 0, 'comment' => 0 );
+			$user_post_read_statuses[ $post_ID ] = 0;
 		}
 	}
 }
@@ -2877,9 +2872,14 @@ function userfields_display( $userfields, $Form, $new_field_name = 'new', $add_g
 	$group_ID = 0;
 	foreach( $userfields as $userfield )
 	{
-		if( $group_ID != $userfield->ufgp_ID && $add_group_fieldset )
+		if( empty( $userfield->ufgp_ID ) )
+		{	// Don't display user field without group, because the user field definition was deleted from DB incorrectly:
+			continue;
+		}
+
+		if( $group_ID !== $userfield->ufgp_ID && $add_group_fieldset )
 		{	// Start new group
-			if( $group_ID > 0 )
+			if( $group_ID !== 0  )
 			{	// End previous group
 				$Form->end_fieldset();
 			}
@@ -4270,7 +4270,7 @@ echo_modalwindow_js();
 		//console.log( 'window', window_width, window_height );
 
 		// Set margins for normal view of wide screens:
-		var margin_size_width = 100;
+		var margin_size_width = 170;
 		var margin_size_height = viewport_height > max_size ? 170 : 205;
 		if( viewport_width <= 900 )
 		{ // When width is less than 900px then preview thumbnails are located under big picture, so height margin should be more

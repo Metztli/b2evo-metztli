@@ -129,7 +129,7 @@ function init_inskin_editing()
 
 		modules_call_method( 'constructor_item', array( 'Item' => & $edited_Item ) );
 
-		check_categories_nosave ( $post_category, $post_extracats );
+		check_categories_nosave( $post_category, $post_extracats );
 
 		$redirect_to = url_add_param( $Blog->gen_blogurl(), 'disp=edit', '&' );
 	}
@@ -141,7 +141,7 @@ function init_inskin_editing()
 		$edited_Item = new Item();
 		$def_status = get_highest_publish_status( 'post', $Blog->ID, false );
 		$edited_Item->set( 'status', $def_status );
-		check_categories_nosave ( $post_category, $post_extracats );
+		check_categories_nosave( $post_category, $post_extracats );
 		$edited_Item->set('main_cat_ID', $Blog->get_default_cat_ID());
 
 		// Set default locations from current user
@@ -201,7 +201,7 @@ function init_inskin_editing()
  */
 function & get_featured_Item( $restrict_disp = 'posts', $coll_IDs = NULL )
 {
-	global $Blog;
+	global $Blog, $cat;
 	global $disp, $disp_detail, $MainList, $FeaturedList;
 	global $featured_displayed_item_IDs;
 
@@ -217,8 +217,14 @@ function & get_featured_Item( $restrict_disp = 'posts', $coll_IDs = NULL )
 		// Get ready to obtain 1 post only:
 		$FeaturedList = new ItemList2( $Blog, $Blog->get_timestamp_min(), $Blog->get_timestamp_max(), 1 );
 
+		$featured_list_filters = $MainList->filters;
+		if( ! empty( $cat ) )
+		{	// Get a featured post only of the selected category and don't touch the posts of the child categories:
+			$featured_list_filters['cat_array'] = array( $cat );
+		}
+
 		// Set default filters for the current page:
-		$FeaturedList->set_default_filters( $MainList->filters );
+		$FeaturedList->set_default_filters( $featured_list_filters );
 
 		// FIRST: Try to find an Intro post:
 
@@ -297,40 +303,6 @@ function & get_featured_Item( $restrict_disp = 'posts', $coll_IDs = NULL )
 	}
 
 	return $Item;
-}
-
-
-/**
- * Get post type ID by type code
- *
- * @param string Type code
- * @return integer Post type ID
- */
-function get_item_type_ID( $type_code )
-{
-	$item_types = array(
-			1    => 'post',
-			1000 => 'page',
-			1400 => 'intro-front',
-			1500 => 'intro-main',
-			1520 => 'intro-cat',
-			1530 => 'intro-tag',
-			1570 => 'intro-sub',
-			1600 => 'intro-all',
-			2000 => 'podcast',
-			3000 => 'sidebar-link',
-			4000 => 'advertisement',
-			//5000 => 'reserved',
-		);
-
-	$item_type_ID = array_search( $type_code, $item_types );
-
-	if( $item_type_ID === false )
-	{ // No found type, Use standard type ID = 1
-		$item_type_ID = 1;
-	}
-
-	return $item_type_ID;
 }
 
 
@@ -870,39 +842,6 @@ function get_post_cat_setting( $blog )
 		case 'main_extra_cat_post':
 			return 3;
 	}
-}
-
-
-/**
- * Load the max comments last_touched_ts values fore each given post ID
- *
- * @param array post ids
- * @param mixed int a comment ID which last touched timtestamp should not be counted, or NULL there are no such comment. It is used to not count the currently updated comment.
- * @return mixed NULL if user is not logged in, array [post_ID] => 'max_comment_last_touched' othwerise
- */
-function load_comments_last_touched( $post_ids, $exclude_comment_ID = NULL )
-{
-	global $DB, $current_User;
-
-	if( !is_logged_in() )
-	{ // There are no logged in user
-		return NULL;
-	}
-
-	// Set which posts comments should be counted
-	$post_condition = empty( $post_ids ) ? NULL : 'comment_item_ID IN ( '.implode( ',', $post_ids ).' )';
-	// Set a comment condition if there is a comment which last_touched_ts should not be checked, because it was updated now by the current User
-	$comment_condition = empty( $exclude_comment_ID ) ? NULL : 'comment_ID <> '.$exclude_comment_ID;
-
-	$SQL = new SQL( 'Get last edited comment date of the post' );
-	$SQL->SELECT( 'comment_item_ID as post_ID, MAX( comment_last_touched_ts ) as last_touched_ts' );
-	$SQL->FROM( 'T_comments' );
-	$SQL->WHERE( $post_condition );
-	$SQL->WHERE_and( $comment_condition );
-	$SQL->WHERE_and( statuses_where_clause( NULL, 'comment_', NULL, 'blog_comment!' ) );
-	$SQL->GROUP_BY( 'comment_item_ID' );
-
-	return $DB->get_assoc( $SQL->get() );
 }
 
 
@@ -1802,6 +1741,7 @@ function echo_publish_buttons( $Form, $creating, $edited_Item, $inskin = false, 
 
 		if( isset( $AdminUI, $AdminUI->skin_name ) && $AdminUI->skin_name == 'bootstrap' )
 		{ // Use dropdown for bootstrap skin
+			$status_icon_options = get_visibility_statuses( 'icons', $exclude_statuses );
 			$Form->hidden( 'post_status', $edited_Item->status );
 			echo '<div class="btn-group dropup post_status_dropdown">';
 			echo '<button type="button" class="btn btn-status-'.$edited_Item->status.' dropdown-toggle" data-toggle="dropdown" aria-expanded="false" id="post_status_dropdown">'
@@ -1810,7 +1750,7 @@ function echo_publish_buttons( $Form, $creating, $edited_Item, $inskin = false, 
 			echo '<ul class="dropdown-menu" role="menu" aria-labelledby="post_status_dropdown">';
 			foreach( $status_options as $status_key => $status_title )
 			{
-				echo '<li rel="'.$status_key.'" role="presentation"><a href="#" role="menuitem" tabindex="-1"><span class="fa fa-circle status_color_'.$status_key.'"></span> <span>'.$status_title.'</span></a></li>';
+				echo '<li rel="'.$status_key.'" role="presentation"><a href="#" role="menuitem" tabindex="-1">'.$status_icon_options[ $status_key ].' <span>'.$status_title.'</span></a></li>';
 			}
 			echo '</ul>';
 			echo '</div>';
@@ -1834,7 +1774,7 @@ function echo_publish_buttons( $Form, $creating, $edited_Item, $inskin = false, 
 
 	// ---------- SAVE ----------
 	$next_action = ($creating ? 'create' : 'update');
-	if( ! $inskin )
+	if( ! $inskin && $current_User->check_perm( 'item_post!CURSTATUS', 'edit', false, $edited_Item ) )
 	{ // Show Save & Edit only on admin mode
 		$Form->submit( array( 'actionArray['.$next_action.'_edit]', /* TRANS: This is the value of an input submit button */ T_('Save & edit'), 'SaveEditButton btn-status-'.$edited_Item->status ) );
 	}
@@ -1885,6 +1825,7 @@ function echo_item_status_buttons( $Form, $edited_Item )
 	$exclude_statuses = array_merge( get_restricted_statuses( $Blog->ID, 'blog_post!', 'create' ), array( 'trash' ) );
 	// Get allowed visibility statuses
 	$status_options = get_visibility_statuses( 'button-titles', $exclude_statuses );
+	$status_icon_options = get_visibility_statuses( 'icons', $exclude_statuses );
 
 	$next_action = ( is_create_action( $action ) ? 'create' : 'update' );
 
@@ -1899,7 +1840,7 @@ function echo_item_status_buttons( $Form, $edited_Item )
 	echo '<ul class="dropdown-menu" role="menu" aria-labelledby="post_status_dropdown">';
 	foreach( $status_options as $status_key => $status_title )
 	{
-		echo '<li rel="'.$status_key.'" role="presentation"><a href="#" role="menuitem" tabindex="-1"><span class="fa fa-circle status_color_'.$status_key.'"></span> <span>'.$status_title.'</span></a></li>';
+		echo '<li rel="'.$status_key.'" role="presentation"><a href="#" role="menuitem" tabindex="-1">'.$status_icon_options[ $status_key ].' <span>'.$status_title.'</span></a></li>';
 	}
 	echo '</ul>';
 	echo '</div>';
@@ -2095,20 +2036,25 @@ function echo_autocomplete_tags()
  * Assert that the supplied post type can be used by the current user in
  * the post's extra categories' context.
  *
+ * @param integer Item type ID
  * @param array The extra cats of the post.
  */
-function check_perm_posttype( $post_extracats )
+function check_perm_posttype( $item_typ_ID, $post_extracats )
 {
 	global $Blog, $current_User;
 
-	// Tblue> Usually, when this function is invoked, item_typ_ID is not
-	//        loaded yet... If it is, it doesn't get loaded again anyway.
-	//        Item::load_from_Request() uses param() again, in case this
-	//        function wasn't called yet when load_from_Request() gets
-	//        called (does this happen?).
-	$item_typ_ID = param( 'item_typ_ID', 'integer', true /* require input */ );
 	$ItemTypeCache = & get_ItemTypeCache();
 	$ItemType = & $ItemTypeCache->get_by_ID( $item_typ_ID );
+
+	if( ItemType::is_reserved( $ItemType->ID ) )
+	{ // Don't allow to use a reserved post type:
+		debug_die( 'This post type is reserved and cannot be used. Please choose another one.' );
+	}
+
+	if( ! $Blog->is_item_type_enabled( $ItemType->ID ) )
+	{ // Don't allow to use a not enabled post type:
+		debug_die( 'This post type is not enabled. Please choose another one.' );
+	}
 
 	// Check permission:
 	$current_User->check_perm( 'cats_item_type_'.$ItemType->perm_level, 'edit', true /* assert */, $post_extracats );
@@ -2979,14 +2925,32 @@ function check_item_perm_edit( $post_ID, $do_redirect = true )
 	$user_can_edit = false;
 
 	if( $post_ID > 0 )
-	{	// Check permissions for editing of the current item
+	{ // Check permissions for editing of the current item:
 		$ItemCache = & get_ItemCache ();
 		$edited_Item = $ItemCache->get_by_ID ( $post_ID );
 		$user_can_edit = $current_User->check_perm( 'item_post!CURSTATUS', 'edit', false, $edited_Item );
 		$permission_message = T_('You don\'t have permission to edit this post');
+
+		if( $user_can_edit )
+		{ // Check if the post type is enabled:
+
+			if( ! $edited_Item->is_type_enabled() )
+			{ // Don't allow to use a not enabled post type:
+				$user_can_edit = false;
+				if( $edited_ItemType = & $edited_Item->get_ItemType() )
+				{
+					$permission_message = sprintf( T_( 'The post you are trying to edit uses the post type #%d "%s" which is currently disabled. Thus you cannot edit this post.' ),
+						$edited_ItemType->ID, $edited_ItemType->get( 'name' ) );
+				}
+				else
+				{
+					$permission_message = T_( 'The post you are trying to edit uses an unknown post type. Thus you cannot edit this post.' );
+				}
+			}
+		}
 	}
 	else
-	{	// Check permissions for creating of a new item
+	{ // Check permissions for creating of a new item:
 		$perm_target = empty( $Blog ) ? NULL : $Blog->ID;
 		$user_can_edit = $current_User->check_perm( 'blog_post_statuses', 'edit', false, $perm_target );
 		$permission_message = T_('You don\'t have permission to post into this blog');
@@ -4104,6 +4068,7 @@ function item_row_status( $Item, $index )
 	if( is_logged_in() && $current_User->check_perm( 'item_post!CURSTATUS', 'edit', false, $Item ) &&
 	    isset( $AdminUI, $AdminUI->skin_name ) && $AdminUI->skin_name == 'bootstrap' )
 	{ // Use dropdown for bootstrap skin and if current user can edit this post
+		$status_icon_options = get_visibility_statuses( 'icons', $exclude_statuses );
 		$r = '<div class="btn-group '.( $index > 5 ? 'dropup' : 'dropdown' ).' post_status_dropdown">'
 				.'<button type="button" class="btn btn-sm btn-status-'.$Item->status.' dropdown-toggle" data-toggle="dropdown" aria-expanded="false" id="post_status_dropdown">'
 						.'<span>'.$status_options[ $Item->status ].'</span>'
@@ -4113,7 +4078,7 @@ function item_row_status( $Item, $index )
 		{
 			$r .= '<li rel="'.$status_key.'" role="presentation"><a href="'
 					.$admin_url.'?ctrl=items&amp;blog='.$blog_ID.'&amp;action=update_status&amp;post_ID='.$Item->ID.'&amp;status='.$status_key.'&amp;'.url_crumb( 'item' )
-					.'" role="menuitem" tabindex="-1"><span class="fa fa-circle status_color_'.$status_key.'"></span> <span>'.$status_title.'</span></a></li>';
+					.'" role="menuitem" tabindex="-1">'.$status_icon_options[ $status_key ].' <span>'.$status_title.'</span></a></li>';
 		}
 		$r .= '</ul>'
 			.'</div>';
@@ -4261,17 +4226,17 @@ function manual_display_chapter_row( $Chapter, $level, $params = array() )
 	$r .= '<td><a href="'.htmlspecialchars($Chapter->get_permanent_url()).'">'.$Chapter->dget('urlname').'</a></td>';
 
 	// Order
-	$order_attrs = '';
+	$order_attrs = '';// ' style="padding-left:'.( ( $level * 10 ) + 5 ).'px"';
 	$order_value = T_('Alphabetic');
 	if( $Chapter->get_parent_subcat_ordering() == 'manual' )
 	{ // Parent chapter ordering is set to manual and not alphabetic
 		if( $perm_edit )
 		{ // Add availability to edit an order if current user can edit chapters
-			$order_attrs = ' id="order-chapter-'.$Chapter->ID.'" title="'.format_to_output( T_('Click to change an order'), 'htmlattr' ).'"';
+			$order_attrs .= ' id="order-chapter-'.$Chapter->ID.'" title="'.format_to_output( T_('Click to change an order'), 'htmlattr' ).'"';
 		}
 		$order_value = $Chapter->dget('order');
 	}
-	$r .= '<td class="center"'.$order_attrs.'>'.$order_value.'</td>';
+	$r .= '<td'.$order_attrs.'><span style="padding-left:'.$level.'em">'.$order_value.'</span></td>';
 
 	// Actions
 	$r .= '<td class="lastcol shrinkwrap">';
@@ -4326,7 +4291,14 @@ function manual_display_post_row( $Item, $level, $params = array() )
 	$params = array_merge( array(
 			'title_before' => '',
 			'title_after'  => '',
+			'title_field'  => 'urltitle',
 		), $params );
+
+	if( $params['chapter_ID'] != $Item->main_cat_ID )
+	{	// Posts from extracats are displayed with italic:
+		$params['title_before'] = '<i>';
+		$params['title_after'] = '</i>';
+	}
 
 	$line_class = $line_class == 'even' ? 'odd' : 'even';
 
@@ -4362,17 +4334,17 @@ function manual_display_post_row( $Item, $level, $params = array() )
 	$r .= '</td>';
 
 	// Order
-	$order_attrs = '';
+	$order_attrs = '';// ' style="padding-left:'.( ( $level * 10 ) + 5 ).'px"';
 	$order_value = T_('Alphabetic');
 	if( isset( $params['cat_order'] ) && $params['cat_order'] == 'manual' )
 	{
 		if( $current_User->check_perm( 'item_post!CURSTATUS', 'edit', false, $Item ) )
 		{ // Add availability to edit an order if current user can edit this item
-			$order_attrs = ' id="order-item-'.$Item->ID.'" title="'.format_to_output( T_('Click to change an order'), 'htmlattr' ).'"';
+			$order_attrs .= ' id="order-item-'.$Item->ID.'" title="'.format_to_output( T_('Click to change an order'), 'htmlattr' ).'"';
 		}
 		$order_value = $Item->dget('order');
 	}
-	$r .= '<td class="center"'.$order_attrs.'>'.$order_value.'</td>';
+	$r .= '<td'.$order_attrs.'><span style="padding-left:'.$level.'em">'.$order_value.'</span></td>';
 
 	// Actions
 	$r .= '<td class="lastcol shrinkwrap">'.item_edit_actions( $Item ).'</td>';

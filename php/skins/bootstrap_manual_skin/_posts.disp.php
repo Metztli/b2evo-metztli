@@ -72,7 +72,7 @@ elseif( !empty( $cat ) && ( $cat > 0 ) )
 			) );
 
 		// Button to create a new page
-		$write_new_intro_url = $Blog->get_write_item_url( $cat, '', '', 'intro-cat' );
+		$write_new_intro_url = $Blog->get_write_item_url( $cat, '', '', 1520 );
 		if( !empty( $write_new_intro_url ) )
 		{ // Display button to write a new intro
 			echo '<a href="'.$write_new_intro_url.'" class="'.button_class( 'text' ).'">'
@@ -94,7 +94,7 @@ elseif( !empty( $cat ) && ( $cat > 0 ) )
 				'feature_block'     => true,
 				'content_mode'      => 'auto',		// 'auto' will auto select depending on $disp-detail
 				'intro_mode'        => 'normal',	// Intro posts will be displayed in normal mode
-				'item_class'        => 'jumbotron evo_post evo_content_block',
+				'item_class'        => 'well evo_post evo_content_block',
 				'disp_comments'     => false,
 				'disp_comment_form' => false,
 				'disp_notification' => false,
@@ -170,8 +170,6 @@ else
 		skin_include( '_item_list.inc.php', array(
 				'before_title'   => '<h3>',
 				'after_title'    => '</h3>',
-				'before_content' => '<div class="excerpt">',
-				'after_content'  => '</div>',
 			) );
 		// ----------------------------END ITEM BLOCK  ----------------------------
 	}

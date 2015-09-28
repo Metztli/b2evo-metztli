@@ -271,10 +271,11 @@ class bootstrap_forums_Skin extends Skin
 	 *
 	 * @param integer Chapter ID
 	 * @param object Item
+	 * @param array Additional params
 	 */
-	function display_post_button( $chapter_ID, $Item = NULL )
+	function display_post_button( $chapter_ID, $Item = NULL, $params = array() )
 	{
-		echo $this->get_post_button( $chapter_ID, $Item );
+		echo $this->get_post_button( $chapter_ID, $Item, $params );
 	}
 
 
@@ -285,9 +286,14 @@ class bootstrap_forums_Skin extends Skin
 	 * @param object Item
 	 * @return string
 	 */
-	function get_post_button( $chapter_ID, $Item = NULL )
+	function get_post_button( $chapter_ID, $Item = NULL, $params = array() )
 	{
 		global $Blog;
+
+		$params = array_merge( array(
+				'group_class'  => '',
+				'button_class' => '',
+			), $params );
 
 		$post_button = '';
 
@@ -296,7 +302,7 @@ class bootstrap_forums_Skin extends Skin
 		$write_new_post_url = $Blog->get_write_item_url( $chapter_ID );
 		if( $write_new_post_url != '' )
 		{ // Display button to write a new post
-			$post_button = '<a href="'.$write_new_post_url.'" class="btn btn-primary" title="'.T_('Post new topic').'"><i class="fa fa-pencil"></i> '.T_('New topic').'</a>';
+			$post_button = '<a href="'.$write_new_post_url.'" class="btn btn-primary '.$params['button_class'].'" title="'.T_('Post new topic').'"><i class="fa fa-pencil"></i> '.T_('New topic').'</a>';
 		}
 		else
 		{ // If a creating of new post is unavailable
@@ -305,7 +311,7 @@ class bootstrap_forums_Skin extends Skin
 
 			if( $current_Chapter && $current_Chapter->lock )
 			{ // Display icon to inform that this forum is locked
-				$post_button = '<i class="icon btn fa fa-lock" title="'.T_('This forum is locked: you cannot post, reply to, or edit topics.').'">'.T_('Locked').'</i>';
+				$post_button = '<span title="'.T_('This forum is locked: you cannot post, reply to, or edit topics.').'"><i class="icon fa fa-lock"></i> '.T_('Locked').'</span>';
 				$chapter_is_locked = true;
 			}
 		}
@@ -316,18 +322,18 @@ class bootstrap_forums_Skin extends Skin
 			{ // Display icon to inform that this topic is locked for comments
 				if( !$chapter_is_locked )
 				{ // Display this button only when chapter is not locked, to avoid a duplicate button
-					$post_button .= ' <i class="icon btn fa fa-lock" title="'.T_('This topic is locked: you cannot edit posts or make replies.').'">'.T_('Locked').'</i>';
+					$post_button .= ' <span title="'.T_('This topic is locked: you cannot edit posts or make replies.').'"><i class="icon fa fa-lock"></i> '.T_('Locked').'</span>';
 				}
 			}
 			else
 			{ // Display button to post a reply
-				$post_button .= ' <a href="'.$Item->get_feedback_url().'#form_p'.$Item->ID.'" class="btn btn-default" title="'.T_('Reply to topic').'"><i class="fa fa-reply"></i> '.T_('Reply').'</a>';
+				$post_button .= ' <a href="'.$Item->get_feedback_url().'#form_p'.$Item->ID.'" class="btn btn-default '.$params['button_class'].'" title="'.T_('Reply to topic').'"><i class="fa fa-reply"></i> '.T_('Reply').'</a>';
 			}
 		}
 
 		if( !empty( $post_button ) )
 		{ // Display button
-			return '<div class="post_button btn-group">'.$post_button.'</div>';
+			return '<div class="post_button btn-group '.$params['group_class'].'">'.$post_button.'</div>';
 		}
 	}
 
@@ -713,6 +719,61 @@ class bootstrap_forums_Skin extends Skin
 		return ( ! empty( $access ) && ! empty( $access[ $container_key ] ) );
 	}
 
+
+	/**
+	 * Display a button to view the Recent/New Topics
+	 */
+	function display_button_recent_topics()
+	{
+		global $Blog;
+
+		if( ! is_logged_in() || ! $Blog->get_setting( 'track_unread_content' ) )
+		{	// For not logged in users AND if the tracking of unread content is turned off for the collection
+			$btn_class = 'btn-info';
+			$btn_title = T_('Recent Topics');
+		}
+		else
+		{	// For logged in users:
+			global $current_User, $DB, $localtimenow;
+
+			// Initialize SQL query to get only the posts which are displayed by global $MainList on disp=posts:
+			$ItemList2 = new ItemList2( $Blog, $Blog->get_timestamp_min(), $Blog->get_timestamp_max(), NULL, 'ItemCache', 'recent_topics' );
+			$ItemList2->set_default_filters( array(
+					'unit' => 'all', // set this to don't calculate total rows
+				) );
+			$ItemList2->query_init();
+
+			// Get a count of the unread topics for current user:
+			$unread_posts_SQL = new SQL();
+			$unread_posts_SQL->SELECT( 'COUNT( post_ID )' );
+			$unread_posts_SQL->FROM( 'T_items__item' );
+			$unread_posts_SQL->FROM_add( 'LEFT JOIN T_users__postreadstatus ON post_ID = uprs_post_ID AND uprs_user_ID = '.$DB->quote( $current_User->ID ) );
+			$unread_posts_SQL->FROM_add( 'INNER JOIN T_categories ON post_main_cat_ID = cat_ID' );
+			$unread_posts_SQL->WHERE( $ItemList2->ItemQuery->get_where( '' ) );
+			$unread_posts_SQL->WHERE_and( 'post_last_touched_ts > '.$DB->quote( date2mysql( $localtimenow - 30 * 86400 ) ) );
+			// In theory, it would be more safe to use this comparison:
+			// $unread_posts_SQL->WHERE_and( 'uprs_post_ID IS NULL OR uprs_read_post_ts <= post_last_touched_ts' );
+			// But until we have milli- or micro-second precision on timestamps, we decided it was a better trade-off to never see our own edits as unread. So we use:
+			$unread_posts_SQL->WHERE_and( 'uprs_post_ID IS NULL OR uprs_read_post_ts < post_last_touched_ts' );
+
+			// Execute a query with to know if current user has new data to view:
+			$unread_posts_count = $DB->get_var( $unread_posts_SQL->get(), 0, NULL, 'Get a count of the unread topics for current user' );
+
+			if( $unread_posts_count > 0 )
+			{	// If at least one new unread topic exists
+				$btn_class = 'btn-warning';
+				$btn_title = T_('New Topics').' <span class="badge">'.$unread_posts_count.'</span>';
+			}
+			else
+			{	// Current user already have read all topics
+				$btn_class = 'btn-info';
+				$btn_title = T_('Recent Topics');
+			}
+		}
+
+		// Print out the button:
+		echo '<a href="'.$Blog->get( 'recentpostsurl' ).'" class="btn '.$btn_class.' pull-right btn_recent_topics">'.$btn_title.'</a>';
+	}
 }
 
 ?>
