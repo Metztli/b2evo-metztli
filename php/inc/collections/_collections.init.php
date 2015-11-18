@@ -212,12 +212,12 @@ function & get_ItemTagsCache()
  */
 function & get_ItemStatusCache()
 {
-	global $Plugins;
 	global $ItemStatusCache;
 
 	if( ! isset( $ItemStatusCache ) )
 	{	// Cache doesn't exist yet:
-		$Plugins->get_object_from_cacheplugin_or_create( 'ItemStatusCache', 'new GenericCache( \'GenericElement\', true, \'T_items__status\', \'pst_\', \'pst_ID\', NULL, \'\', NT_(\'No status\') )' );
+		load_class( 'items/model/_itemstatus.class.php', 'ItemStatus' );
+		$ItemStatusCache = new DataObjectCache( 'ItemStatus', false, 'T_items__status', 'pst_', 'pst_ID', 'pst_name' );
 	}
 
 	return $ItemStatusCache;
@@ -775,8 +775,11 @@ class collections_Module extends Module
 								'text' => T_('Comments'),
 								'href' => $admin_url.'?ctrl=coll_settings&amp;tab=comments&amp;blog='.$blog ),
 							'other' => array(
-								'text' => T_('Other'),
+								'text' => T_('Other displays'),
 								'href' => $admin_url.'?ctrl=coll_settings&amp;tab=other&amp;blog='.$blog ),
+							'more' => array(
+								'text' => T_('More'),
+								'href' => $admin_url.'?ctrl=coll_settings&amp;tab=more&amp;blog='.$blog ),
 						),
 					),
 					'skin' => array(

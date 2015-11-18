@@ -813,7 +813,7 @@ $failed_logins_lockout = 600; // 10 minutes
  *  - 'always' : Always allow redirects to a different domain
  *  - 'all_collections_and_redirected_posts' ( Default ): Allow redirects to all collection domains or redirect of posts with redirected status
  *  - 'only_redirected_posts' : Allow redirects to a different domain only in case of posts with redirected status
- *  - 'never' : Force redirects to the current domain in all case, and never allow redirects to a different domain
+ *  - 'never' : Force redirects to the same domain in all of the cases, and never allow redirect to a different domain
  */
 $allow_redirects_to_different_domain = 'all_collections_and_redirected_posts';
 
@@ -928,6 +928,13 @@ $outgoing_proxy_hostname = '';
 $outgoing_proxy_port = '';
 $outgoing_proxy_username = '';
 $outgoing_proxy_password = '';
+
+
+/**
+ * Check for old browsers like IE and display info message.
+ * Set to false if you don't want this check and never inform users if they use an old browser.
+ */
+$check_browser_version = true;
 
 
 // ----- CHANGE THE FOLLOWING SETTINGS ONLY IF YOU KNOW WHAT YOU'RE DOING! -----

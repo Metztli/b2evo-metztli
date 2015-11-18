@@ -62,6 +62,43 @@ class bootstrap_forums_Skin extends Skin
 	function get_param_definitions( $params )
 	{
 		$r = array_merge( array(
+				'section_layout_start' => array(
+					'layout' => 'begin_fieldset',
+					'label'  => T_('Layout Settings')
+				),
+					'layout_general' => array(
+						'label' => T_('General Layout'),
+						'note' => '',
+						'defaultvalue' => 'no_sidebar',
+						'options' => array(
+								'no_sidebar'    => T_('No Sidebar'),
+								'left_sidebar'  => T_('Left Sidebar'),
+								'right_sidebar' => T_('Right Sidebar'),
+							),
+						'type' => 'select',
+					),
+					'layout_single' => array(
+						'label' => T_('Single Thread Layout'),
+						'note' => '',
+						'defaultvalue' => 'no_sidebar',
+						'options' => array(
+								'no_sidebar'    => T_('No Sidebar'),
+								'left_sidebar'  => T_('Left Sidebar'),
+								'right_sidebar' => T_('Right Sidebar'),
+							),
+						'type' => 'select',
+					),
+					'max_image_height' => array(
+						'label' => T_('Max image height'),
+						'note' => 'px',
+						'defaultvalue' => '',
+						'type' => 'integer',
+						'allow_empty' => true,
+					),
+				'section_layout_end' => array(
+					'layout' => 'end_fieldset',
+				),
+
 				'section_forum_start' => array(
 					'layout' => 'begin_fieldset',
 					'label'  => T_('Forum Display Settings')
@@ -259,6 +296,13 @@ class bootstrap_forums_Skin extends Skin
 
 		// Skin specific initializations:
 
+		// Limit images by max height:
+		$max_image_height = intval( $this->get_setting( 'max_image_height' ) );
+		if( $max_image_height > 0 )
+		{
+			add_css_headline( '.evo_image_block img { max-height: '.$max_image_height.'px; width: auto; }' );
+		}
+
 		if( in_array( $disp, array( 'single', 'page', 'comments' ) ) )
 		{ // Load jquery UI to animate background color on change comment status or on vote
 			require_js( '#jqueryUI#', 'blog' );
@@ -446,9 +490,11 @@ class bootstrap_forums_Skin extends Skin
 					                  /* .' <br />$first$  $list_prev$  $list$  $list_next$  $last$ :: $prev$ | $next$') */,
 					'footer_text_single' => '<div class="center">$page_size$</div>',
 					'footer_text_no_limit' => '', // Text if theres no LIMIT and therefor only one page anyway
-						'page_current_template' => '<span><b>$page_num$</b></span>',
+						'page_current_template' => '<span>$page_num$</span>',
 						'page_item_before' => '<li>',
 						'page_item_after' => '</li>',
+						'page_item_current_before' => '<li class="active">',
+						'page_item_current_after'  => '</li>',
 						'prev_text' => T_('Previous'),
 						'next_text' => T_('Next'),
 						'no_prev_text' => '',
@@ -717,6 +763,78 @@ class bootstrap_forums_Skin extends Skin
 		$access = $this->get_setting( $setting_name );
 
 		return ( ! empty( $access ) && ! empty( $access[ $container_key ] ) );
+	}
+
+
+	/**
+	 * Check if we can display a sidebar for the current layout
+	 *
+	 * @param boolean TRUE to check if at least one sidebar container is visible
+	 * @return boolean TRUE to display a sidebar
+	 */
+	function is_visible_sidebar( $check_containers = false )
+	{
+		$layout = $this->get_setting_layout();
+
+		if( $layout != 'left_sidebar' && $layout != 'right_sidebar' )
+		{ // Sidebar is not displayed for selected skin layout
+			return false;
+		}
+
+		if( $check_containers )
+		{ // Check if at least one sidebar container is visible
+			return ( $this->is_visible_container( 'sidebar' ) ||  $this->is_visible_container( 'sidebar2' ) );
+		}
+		else
+		{ // We should not check the visibility of the sidebar containers for this case
+			return true;
+		}
+	}
+
+
+	/**
+	 * Get value for attbiute "class" of column block
+	 * depending on skin setting "Layout"
+	 *
+	 * @return string
+	 */
+	function get_column_class()
+	{
+		switch( $this->get_setting_layout() )
+		{
+			case 'no_sidebar':
+				// No Sidebar (Single large column)
+				return 'col-md-12';
+
+			case 'left_sidebar':
+				// Left Sidebar
+				return 'col-md-9 pull-right';
+
+			case 'right_sidebar':
+				// Right Sidebar
+			default:
+				return 'col-md-9';
+		}
+	}
+
+
+	/**
+	 * Get a layout setting value depending on $disp
+	 *
+	 * @return string
+	 */
+	function get_setting_layout()
+	{
+		global $disp;
+
+		if( $disp == 'single' )
+		{	// Single post page has a separate setting for layout:
+			return $this->get_setting( 'layout_single' );
+		}
+		else
+		{	// Use this settings for all other pages:
+			return $this->get_setting( 'layout_general' );
+		}
 	}
 
 

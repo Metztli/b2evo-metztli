@@ -54,7 +54,7 @@ skin_include( '_body_header.inc.php' );
 		// Display message if no post:
 		display_if_empty();
 
-		echo '<div id="styled_content_block">'; // Beginning of posts display
+		echo '<div class="evo_content_block">'; // Beginning of posts display
 
 		$item_class_params = array(
 				'item_class'        => 'post',
@@ -110,11 +110,11 @@ skin_include( '_body_header.inc.php' );
 							if( $Skin->get_setting( 'display_post_date' ) )
 							{	// We want to display the post date:
 								$Item->issue_time( array(
-										'before'      => /* TRANS: date */ T_('This entry was posted on').' ',
+										'before'      => /* TRANS: date */ T_('This entry was posted on '),
 										'time_format' => 'F jS, Y',
 									) );
 								$Item->issue_time( array(
-										'before'      => /* TRANS: at (time) */ T_('at').' ',
+										'before'      => /* TRANS: time */ T_('at '),
 										'time_format' => '#short_time',
 									) );
 								$Item->author( array(
@@ -125,7 +125,7 @@ skin_include( '_body_header.inc.php' );
 							else
 							{
 								$Item->author( array(
-										'before'    => T_('This entry was posted by').' ',
+										'before'    => T_('This entry was posted by '),
 										'link_text' => 'preferredname',
 									) );
 							}

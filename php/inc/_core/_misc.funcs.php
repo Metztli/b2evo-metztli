@@ -2696,6 +2696,11 @@ function bad_request_die( $additional_info = '' )
 		header_http_response('400 Bad Request');
 	}
 
+	if( ! function_exists( 'T_' ) )
+	{	// Load locale funcs to initialize function "T_" because it is used below:
+		load_funcs( 'locales/_locale.funcs.php' );
+	}
+
 	echo '<div style="background-color: #fdd; padding: 1ex; margin-bottom: 1ex;">';
 	echo '<h3 style="color:#f00;">'.T_('Bad Request!').'</h3>';
 	echo '<p>'.T_('The parameters of your request are invalid.').'</p>';
@@ -6557,12 +6562,15 @@ function is_ajax_content( $template_name = '' )
  */
 function syslog_insert( $message, $log_type, $object_type = NULL, $object_ID = NULL, $origin_type = 'core', $origin_ID = NULL )
 {
+	global $servertimenow;
+
 	$Syslog = new Syslog();
 	$Syslog->set_user();
 	$Syslog->set( 'type', $log_type );
 	$Syslog->set_origin( $origin_type, $origin_ID );
 	$Syslog->set_object( $object_type, $object_ID );
 	$Syslog->set_message( $message );
+	$Syslog->set( 'timestamp', date2mysql( $servertimenow ) );
 	$Syslog->dbinsert();
 }
 
@@ -7472,5 +7480,74 @@ function get_script_baseurl()
 	}
 
 	return $temp_baseurl;
+}
+
+
+/**
+ * Get badge to inform the settings are edited only by collection/user admins
+ *
+ * @param string Type: 'coll', 'user'
+ * @param string Manual URL, '#' - default, false - don't set URL
+ * @return string
+ */
+function get_admin_badge( $type = 'coll', $manual_url = '#', $text = '#', $title = '#' )
+{
+	switch( $type )
+	{
+		case 'coll':
+			if( $text == '#' )
+			{	// Use default text:
+				$text = T_('Coll. Admin');
+			}
+			if( $title == '#' )
+			{	// Use default title:
+				$title = T_('This can only be edited by users with the Collection Admin permission.');
+			}
+			if( $manual_url == '#' )
+			{	// Use default manual url:
+				$manual_url = 'collection-admin';
+			}
+			break;
+
+		case 'user':
+			if( $text == '#' )
+			{	// Use default text:
+				$text = T_('User Admin');
+			}
+			if( $title == '#' )
+			{	// Use default title:
+				$title = T_('This can only be edited by users with the User Admin permission.');
+			}
+			if( $manual_url == '#' )
+			{	// Use default manual url:
+				$manual_url = 'user-admin';
+			}
+			break;
+
+		default:
+			// Unknown badge type:
+			return '';
+	}
+
+	if( empty( $manual_url ) )
+	{	// Don't use a link:
+		$r = ' <b';
+	}
+	else
+	{	// Use link:
+		$r = ' <a href="'.get_manual_url( $manual_url ).'" target="_blank"';
+	}
+	$r .= ' class="badge badge-warning" data-toggle="tooltip" data-placement="top" title="'.format_to_output( $title, 'htmlattr' ).'">';
+	$r .= $text;
+	if( empty( $manual_url ) )
+	{	// End of text formatted badge:
+		$r .= '</b>';
+	}
+	else
+	{	// End of the link:
+		$r .= '</a>';
+	}
+
+	return $r;
 }
 ?>

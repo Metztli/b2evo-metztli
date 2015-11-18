@@ -105,6 +105,9 @@ elseif( $comments_number > 25 )
 					?>
 				</div>
 				<div class="ft_author_info ellipsis">
+					<?php echo sprintf( T_('In %s'), $Item->get_chapter_links() ); ?>
+				</div>
+				<div class="ft_author_info ellipsis">
 					<?php
 					// Author info: (THIS HAS DOFFERENT RWD MOVES FROM WHAT'S ABOVE, so it should be in a different div)
 					echo T_('Started by');
@@ -120,12 +123,16 @@ elseif( $comments_number > 25 )
 			</div>
 			<div class="ft_count col-lg-1 col-md-1 col-sm-2 col-xs-2"><?php
 				if( $comments_number == 0 && $Item->comment_status == 'disabled' )
-				{ // The comments are disabled
+				{ // The comments are disabled:
 					echo T_('n.a.');
 				}
 				else if( $latest_Comment = & $Item->get_latest_Comment() )
-				{
+				{	// At least one reply exists:
 					printf( T_('%s replies'), '<div><a href="'.$latest_Comment->get_permanent_url().'" title="'.T_('View latest comment').'">'.$comments_number.'</a></div>' );
+				}
+				else
+				{	// No replies yet:
+					printf( T_('%s replies'), '<div>0</div>' );
 				}
 			?>
 			</div>

@@ -143,7 +143,7 @@ siteskin_include( '_site_body_header.inc.php' );
 ?>
 
 <?php
-if( $disp != 'front' && $disp != 'download' )
+if( $disp != 'front' && $disp != 'download' && $disp != 'terms' )
 {
 	// -------------------- PREV/NEXT PAGE LINKS (POST LIST MODE) --------------------
 	mainlist_page_links( array(
@@ -158,7 +158,7 @@ if( $disp != 'front' && $disp != 'download' )
 	// Display message if no post:
 	display_if_empty();
 
-	echo '<div id="styled_content_block">'; // Beginning of posts display
+	echo '<div class="evo_content_block">'; // Beginning of posts display
 	while( $Item = & mainlist_get_item() )
 	{ // For each blog post, do everything below up to the closing curly brace "}"
 

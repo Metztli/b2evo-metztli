@@ -385,7 +385,7 @@ function get_collection_kinds( $kind = NULL )
 				'note' => T_('Besides displaying a nice homepage, this can also be used as a central home for cross-collection features such as private messaging, user profile editing, etc.'),
 			),
 		'std' => array(
-				'name' => T_('Blog'),
+				'name' => T_('Blog'), // NOTE: this is a REAL usage of the word 'Blog'. Do NOT change to 'collection'.
 				'class' => 'btn-info',
 				'desc' => T_('A collection optimized to be used as a standard blog (with the most common features).'),
 				'note' => T_('Many users start with a blog and add other features later.'),
@@ -1642,7 +1642,7 @@ function blog_row_fullname( $coll_fullname, $coll_ID )
 
 	if( $current_User->check_perm( 'blog_properties', 'edit', false, $coll_ID ) )
 	{ // Blog setting & can edit
-		$edit_url = $admin_url.'?ctrl=coll_settings&amp;blog='.$coll_ID;
+		$edit_url = $admin_url.'?ctrl=coll_settings&amp;tab=general&amp;blog='.$coll_ID;
 		$r = '<a href="'.$edit_url.'" title="'.T_('Edit properties...').'">';
 		$r .= $coll_fullname;
 		$r .= '</a>';

@@ -40,7 +40,7 @@ class AdminUI extends AdminUI_general
 	 */
 	function init_templates()
 	{
-		global $Messages, $debug, $Hit;
+		global $Messages, $debug, $Hit, $check_browser_version;
 
 		// This is included before controller specifc require_css() calls:
 		require_css( 'results.css', 'rsc_url' ); // Results/tables styles
@@ -52,6 +52,9 @@ class AdminUI extends AdminUI_general
 		require_css( '#bootstrap_css#', 'rsc_url' );
 		// require_css( '#bootstrap_theme_css#', 'rsc_url' );
 		require_js( '#bootstrap_typeahead#', 'rsc_url' );
+
+		// JS to init Bootstrap tooltips (E.g. on badges with title "Admin"):
+		add_js_headline( 'jQuery( function () { jQuery( \'[data-toggle="tooltip"]\' ).tooltip() } )' );
 
 		if( $debug )
 		{	// Use readable CSS:
@@ -88,8 +91,8 @@ class AdminUI extends AdminUI_general
 		// Initialize font-awesome icons and use them as a priority over the glyphicons, @see get_icon()
 		init_fontawesome_icons( 'fontawesome-glyphicons' );
 
-		if( $Hit->get_browser_version() > 0 && $Hit->is_IE( 9, '<' ) )
-		{	// IE < 9
+		if( $check_browser_version && $Hit->get_browser_version() > 0 && $Hit->is_IE( 9, '<' ) )
+		{	// Display info message if browser IE < 9 version and it is allowed by config var:
 			$Messages->add( T_('Your web browser is too old. For this site to work correctly, we recommend you use a more recent browser.'), 'note' );
 			if( $debug )
 			{
@@ -611,7 +614,7 @@ class AdminUI extends AdminUI_general
 			case 'block_item':
 			case 'dash_item':
 				return array(
-					'block_start' => '<div class="panel panel-default evo_content_block" id="styled_content_block"><div class="panel-heading"><span class="pull-right">$global_icons$</span><h3 class="panel-title">$title$</h3></div><div class="panel-body">',
+					'block_start' => '<div class="panel panel-default evo_content_block"><div class="panel-heading"><span class="pull-right">$global_icons$</span><h3 class="panel-title">$title$</h3></div><div class="panel-body">',
 					'block_end'   => '</div></div>',
 					'global_icons_class' => 'btn btn-default btn-sm',
 				);

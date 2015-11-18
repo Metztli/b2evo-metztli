@@ -20,10 +20,10 @@ $CommentList = new CommentList2( $Blog );
 
 // Filter list:
 $CommentList->set_filters( array(
-		'types' => array( 'comment', 'trackback', 'pingback' ),
+		'types'    => array( 'comment', 'trackback', 'pingback' ),
 		'statuses' => get_inskin_statuses( $Blog->ID, 'comment' ),
-		'order' => 'DESC',
-		'comments' => 50,
+		'order'    => 'DESC',
+		'comments' => $Blog->get_setting( 'latest_comments_num' ),
 		// fp> I don't think it's necessary to add a restriction here. (use case?)
 		// 'timestamp_min' => $Blog->get_timestamp_min(),
 		// 'timestamp_max' => $Blog->get_timestamp_max(),
@@ -39,7 +39,7 @@ $CommentList->display_if_empty( array(
 if( $CommentList->result_num_rows > 0 )
 {
 ?>
-<table id="styled_content_block" class="forums_table topics_table single_topic evo_content_block" cellspacing="0" cellpadding="0">
+<table class="forums_table topics_table single_topic evo_content_block" cellspacing="0" cellpadding="0">
 <?php
 while( $Comment = & $CommentList->get_next() )
 { // Loop through comments:

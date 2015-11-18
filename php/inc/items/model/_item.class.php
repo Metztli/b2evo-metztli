@@ -224,6 +224,18 @@ class Item extends ItemLight
 	var $city_ID = NULL;
 
 	/**
+	 * ID of parent Item.
+	 * @var integer
+	 */
+	var $parent_ID = NULL;
+
+	/**
+	 * Parent Item.
+	 * @var object
+	 */
+	var $parent_Item = NULL;
+
+	/**
 	 * Additional settings for the items.  lazy filled.
  	 *
 	 * @see Item::get_setting()
@@ -317,6 +329,7 @@ class Item extends ItemLight
 			$this->comment_status = $db_row->post_comment_status;			// Comments status
 			$this->order = $db_row->post_order;
 			$this->featured = $db_row->post_featured;
+			$this->parent_ID = $db_row->post_parent_ID;
 
 			// echo 'renderers=', $db_row->post_renderers;
 			$this->renderers = $db_row->post_renderers;
@@ -594,6 +607,32 @@ class Item extends ItemLight
 		if( empty( $post_url ) && $this->get_type_setting( 'use_url' ) == 'required' )
 		{ // URL must be entered
 			param_check_not_empty( 'post_url', T_('Please provide a "Link To" URL.'), '' );
+		}
+
+		// Item parent ID:
+		$post_parent_ID = param( 'post_parent_ID', 'integer', NULL );
+		if( $post_parent_ID !== NULL )
+		{	// If item parent ID is entered:
+			$ItemCache = & get_ItemCache();
+			if( $ItemCache->get_by_ID( $post_parent_ID, false, false ) )
+			{	// Save only ID of existing item:
+				$this->set_from_Request( 'parent_ID' );
+			}
+			else
+			{	// Display an error of the entered item parent ID is incorrect:
+				param_error( 'post_parent_ID', T_('The parent ID is not a correct Item ID.') );
+			}
+		}
+		if( empty( $post_parent_ID ) )
+		{	// If empty parent ID is entered:
+			if( $this->get_type_setting( 'use_parent' ) == 'required' )
+			{	// Item parent ID must be entered:
+				param_check_not_empty( 'post_parent_ID', T_('Please provide a parent ID.'), '' );
+			}
+			else
+			{	// Remove parent ID:
+				$this->set_from_Request( 'parent_ID' );
+			}
 		}
 
 		if( $this->status == 'redirected' && empty( $this->url ) )
@@ -987,7 +1026,12 @@ class Item extends ItemLight
 	 */
 	function can_see_comments( $display = false )
 	{
-		global $Settings;
+		global $Settings, $disp;
+
+		if( $disp == 'terms' )
+		{	// Don't display the comments on page with terms & conditions:
+			return false;
+		}
 
 		if( ! $this->get_type_setting( 'use_comments' ) )
 		{ // Comments are not allowed on this post by post type
@@ -1117,7 +1161,12 @@ class Item extends ItemLight
 	 */
 	function can_comment( $before_error = '<p><em>', $after_error = '</em></p>', $non_published_msg = '#', $closed_msg = '#', $section_title = '', $params = array() )
 	{
-		global $current_User;
+		global $current_User, $disp;
+
+		if( $disp == 'terms' )
+		{	// Don't allow comment a page with terms & conditions:
+			return false;
+		}
 
 		$display = ( ! is_null($before_error) );
 
@@ -1427,6 +1476,11 @@ class Item extends ItemLight
 			// Check and clear inline files, to avoid to have placeholders without corresponding attachment
 			$r = $this->check_and_clear_inline_files( $r );
 
+			if( $this->is_intro() || ! $this->get_type_setting( 'allow_breaks' ) )
+			{	// Don't use the content separators for intro items and if it is disabled by item type:
+				$r = replace_content_outcode( array( '[teaserbreak]', '[pagebreak]' ), '', $r, 'replace_content', 'str' );
+			}
+
 			return $r;
 		}
 
@@ -1529,6 +1583,11 @@ class Item extends ItemLight
 
 			// Check and clear inline files, to avoid to have placeholders without corresponding attachment
 			$r = $this->check_and_clear_inline_files( $r );
+
+			if( $this->is_intro() || ! $this->get_type_setting( 'allow_breaks' ) )
+			{	// Don't use the content separators for intro items and if it is disabled by item type:
+				$r = replace_content_outcode( array( '[teaserbreak]', '[pagebreak]' ), '', $r, 'replace_content', 'str' );
+			}
 
 			$Debuglog->add( 'Generated pre-rendered content ['.$cache_key.'] for item #'.$this->ID, 'items' );
 
@@ -2657,6 +2716,7 @@ class Item extends ItemLight
 				'gallery_image_limit'        => 1000,
 				'gallery_colls'              => 5,
 				'gallery_order'              => '', // 'ASC', 'DESC', 'RAND'
+				'gallery_link_rel'           => 'lightbox[p'.$this->ID.']',
 				'restrict_to_image_position' => 'teaser,teaserperm,teaserlink,aftermore', // 'teaser'|'teaserperm'|'teaserlink'|'aftermore'|'inline'|'cover'
 				'data'                       =>  & $r,
 				'get_rendered_attachments'   => true,
@@ -3527,8 +3587,7 @@ class Item extends ItemLight
 		$average_real = number_format( $ratings["summary"] / $ratings_count, 1, ".", "" );
 		$active_average_real = ( $active_ratings_count == 0 ) ? 0 : ( number_format( $active_ratings["summary"] / $active_ratings_count, 1, ".", "" ) );
 
-		$result = '<table class="ratings_table" cellspacing="2">';
-		$result .= '<tr>';
+		$result = '';
 		$expiry_delay = $this->get_setting( 'comment_expiry_delay' );
 		if( empty( $expiry_delay ) )
 		{
@@ -3537,16 +3596,16 @@ class Item extends ItemLight
 		else
 		{
 			$all_ratings_title = T_('Overall user ratings');
-			$result .= '<td><div><strong>'.get_duration_title( $expiry_delay ).'</strong></div>';
+			$result .= '<div class="ratings_table">';
+			$result .= '<div><strong>'.get_duration_title( $expiry_delay ).'</strong></div>';
 			$result .= $this->get_rating_table( $active_ratings, $params );
-			$result .= '</td>';
-			$result .= '<td width="2px"></td>';
+			$result .= '</div>';
 		}
 
-		$result .= '<td><div><strong>'.$all_ratings_title.'</strong></div>';
+		$result .= '<div class="ratings_table">';
+		$result .= '<div><strong>'.$all_ratings_title.'</strong></div>';
 		$result .= $this->get_rating_table( $ratings, $params );
-		$result .= '</td>';
-		$result .= '</tr></table>';
+		$result .= '</div>';
 
 		return $result;
 	}
@@ -4054,7 +4113,7 @@ class Item extends ItemLight
 			return false;
 		}
 
-		if( $text == '#' ) $text = get_icon( 'publish', 'imgtag' ).' '.T_('Publish NOW!');
+		if( $text == '#' ) $text = get_icon( 'post', 'imgtag' ).' '.T_('Publish NOW!');
 		if( $title == '#' ) $title = T_('Publish now using current date and time.');
 
 		$r = $before;
@@ -4751,6 +4810,51 @@ class Item extends ItemLight
 
 			echo format_to_output( $r, $params['format'] );
 		}
+	}
+
+
+	/**
+	 * Template function: Display link to parent of this item.
+	 *
+	 * @param array
+	 */
+	function parent_link( $params = array() )
+	{
+		if( empty( $this->parent_ID ) )
+		{	// No parent
+			return;
+		}
+
+		if( $this->get_type_setting( 'use_parent' ) == 'never' )
+		{	// This item cannot has a parent item, because of item type settings
+			return;
+		}
+
+		// Make sure we are not missing any param:
+		$params = array_merge( array(
+				'before'         => '',
+				'after'          => '',
+				'not_found_text' => '',
+				'format'         => 'htmlbody',
+			), $params );
+
+		// Get parent Item:
+		$parent_Item = $this->get_parent_Item();
+
+		$r = $params['before'];
+
+		if( ! empty( $parent_Item ) )
+		{	// Display a parent post title as link to permanent url
+			$r .= $parent_Item->get_title();
+		}
+		else
+		{	// No parent post found, Display a text to inform about this:
+			$r .= $params['not_found_text'];
+		}
+
+		$r .= $params['after'];
+
+		echo format_to_output( $r, $params['format'] );
 	}
 
 
@@ -5749,7 +5853,8 @@ class Item extends ItemLight
 		}
 		else
 		{	// We want asynchronous post processing. This applies to posts with date in future too.
-			$Messages->add( T_('Scheduling asynchronous notifications...'), 'note' );
+			$Messages->add( sprintf( T_('You just published a post in the future. You must set your notifications to <a %s>Asynchronous</a> so that b2evolution can send out notification when this post goes live.'),
+					'href="http://b2evolution.net/man/after-each-post-settings"' ), 'warning' );
 
 			// CREATE OBJECT:
 			load_class( '/cron/model/_cronjob.class.php', 'Cronjob' );
@@ -7373,11 +7478,15 @@ class Item extends ItemLight
 			if( $attr != 'onclick' )
 			{ // Init an url
 				if( $this->ID > 0 )
-				{
+				{	// URL when item is editing:
 					$attr_href = $admin_url.'?ctrl=items&amp;action=edit_type&amp;post_ID='.$this->ID;
 				}
+				elseif( get_param( 'p' ) > 0 )
+				{	// URL when item is duplicating:
+					$attr_href = $admin_url.'?ctrl=items&amp;action=new_type&amp;p='.get_param( 'p' );
+				}
 				else
-				{
+				{	// URL when item is creating:
 					$attr_href = $admin_url.'?ctrl=items&amp;action=new_type';
 				}
 			}
@@ -7553,6 +7662,37 @@ class Item extends ItemLight
 	function city_visible()
 	{
 		return $this->get_type_setting( 'use_city' ) != 'never';
+	}
+
+
+	/**
+	 * Get the parent Item
+	 *
+	 * @return object Item
+	 */
+	function & get_parent_Item()
+	{
+		if( ! empty( $this->parent_Item ) )
+		{	// Return the initialized parent Item:
+			return $this->parent_Item;
+		}
+
+		if( empty( $this->parent_ID ) )
+		{	// No defined parent Item
+			$this->parent_Item = NULL;
+			return $this->parent_Item;
+		}
+
+		if( $this->get_type_setting( 'use_parent' ) == 'never' )
+		{	// Parent Item is not allowed for current item type
+			$this->parent_Item = NULL;
+			return $this->parent_Item;
+		}
+
+		$ItemCache = & get_ItemCache();
+		$this->parent_Item = & $ItemCache->get_by_ID( $this->parent_ID, false, false );
+
+		return $this->parent_Item;
 	}
 }
 ?>
