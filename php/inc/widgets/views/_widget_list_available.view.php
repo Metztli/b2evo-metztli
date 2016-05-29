@@ -7,7 +7,7 @@
  *
  * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2016 by Francois Planque - {@link http://fplanque.com/}.
  *
  * @package admin
  */
@@ -51,6 +51,7 @@ $widget_groups = array (
 	'menu_item'    => T_('Menu Item Widgets'),
 	'navigation'   => T_('Navigation Widgets'),
 	'content'      => T_('Content Listing Widgets'),
+	'infoitem'     => T_('Info about a specific Item'),
 	'collection'   => T_('Collection Support Widgets'),
 	'site'         => T_('Site Support Widgets'),
 	'user'         => T_('User Support Widgets'),
@@ -76,25 +77,33 @@ $core_componentwidget_defs = array(
 			'coll_tag_cloud',
 			'breadcrumb_path',
 			'coll_common_links',
+			'coll_current_filters',
 		),
 	'content' => array(
+			'coll_featured_posts',    // Simplified UIL: Featured Posts
 			'coll_post_list',         // Simple Post list
 			'coll_page_list',         // Simple Page list
-			'coll_link_list',         // Simple Sidebar Links list
 			'coll_related_post_list', // Simple Related Posts list
-			'linkblog',               // Simple Linkblog Links list
 			'coll_item_list',         // Universal Item list
-			'coll_featured_intro',    // Featured/Intro Post 
+			'coll_featured_intro',    // Featured/Intro Post
 			'coll_media_index',       // Photo index
 			'coll_comment_list',      // Comment list
+		),
+	'infoitem' => array(
+			'item_content',
+			'item_small_print',
+			'item_tags',
+			'item_about_author',
+			'item_seen_by',
 		),
 	'collection' => array(
 			'coll_logo',
 			'coll_title',
 			'coll_tagline',
 			'coll_longdesc',
-			'coll_current_filters',
+			'coll_member_count',
 			'coll_xml_feeds',
+			'coll_subscription',
 		),
 	'site' => array(
 			'colls_list_public',
@@ -109,8 +118,8 @@ $core_componentwidget_defs = array(
 	'other' => array(
 			'org_members',
 			'online_users',
-			'member_count',
 			'mobile_skin_switcher',
+			'poll'
 		),
 );
 

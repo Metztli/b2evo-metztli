@@ -7,7 +7,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
- * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2016 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  * @subpackage pureforums
@@ -62,7 +62,7 @@ $Skin->display_breadcrumbs( $cat );
 			) );
 				// Author info:
 				echo '<div class="ft_author_info">'.T_('Started by');
-				$Item->author( array( 'link_text' => 'login', 'after' => '' ) );
+				$Item->author( array( 'link_text' => 'auto', 'after' => '' ) );
 				echo ', '.mysql2date( 'D M j, Y H:i', $Item->datecreated );
 				echo '</div>';
 		?>
@@ -92,18 +92,16 @@ $Skin->display_breadcrumbs( $cat );
 	<tr class="ft_post_info">
 		<td><?php
 			$Item->author( array(
-				'link_text' => 'login',
+				'link_text' => 'auto',
 			) );
 		?></td>
 		<td><?php
-			if( $Skin->get_setting( 'display_post_date' ) )
-			{ // We want to display the post date:
-				$Item->issue_time( array(
-						'before'      => '',
-						'after'       => ' &nbsp; &nbsp; ',
-						'time_format' => 'D M j, Y H:i',
-					) );
-			}
+			// We want to display the post date:
+			$Item->issue_time( array(
+					'before'      => '',
+					'after'       => ' &nbsp; &nbsp; ',
+					'time_format' => 'D M j, Y H:i',
+				) );
 		?>
 			<a href="<?php echo $Item->get_permanent_url(); ?>" class="permalink">#1</a>
 		</td>
@@ -127,11 +125,32 @@ $Skin->display_breadcrumbs( $cat );
 			}
 			?>
 <?php
+if( $disp == 'single' )
+{
+	// ------------------------- "Item Single" CONTAINER EMBEDDED HERE --------------------------
+	// Display container contents:
+	skin_container( /* TRANS: Widget container name */ NT_('Item Single'), array(
+		'widget_context' => 'item',	// Signal that we are displaying within an Item
+		// The following (optional) params will be used as defaults for widgets included in this container:
+		// This will enclose each widget in a block:
+		'block_start' => '<div class="$wi_class$">',
+		'block_end' => '</div>',
+		// This will enclose the title of each widget:
+		'block_title_start' => '<h3>',
+		'block_title_end' => '</h3>',
+		// Params for skin file "_item_content.inc.php"
+		'widget_item_content_params' => $params,
+	) );
+	// ----------------------------- END OF "Item Single" CONTAINER -----------------------------
+}
+else
+{
 	// ---------------------- POST CONTENT INCLUDED HERE ----------------------
 	skin_include( '_item_content.inc.php', $params );
 	// Note: You can customize the default item content by copying the generic
 	// /skins/_item_content.inc.php file into the current skin folder.
 	// -------------------------- END OF POST CONTENT -------------------------
+}
 ?>
 		</td>
 	</tr>

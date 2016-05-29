@@ -8,7 +8,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
- * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2016 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  */
@@ -58,9 +58,9 @@ $params = array_merge( array(
 		'image_size'               => 'fit-1280x720',
 		'image_limit'              =>  1000,
 		'image_link_to'            => 'original', // Can be 'original', 'single' or empty
-		'excerpt_image_class'      => 'img-responsive',
-		'excerpt_image_size'       => 'fit-1280x720',
-		'excerpt_image_limit'      => 1,
+		'excerpt_image_class'      => '',
+		'excerpt_image_size'       => 'fit-80x80',
+		'excerpt_image_limit'      => 0,
 		'excerpt_image_link_to'    => 'single',
 		'include_cover_images'     => false, // Set to true if you want cover images to appear with teaser images.
 
@@ -77,12 +77,14 @@ $params = array_merge( array(
 		'gallery_colls'            => 5,
 		'gallery_order'            => '', // Can be 'ASC', 'DESC', 'RAND' or empty
 
+		'url_link_position'        => 'top',  // or 'none'
 		'before_url_link'          => '<p class="evo_post_link">'.T_('Link:').' ',
 		'after_url_link'           => '</p>',
 		'url_link_text_template'   => '$url$', // If evaluates to empty, nothing will be displayed (except player if podcast)
 		'url_link_url_template'    => '$url$', // $url$ will be replaced with saved URL address
 		'url_link_target'          => '', // Link target attribute e.g. '_blank'
 
+		'parent_link_position'     => 'top',  // or 'none'
 		'parent_link_before'       => '<p class="evo_post_parent">'.T_('Parent').': ',
 		'parent_link_after'        => '</p>',
 		'parent_link_not_found'    => '<i>'.T_('Item not found.').'</i>',
@@ -173,7 +175,7 @@ switch( $content_mode )
 		// Compact display:
 		echo $params['content_start_excerpt'];
 
-		if( !empty($params['excerpt_image_size']) )
+		if( !empty($params['excerpt_image_size']) && !empty($params['excerpt_image_limit']) )
 		{
 			// Display images that are linked to this post:
 			$Item->images( array(
@@ -262,21 +264,27 @@ switch( $content_mode )
 			echo $params['content_start_full_text'];
 
 			// URL link, if the post has one:
-			$Item->url_link( array(
-					'before'        => $params['before_url_link'],
-					'after'         => $params['after_url_link'],
-					'text_template' => $params['url_link_text_template'],
-					'url_template'  => $params['url_link_url_template'],
-					'target'        => $params['url_link_target'],
-					'podcast'       => '#', // Auto display mp3 player if post type is podcast (=> false, to disable)
-				) );
+			if( $params['url_link_position'] == 'top' )
+			{
+				$Item->url_link( array(
+						'before'        => $params['before_url_link'],
+						'after'         => $params['after_url_link'],
+						'text_template' => $params['url_link_text_template'],
+						'url_template'  => $params['url_link_url_template'],
+						'target'        => $params['url_link_target'],
+						'podcast'       => '#', // Auto display mp3 player if post type is podcast (=> false, to disable)
+					) );
+			}
 
 			// Parent link, if the post has one:
-			$Item->parent_link( array(
-					'before'         => $params['parent_link_before'],
-					'after'          => $params['parent_link_after'],
-					'not_found_text' => $params['parent_link_not_found'],
-				) );
+			if( $params['parent_link_position'] == 'top' )
+			{
+				$Item->parent_link( array(
+						'before'         => $params['parent_link_before'],
+						'after'          => $params['parent_link_after'],
+						'not_found_text' => $params['parent_link_not_found'],
+					) );
+			}
 
 			// Display CONTENT (at least the TEASER part):
 			$Item->content_teaser( array(

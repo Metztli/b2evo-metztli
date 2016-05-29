@@ -8,7 +8,7 @@
  *
  * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2016 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * @package plugins
@@ -57,6 +57,26 @@ class archives_plugin extends Plugin
 
 
 	/**
+	 * Get keys for block/widget caching
+	 *
+	 * Maybe be overriden by some widgets, depending on what THEY depend on..
+	 *
+	 * @param integer Widget ID
+	 * @return array of keys this widget depends on
+	 */
+	function get_widget_cache_keys( $widget_ID = 0 )
+	{
+		global $Blog;
+
+		return array(
+				'wi_ID'        => $widget_ID, // Have the widget settings changed ?
+				'set_coll_ID'  => $Blog->ID, // Have the settings of the blog changed ? (ex: new skin)
+				'cont_coll_ID' => empty( $this->disp_params['blog_ID'] ) ? $Blog->ID : $this->disp_params['blog_ID'], // Has the content of the displayed blog changed ?
+			);
+	}
+
+
+	/**
 	 * Event handler: SkinTag
 	 *
 	 * @param array Associative array of parameters. Valid keys are:
@@ -79,7 +99,7 @@ class archives_plugin extends Plugin
 	 *                - 'day_date_format' : (Default: conf.)
 	 * @return boolean did we display?
 	 */
-	function SkinTag( $params )
+	function SkinTag( & $params )
 	{
 		global $month;
 
@@ -137,6 +157,10 @@ class archives_plugin extends Plugin
 		if( $params['mode'] != 'postbypost' )
 		{
 			$params['sort_order'] = 'date';
+		}
+		if( ! isset( $params['sort_order'] ) )
+		{	// Set default sort order:
+			$params['sort_order'] = $Blog->get_setting( 'archives_sort_order' );
 		}
 
 		// Daily archive date format?
@@ -359,7 +383,7 @@ class ArchiveList extends Results
 	 * @param integer
 	 * @param boolean
 	 */
-	function ArchiveList(
+	function __construct(
 		$archive_mode = 'monthly',
 		$limit = 100,
 		$sort_order = 'date',
@@ -374,7 +398,6 @@ class ArchiveList extends Results
 		global $show_statuses;
 		global $author, $assgn, $status, $types;
 		global $s, $sentence, $exact;
-		global $posttypes_specialtypes;
 
 		$this->dbtable = $dbtable;
 		$this->dbprefix = $dbprefix;
@@ -438,7 +461,7 @@ class ArchiveList extends Results
 			$this->ItemQuery->where_datestart( '', '', '', '', $timestamp_min, $timestamp_max );
 
 			// Include all types except pages, intros and sidebar links:
-			$this->ItemQuery->where_types( '-'.implode(',',$posttypes_specialtypes) );
+			$this->ItemQuery->where_itemtype_usage( 'post' );
 		}
 
 
@@ -487,7 +510,7 @@ class ArchiveList extends Results
 				$archives_list = new ItemListLight( $Blog , $Blog->get_timestamp_min(), $Blog->get_timestamp_max(), $this->total_rows );
 				$archives_list->set_filters( array(
 						'visibility_array' => array( 'published' ),  // We only want to advertised published items
-						'types' =>  '-'.implode(',',$posttypes_specialtypes),	// Include all types except pages, intros and sidebar links
+						'itemtype_usage' => 'post', // Include all types with usage "post"
 					) );
 
 				if($sort_order == 'title')
@@ -521,7 +544,7 @@ class ArchiveList extends Results
 			}
 		}
 
-		parent::Results( $sql, 'archivelist_', '', $limit );
+		parent::__construct( $sql, 'archivelist_', '', $limit );
 
 		$this->restart();
 	}
@@ -533,7 +556,7 @@ class ArchiveList extends Results
 	 * These queries are complex enough for us not to have to rewrite them:
 	 * dh> ???
 	 */
-	function count_total_rows()
+	function count_total_rows( $sql_count = NULL )
 	{
 		global $DB;
 
@@ -585,7 +608,7 @@ class ArchiveList extends Results
 	function restart()
 	{
 		// Make sure query has executed at least once:
-		$this->query();
+		$this->run_query();
 
 		$this->current_idx = 0;
 		$this->arc_w_last = '';

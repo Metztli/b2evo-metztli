@@ -7,7 +7,7 @@
  *
  * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2016 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * @package admin
@@ -68,8 +68,8 @@ $Form->begin_fieldset( T_('Settings to decode the returned emails').get_manual_l
 		$repath_novalidatecert_params['disabled'] = 'disabled';
 	}
 	$Form->radio_input( 'repath_novalidatecert', $Settings->get( 'repath_novalidatecert' ), array(
-			array( 'value' => 0, 'label' => T_('Do not validate the certificate from the TLS/SSL server. Check this if you are using a self-signed certificate.') ),
-			array( 'value' => 1, 'label' => T_('Validate that the certificate from the TLS/SSL server can be trusted. Use this if you have a correctly signed certificate.') )
+			array( 'value' => 1, 'label' => T_('Do not validate the certificate from the TLS/SSL server. Check this if you are using a self-signed certificate.') ),
+			array( 'value' => 0, 'label' => T_('Validate that the certificate from the TLS/SSL server can be trusted. Use this if you have a correctly signed certificate.') )
 		), T_('Certificate validation'), $repath_novalidatecert_params );
 
 	$Form->text_input( 'repath_server_port', $Settings->get('repath_server_port'), 5, T_('Port Number'), T_('Port number of your incoming mail server (Defaults: IMAP4/SSL: 993, IMAP4 with or without TLS: 143, POP3/SSL: 995, POP3 with or without TLS: 110).'), array( 'maxlength' => 6 ) );
@@ -85,6 +85,9 @@ $Form->begin_fieldset( T_('Settings to decode the returned emails').get_manual_l
 		$Form->password_input( 'repath_password', $Settings->get( 'repath_password' ), 25,
 					T_('Password'), array( 'maxlength' => 255, 'note' => T_('Password for authenticating on your mail server.'), 'autocomplete' => 'off' ) );
 	}
+
+	$Form->text_input( 'repath_imap_folder', $Settings->get( 'repath_imap_folder' ), 25,
+				T_('IMAP Folder'), T_('Which folder holds your returned email.'), array( 'maxlength' => 255 ) );
 
 	$Form->checkbox( 'repath_ignore_read', $Settings->get( 'repath_ignore_read' ), T_('Ignore emails that have already been read'),
 				T_('Check this in order not to re-process emails that already have the "seen" flag on the server.') );

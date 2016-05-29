@@ -6,7 +6,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
- * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2016 by Francois Planque - {@link http://fplanque.com/}
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
@@ -33,11 +33,11 @@ if( empty( $params['closed_by_admin'] ) )
 }
 else
 { // Admin closed current user account
-	printf( T_('A user account was closed %s days after creation by %s'), $params['days_count'], get_user_colored_login_link( $params['closed_by_admin'], array( 'use_style' => true ) ) );
+	printf( T_('A user account was closed %s days after creation by %s'), $params['days_count'], get_user_colored_login_link( $params['closed_by_admin'], array( 'use_style' => true, 'protocol' => 'http:' ) ) );
 }
 echo "</p>\n";
 
-echo '<p'.emailskin_style( '.p' ).'>'.T_('Login').": ".get_user_colored_login_link( $params['login'], array( 'use_style' => true ) )."</p>\n";
+echo '<p'.emailskin_style( '.p' ).'>'.T_('Login').": ".get_user_colored_login_link( $params['login'], array( 'use_style' => true, 'protocol' => 'http:' ) )."</p>\n";
 echo '<p'.emailskin_style( '.p' ).'>'.T_('Email').": ".$params['email']."</p>\n";
 echo '<p'.emailskin_style( '.p' ).'>'.T_('Account close reason').": ".nl2br( $params['reason'] )."</p>\n";
 

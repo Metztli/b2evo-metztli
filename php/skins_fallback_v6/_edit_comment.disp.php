@@ -9,7 +9,7 @@
  *
  * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2016 by Francois Planque - {@link http://fplanque.com/}.
  *
  * @package evoskins
  */
@@ -85,11 +85,7 @@ $Form->begin_form( 'evo_comment' );
 	ob_start();
 	echo '<div class="comment_toolbars">';
 	// CALL PLUGINS NOW:
-	$Plugins->trigger_event( 'AdminDisplayToolbar', array(
-			'target_type' => 'Comment',
-			'edit_layout' => NULL,
-			'Comment' => $edited_Comment,
-		) );
+	$Plugins->trigger_event( 'DisplayCommentToolbar', array( 'Comment' => & $edited_Comment, 'Item' => & $comment_Item ) );
 	echo '</div>';
 	$comment_toolbar = ob_get_clean();
 
@@ -123,7 +119,10 @@ $Form->begin_form( 'evo_comment' );
 		if( $current_User->check_perm( 'files', 'view' ) && $current_User->check_perm( 'admin', 'restricted' ) )
 		{
 			$Form->begin_fieldset( T_('Attachments'), array( 'id' => 'comment_attachments' ) );
-			display_attachments( $LinkOwner );
+			display_attachments( $LinkOwner, array(
+						'block_start' => '<div class="attachment_list results">',
+						'table_start' => '<table class="table table-striped table-bordered table-hover table-condensed" cellspacing="0" cellpadding="0">',
+					)  );
 			$Form->end_fieldset();
 		}
 		else

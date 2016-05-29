@@ -4,7 +4,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
- * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2016 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * @package admin
@@ -105,7 +105,7 @@ $Form->begin_fieldset( T_('Collection base URL').get_admin_badge().get_manual_li
 		}
 
 
-		$Form->radio( 'blog_access_type', $edited_Blog->get( 'access_type' ), array(
+		$access_type_options = array(
 			/* TODO: Tblue> This option only should be available if the
 			 *              current blog is set as the default blog, otherwise
 			 *              this setting is confusing. Another possible
@@ -158,13 +158,17 @@ $Form->begin_fieldset( T_('Collection base URL').get_admin_badge().get_manual_li
 										onfocus="document.getElementsByName(\'blog_access_type\')[5].checked=true;
 										update_urlpreview( \''.$baseurl.'\', this.value );" /></span>'.$siteurl_relative_warning,
 										'onclick="document.getElementById( \'blog_siteurl_relative\' ).focus();"'
-			),
-			array( 'subdom', T_('Subdomain of basedomain'),
+			)
+		);
+		if( ! is_ip_url_domain( $baseurl ) )
+		{	// Don't allow subdomain for IP address:
+			$access_type_options[] = array( 'subdom', T_('Subdomain of basedomain'),
 										preg_replace( '#(https?://)#i', '$1<span class="blog_url_text">'.$edited_Blog->urlname.'</span>.', $baseurl ),
 										'',
 										'onclick="update_urlpreview( \'http://\'+document.getElementById( \'blog_urlname\' ).value+\'.'.preg_replace( '#(https?://)#i', '', $baseurl ).'\' )"'
-			),
-			array( 'absolute', T_('Absolute URL').':',
+			);
+		}
+		$access_type_options[] = array( 'absolute', T_('Absolute URL').':',
 										'',
 										'<input type="text" id="blog_siteurl_absolute" class="form_text_input form-control" name="blog_siteurl_absolute" size="50" maxlength="120" value="'
 											.format_to_output( $blog_siteurl_absolute, 'formvalue' )
@@ -172,8 +176,9 @@ $Form->begin_fieldset( T_('Collection base URL').get_admin_badge().get_manual_li
 											onfocus="document.getElementsByName(\'blog_access_type\')[7].checked=true;
 											update_urlpreview( this.value );" />'.$siteurl_absolute_warning,
 										'onclick="document.getElementById( \'blog_siteurl_absolute\' ).focus();"'
-			),
-		), T_('Collection base URL'), true );
+		);
+
+		$Form->radio( 'blog_access_type', $edited_Blog->get( 'access_type' ), $access_type_options, T_('Collection base URL'), true );
 
 ?>
 <script type="text/javascript">
@@ -222,6 +227,87 @@ jQuery( '[id$=_assets_absolute_url]' ).focus( function()
 	// URL Preview (always displayed)
 	$blogurl = $edited_Blog->gen_blogurl();
 	$Form->info( T_('URL preview'), '<span id="urlpreview">'.$blogurl.'</span>' );
+
+$Form->end_fieldset();
+
+
+$Form->begin_fieldset( T_('Assets URLs / CDN support').get_admin_badge().get_manual_link( 'assets-url-cdn-settings' ) );
+
+	if( $current_User->check_perm( 'blog_admin', 'edit', false, $edited_Blog->ID ) )
+	{ // Permission to edit advanced admin settings
+		global $rsc_url, $media_url, $skins_url;
+
+		$option_labels = array(
+			'basic' => T_('URL configured in Basic Config'),
+			'relative' => T_('%s folder relative to current collection'),
+			'absolute' => T_('Absolute URL').':'
+		);
+		$absolute_url_note = T_('Enter path to %s folder ending with / -- This may be located in a CDN zone');
+		$assets_url_data = array();
+		// rsc url:
+		$assets_url_data['rsc_assets_url_type'] = array(
+				'label'        => T_('Load generic /rsc/ assets from'),
+				'url'          => $rsc_url,
+				'absolute_url' => 'rsc_assets_absolute_url',
+				'folder'       => '/rsc/',
+				'local_url'    => $edited_Blog->get_local_rsc_url( 'relative' )
+			);
+		// media url:
+		$assets_url_data['media_assets_url_type'] = array(
+				'label'        => T_('Load /media/ assets from')
+			);
+		if( $edited_Blog->get( 'media_location' ) == 'none' )
+		{ // if media location is disabled
+			$assets_url_data['media_assets_url_type']['info'] = sprintf( T_('The media directory is <a %s>turned off</a> for this collection'), 'href="'.$admin_url.'?ctrl=coll_settings&amp;tab=advanced&amp;blog='.$edited_Blog->ID.'#media_dir_location"' );
+		}
+		elseif( $edited_Blog->get( 'media_location' ) == 'custom' )
+		{ // if media location is customized
+			$assets_url_data['media_assets_url_type']['info'] = sprintf( T_('A custom location has already been set in the <a %s>advanced properties</a>'), 'href="'.$admin_url.'?ctrl=coll_settings&amp;tab=advanced&amp;blog='.$edited_Blog->ID.'"' );
+		}
+		else
+		{
+			$assets_url_data['media_assets_url_type'] += array(
+					'url'          => $media_url,
+					'absolute_url' => 'media_assets_absolute_url',
+					'folder'       => '/media/',
+					'local_url'    => $edited_Blog->get_local_media_url( 'relative' )
+				);
+		}
+		// skins url:
+		$assets_url_data['skins_assets_url_type'] = array(
+				'label'        => T_('Load /skins/ assets from'),
+				'url'          => $skins_url,
+				'absolute_url' => 'skins_assets_absolute_url',
+				'folder'       => '/skins/',
+				'local_url'    => $edited_Blog->get_local_skins_url( 'relative' )
+			);
+
+		foreach( $assets_url_data as $asset_url_type => $asset_url_data )
+		{
+			if( isset( $asset_url_data['info'] ) )
+			{ // Display only info for this url type
+				$Form->info( $asset_url_data['label'], $asset_url_data['info'] );
+			}
+			else
+			{ // Display options full list
+				$Form->radio( $asset_url_type, $edited_Blog->get_setting( $asset_url_type ), array(
+					array( 'basic', $option_labels['basic'], $asset_url_data['url'] ),
+					array( 'relative', sprintf( $option_labels['relative'], $asset_url_data['folder'] ), '<span id="'.$asset_url_type.'_relative">'.$asset_url_data['local_url'].'</span>' ),
+					array( 'absolute', $option_labels['absolute'], '',
+						'<input type="text" id="'.$asset_url_data['absolute_url'].'" class="form_text_input form-control" name="'.$asset_url_data['absolute_url'].'"
+						size="50" maxlength="120" onfocus="document.getElementsByName(\''.$asset_url_type.'\')[2].checked=true;" value="'.$edited_Blog->get_setting( $asset_url_data['absolute_url'] ).'" />
+						<span class="notes">'.sprintf( $absolute_url_note, $asset_url_data['folder'] ).'</span>'
+					)
+				), $asset_url_data['label'], true );
+			}
+		}
+	}
+	else
+	{ // Preview assets urls
+		$Form->info( T_('Load generic /rsc/ assets from'), $edited_Blog->get_local_rsc_url() );
+		$Form->info( T_('Load /media/ assets from'), $edited_Blog->get_local_media_url() );
+		$Form->info( T_('Load /skins/ assets from'), $edited_Blog->get_local_skins_url() );
+	}
 
 $Form->end_fieldset();
 

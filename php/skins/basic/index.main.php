@@ -12,7 +12,7 @@
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
-if( version_compare( $app_version, '2.4.1' ) < 0 )
+if( evo_version_compare( $app_version, '2.4.1' ) < 0 )
 { // Older 2.x skins work on newer 2.x b2evo versions, but newer 2.x skins may not work on older 2.x b2evo versions.
 	die( 'This skin is designed for b2evolution 2.4.1 and above. Please <a href="http://b2evolution.net/downloads/index.html">upgrade your b2evolution</a>.' );
 }
@@ -180,6 +180,25 @@ siteskin_include( '_site_body_header.inc.php' );
 				?>
 
 				<?php
+				if( $disp == 'single' )
+				{
+					// ------------------------- "Item Single" CONTAINER EMBEDDED HERE --------------------------
+					// Display container contents:
+					skin_container( /* TRANS: Widget container name */ NT_('Item Single'), array(
+						// The following (optional) params will be used as defaults for widgets included in this container:
+						// This will enclose each widget in a block:
+						'block_start' => '<div class="$wi_class$">',
+						'block_end' => '</div>',
+						// This will enclose the title of each widget:
+						'block_title_start' => '<h3>',
+						'block_title_end' => '</h3>',
+						// Params for skin file "_item_content.inc.php"
+						'widget_item_content_params' => array( 'image_size' => 'fit-400x320' ),
+					) );
+					// ----------------------------- END OF "Item Single" CONTAINER -----------------------------
+				}
+				else
+				{
 					// ---------------------- POST CONTENT INCLUDED HERE ----------------------
 					skin_include( '_item_content.inc.php', array(
 							'image_size' => 'fit-400x320',
@@ -187,6 +206,7 @@ siteskin_include( '_site_body_header.inc.php' );
 					// Note: You can customize the default item content by copying the generic
 					// /skins/_item_content.inc.php file into the current skin folder.
 					// -------------------------- END OF POST CONTENT -------------------------
+				}
 				?>
 
 				<small>
@@ -241,7 +261,7 @@ siteskin_include( '_site_body_header.inc.php' );
 				'disp_posts'  => '',		// We already handled this case above
 				'disp_single' => '',		// We already handled this case above
 				'disp_page'   => '',		// We already handled this case above
-				'author_link_text' => 'preferredname',
+				'author_link_text' => 'auto',
 			) );
 		// Note: you can customize any of the sub templates included here by
 		// copying the matching php file into your skin directory.

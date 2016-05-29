@@ -7,7 +7,7 @@
  *
  * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2016 by Francois Planque - {@link http://fplanque.com/}
  * Parts of this file are copyright (c)2004-2006 by Daniel HAHLER - {@link http://thequod.de/contact}.
  * Parts of this file are copyright (c)2005-2006 by PROGIDISTRI - {@link http://progidistri.com/}.
  *
@@ -113,7 +113,7 @@ switch( $action )
 			param( 'upload_enabled', 'integer', 0 );
 			$Settings->set( 'upload_enabled', $upload_enabled );
 
-			param_integer_range( 'upload_maxkb', 1, $upload_maxmaxkb, T_('Maximum allowed filesize must be between %d and %d KB.') );
+			param( 'upload_maxkb', 'integer', 0 );
 			$Settings->set( 'upload_maxkb', $upload_maxkb );
 
 			// Advanced settings

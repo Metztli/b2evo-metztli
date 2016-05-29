@@ -7,7 +7,7 @@
  *
  * b2evolution - {@link http://b2evolution.net/}
  * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
- * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2016 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
  */
@@ -21,7 +21,7 @@ $params = array_merge( array(
 		'content_mode'     => 'auto',		// 'auto' will auto select depending on $disp-detail
 		'item_class'       => 'evo_post evo_content_block',
 		'image_size'	     => 'fit-400x320',
-		'author_link_text' => 'preferredname',
+		'author_link_text' => 'auto',
 	), $params );
 
 echo '<div class="evo_content_block">'; // Beginning of post display
@@ -90,11 +90,31 @@ echo '<div class="evo_content_block">'; // Beginning of post display
 	</div>
 
 	<?php
+	if( $disp == 'single' )
+	{
+		// ------------------------- "Item Single" CONTAINER EMBEDDED HERE --------------------------
+		// Display container contents:
+		skin_container( /* TRANS: Widget container name */ NT_('Item Single'), array(
+			// The following (optional) params will be used as defaults for widgets included in this container:
+			// This will enclose each widget in a block:
+			'block_start' => '<div class="$wi_class$">',
+			'block_end' => '</div>',
+			// This will enclose the title of each widget:
+			'block_title_start' => '<h3>',
+			'block_title_end' => '</h3>',
+			// Params for skin file "_item_content.inc.php"
+			'widget_item_content_params' => $params,
+		) );
+		// ----------------------------- END OF "Item Single" CONTAINER -----------------------------
+	}
+	else
+	{
 		// ---------------------- POST CONTENT INCLUDED HERE ----------------------
 		skin_include( '_item_content.inc.php', $params );
 		// Note: You can customize the default item content by copying the generic
 		// /skins/_item_content.inc.php file into the current skin folder.
 		// -------------------------- END OF POST CONTENT -------------------------
+	}
 	?>
 
 	<div class="evo_post_foot">

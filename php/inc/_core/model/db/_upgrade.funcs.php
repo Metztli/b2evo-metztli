@@ -7,7 +7,7 @@
  *
  * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2016 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2004-2005 by Daniel HAHLER - {@link https://thequod.de/}.
  *
  * {@link db_delta()} is based on dbDelta() from {@link http://wordpress.com Wordpress}, see
@@ -1448,7 +1448,7 @@ function install_make_db_schema_current( $display = true )
 			{
 				if( count($itemlist) == 1 && $itemlist[0]['type'] == 'create_table' )
 				{
-					echo $itemlist[0]['note']."<br />\n";
+					echo get_install_format_text( $itemlist[0]['note']."<br />\n", 'br' );
 					evo_flush();
 					foreach( $itemlist[0]['queries'] as $query )
 					{ // should be just one, but just in case
@@ -1461,22 +1461,22 @@ function install_make_db_schema_current( $display = true )
 				}
 				else
 				{
-					echo 'Altering table &laquo;'.$table.'&raquo;...';
-					echo '<ul>';
+					echo get_install_format_text( 'Altering table &laquo;'.$table.'&raquo;...' );
+					echo get_install_format_text( '<ul>' );
 					foreach( $itemlist as $item )
 					{
-						echo '<li>'.$item['note'];
+						echo get_install_format_text( '<li>'.$item['note'], 'li' );
 						if( $debug )
 						{
 							pre_dump( $item['queries'] );
 						}
-						echo '</li>';
+						echo get_install_format_text( '</li>' );
 						foreach( $item['queries'] as $query )
 						{
 							$DB->query( $query );
 						}
 					}
-					echo "</ul>";
+					echo get_install_format_text( '</ul>' );
 				}
 			}
 		}

@@ -7,7 +7,7 @@
  *
  * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}.
+ * @copyright (c)2003-2016 by Francois Planque - {@link http://fplanque.com/}.
  * Parts of this file are copyright (c)2005 by Daniel HAHLER - {@link http://thequod.de/contact}.
  *
  * @package admin
@@ -166,6 +166,12 @@ if( ! empty( $import_files ) )
 
 $Form->end_form();
 
+if( $import_perm_view )
+{ // Current user must has access to the import dir
+
+	// Initialize JavaScript to build and open window:
+	echo_modalwindow_js();
+}
 ?>
 <script type="text/javascript">
 jQuery( '.table_scroll td' ).click( function()
@@ -175,9 +181,6 @@ jQuery( '.table_scroll td' ).click( function()
 <?php
 if( $import_perm_view )
 { // Current user must has access to the import dir
-
-	// Initialize JavaScript to build and open window
-	echo_modalwindow_js();
 ?>
 
 function import_files_window()

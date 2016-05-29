@@ -7,7 +7,7 @@
  *
  * @license GNU GPL v2 - {@link http://b2evolution.net/about/gnu-gpl-license}
  *
- * @copyright (c)2003-2015 by Francois Planque - {@link http://fplanque.com/}
+ * @copyright (c)2003-2016 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package admin
  */
@@ -21,16 +21,6 @@ $current_User->check_perm( 'options', 'view', true );
 $AdminUI->set_path( 'options', 'cron' );
 
 param( 'action', 'string', 'list' );
-
-// We want to remember these params from page to page:
-param( 'ctst_pending', 'integer', 0, true );
-param( 'ctst_started', 'integer', 0, true );
-param( 'ctst_timeout', 'integer', 0, true );
-param( 'ctst_error', 'integer', 0, true );
-param( 'ctst_finished', 'integer', 0, true );
-param( 'results_crontab_order', 'string', '-D', true );
-param( 'results_crontab_page', 'integer', 1, true );
-
 
 if( param( 'ctsk_ID', 'integer', '', true) )
 {// Load cronjob from cache:
@@ -52,6 +42,9 @@ switch( $action )
 
 		load_class( 'cron/model/_cronjob.class.php', 'Cronjob' );
 		$edited_Cronjob = new Cronjob();
+
+		// Get this param to preselect job type by url param:
+		param( 'cjob_type', 'string' );
 		break;
 
 	case 'edit':
