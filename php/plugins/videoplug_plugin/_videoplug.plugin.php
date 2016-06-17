@@ -25,7 +25,7 @@ class videoplug_plugin extends Plugin
 	var $group = 'rendering';
 	var $short_desc;
 	var $long_desc;
-	var $version = '5.0.0';
+	var $version = '6.7.0';
 	var $number_of_installs = 1;
 
 
@@ -35,7 +35,7 @@ class videoplug_plugin extends Plugin
 	function PluginInit( & $params )
 	{
 		$this->short_desc = T_('Video plug for a few popular video sites.');
-		$this->long_desc = T_('This is a basic video plug pluigin. Use it by entering [video:rutube:123xyz] [video:youtube:123xyz] or [video:dailymotion:123xyz] into your post, where 123xyz is the ID of the video.');
+		$this->long_desc = T_('This is a basic video plug pluigin. Use it by entering [video:youtube:123xyz] or [video:dailymotion:123xyz] into your post, where 123xyz is the ID of the video.');
 	}
 
 
@@ -242,6 +242,7 @@ class videoplug_plugin extends Plugin
 						case 'rutube':
 							// Allow HD video code with ?hd=1 at the end
 							regexp_ID = /^[a-z0-9_?=-]+$/i;
+							// regexp_URL = /^(.+\?v=)?([a-z0-9_?=-]+)$/i;
 							regexp_URL = /^.+(video\/|\/watch\?v=|embed\/|\/)([a-z0-9_?=-]+)$/i;
 							break;
 
