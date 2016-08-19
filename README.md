@@ -54,7 +54,13 @@ Add this upstream b2evolution quickstart repo:
 
 git remote add upstream -m master git://github.com/Metztli/b2evo-metztli.git
 
+then try:
+
 git pull -s recursive -X theirs upstream master
+
+if it does not work, it means your are using git 2.9+, then try
+
+git pull -s recursive --allow-unrelated-histories -X theirs upstream master
 
 A subsequent dialog or editor may be activated prompting you to 'enter a commit message': you may simply close the dialog or editor.
 
