@@ -1,46 +1,35 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
   <head>
-    <meta charset="utf-8">
+    <meta charset='utf-8'>
     <meta http-equiv="X-UA-Compatible" content="chrome=1">
-    <title>B2evo-metztli by Metztli</title>
-    <link rel="stylesheet" href="stylesheets/styles.css">
-    <link rel="stylesheet" href="stylesheets/github-dark.css">
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
-    <script src="javascripts/main.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <link href='https://fonts.googleapis.com/css?family=Architects+Daughter' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print">
+
     <!--[if lt IE 9]>
-      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
     <![endif]-->
-    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 
+    <title>B2evo-metztli by Metztli</title>
   </head>
+
   <body>
-
-      <header>
+    <header>
+      <div class="inner">
         <h1>B2evo-metztli</h1>
-        <p>b2evolution is a powerful free blog/CMS/photo galleries/forums/doc engine you can install on OpenShift online platform as a service (PaaS)</p>
-      </header>
+        <h2>b2evolution is a powerful free blog/CMS/photo galleries/forums/doc engine you can install on OpenShift online platform as a service (PaaS)</h2>
+        <a href="https://github.com/Metztli/b2evo-metztli" class="button"><small>View project on</small> GitHub</a>
+      </div>
+    </header>
 
-      <div id="banner">
-        <span id="logo"></span>
-
-        <a href="https://github.com/Metztli/b2evo-metztli" class="button fork"><strong>View On GitHub</strong></a>
-        <div class="downloads">
-          <span>Downloads:</span>
-          <ul>
-            <li><a href="https://github.com/Metztli/b2evo-metztli/zipball/master" class="button">ZIP</a></li>
-            <li><a href="https://github.com/Metztli/b2evo-metztli/tarball/master" class="button">TAR</a></li>
-          </ul>
-        </div>
-      </div><!-- end banner -->
-
-    <div class="wrapper">
-      <nav>
-        <ul></ul>
-      </nav>
-      <section>
-        <h1>
-<a id="b2evolution-on-openshift" class="anchor" href="#b2evolution-on-openshift" aria-hidden="true"><span class="octicon octicon-link"></span></a>b2evolution on OpenShift</h1>
+    <div id="content-wrapper">
+      <div class="inner clearfix">
+        <section id="main-content">
+          <h1>
+<a id="b2evolution-on-openshift" class="anchor" href="#b2evolution-on-openshift" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>b2evolution on OpenShift</h1>
 
 <h1></h1>
 
@@ -64,7 +53,7 @@
 <p>More information can be found on the official <a href="http://b2evolution.net">b2evolution website</a>.</p>
 
 <h2>
-<a id="running-on-openshift" class="anchor" href="#running-on-openshift" aria-hidden="true"><span class="octicon octicon-link"></span></a>Running on OpenShift</h2>
+<a id="running-on-openshift" class="anchor" href="#running-on-openshift" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Running on OpenShift</h2>
 
 <hr>
 
@@ -116,6 +105,10 @@ All the rhc commands below are relative to your working directory location.</p>
 <p>Proceed with:</p>
 
 <p><code>git pull -s recursive -X theirs upstream master</code></p>
+
+<p>if it does not work, it means your are using git 2.9+, then try</p>
+
+<p><code>git pull -s recursive --allow-unrelated-histories -X theirs upstream master</code></p>
 
 <p>A subsequent dialog or editor may be activated prompting you to '<em>enter a commit message</em>': you may simply close the dialog or editor.</p>
 
@@ -187,13 +180,25 @@ application by accessing your (sub)domain URL.</p>
 <hr>
 
 <p><img src="https://metztli.it/sites/default/files/images/Atemoztli.png" alt="Tlalocatecuhtli"></p>
-      </section>
-      <footer>
-        <p>Project maintained by <a href="https://github.com/Metztli">Metztli</a></p>
-        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://twitter.com/michigangraham">mattgraham</a></small></p>
-      </footer>
+        </section>
+
+        <aside id="sidebar">
+          <a href="https://github.com/Metztli/b2evo-metztli/zipball/master" class="button">
+            <small>Download</small>
+            .zip file
+          </a>
+          <a href="https://github.com/Metztli/b2evo-metztli/tarball/master" class="button">
+            <small>Download</small>
+            .tar.gz file
+          </a>
+
+          <p class="repo-owner"><a href="https://github.com/Metztli/b2evo-metztli"></a> is maintained by <a href="https://github.com/Metztli">Metztli</a>.</p>
+
+          <p>This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the Architect theme by <a href="https://twitter.com/jasonlong">Jason Long</a>.</p>
+        </aside>
+      </div>
     </div>
-    <!--[if !IE]><script>fixScale(document);</script><![endif]-->
-    
+
+  
   </body>
 </html>
