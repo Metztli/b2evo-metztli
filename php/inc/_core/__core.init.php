@@ -23,7 +23,7 @@ $default_ctrl = 'settings';
  * Minimum PHP version required for _core module to function properly.
  * This value can't be higher then the application required php version.
  */
-$required_php_version[ '_core' ] = '5.0';
+$required_php_version[ '_core' ] = '5.2';
 
 /**
  * Minimum MYSQL version required for _core module to function properly.
@@ -1248,9 +1248,9 @@ class _core_Module extends Module
 										'text' => T_('SEO').'&hellip;',
 										'href' => $admin_url.'?ctrl=coll_settings&amp;tab=seo'.$blog_param,
 									),
-									'renderers' => array(
-										'text' => T_('Renderers').'&hellip;',
-										'href' => $admin_url.'?ctrl=coll_settings&amp;tab=renderers'.$blog_param,
+									'plugins' => array(
+										'text' => T_('Plugins').'&hellip;',
+										'href' => $admin_url.'?ctrl=coll_settings&amp;tab=plugins'.$blog_param,
 									),
 								)
 						);
@@ -1724,7 +1724,7 @@ class _core_Module extends Module
 								'text' => T_('Profiles'),
 								'href' => '?ctrl=usersettings' ),
 							'registration' => array(
-								'text' => T_('Registration'),
+								'text' => T_('Registration & Login'),
 								'href' => '?ctrl=registration' ),
 							'invitations' => array(
 								'text' => T_('Invitations'),
@@ -1769,9 +1769,9 @@ class _core_Module extends Module
 							'text' => T_('Settings'),
 							'href' => '?ctrl=email&amp;tab=settings',
 							'entries' => array(
-								'renderers' => array(
-									'text' => T_('Renderers'),
-									'href' => '?ctrl=email&amp;tab=settings&amp;tab3=renderers' ),
+								'plugins' => array(
+									'text' => T_('Plugins'),
+									'href' => '?ctrl=email&amp;tab=settings&amp;tab3=plugins' ),
 								'envelope' => array(
 									'text' => T_('Envelope'),
 									'href' => '?ctrl=email&amp;tab=settings&amp;tab3=envelope' ),

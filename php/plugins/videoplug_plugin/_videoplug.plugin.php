@@ -25,7 +25,7 @@ class videoplug_plugin extends Plugin
 	var $group = 'rendering';
 	var $short_desc;
 	var $long_desc;
-	var $version = '6.7.0';
+	var $version = '6.7.5';
 	var $number_of_installs = 1;
 
 
@@ -54,7 +54,6 @@ class videoplug_plugin extends Plugin
 		// anyone, feel free to clean up the ones that have no object tag at all.
 
 		$search_list = array(
-				'#\[video:rutube:(.+?)]#',      // Rutube
 				'#\[video:youtube:(.+?)]#',     // Youtube
 				'#\[video:dailymotion:(.+?)]#', // Dailymotion
 				'#\[video:vimeo:(.+?)]#',       // vimeo // blueyed> TODO: might want to use oEmbed (to get title etc separately and display it below video): http://vimeo.com/api/docs/oembed
@@ -65,7 +64,6 @@ class videoplug_plugin extends Plugin
 
 			);
 		$replace_list = array(
-				'<div class="videoblock"><iframe id="rtplayer" type="text/html" width="425" height="350" src="//www.rutube.ru/embed/\\1" allowfullscreen="allowfullscreen" frameborder="0"></iframe></div>',
 				'<div class="videoblock"><iframe id="ytplayer" type="text/html" width="425" height="350" src="//www.youtube.com/embed/\\1" allowfullscreen="allowfullscreen" frameborder="0"></iframe></div>',
 				'<div class="videoblock"><iframe src="//www.dailymotion.com/embed/video/\\1" width="425" height="335" frameborder="0" allowfullscreen></iframe></div>',
 				'<div class="videoblock"><iframe src="//player.vimeo.com/video/$1" width="400" height="225" frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen></iframe></div>',
@@ -74,6 +72,9 @@ class videoplug_plugin extends Plugin
 				'<div class="videoblock">The Live Video service is not available anymore.</div>',
 				'<div class="videoblock">The iFilm video service is not available anymore.</div>',
 			);
+
+		// Move short tag outside of paragraph
+		$content = move_short_tags( $content, '/\[video:(youtube|dailymotion|vimeo):?[^\[\]]*\]/i' );
 
 		$content = replace_content_outcode( $search_list, $replace_list, $content );
 
@@ -210,7 +211,6 @@ class videoplug_plugin extends Plugin
 
 		echo $this->get_template( 'toolbar_title_before' ).T_('Video').': '.$this->get_template( 'toolbar_title_after' );
 		echo $this->get_template( 'toolbar_group_before' );
-		echo '<input type="button" id="video_rutube" title="'.T_('Insert Rutube video').'" class="'.$this->get_template( 'toolbar_button_class' ).'" data-func="videotag|rutube" value="RuTube" />';
 		echo '<input type="button" id="video_youtube" title="'.T_('Insert Youtube video').'" class="'.$this->get_template( 'toolbar_button_class' ).'" data-func="videotag|youtube" value="YouTube" />';
 		echo '<input type="button" id="video_vimeo" title="'.T_('Insert vimeo video').'" class="'.$this->get_template( 'toolbar_button_class' ).'" data-func="videotag|vimeo" value="Vimeo" />';
 		echo '<input type="button" id="video_dailymotion" title="'.T_('Insert DailyMotion video').'" class="'.$this->get_template( 'toolbar_button_class' ).'" data-func="videotag|dailymotion" value="DailyMotion" />';
@@ -239,13 +239,6 @@ class videoplug_plugin extends Plugin
 					var regexp_URL = false;
 					switch( tag )
 					{
-						case 'rutube':
-							// Allow HD video code with ?hd=1 at the end
-							regexp_ID = /^[a-z0-9_?=-]+$/i;
-							// regexp_URL = /^(.+\?v=)?([a-z0-9_?=-]+)$/i;
-							regexp_URL = /^.+(video\/|\/watch\?v=|embed\/|\/)([a-z0-9_?=-]+)$/i;
-							break;
-
 						case 'youtube':
 							// Allow HD video code with ?hd=1 at the end
 							regexp_ID = /^[a-z0-9_?=-]+$/i;
