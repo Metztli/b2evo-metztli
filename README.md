@@ -58,7 +58,11 @@ then try:
 
 git pull -s recursive -X theirs upstream master
 
-if it does not work, it means your are using git 2.9+, then try
+if it does not work, and output is similar to:
+
+"fatal: refusing to merge unrelated histories"
+
+it means your are using git 2.9+; then try:
 
 git pull -s recursive --allow-unrelated-histories -X theirs upstream master
 
