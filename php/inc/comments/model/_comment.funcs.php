@@ -357,6 +357,12 @@ function echo_comment_status_buttons( $Form, $edited_Comment )
 {
 	global $Blog;
 
+	if( $edited_Comment->is_meta() )
+	{	// Don't suggest to change a status of meta comment:
+		$Form->submit( array( 'actionArray[update]', T_('Save Changes!'), 'SaveButton', '' ) );
+		return;
+	}
+
 	$comment_Item = & $edited_Comment->get_Item();
 	// Comment status cannot be more than post status, restrict it:
 	$restrict_max_allowed_status = ( $comment_Item ? $comment_Item->status : '' );
@@ -689,28 +695,50 @@ function echo_disabled_comments( $allow_comments_value, $item_url, $params = arr
 /**
  * Save Comment object into the current Session
  *
- * @param $Comment
+ * @param object Comment
+ * @param string Kind of session var: 'unsaved' or 'preview'
+ * @param string Comment type: Meta or Normal
  */
-function save_comment_to_session( $Comment )
+function save_comment_to_session( $Comment, $kind = 'unsaved', $type = '' )
 {
 	global $Session;
-	$Session->set( 'core.unsaved_Comment', $Comment );
+
+	if( $type != 'meta' )
+	{	// Use default type if it is not allowed:
+		$type = '';
+	}
+
+	$Session->set( 'core.'.$kind.'_Comment'.$type, $Comment );
 }
 
 
 /**
  * Get Comment object from the current Session
  *
+ * @param string Kind of session var: 'unsaved' or 'preview'
+ * @param string Comment type: Meta or Normal
  * @return Comment|NULL Comment object if Session core.unsaved_Comment param is set, NULL otherwise
  */
-function get_comment_from_session()
+function get_comment_from_session( $kind = 'unsaved', $type = '' )
 {
 	global $Session;
-	if( ( $mass_Comment = $Session->get( 'core.unsaved_Comment' ) ) && $mass_Comment instanceof Comment )
-	{
-		$Session->delete( 'core.unsaved_Comment' );
-		return $mass_Comment;
+
+	if( $type != 'meta' )
+	{	// Use default type if it is not allowed:
+		$type = '';
 	}
+
+	if( ( $Comment = $Session->get( 'core.'.$kind.'_Comment'.$type ) ) && $Comment instanceof Comment )
+	{	// If Comment is detected for current Session:
+
+		// Delete Comment to clear Session data:
+		$Session->delete( 'core.'.$kind.'_Comment'.$type );
+
+		// Return Comment:
+		return $Comment;
+	}
+
+	// Comment is not detected, Return NULL:
 	return NULL;
 }
 

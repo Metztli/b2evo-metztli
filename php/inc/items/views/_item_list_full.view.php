@@ -354,7 +354,7 @@ while( $Item = & $ItemList->get_item() )
 		if( $action == 'view' )
 		{ // We are looking at a single post, include files and comments:
 
-			if( $comment_type == 'meta' && ! $current_User->check_perm( 'meta_comment', 'view', false, $Item ) )
+			if( $comment_type == 'meta' && ! $current_User->check_perm( 'meta_comment', 'view', false, $Blog->ID ) )
 			{ // Current user cannot views meta comments
 				$comment_type = 'feedback';
 			}
@@ -393,7 +393,7 @@ while( $Item = & $ItemList->get_item() )
 			}
 			echo '</div>';
 
-			if( $current_User->check_perm( 'meta_comment', 'view', false, $Item ) )
+			if( $current_User->check_perm( 'meta_comment', 'view', false, $Blog->ID ) )
 			{ // Display tabs to switch between user and meta comments Only if current user can views meta comments
 				$switch_comment_type_url = $admin_url.'?ctrl=items&amp;blog='.$blog.'&amp;p='.$Item->ID;
 				$metas_count = generic_ctp_number( $Item->ID, 'metas', 'total' );
@@ -521,12 +521,12 @@ while( $Item = & $ItemList->get_item() )
 			require $inc_path.'comments/views/_comment_list.inc.php';
 			echo '</div>'; // comments_container div
 
-			if( ( $comment_type == 'meta' && $current_User->check_perm( 'meta_comment', 'add', false, $Item ) ) // User can add meta comment on the Item
+			if( ( $comment_type == 'meta' && $current_User->check_perm( 'meta_comment', 'add', false, $Blog->ID ) ) // User can add meta comment on the Item
 			    || $Item->can_comment() ) // User can add standard comment
 			{
 
 			// Try to get a previewed Comment and check if it is for current viewed Item:
-			$preview_Comment = $Session->get( 'core.preview_Comment' );
+			$preview_Comment = get_comment_from_session( 'preview', $comment_type );
 			$preview_Comment = ( empty( $preview_Comment ) || $preview_Comment->item_ID != $Item->ID ) ? false : $preview_Comment;
 
 			if( $preview_Comment )
@@ -559,15 +559,23 @@ while( $Item = & $ItemList->get_item() )
 				$checked_attachments = $Comment->checked_attachments;
 				// Get what renderer checkboxes were selected on form:
 				$comment_renderers = explode( '.', $Comment->get( 'renderers' ) );
-
-				// Delete any preview comment from session data:
-				$Session->delete( 'core.preview_Comment' );
 			}
 			else
 			{	// Create new Comment:
-				$Comment = new Comment();
+				if( ( $Comment = get_comment_from_session( 'unsaved', $comment_type ) ) === NULL )
+				{	// There is no saved Comment in Session
+					$Comment = new Comment();
+					$comment_attachments = '';
+					$checked_attachments = '';
+				}
+				else
+				{	// Get params from Session:
+					// comment_attachments contains all file IDs that have been attached
+					$comment_attachments = $Comment->preview_attachments;
+					// checked_attachments contains all attachment file IDs which checkbox was checked in
+					$checked_attachments = $Comment->checked_attachments;
+				}
 				$comment_content = $Comment->get( 'content' );
-				$comment_attachments = '';
 				$comment_renderers = $Comment->get_renderers();
 			}
 
@@ -587,7 +595,7 @@ while( $Item = & $ItemList->get_item() )
 
 			$Form->info( T_('User'), $current_User->get_identity_link( array( 'link_text' => 'name' ) ).' '.get_user_profile_link( ' [', ']', T_('Edit profile') )  );
 
-			if( $Item->can_rate() )
+			if( $comment_type != 'meta' && $Item->can_rate() )
 			{	// Comment rating:
 				ob_start();
 				$Comment->rating_input( array( 'item_ID' => $Item->ID ) );

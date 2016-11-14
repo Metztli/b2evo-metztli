@@ -103,7 +103,8 @@ modules_call_method( 'before_comments', $params );
 // -------------------- END OF MODULES EVENT ---------------------
 
 // Check if user is allowed to see comments, display corresponding message if not allowed
-if( $Item->can_see_comments( true ) )
+if( ( $params['disp_meta_comments'] && is_logged_in() && $current_User->check_perm( 'meta_comment', 'view', false, $Blog->ID ) )
+    || $Item->can_see_comments( true ) )
 { // user is allowed to see comments
 	if( empty($c) )
 	{	// Comments not requested
@@ -197,7 +198,7 @@ if( $Item->can_see_comments( true ) )
 
 	if( $params['disp_meta_comments'] && is_logged_in() )
 	{	// We requested to display meta comments
-		if( $current_User->check_perm( 'meta_comment', 'view', false, $Item ) )
+		if( $current_User->check_perm( 'meta_comment', 'view', false, $Blog->ID ) )
 		{	// User can see meta comments
 			$type_list[] = 'meta';
 			if( !empty( $params['comments_title_text'] ) )
@@ -221,7 +222,7 @@ if( $Item->can_see_comments( true ) )
 	{
 		if( empty($disp_title) )
 		{	// No title yet
-			if( $title = $Item->get_feedback_title( 'feedbacks', '', T_('Feedback awaiting moderation'), T_('Feedback awaiting moderation'), array( 'review', 'draft' ), false ) )
+			if( $title = $Item->get_feedback_title( 'feedbacks', '', T_('Feedback awaiting moderation'), T_('Feedback awaiting moderation'), '#moderation#', false ) )
 			{ // We have some feedback awaiting moderation: we'll want to show that in the title
 				$disp_title[] = $title;
 			}
@@ -240,10 +241,10 @@ if( $Item->can_see_comments( true ) )
 		}
 
 		// // Display the meta comments info ?
-		if( $params['disp_meta_comment_info'] 	// If we want it
-			&& ! $params['disp_meta_comments'] 	// If we're not displaying the full list of meta comments anyways
-			&& is_logged_in() 						// If we're logged in
-			&& $current_User->check_perm( 'meta_comment', 'view', false, $Item ) ) // If we have permission to edit this post
+		if( $params['disp_meta_comment_info'] // If we want it
+			&& ! $params['disp_meta_comments']  // If we're not displaying the full list of meta comments anyways
+			&& is_logged_in()                   // If we're logged in
+			&& $current_User->check_perm( 'meta_comment', 'view', false, $Blog->ID ) ) // If we have permission to view meta comment of the collection
 		{	// Display the meta comments info:
 			global $admin_url;
 			echo '<div class="evo_comment__meta_info">';
@@ -253,7 +254,7 @@ if( $Item->can_see_comments( true ) )
 			{	// Display a badge with meta comments count if at least one exists for this Item:
 				echo '<a href="'.$meta_comments_url.'" class="badge badge-meta">'.sprintf( T_('%d meta comments'), $meta_comments_count ).'</a>';
 			}
-			elseif( $current_User->check_perm( 'meta_comment', 'add', false, $Item ) )
+			elseif( $current_User->check_perm( 'meta_comment', 'add', false, $Blog->ID ) )
 			{	// No meta comments yet, Display a button to add new meta comment:
 				echo '<a href="'.$meta_comments_url.'" class="btn btn-default btn-sm">'.T_('Add meta comment').'</a>';
 			}
@@ -319,7 +320,7 @@ if( $Item->can_see_comments( true ) )
 			global $CommentReplies;
 			$CommentReplies = array();
 
-			if( $Comment = $Session->get('core.preview_Comment') )
+			if( $Comment = get_comment_from_session( 'preview' ) )
 			{	// Init PREVIEW comment
 				if( $Comment->item_ID == $Item->ID )
 				{

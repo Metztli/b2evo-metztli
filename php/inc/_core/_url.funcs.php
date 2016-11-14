@@ -168,7 +168,7 @@ function validate_url( $url, $context = 'posting', $antispam_check = true )
 		if( $block = antispam_check($url) )
 		{
 			// Log into system log
-			syslog_insert( sprintf( T_('Antispam: URL "%s" not allowed. The URL contains blacklisted word "%s".'), htmlspecialchars($url), $block ), 'error' );
+			syslog_insert( sprintf( 'Antispam: URL "%s" not allowed. The URL contains blacklisted word "%s".', htmlspecialchars($url), $block ), 'error' );
 
 			return $verbose
 				? sprintf( T_('URL "%s" not allowed: blacklisted word "%s".'), htmlspecialchars($url), $block )
@@ -936,7 +936,7 @@ function get_link_tag( $url, $text = '', $class = '', $max_url_length = 50 )
 		}
 	}
 
-	$link_attrs = array( 'href' => $url );
+	$link_attrs = array( 'href' => str_replace( '&amp;', '&', $url ) );
 
 	if( ! empty( $class ) )
 	{

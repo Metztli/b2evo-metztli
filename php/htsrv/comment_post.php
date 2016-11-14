@@ -65,7 +65,7 @@ if( $Settings->get('system_lock') )
 // Check user permissions to post this comment:
 if( $comment_type == 'meta' )
 { // Meta comment
-	if( ! $current_User->check_perm( 'meta_comment', 'view', false, $commented_Item ) )
+	if( ! $current_User->check_perm( 'meta_comment', 'add', false, $Blog->ID ) )
 	{ // Current user has no permission to post a meta comment
 		$Messages->add( T_('You cannot leave meta comments on this post!'), 'error' );
 		header_redirect(); // Will save $Messages into Session
@@ -188,7 +188,7 @@ else
 	if( !empty( $author ) && ( $block = antispam_check( $author ) ) )
 	{
 		// Log incident in system log
-		syslog_insert( sprintf( T_('Antispam: Supplied name "%s" contains blacklisted word "%s".'), $author, $block ), 'error', 'comment', $comment_item_ID );
+		syslog_insert( sprintf( 'Antispam: Supplied name "%s" contains blacklisted word "%s".', $author, $block ), 'error', 'comment', $comment_item_ID );
 
 		$Messages->add( T_('Supplied name is invalid.'), 'error' );
 	}
@@ -197,7 +197,7 @@ else
 		&& ( !is_email( $email )|| ( $block = antispam_check( $email ) ) ) )
 	{
 		// Log incident in system log
-		syslog_insert( sprintf( T_('Antispam: Supplied email address "%s" contains blacklisted word "%s".'), $email, $block ), 'error', 'comment', $comment_item_ID );
+		syslog_insert( sprintf( 'Antispam: Supplied email address "%s" contains blacklisted word "%s".', $email, $block ), 'error', 'comment', $comment_item_ID );
 
 		$Messages->add( T_('Supplied email address is invalid.'), 'error' );
 	}
@@ -263,7 +263,7 @@ else
 	$Comment->set( 'allow_msgform', $comment_allow_msgform );
 }
 
-if( $commented_Item->can_rate() )
+if( ! $Comment->is_meta() && $commented_Item->can_rate() )
 {	// Comment rating:
 	$Comment->set( 'rating', $comment_rating );
 }
@@ -410,7 +410,7 @@ if( $Messages->has_errors() && $action != 'preview' )
 {
 	$Comment->set( 'preview_attachments', $preview_attachments );
 	$Comment->set( 'checked_attachments', $checked_attachments );
-	save_comment_to_session( $Comment );
+	save_comment_to_session( $Comment, 'unsaved', $comment_type );
 
 	if( !empty( $reply_ID ) )
 	{
@@ -452,7 +452,7 @@ if( $action == 'preview' )
 	$Comment->set( 'email_is_detected', $comments_email_is_detected ); // used to change a style of the comment
 	// Set Comment Item object to NULL, so this way the Item object won't be serialized, but the item_ID is still set
 	$Comment->Item = NULL;
-	$Session->set( 'core.preview_Comment', $Comment );
+	save_comment_to_session( $Comment, 'preview', $comment_type );
 	$Session->set( 'core.no_CachePageContent', 1 );
 	$Session->dbsave();
 
@@ -502,7 +502,7 @@ if( $action == 'preview' )
 }
 else
 { // delete any preview comment from session data:
-	$Session->delete( 'core.preview_Comment' );
+	$Session->delete( 'core.preview_Comment'.( $comment_type == 'meta' ? $comment_type : '' ) );
 }
 
 

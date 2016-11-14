@@ -442,7 +442,7 @@ function get_request_title( $params = array() )
 			'user_text'           => T_('User: %s'),
 			'users_text'          => T_('Users'),
 			'closeaccount_text'   => T_('Close account'),
-			'subs_text'           => T_('Notifications'),
+			'subs_text'           => T_('Notifications & Subscriptions'),
 			'comments_text'       => T_('Latest Comments'),
 			'feedback-popup_text' => T_('Feedback'),
 			'edit_comment_text'   => T_('Editing comment'),
@@ -681,15 +681,15 @@ function get_request_title( $params = array() )
 			$cp = param( 'cp', 'integer', 0 ); // Copy post from Front-office
 			if( $action == 'edit_switchtab' || $p > 0 || $post_ID > 0 )
 			{	// Edit post
-				$title = sprintf( T_('Edit %s'), $type_name );
+				$title = sprintf( T_('Edit [%s]'), $type_name );
 			}
 			else if( $cp > 0 )
 			{	// Copy post
-				$title = sprintf( T_('Duplicate %s'), $type_name );
+				$title = sprintf( T_('Duplicate [%s]'), $type_name );
 			}
 			else
 			{	// Create post
-				$title = sprintf( T_('New %s'), $type_name );
+				$title = sprintf( T_('New [%s]'), $type_name );
 			}
 			if( $params['display_edit_links'] && $params['auto_pilot'] != 'seo_title' )
 			{ // Add advanced edit and close icon
@@ -1802,29 +1802,23 @@ function bullet( $bool )
 }
 
 
-
-
 /**
  * Stub: Links to previous and next post in single post mode
  */
 function item_prevnext_links( $params = array() )
 {
-	global $disp;
+	global $disp, $MainList;
 
-	if( $disp == 'download' )
-	{ // Don't display the links on download page
+	if( ! isset( $MainList ) || ! $MainList->single_post || $disp == 'download' )
+	{	// Don't display the links in NOT single post mode and on download page:
 		return;
 	}
 
-	global $MainList;
-
 	$params = array_merge( array( 'target_blog' => 'auto' ), $params );
 
-	if( isset( $MainList ) )
-	{
-		$MainList->prevnext_item_links( $params );
-	}
+	$MainList->prevnext_item_links( $params );
 }
+
 
 /**
  * Stub: Links to previous and next user in single user mode
@@ -2554,6 +2548,11 @@ function display_login_js_handler( $params )
 				// Append the correct login action as hidden input field
 				pwd_container.append( '<input type="hidden" value="1" name="login_action[login]">' );
 				form.submit();
+			},
+			error: function( jqXHR, textStatus, errorThrown )
+			{	// Display error text on error request:
+				requestSent = false;
+				alert( 'Error: could not get hash Salt from server. Please contact the site admin and check the browser and server error logs. (' + textStatus + ': ' + errorThrown + ')' );
 			}
 		});
 

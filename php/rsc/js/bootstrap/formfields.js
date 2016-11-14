@@ -27,13 +27,16 @@ function form_error_field_popover( this_obj )
 	jQuery( this_obj ).popover( 'destroy' );
 
 	// Initialize the popover:
-	jQuery( this_obj ).popover(
-	{
-		trigger: 'manual',
-		placement: ( tag_name == 'SELECT' || tag_name == 'TEXTAREA' ) ? 'top' : 'bottom',
-		html: true,
-		content: '<span class="field_error">' + tip_text + '</span>',
-	} );
+	if( tip_text )
+	{ // Only do this if there is actually something to display
+		jQuery( this_obj ).popover(
+		{
+			trigger: 'manual',
+			placement: ( tag_name == 'SELECT' || tag_name == 'TEXTAREA' ) ? 'top' : 'bottom',
+			html: true,
+			content: '<span class="field_error">' + tip_text + '</span>',
+		} );
+	}
 
 	jQuery( this_obj ).on( 'show.bs.popover', function()
 	{ // Add this class to avoid of the repeating of init popover:
@@ -42,7 +45,7 @@ function form_error_field_popover( this_obj )
 }
 
 // Prepare event focus for the form fields with popover effect:
-var form_error_fields_selector = 'input.field_error[type=text], input.field_error[type=radio], span.checkbox_error input[type=checkbox], select.field_error, textarea.field_error';
+var form_error_fields_selector = 'input.field_error[type=text], input.field_error[type=radio], span.checkbox_error input[type=checkbox], select.field_error, textarea.field_error, input.field_error[type=file]';
 jQuery( document ).on( 'mouseover focus', form_error_fields_selector, function()
 { // Initialize popover only on first event calling:
 	form_error_field_popover( this );

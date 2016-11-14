@@ -1384,7 +1384,7 @@ function process_upload( $root_ID, $path, $create_path_dirs = false, $check_perm
 	$uploadfile_desc = param( 'uploadfile_desc', 'array:string', array() );
 	$uploadfile_name = param( 'uploadfile_name', 'array:string', array() );
 
-	// LOOP THROUGH ALL UPLOADED FILES AND PROCCESS EACH ONE:
+	// LOOP THROUGH ALL UPLOADED FILES AND PROCESS EACH ONE:
 	foreach( $_FILES['uploadfile']['name'] as $lKey => $lName )
 	{
 		if( empty( $lName ) )
@@ -1396,6 +1396,7 @@ function process_upload( $root_ID, $path, $create_path_dirs = false, $check_perm
 				 || !empty( $uploadfile_name[$lKey] ) )
 			{ // User specified params but NO file! Warn the user:
 				$failedFiles[$lKey] = T_( 'Please select a local file to upload.' );
+				param_error( 'uploadfile[]', NULL, $failedFiles[$lKey] );
 			}
 			// Abort upload for this file:
 			continue;
@@ -1711,7 +1712,7 @@ function report_user_upload( $File )
 	global $current_User;
 	load_funcs( 'files/model/_file.funcs.php' );
 
-	syslog_insert( sprintf( T_('User %s has uploaded the file %s -- Size: %s'),
+	syslog_insert( sprintf( 'User %s has uploaded the file %s -- Size: %s',
 			$current_User->login, '[['.$File->get_full_path().']]', bytesreadable( $File->get_size(), false ) ), 'info', 'file', $File->ID );
 }
 
@@ -1822,17 +1823,17 @@ function check_file_exists( $fm_FileRoot, $path, $newName, $image_info = NULL )
 		$ext_pos = strrpos( $newName, '.');
 		if( $num_ext == 1 )
 		{
-			if( $image_info == NULL )
-			{
+			if( $newFile->is_image() && $image_info == NULL )
+			{	// Get image info only for real image files:
 				$image_info = getimagesize( $newFile->get_full_path() );
 			}
 			$newName = substr_replace( $newName, '-'.$num_ext.'.', $ext_pos, 1 );
 			if( $image_info )
-			{
+			{	// Get thumbnail of old image:
 				$oldFile_thumb = $newFile->get_preview_thumb( 'fulltype' );
 			}
 			else
-			{
+			{	// Get formatted file of not image file:
 				$oldFile_thumb = $newFile->get_size_formatted();
 			}
 		}
@@ -2214,7 +2215,7 @@ function create_htaccess_deny( $dir )
  */
 function display_dragdrop_upload_button( $params = array() )
 {
-	global $blog, $Settings, $current_User;
+	global $blog, $Settings, $current_User, $b2evo_icons_type;
 
 	$params = array_merge( array(
 			'before'           => '',
@@ -2258,7 +2259,9 @@ function display_dragdrop_upload_button( $params = array() )
 	}
 
 	$root_and_path = $params['fileroot_ID'].'::'.$params['path'];
-	$quick_upload_url = get_htsrv_url().'quick_upload.php?upload=true'.( empty( $blog ) ? '' : '&blog='.$blog );
+	$quick_upload_url = get_htsrv_url().'quick_upload.php?upload=true'
+		.( empty( $blog ) ? '' : '&blog='.$blog )
+		.'&b2evo_icons_type='.$b2evo_icons_type;
 
 	echo $params['before'];
 
@@ -2293,11 +2296,10 @@ function display_dragdrop_upload_button( $params = array() )
 
 		<?php
 		if( $params['LinkOwner'] !== NULL )
-		{ // Add params to link a file right after uploading
-			global $b2evo_icons_type;
+		{	// Add params to link a file right after uploading:
 			$link_owner_type = $params['LinkOwner']->type;
 			$link_owner_ID = ( $link_owner_type == 'item' ? $params['LinkOwner']->Item->ID : $params['LinkOwner']->Comment->ID );
-			echo 'url += "&link_owner='.$link_owner_type.'_'.$link_owner_ID.'&b2evo_icons_type='.$b2evo_icons_type.'"';
+			echo 'url += "&link_owner='.$link_owner_type.'_'.$link_owner_ID.'"';
 		}
 		?>
 

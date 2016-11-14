@@ -25,7 +25,7 @@ load_class( 'users/model/_user.class.php', 'User' );
 	*/
 function report_user_create( $User )
 {
-	syslog_insert( sprintf( T_('User %s was created'), '[['.$User->login.']]' ), 'info', 'user', $User->ID );
+	syslog_insert( sprintf( 'User %s was created', '[['.$User->login.']]' ), 'info', 'user', $User->ID );
 }
 
 
@@ -2073,6 +2073,7 @@ function load_blog_advanced_perms( & $blog_perms, $perm_target_blog, $perm_targe
 				'blog_media_upload'       => $row[$prefix.'_perm_media_upload'],
 				'blog_media_browse'       => $row[$prefix.'_perm_media_browse'],
 				'blog_media_change'       => $row[$prefix.'_perm_media_change'],
+				'blog_analytics'          => $row[$prefix.'_perm_analytics'],
 			);
 	}
 
@@ -2102,6 +2103,7 @@ function load_blog_advanced_perms( & $blog_perms, $perm_target_blog, $perm_targe
 						'blog_media_upload'       => 0,
 						'blog_media_browse'       => 0,
 						'blog_media_change'       => 0,
+						'blog_analytics'          => 0,
 					);
 			}
 		}
@@ -2137,10 +2139,9 @@ function check_blog_advanced_perm( & $blog_perms, $user_ID, $permname, $permleve
 	switch( $permname )
 	{
 		case 'stats':
-			// Wiewing stats is the same perm as being authorized to edit properties: (TODO...)
-			if( $permlevel == 'view' )
-			{
-				return $blog_perms['blog_properties'];
+			if( $permlevel == 'view' || $permlevel == 'list' )
+			{	// If current user has a permission to view the collection:
+				return $blog_perms['blog_analytics'];
 			}
 			// No other perm can be granted here (TODO...)
 			return false;
@@ -2203,7 +2204,13 @@ function check_blog_advanced_perm( & $blog_perms, $user_ID, $permname, $permleve
 			break;
 
 		case 'meta_comment':
-			return $blog_perms['blog_meta_comment'];
+			$edit_permname = 'blog_edit_cmt';
+			$perm = $blog_perms['blog_meta_comment'];
+			if( ! empty( $perm_target ) )
+			{
+				$Comment = & $perm_target;
+				$creator_user_ID = $Comment->author_user_ID;
+			}
 			break;
 
 		case 'files':
@@ -2308,6 +2315,50 @@ function check_blog_advanced_perm( & $blog_perms, $user_ID, $permname, $permleve
 	}
 
 	return $perm;
+}
+
+
+/**
+ * Check if at least one collection has a permission for given target
+ *
+ * @param string Permission name
+ * @param string Target type: 'user', 'group'
+ * @param integer Target ID
+ * @return boolean
+ */
+function check_coll_first_perm( $perm_name, $target_type, $target_ID )
+{
+	global $DB;
+
+	if( empty( $target_ID ) )
+	{	// Target ID must be defined:
+		return false;
+	}
+
+	switch( $target_type )
+	{
+		case 'user':
+			$table = 'T_coll_user_perms';
+			$field_perm_name = 'bloguser_'.$perm_name;
+			$field_ID_name = 'bloguser_user_ID';
+			break;
+
+		case 'group':
+			$table = 'T_coll_group_perms';
+			$field_perm_name = 'bloggroup_'.$perm_name;
+			$field_ID_name = 'bloggroup_group_ID';
+			break;
+	}
+
+	// Try to find first collection that has a requested permission:
+	$SQL = new SQL( 'Check if '.$target_type.' #'.$target_ID.' has at least one collection with permission ['.$perm_name.']' );
+	$SQL->SELECT( $field_perm_name );
+	$SQL->FROM( $table );
+	$SQL->WHERE( $field_ID_name.' = '.$target_ID );
+	$SQL->WHERE_and( $field_perm_name.' = 1' );
+	$SQL->LIMIT( 1 );
+
+	return (bool)$DB->get_var( $SQL->get(), 0 , NULL, $SQL->title );
 }
 
 
@@ -2925,7 +2976,7 @@ function userfields_display( $userfields, $Form, $new_field_name = 'new', $add_g
 	global $action;
 
 	// Array contains values of the new fields from the request
-	$uf_new_fields = param( 'uf_'.$new_field_name, 'array:array:string' );
+	$uf_new_fields = param( 'uf_'.$new_field_name, 'array' );
 
 	// Type of the new field
 	global $new_field_type;
@@ -2947,7 +2998,15 @@ function userfields_display( $userfields, $Form, $new_field_name = 'new', $add_g
 			$Form->begin_fieldset( $userfield->ufgp_name.( is_admin_page() ? get_manual_link( 'user-profile-tab-userfields' ) : '' ) , array( 'id' => $userfield->ufgp_ID ) );
 		}
 
-		$userfield_type = ( $userfield->ufdf_type == 'text' || $userfield->ufdf_type == 'url' ) ? $userfield->ufdf_type : 'string';
+		$userfield_type = $userfield->ufdf_type;
+		if( $userfield_type == 'number' )
+		{	// Change number type of integer because we have this type name preparing in function param():
+			$userfield_type = 'integer';
+		}
+		elseif( $userfield_type != 'text' && $userfield_type != 'url' )
+		{	// Use all other params as string, Only text and url have a preparing in function param():
+			$userfield_type = 'string';
+		}
 		$uf_val = param( 'uf_'.$userfield->uf_ID, $userfield_type, NULL );
 
 		$uf_ID = $userfield->uf_ID;
@@ -2959,8 +3018,32 @@ function userfields_display( $userfields, $Form, $new_field_name = 'new', $add_g
 			global $$value_num;	// Used when user add a many fields with the same type
 			$$value_num = (int)$$value_num;
 			if( isset( $uf_new_fields[$userfield->ufdf_ID][$$value_num] ) )
-			{	// Get a value from submitted form
+			{	// Get a value from submitted form:
 				$uf_val = $uf_new_fields[$userfield->ufdf_ID][$$value_num];
+				switch( $userfield->ufdf_type )
+				{
+					case 'url':
+						// Format url field to valid value:
+						$uf_val = param_format( $uf_val, 'url' );
+						break;
+
+					case 'text':
+						// Format text field to valid value:
+						$uf_val = param_format( $uf_val, 'text' );
+						break;
+
+					case 'number':
+						// Format number field to valid value:
+						$uf_val = param_format( $uf_val, 'integer' );
+						break;
+
+					case 'email':
+					case 'word':
+					case 'phone':
+						// Format string fields to valid value:
+						$uf_val = param_format( $uf_val, 'string' );
+						break;
+				}
 				$$value_num++;
 			}
 		}
@@ -4269,11 +4352,12 @@ function echo_user_crop_avatar_window()
 	echo '<script type="text/javascript">
 		var evo_js_lang_loading = \''.TS_('Loading...').'\';
 		var evo_js_lang_crop_profile_pic = \''.TS_('Crop profile picture').'\';
-		var evo_js_lang_crop = \''.TS_('Crop').'\';
+		var evo_js_lang_crop = \''.TS_('Apply').'\';
 		var evo_js_user_crop_ajax_url = \''.( is_admin_page() ? $admin_url : get_htsrv_url().'anon_async.php' ).'\';
 		var evo_js_is_backoffice = '.( is_admin_page() ? 'true' : 'false' ).';
 		var evo_js_blog = '.( isset( $blog ) ? $blog : 0 ).';
 		var evo_js_crumb_user = \''.get_crumb( 'user' ).'\';
+		evo_js_lang_close = \''.TS_('Cancel').'\';
 	</script>';
 }
 
@@ -5063,6 +5147,11 @@ function users_results_block( $params = array() )
 	$UserList->title = $params['results_title'];
 	$UserList->no_results_text = $params['results_no_text'];
 
+	if( $action == 'show_recent' )
+	{	// Reset filters to default in order to view all recent registered users:
+		set_param( 'filter', 'reset' );
+	}
+
 	$UserList->set_default_filters( $default_filters );
 	$UserList->load_from_Request();
 
@@ -5070,7 +5159,7 @@ function users_results_block( $params = array() )
 	users_results( $UserList, $params );
 
 	if( $action == 'show_recent' )
-	{ // Sort an users list by "Registered" field
+	{	// Sort an users list by "Registered" field:
 		$UserList->set_order( 'user_created_datetime' );
 	}
 

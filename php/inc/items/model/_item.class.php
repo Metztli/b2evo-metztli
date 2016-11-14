@@ -344,6 +344,7 @@ class Item extends ItemLight
 				}
 			}
 			$this->set( 'locale', ( isset( $new_item_locale ) ? $new_item_locale : $default_locale ) );
+			$this->set( 'status', 'draft' );
 		}
 		else
 		{
@@ -2839,8 +2840,9 @@ class Item extends ItemLight
 				$params[ $param_key ] = & $params[ $param_key ];
 			}
 
-			if( count( $Plugins->trigger_event_first_true( 'RenderItemAttachment', $params ) ) != 0 )
-			{ // Render attachments by plugin, Append the html content to $params['data'] and to $r
+			$r_params = $Plugins->trigger_event_first_true( 'RenderItemAttachment', $params, true );
+			if( count( $r_params ) != 0 && isset( $r_params['plugin_ID'] ) )
+			{	// This attachment has been rendered by a plugin (to $params['data']), Skip this from core rendering:
 				if( ! $params['get_rendered_attachments'] )
 				{ // Restore $r value and mark this item has the rendered attachments
 					$r = $temp_r;
@@ -2848,6 +2850,9 @@ class Item extends ItemLight
 				}
 				continue;
 			}
+
+			// Update params because they may be modified by some plugin above:
+			$params = $r_params;
 
 			if( ! $File->is_image() )
 			{ // Skip anything that is not an image
@@ -3046,10 +3051,14 @@ class Item extends ItemLight
 				$params[ $param_key ] = & $params[ $param_key ];
 			}
 
-			if( count( $Plugins->trigger_event_first_true( 'RenderItemAttachment', $params ) ) != 0 )
-			{
+			$r_params = $Plugins->trigger_event_first_true( 'RenderItemAttachment', $params, true );
+			if( count( $r_params ) != 0 && isset( $r_params['plugin_ID'] ) )
+			{	// This attachment has been rendered by a plugin (to $params['data']), Skip this from core rendering:
 				continue;
 			}
+
+			// Update params because they may be modified by some plugin above:
+			$params = $r_params;
 
 			if( $File->is_image() )
 			{ // Skip images because these are displayed inline already
@@ -3320,7 +3329,7 @@ class Item extends ItemLight
 
 		$params = array_merge( array(
 									'type' => 'feedbacks',		// Kind of feedbacks to count
-									'status' => 'published',	// Status of feedbacks to count
+									'status' => '#',	// Statuses of feedbacks to count, can be a string for one status or array for several. '#' - active front-office comment statuses, '#moderation#' - "require moderation" statuses.
 									'link_before' => '',
 									'link_after' => '',
 									'link_text_zero' => '#',
@@ -3494,9 +3503,11 @@ class Item extends ItemLight
 	 * @param string Link text to display when there are 0 comments
 	 * @param string Link text to display when there is 1 comment
 	 * @param string Link text to display when there are >1 comments (include %d for # of comments)
-	 * @param string Status of feedbacks to count
+	 * @param string|array Statuses of feedbacks to count, a string for one status, an array for several statuses,
+	 *                     '#' - to use currently active front-office comment statuses of the item's collection
+	 *                     '#moderation#' - to use all comment statuses which require moderation on front-office for the item's collection
 	 */
-	function get_feedback_title( $type = 'feedbacks',	$zero = '#', $one = '#', $more = '#', $status = 'published', $filter_by_perm = true )
+	function get_feedback_title( $type = 'feedbacks',	$zero = '#', $one = '#', $more = '#', $statuses = '#', $filter_by_perm = true )
 	{
 		if( ! $this->can_see_comments() )
 		{	// Comments disabled
@@ -3541,11 +3552,22 @@ class Item extends ItemLight
 				debug_die( "Unknown feedback type [$type]" );
 		}
 
-		$number = generic_ctp_number( $this->ID, $type, $status, false, $filter_by_perm );
+		if( $statuses == '#' )
+		{	// Get all comment statuses which are actived on front-office for the item's collection:
+			$this->load_Blog();
+			$statuses = explode( ',', $this->Blog->get_setting( 'comment_inskin_statuses' ) );
+		}
+		elseif( $statuses == '#moderation#' )
+		{	// Get all comment statuses which require moderation on front-office for the item's collection:
+			$this->load_Blog();
+			$statuses = explode( ',', $this->Blog->get_setting( 'moderation_statuses' ) );
+		}
+
+		$number = generic_ctp_number( $this->ID, $type, $statuses, false, $filter_by_perm );
 		if( !$filter_by_perm )
 		{ // This is the case when we are only counting comments awaiting moderation, return only not visible feedbacks number
 			// count feedbacks with the same statuses where user has permission
-			$visible_number = generic_ctp_number( $this->ID, $type, $status, false, true );
+			$visible_number = generic_ctp_number( $this->ID, $type, $statuses, false, true );
 			$number = $number - $visible_number;
 		}
 
@@ -3714,7 +3736,7 @@ class Item extends ItemLight
 		$one = str_replace( '%s', $edit_comments_link, $one );
 		$more = str_replace( '%s', $edit_comments_link, $more );
 
-		$r = $this->get_feedback_title( $type, $zero, $one, $more, array( 'draft', 'review' ), false );
+		$r = $this->get_feedback_title( $type, $zero, $one, $more, '#moderation#', false );
 
 		if( !empty( $r ) )
 		{
@@ -5000,7 +5022,7 @@ class Item extends ItemLight
 				// fp>: I think we should remove return above and add the following code:
 				// BUT we cannot do that because generating the except requires to execute renderers, which requires to have a main cat ID/coll ID set, which we may not have at this point
 				/*				if( $this->excerpt_autogenerated )
-								{	// As far as we know, we are still auto-generating excerpts for this Item at this moment, 
+								{	// As far as we know, we are still auto-generating excerpts for this Item at this moment,
 									//		so let's make sure the excerpt stays in sync:
 									$r3 = $this->set_param( 'excerpt', 'string', $this->get_autogenerated_excerpt() )
 								}
@@ -5892,13 +5914,14 @@ class Item extends ItemLight
 	 */
 	function handle_notifications( $executed_by_userid = NULL, $is_new_item = false, $force_members = false, $force_community = false, $force_pings = false )
 	{
-		global $Settings, $Messages, $localtimenow;
+		global $Settings, $Messages, $localtimenow, $Debuglog;
 
 		// Immediate notifications? Asynchronous? Off?
 		$notifications_mode = $Settings->get( 'outbound_notifications_mode' );
 
 		if( $notifications_mode == 'off' )
 		{	// Don't send any notifications nor pings:
+			$Debuglog->add( 'Item->handle_notifications() : Notifications are turned OFF!', 'notifications' );
 			return false;
 		}
 
@@ -5910,6 +5933,7 @@ class Item extends ItemLight
 
 		// FIRST: Moderators need to be notified immediately, even if the post is a draft/review and/or has an issue_date in the future.
 		// fp> NOTE: for simplicity, for now, we will NOT make a scheduled job for this (but we will probably do so in the future)
+		$Debuglog->add( 'Item->handle_notifications() : Moderator notifications will always be immediate (never scheduled)', 'notifications' );
 		// Send email notifications to users who can moderate this item:
 		$already_notified_user_IDs = $this->send_moderation_emails( $executed_by_userid, $is_new_item );
 
@@ -5945,6 +5969,7 @@ class Item extends ItemLight
 		    $this->check_notifications_flags( array( 'members_notified', 'community_notified', 'pings_sent' ) ) )
 		{	// All possible notifications have already been sent and no forcing for any notification:
 			$Messages->add( T_('All possible notifications have already been sent: skipping notifications...'), 'note' );
+			$Debuglog->add( 'Item->handle_notifications() : All possible notifications have already been sent: skipping notifications...', 'notifications' );
 			return false;
 		}
 
@@ -5952,6 +5977,8 @@ class Item extends ItemLight
 
 		if( $notifications_mode == 'immediate' && strtotime( $this->issue_date ) <= $localtimenow )
 		{	// We want to send the notifications immediately (can only be done if post does not have an issue_date in the future):
+
+			$Debuglog->add( 'Item->handle_notifications() : Sending immediate Pings & Subscriber notifications', 'notifications' );
 
 			// Send outbound pings: (will only do something if visibility is 'public')
 			$this->send_outbound_pings( $force_pings );
@@ -5980,6 +6007,8 @@ class Item extends ItemLight
 			// Note: in case of successive edits of a post we may create many cron jobs for it.
 			// It will be the responsibility of the cron jobs to detect if another one is already running and not execute twice or more times concurrently.
 
+			$Debuglog->add( 'Item->handle_notifications() : Scheduling notifications through a cron job', 'notifications' );
+
 			load_class( '/cron/model/_cronjob.class.php', 'Cronjob' );
 			$item_Cronjob = new Cronjob();
 
@@ -6005,7 +6034,7 @@ class Item extends ItemLight
 			// Save cronjob to DB:
 			if( $item_Cronjob->dbinsert() )
 			{
-				$Messages->add( T_('Scheduling email notifications for subscribers.'), 'note' );
+				$Messages->add( T_('Scheduling Pings & Subscriber email notifications.'), 'note' );
 
 				// Memorize the cron job ID which is going to handle this post:
 				$this->set( 'notifications_ctsk_ID', $item_Cronjob->ID );
@@ -6163,7 +6192,7 @@ class Item extends ItemLight
 	 */
 	function send_email_notifications( $executed_by_userid = NULL, $is_new_item = false, $already_notified_user_IDs = NULL, $force_members = false, $force_community = false )
 	{
-		global $DB, $debug, $Messages;
+		global $DB, $debug, $Messages, $Debuglog;
 
 		if( $executed_by_userid === NULL && is_logged_in() )
 		{	// Use current user by default:
@@ -6279,9 +6308,12 @@ class Item extends ItemLight
 			return $notified_flags;
 		}
 
+		$Debuglog->add( 'Ready to send notifications to members? : '.($notify_members ? 'Yes' : 'No' ), 'notifications' );
+		$Debuglog->add( 'Ready to send notifications to community? : '.($notify_community ? 'Yes' : 'No' ), 'notifications' );
+
 		// Get list of users who want to be notified:
 		// TODO: also use extra cats/blogs??
-		$SQL = new SQL( 'Get list of users who want to be notified about new items on colection #'.$this->get_blog_ID() );
+		$SQL = new SQL( 'Get list of users who want to be notified (and have not yet been notified) about new items on colection #'.$this->get_blog_ID() );
 		$SQL->SELECT( 'DISTINCT sub_user_ID' );
 		$SQL->FROM( 'T_subscriptions' );
 		$SQL->WHERE( 'sub_coll_ID = '.$this->get_blog_ID() );
@@ -6296,6 +6328,9 @@ class Item extends ItemLight
 		}
 		$notify_users = $DB->get_col( $SQL->get(), 0, $SQL->title );
 
+		$Debuglog->add( 'Number of users who want to be notified (and have not yet been notified) about new items on colection #'.$this->get_blog_ID().' = '.count($notify_users), 'notifications' );
+		$Debuglog->add( 'First 10 user IDs: '.implode( ',', array_slice($notify_users, 0, 10) ), 'notifications' );
+
 		// Load all users who will be notified:
 		$UserCache = & get_UserCache();
 		$UserCache->load_list( $notify_users );
@@ -6303,14 +6338,18 @@ class Item extends ItemLight
 		$members_count = 0;
 		$community_count = 0;
 		foreach( $notify_users as $u => $user_ID )
-		{	// Check each subscribed user if we can send notification to him depending on current request and item settings:
+		{	// Check for each subscribed User, if we can send a notification to him depending on current request and Item settings:
+
 			if( ! ( $notify_User = & $UserCache->get_by_ID( $user_ID, false, false ) ) )
-			{	// Wrong user, Skip it:
+			{	// Invalid User, Skip it:
+				$Debuglog->add( 'User #'.$user_ID.' is invalid.', 'notifications'  );
 				unset( $notify_users[ $u ] );
 				continue;
 			}
-			// Check if the user is member of the collection:
+
+			// Check if the User is member of the collection:
 			$is_member = $notify_User->check_perm( 'blog_ismember', 'view', false, $this->get_blog_ID() );
+
 			if( $notify_members && $notify_community )
 			{	// We can notify all subscribed users:
 				if( $is_member )
@@ -6330,6 +6369,7 @@ class Item extends ItemLight
 				}
 				else
 				{	// Skip not member:
+					$Debuglog->add( 'User #'.$user_ID.' is a not a member but at this time, we only want to notify members.', 'notifications'  );
 					unset( $notify_users[ $u ] );
 				}
 			}
@@ -6341,17 +6381,21 @@ class Item extends ItemLight
 				}
 				else
 				{	// Skip member:
+					$Debuglog->add( 'User #'.$user_ID.' is a member but we at this time, we only want to notify community.', 'notifications'  );
 					unset( $notify_users[ $u ] );
 				}
 			}
 		}
 
+		$Debuglog->add( 'Number of users who are allowed to be notified about new items on colection #'.$this->get_blog_ID().' = '.count($notify_users), 'notifications' );
+		$Debuglog->add( 'First 10 user IDs: '.implode( ',', array_slice($notify_users, 0, 10) ), 'notifications' );
+
 		if( $notify_members )
-		{	// Display a message to know how much members are notified:
+		{	// Display a message to know how many members are notified:
 			$Messages->add( sprintf( T_('Sending %d email notifications to subscribed members.'), $members_count ), 'note' );
 		}
 		if( $notify_community )
-		{	// Display a message to know how much community users are notified:
+		{	// Display a message to know how many community users are notified:
 			$Messages->add( sprintf( T_('Sending %d email notifications to other subscribers.'), $community_count ), 'note' );
 		}
 
@@ -6989,12 +7033,15 @@ class Item extends ItemLight
 	{
 		global $DB, $localtimenow;
 
+		$this->load_Blog();
+		$comment_inskin_statuses = explode( ',', $this->Blog->get_setting( 'comment_inskin_statuses' ) );
+
 		// Count each published comments rating grouped by active/expired status and by rating value
 		$sql = 'SELECT comment_rating, count( comment_ID ) AS cnt,
 					IF( iset_value IS NULL OR iset_value = "" OR TIMESTAMPDIFF(SECOND, comment_date, '.$DB->quote( date2mysql( $localtimenow ) ).') < iset_value, "active", "expired" ) as expiry_status
 						FROM T_comments
 						LEFT JOIN T_items__item_settings ON iset_item_ID = comment_item_ID AND iset_name = "comment_expiry_delay"
-						WHERE comment_item_ID = '.$this->ID.' AND comment_status = "published"
+						WHERE comment_item_ID = '.$this->ID.' AND comment_status IN ("'.implode('","', $comment_inskin_statuses) .'")
 						GROUP BY expiry_status, comment_rating
 						ORDER BY comment_rating DESC';
 		$results = $DB->get_results( $sql );
@@ -7499,9 +7546,9 @@ class Item extends ItemLight
 
 							// We need to assign the result of trigger_event_first_true to a variable before counting
 							// or else modifications to the params are not applied in PHP7
-							$r_params = $Plugins->trigger_event_first_true( 'RenderItemAttachment', $current_image_params );
-							if( count( $r_params ) != 0 )
-							{	// Render attachments by plugin, Append the html content to $current_image_params['data'] and to $r
+							$r_params = $Plugins->trigger_event_first_true( 'RenderItemAttachment', $current_image_params, true );
+							if( count( $r_params ) != 0 && isset( $r_params['plugin_ID'] ) )
+							{	// This attachment has been rendered by a plugin (to $params['data']), Skip this from core rendering:
 								if( ! $r_params['get_rendered_attachments'] )
 								{ // Restore $r value and mark this item has the rendered attachments
 									$r = $temp_r;
@@ -7509,6 +7556,9 @@ class Item extends ItemLight
 								}
 								continue;
 							}
+
+							// Update params because they may be modified by some plugin above:
+							$current_image_params = $r_params;
 
 							if( $inline_type == 'image' )
 							{ // Generate the IMG tag with all the alt, title and desc if available
@@ -7582,7 +7632,7 @@ class Item extends ItemLight
 							// or else modifications to the params are not applied in PHP7
 							$r_params = $Plugins->trigger_event_first_true( 'RenderItemAttachment', $current_video_params );
 							if( count( $r_params ) != 0 )
-							{
+							{	// This attachment has been rendered by a plugin (to $params['data']), Skip this from core rendering:
 								$link_tag = $r_params['data'];
 							}
 							else
@@ -8287,6 +8337,82 @@ class Item extends ItemLight
 	function notifications_allowed()
 	{
 		return ( $this->get_type_setting( 'usage' ) != 'special' );
+	}
+
+
+	/**
+	 * Check if this item can be displayed for current user on front-office
+	 *
+	 * @return boolean
+	 */
+	function can_be_displayed()
+	{
+		if( empty( $this->ID ) )
+		{	// Item is not created yet, so it cannot be displayed:
+			return false;
+		}
+
+		// Load collection of this Item:
+		$this->load_Blog();
+
+		// Get item statuses which are visible on front-office:
+		$show_statuses = get_inskin_statuses( $this->Blog->ID, 'post' );
+
+		if( ! in_array( $this->get( 'status' ), $show_statuses ) )
+		{	// This Item has a status which cannot be displayed on front-office:
+			return false;
+		}
+
+		global $current_User;
+		$is_logged_in = is_logged_in( false );
+
+		switch( $this->get( 'status' ) )
+		{
+			case 'published':
+				// Published posts are always allowed:
+				$allowed = true;
+				break;
+
+			case 'community':
+				// It is always allowed for logged in users:
+				$allowed = $is_logged_in;
+				break;
+
+			case 'protected':
+				// It is always allowed for members:
+				$allowed = ( $is_logged_in && $current_User->check_perm( 'blog_ismember', 1, false, $this->Blog->ID ) );
+				break;
+
+			case 'private':
+				// It is allowed for users who has global 'editall' permission:
+				$allowed = ( $is_logged_in && $current_User->check_perm( 'blogs', 'editall' ) );
+				if( ! $allowed && $is_logged_in && $current_User->check_perm( 'blog_post!private', 'create', false, $this->Blog->ID ) )
+				{	// Own private posts are allowed if user can create private posts:
+					$allowed = ( $current_User->ID == $this->creator_user_ID );
+				}
+				break;
+
+			case 'review':
+				// It is allowed for users who have at least 'lt' posts edit permission :
+				$allowed = ( $is_logged_in && $current_User->check_perm( 'blog_post!review', 'moderate', false, $this->Blog->ID ) );
+				if( ! $allowed && $is_logged_in && $current_User->check_perm( 'blog_post!review', 'create', false, $this->Blog->ID ) )
+				{	// Own posts with 'review' status are allowed if user can create posts with 'review' status
+					$allowed = ( $current_User->ID == $this->creator_user_ID );
+				}
+				break;
+
+			case 'draft':
+				// In front-office only authors may see their own draft posts, but only if the have permission to create draft posts:
+				$allowed = ( $is_logged_in && $current_User->check_perm( 'blog_post!draft', 'create', false, $this->Blog->ID )
+					&& $current_User->ID == $this->creator_user_ID );
+				break;
+
+			default:
+				// Decide the unknown item statuses as not visible for front-office:
+				$allowed = false;
+		}
+
+		return $allowed;
 	}
 }
 ?>
