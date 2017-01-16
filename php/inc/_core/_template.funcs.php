@@ -110,7 +110,7 @@ function header_redirect( $redirect_to = NULL, $status = false, $redirected_post
 	 * @var Hit
 	 */
 	global $Hit;
-	global $baseurl, $Blog, $htsrv_url_sensitive, $ReqHost, $ReqURL, $dispatcher;
+	global $baseurl, $Collection, $Blog, $htsrv_url_sensitive, $ReqHost, $ReqURL, $dispatcher;
 	global $Session, $Debuglog, $Messages;
 	global $http_response_code, $allow_redirects_to_different_domain;
 
@@ -184,8 +184,8 @@ function header_redirect( $redirect_to = NULL, $status = false, $redirected_post
 
 	$allow_collection_redirect = false;
 
-	if( $external_redirect 
-		&& $allow_redirects_to_different_domain == 'all_collections_and_redirected_posts' 
+	if( $external_redirect
+		&& $allow_redirects_to_different_domain == 'all_collections_and_redirected_posts'
 		&& ! $redirected_post )
 	{ // If a redirect is external and we allow to redirect to all collection domains:
 		global $basehost;
@@ -399,7 +399,7 @@ function header_etag( $etag )
  */
 function get_request_title( $params = array() )
 {
-	global $MainList, $preview, $disp, $action, $current_User, $Blog, $admin_url;
+	global $MainList, $preview, $disp, $action, $current_User, $Collection, $Blog, $admin_url;
 
 	$r = array();
 
@@ -432,7 +432,7 @@ function get_request_title( $params = array() )
 			'contacts_text'       => T_('Contacts'),
 			'login_text'          => /* TRANS: trailing space = verb */ T_('Login '),
 			'register_text'       => T_('Register'),
-			'req_validatemail'    => T_('Account activation'),
+			'req_activate_email'    => T_('Account activation'),
 			'account_activation'  => T_('Account activation'),
 			'lostpassword_text'   => T_('Lost your password?'),
 			'profile_text'        => T_('User Profile'),
@@ -443,6 +443,7 @@ function get_request_title( $params = array() )
 			'users_text'          => T_('Users'),
 			'closeaccount_text'   => T_('Close account'),
 			'subs_text'           => T_('Notifications & Subscriptions'),
+			'visits_text'         => T_('Profile Visits'),
 			'comments_text'       => T_('Latest Comments'),
 			'feedback-popup_text' => T_('Feedback'),
 			'edit_comment_text'   => T_('Editing comment'),
@@ -456,6 +457,7 @@ function get_request_title( $params = array() )
 			'display_edit_links'  => true, // Display the links to advanced editing on disp=edit|edit_comment
 			'edit_links_template' => array(), // More params for the links to advanced editing on disp=edit|edit_comment
 			'tags_text'           => T_('Tags'),
+			'flagged_text'        => T_('Flagged posts'),
 		), $params );
 
 	if( $params['auto_pilot'] == 'seo_title' )
@@ -552,6 +554,11 @@ function get_request_title( $params = array() )
 			$r[] = $params['subs_text'];
 			break;
 
+		case 'visits':
+			// We are requesting the profile visits screen:
+			$r[] = $params['visits_text'];
+			break;
+
 		case 'msgform':
 			// We are requesting the message form:
 			$r[] = $params['msgform_text'];
@@ -590,9 +597,9 @@ function get_request_title( $params = array() )
 
 		case 'login':
 			// We are requesting the login form:
-			if( $action == 'req_validatemail' )
+			if( $action == 'req_activate_email' )
 			{
-				$r[] = $params['req_validatemail'];
+				$r[] = $params['req_activate_email'];
 			}
 			else
 			{
@@ -778,6 +785,11 @@ function get_request_title( $params = array() )
 			$r[] = $params['tags_text'];
 			break;
 
+		case 'flagged':
+			// We are requesting the flagged posts list:
+			$r[] = $params['flagged_text'];
+			break;
+
 		case 'posts':
 			// We are requesting a posts page:
 			if( $params['posts_text'] != '#' )
@@ -895,7 +907,7 @@ function robots_tag()
  */
 function blog_home_link( $before = '', $after = '', $blog_text = 'Blog', $home_text = 'Home' )
 {
-	global $Blog, $baseurl;
+	global $Collection, $Blog, $baseurl;
 
 	if( !empty( $Blog ) )
 	{
@@ -920,7 +932,7 @@ function blog_home_link( $before = '', $after = '', $blog_text = 'Blog', $home_t
 function get_require_url( $lib_file, $relative_to = 'rsc_url', $subfolder = 'js', $version = '#' )
 {
 	global $library_local_urls, $library_cdn_urls, $use_cdns, $debug, $rsc_url;
-	global $Blog, $baseurl, $assets_baseurl, $ReqURL;
+	global $Collection, $Blog, $baseurl, $assets_baseurl, $ReqURL;
 
 	if( $relative_to == 'blog' && ( is_admin_page() || empty( $Blog ) ) )
 	{	// Make sure we never use resource url relative to any blog url in case of an admin page ( important in case of multi-domain installations ):
@@ -1373,15 +1385,17 @@ function add_js_for_toolbar( $relative_to = 'rsc_url' )
 
 /**
  * Registers headlines required by AJAX forms, but only if javascript forms are enabled in blog settings.
+ *
+ * @deprecated Because we don't need communication.js to work with AJAX forms
  */
 function init_ajax_forms( $relative_to = 'blog' )
 {
-	global $Blog;
+	/*global $Collection, $Blog;
 
 	if( !empty($Blog) && $Blog->get_setting('ajax_form_enabled') )
 	{
 		require_js( 'communication.js', $relative_to );
-	}
+	}*/
 }
 
 
@@ -1500,8 +1514,9 @@ function init_datepicker_js( $relative_to = 'rsc_url' )
 	require_js( '#jqueryUI#', $relative_to );
 	require_css( '#jqueryUI_css#', $relative_to );
 
-	$datefmt = locale_datefmt();
-	$datefmt = str_replace( array( 'd', 'j', 'm', 'Y' ), array( 'dd', 'd', 'mm', 'yy' ), $datefmt );
+	$datefmt = locale_input_datefmt();
+	//$datefmt = str_replace( array( 'd', 'j', 'm', 'Y' ), array( 'dd', 'd', 'mm', 'yy' ), $datefmt );
+	$datefmt = php_to_jquery_date_format( $datefmt );
 	add_js_headline( 'jQuery(document).ready( function(){
 		var monthNames = ["'.T_('January').'","'.T_('February').'", "'.T_('March').'",
 						  "'.T_('April').'", "'.T_('May').'", "'.T_('June').'",
@@ -1547,11 +1562,13 @@ function init_results_js( $relative_to = 'rsc_url' )
 
 
 /**
- * Registers headlines for initialization of functions to work with Results tables
+ * Registers headlines for initialization of functions to work a voting panel for comments
+ *
+ * @param boolean|string Is the file's path relative to the base path/url?
  */
 function init_voting_comment_js( $relative_to = 'rsc_url' )
 {
-	global $Blog, $b2evo_icons_type;
+	global $Collection, $Blog, $b2evo_icons_type;
 
 	if( empty( $Blog ) || ! is_logged_in( false ) || ! $Blog->get_setting('allow_rating_comment_helpfulness') )
 	{	// If User is not logged OR Users cannot vote
@@ -1567,6 +1584,35 @@ function init_voting_comment_js( $relative_to = 'rsc_url' )
 		jQuery( "span[id^=vote_helpful_]" ).each( function()
 		{
 			init_voting_bar( jQuery( this ), comment_voting_url, jQuery( this ).find( "#votingID" ).val(), false );
+		} );
+	} );
+	' );
+}
+
+
+/**
+ * Registers headlines for initialization of functions to work a voting panel for items
+ *
+ * @param boolean|string Is the file's path relative to the base path/url?
+ */
+function init_voting_item_js( $relative_to = 'rsc_url' )
+{
+	global $Collection, $Blog, $b2evo_icons_type;
+
+	if( empty( $Blog ) || ! is_logged_in( false ) || ! $Blog->get_setting( 'voting_positive' ) )
+	{	// If User is not logged OR Users cannot vote:
+		return false;
+	}
+
+	require_js( '#jquery#', $relative_to );
+	require_js( 'voting.js', $relative_to );
+	add_js_headline( '
+	jQuery( document ).ready( function()
+	{
+		var item_voting_url = "'.get_htsrv_url().'anon_async.php?action=voting&vote_type=item&b2evo_icons_type='.$b2evo_icons_type.'";
+		jQuery( "span[id^=vote_item_]" ).each( function()
+		{
+			init_voting_bar( jQuery( this ), item_voting_url, jQuery( this ).find( "#votingID" ).val(), false );
 		} );
 	} );
 	' );
@@ -1609,7 +1655,7 @@ function init_colorpicker_js( $relative_to = 'rsc_url' )
  */
 function init_autocomplete_login_js( $relative_to = 'rsc_url', $library = 'hintbox' )
 {
-	global $Blog;
+	global $Collection, $Blog;
 
 	require_js( '#jquery#', $relative_to ); // dependency
 
@@ -1962,7 +2008,7 @@ function credits( $params = array() )
 	 * @var AbstractSettings
 	 */
 	global $global_Cache;
-	global $Blog;
+	global $Collection, $Blog;
 
 	// Make sure we are not missing any param:
 	$params = array_merge( array(
@@ -2070,7 +2116,7 @@ function powered_by( $params = array() )
  */
 function bloginfo( $what )
 {
-	global $Blog;
+	global $Collection, $Blog;
 	$Blog->disp( $what );
 }
 
@@ -2259,7 +2305,7 @@ function display_ajax_form( $params )
  */
 function display_login_form( $params )
 {
-	global $Settings, $Plugins, $Session, $Blog, $blog, $dummy_fields;
+	global $Settings, $Plugins, $Session, $Collection, $Blog, $blog, $dummy_fields;
 	global $admin_url, $baseurl, $ReqHost, $redirect_to;
 
 	$params = array_merge( array(
@@ -2297,7 +2343,7 @@ function display_login_form( $params )
 
 	if( $params['display_abort_link']
 		&& empty( $params['login_required'] )
-		&& $params['action'] != 'req_validatemail'
+		&& $params['action'] != 'req_activate_email'
 		&& strpos( $return_to, $admin_url ) !== 0
 		&& strpos( $ReqHost.$return_to, $admin_url ) !== 0 )
 	{ // No login required, allow to pass through
@@ -2310,7 +2356,7 @@ function display_login_form( $params )
 				if( empty( $Blog ) )
 				{
 					$BlogCache = & get_BlogCache();
-					$Blog = $BlogCache->get_by_ID( $blog, false );
+					$Collection = $Blog = $BlogCache->get_by_ID( $blog, false );
 				}
 				// set abort url to Blog url
 				$abort_url = $Blog->gen_blogurl();
@@ -2375,9 +2421,9 @@ function display_login_form( $params )
 		}
 
 		$Form->hidden( 'validate_required', $params[ 'validate_required' ] );
-		if( isset( $params[ 'action' ],  $params[ 'reqID' ], $params[ 'sessID' ] ) &&  $params[ 'action' ] == 'validatemail' )
+		if( isset( $params[ 'action' ],  $params[ 'reqID' ], $params[ 'sessID' ] ) &&  $params[ 'action' ] == 'activateacc_sec' )
 		{ // the user clicked the link from the "validate your account" email, but has not been logged in; pass on the relevant data:
-			$Form->hidden( 'action', 'validatemail' );
+			$Form->hidden( 'action', 'activateacc_sec' );
 			$Form->hidden( 'reqID', $params[ 'reqID' ] );
 			$Form->hidden( 'sessID', $params[ 'sessID' ] );
 		}
@@ -2628,7 +2674,7 @@ function display_lostpassword_form( $login, $hidden_params, $params = array() )
 
 	// Display hidden fields
 	$Form->add_crumb( 'lostpassform' );
-	$Form->hidden( 'action', 'retrievepassword' );
+	$Form->hidden( 'action', 'resetpassword' );
 	foreach( $hidden_params as $key => $value )
 	{
 		$Form->hidden( $key, $value );
@@ -2647,12 +2693,12 @@ function display_lostpassword_form( $login, $hidden_params, $params = array() )
 
 	$Form->buttons_input( array( array( /* TRANS: Text for submit button to request an activation link by email */ 'value' => T_('Send me a recovery email!'), 'class' => 'btn-primary btn-lg' ) ) );
 
-	echo '<b>'.T_('How to recover your password:').'</b>';
+	echo '<b>'.T_('How to reset your password:').'</b>';
 	echo '<ol>';
-	echo '<li>'.T_('Please enter you login (or email address) above.').'</li>';
+	echo '<li>'.T_('Please enter your login (or email address) above.').'</li>';
 	echo '<li>'.T_('An email will be sent to your registered email address immediately.').'</li>';
-	echo '<li>'.T_('As soon as you receive the email, click on the link therein to change your password.').'</li>';
-	echo '<li>'.T_('Your browser will open a page where you can chose a new password.').'</li>';
+	echo '<li>'.T_('As soon as you receive the email, click on the link therein to reset your password.').'</li>';
+	echo '<li>'.T_('Your browser will open a page where you can set a new password.').'</li>';
 	echo '</ol>';
 	echo '<p class="red"><strong>'.T_('Important: for security reasons, you must do steps 1 and 4 on the same computer and same web browser. Do not close your browser in between.').'</strong></p>';
 
@@ -2729,7 +2775,7 @@ function display_activateinfo( $params )
 		$Form->begin_form( $params[ 'form_class' ] );
 
 		$Form->add_crumb( 'validateform' );
-		$Form->hidden( 'action', 'req_validatemail');
+		$Form->hidden( 'action', 'req_activate_email');
 		$Form->hidden( 'redirect_to', $params[ 'redirect_to' ] );
 		if( $params[ 'inskin' ] )
 		{
@@ -2740,7 +2786,7 @@ function display_activateinfo( $params )
 		{ // Form title in standard form
 			echo '<h4>'.$params['form_title'].'</h4>';
 		}
-		$Form->hidden( 'req_validatemail_submit', 1 ); // to know if the form has been submitted
+		$Form->hidden( 'req_activate_email_submit', 1 ); // to know if the form has been submitted
 
 		$Form->begin_fieldset();
 
@@ -2839,7 +2885,7 @@ function display_activateinfo( $params )
 		$Form->begin_form( 'evo_form__login' );
 
 		$Form->add_crumb( 'validateform' );
-		$Form->hidden( 'action', 'validatemail' );
+		$Form->hidden( 'action', 'activateacc_sec' );
 		$Form->hidden( 'redirect_to', url_rel_to_same_host( $redirect_to, get_htsrv_url( true ) ) );
 		$Form->hidden( 'reqID', 1 );
 		$Form->hidden( 'sessID', $Session->ID );
@@ -2868,7 +2914,7 @@ function display_activateinfo( $params )
  */
 function display_password_indicator( $params = array() )
 {
-	global $Blog, $rsc_url, $disp, $dummy_fields;
+	global $Collection, $Blog, $rsc_url, $disp, $dummy_fields;
 
 	$params = array_merge( array(
 			'pass1-id'    => $dummy_fields[ 'pass1' ],
@@ -3193,7 +3239,7 @@ function init_autocomplete_usernames_js( $relative_to = 'rsc_url' )
 {
 	if( is_admin_page() )
 	{ // Check to enable it in back-office
-		global $Blog;
+		global $Collection, $Blog;
 		if( empty( $Blog ) || ! $Blog->get_setting( 'autocomplete_usernames' ) )
 		{ // Blog setting doesn't allow to autocomplete usernames
 			return;
