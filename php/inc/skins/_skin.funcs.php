@@ -347,7 +347,7 @@ var downloadInterval = setInterval( function()
 						$robots_index = false;
 					}
 				}
-				elseif( array_diff( $active_filters, array( 'cat_array', 'cat_modifier', 'cat_focus', 'posts', 'page' ) ) == array() )
+				elseif( array_diff( $active_filters, array( 'cat_single', 'cat_array', 'cat_modifier', 'cat_focus', 'posts', 'page' ) ) == array() )
 				{ // This is a category page
 					$disp_detail = 'posts-cat';
 					$seo_page_type = 'Category page';
@@ -364,7 +364,7 @@ var downloadInterval = setInterval( function()
 						//      - selecting exactly one cat through catsel[] is NOT OK since not equivalent (will exclude children)
 
 						// echo 'SINGLE CAT PAGE';
-						// fp> add this?: $disp_detail = 'posts-topcat';  // may become 'posts-subcat' below.
+						$disp_detail = 'posts-topcat';  // may become 'posts-subcat' below.
 
 						if( ( $Blog->get_setting( 'canonical_cat_urls' ) && $redir == 'yes' )
 							|| $Blog->get_setting( 'relcanonical_cat_urls' ) )
@@ -2113,7 +2113,7 @@ function skin_description_tag()
 			$r = $Blog->get( 'shortdesc' );
 		}
 	}
-	elseif( $disp_detail == 'posts-cat' || $disp_detail == 'posts-subcat' )
+	elseif( $disp_detail == 'posts-cat' || $disp_detail == 'posts-topcat' || $disp_detail == 'posts-subcat' )
 	{
 		if( $Blog->get_setting( 'categories_meta_description' ) && ( ! empty( $Chapter ) ) )
 		{
@@ -2212,7 +2212,9 @@ function skin_opengraph_tags()
 		}
 
 		$LinkOwner = new LinkItem( $Item );
-		if(  $LinkList = $LinkOwner->get_attachment_LinkList( 1000 ) )
+		if(  $LinkList = $LinkOwner->get_attachment_LinkList( 1000, NULL, 'image', array(
+				'sql_select_add' => ', CASE link_position WHEN "cover" THEN 1 WHEN ( "teaser" OR "teaserperm" OR "teaserlink" ) THEN 2 ELSE 3 END AS link_priority',
+				'sql_order_by' => 'link_priority ASC, link_order ASC' ) ) )
 		{ // Item has no linked files
 			while( $Link = & $LinkList->get_next() )
 			{
@@ -2275,7 +2277,9 @@ function skin_twitter_tags()
 		}
 
 		$LinkOwner = new LinkItem( $Item );
-		if(  $LinkList = $LinkOwner->get_attachment_LinkList( 1000, 'cover,teaser', 'image', array( 'sql_order_by' => 'link_position ASC' ) ) )
+		if(  $LinkList = $LinkOwner->get_attachment_LinkList( 1000, NULL, 'image', array(
+				'sql_select_add' => ', CASE link_position WHEN "cover" THEN 1 WHEN ( "teaser" OR "teaserperm" OR "teaserlink" ) THEN 2 ELSE 3 END AS link_priority',
+				'sql_order_by' => 'link_priority ASC, link_order ASC' ) ) )
 		{ // Item has no linked files
 			while( $Link = & $LinkList->get_next() )
 			{
