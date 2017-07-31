@@ -704,6 +704,10 @@ div.bSideItem h4 {
   display: inline;
   float: left;
 }
+.disp_search .site_pagination li,
+.disp_search .pagination li {
+  display: inline-block;
+}
 div.action_messages,
 div.log_container {
   margin: 0;

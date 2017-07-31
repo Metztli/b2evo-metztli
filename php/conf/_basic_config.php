@@ -82,8 +82,9 @@ $tableprefix = 'evo_';
  * NEVER LEAVE THIS SETTING ON ANYTHING ELSE THAN 0 (ZERO) ON A PRODUCTION SERVER.
  * IF THIS IS ON (1) AND YOU FORGET TO DELETE THE INSTALL FOLDER, ANYONE WOULD BE ABLE TO
  * ERASE YOUR B2EVOLUTION TABLES AND DATA BY A SINGLE CLICK!
+ * Jose/Metztli IT 07-31-2017 set below to 1 to allow change in users email, etc.
  */
-$allow_evodb_reset = 0;	// Set to 1 to enable. Do not leave this on 1 on production servers
+$allow_evodb_reset = 1;	// Set to 1 to enable. Do not leave this on 1 on production servers
 
 
 /**

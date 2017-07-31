@@ -30,8 +30,6 @@ Current (stable) version: 1.0.0
 - Pagination layout fix
 - Other visual fixes
 
-### Update Log
-
 #### v1.1.1
 - Comment status badge position fix
 - Pagination layout fix
