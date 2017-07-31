@@ -710,7 +710,7 @@ class Item extends ItemLight
 
 				if( $editing || $this->dateset == 1 )
 				{ // We can use user date:
-					if( param_date( 'item_issue_date', T_('Please enter a valid issue date.'), true )
+					if( param_date( 'item_issue_date', sprintf( T_('Please enter a valid issue date using the following format: %s'), '<code>'.locale_input_datefmt().'</code>' ), true )
 						&& param_time( 'item_issue_time' ) )
 					{ // only set it, if a (valid) date and time was given:
 						$this->set( 'issue_date', form_date( get_param( 'item_issue_date' ), get_param( 'item_issue_time' ) ) ); // TODO: cleanup...
@@ -724,7 +724,8 @@ class Item extends ItemLight
 		}
 
 		// SLUG:
-		if( param( 'post_urltitle', 'string', NULL ) !== NULL ) {
+		if( param( 'post_urltitle', 'string', NULL ) !== NULL )
+		{
 			$this->set_from_Request( 'urltitle' );
 		}
 
@@ -2205,13 +2206,21 @@ class Item extends ItemLight
 
 		$content_parts = $this->get_content_parts( $params );
 
-		// Output everything after [teaserbreak]
-		array_shift($content_parts);
-		$output = implode('', $content_parts);
+		// Output everything after [teaserbreak]:
+		array_shift( $content_parts );
+		$output = implode( '', $content_parts );
 
 		// Render inline file tags like [image:123:caption] or [file:123:caption] :
 		$params['check_code_block'] = true;
+
+		// Render inline file tags like [image:123:caption] or [file:123:caption] :
 		$output = render_inline_files( $output, $this, $params );
+
+		// Render Custom Fields [fields], [fields:second_numeric_field,first_string_field] or [field:first_string_field]:
+		$output = $this->render_custom_fields( $output, $params );
+
+		// Render Parent Data [parent], [parent:fields] and etc.:
+		$output = $this->render_parent_data( $output, $params );
 
 		// Trigger Display plugins FOR THE STUFF THAT WOULD NOT BE PRERENDERED:
 		$output = $Plugins->render( $output, $this->get_renderers_validated(), $format, array(
@@ -2506,7 +2515,7 @@ class Item extends ItemLight
 	function render_parent_data( $content, $params = array() )
 	{
 		if( isset( $params['check_code_block'] ) && $params['check_code_block'] && ( ( stristr( $content, '<code' ) !== false ) || ( stristr( $content, '<pre' ) !== false ) ) )
-		{	// Call $this->render_custom_fields() on everything outside code/pre:
+		{	// Call $this->render_parent_data() on everything outside code/pre:
 			$params['check_code_block'] = false;
 			$content = callback_on_non_matching_blocks( $content,
 				'~<(code|pre)[^>]*>.*?</\1>~is',
@@ -2666,6 +2675,11 @@ class Item extends ItemLight
 	 * Does the post have different content parts (teaser/extension, divided by "[teaserbreak]")?
 	 * This is also true for posts that have images with "aftermore" position.
 	 *
+	 * @todo fp> This is a heavy operation! We should probably store the presence of `[teaserbreak]` in a var so that future cals do not rexecute again.
+	 *           BUT first we need to know why we're interested in $params['disppage'], $params['format']  (or better said: in wgat case are we using different values for this?)
+	 *           ALSO we should probably store the position of [teaserbreak] for even better performance
+	 *           ALSO we may want to store that at UPDATE time, into the DB, so we have super fast access to it.
+	 *
 	 * @access public
 	 * @return boolean
 	 */
@@ -2679,8 +2693,8 @@ class Item extends ItemLight
 
 		$content_page = $this->get_content_page( $params['disppage'], $params['format'] );
 
-		// Remove <code> and <pre> blocks from content to don't check [teaserbreak] there
-		$content_page = preg_replace( '~<(code|pre)[^>]*>.*?</\1>~is', '', $content_page );
+		// Replace <code> and <pre> blocks from content because we're not interested in [teaserbreak] in there
+		$content_page = preg_replace( '~<(code|pre)[^>]*>.*?</\1>~is', '*', $content_page );
 
 		return strpos( $content_page, '[teaserbreak]' ) !== false
 			|| $this->get_images( array( 'restrict_to_image_position' => 'aftermore' ) );
@@ -3074,7 +3088,7 @@ class Item extends ItemLight
 			$link_rel = isset( $params['image_link_rel'] ) ? $params['image_link_rel'] : '';
 		}
 		else
-		{ // We're linking to the original image, let lighbox (or clone) quick in:
+		{ // We're linking to the original image, let lightbox (or clone) kick in:
 			$link_title =  ( empty( $params['image_link_title'] ) && !isset( $params['hide_image_link_title'] ) ) ? '#desc#' : $params['image_link_title'];	// This title will be used by lightbox (colorbox for instance)
 			$link_rel = isset( $params['image_link_rel'] ) ? $params['image_link_rel'] : 'lightbox[p'.$this->ID.']';	// Make one "gallery" per post.
 		}
@@ -6558,6 +6572,7 @@ class Item extends ItemLight
 		$SQL->FROM_add( 'LEFT JOIN T_users__usersettings ON uset_user_ID = user_ID AND uset_name = "'.$notify_moderation_setting_name.'"' );
 		$SQL->FROM_add( 'LEFT JOIN T_groups ON grp_ID = user_grp_ID' );
 		$SQL->WHERE( $notify_condition );
+		$SQL->WHERE_and( 'user_status IN ( "activated", "autoactivated" )' );
 		$SQL->WHERE_and( '( bloguser_perm_edit IS NOT NULL AND bloguser_perm_edit <> "no" AND bloguser_perm_edit <> "own" )
 				OR ( bloggroup_perm_edit IS NOT NULL AND bloggroup_perm_edit <> "no" AND bloggroup_perm_edit <> "own" )
 				OR ( grp_perm_blogs = "editall" ) OR ( user_ID = blog_owner_user_ID )' );
@@ -6785,7 +6800,9 @@ class Item extends ItemLight
 		$SQL = new SQL( 'Get list of users who want to be notified (and have not yet been notified) about new items on colection #'.$this->get_blog_ID() );
 		$SQL->SELECT( 'DISTINCT sub_user_ID' );
 		$SQL->FROM( 'T_subscriptions' );
-		$SQL->WHERE( 'sub_coll_ID = '.$this->get_blog_ID() );
+		$SQL->FROM_add( 'INNER JOIN T_users ON user_ID = sub_user_ID' );
+		$SQL->WHERE( 'user_status IN ( "activated", "autoactivated" )' );
+		$SQL->WHERE_and( 'sub_coll_ID = '.$this->get_blog_ID() );
 		$SQL->WHERE_and( 'sub_items <> 0' );
 		if( ! empty( $already_notified_user_IDs ) )
 		{	// Create condition to not select already notified moderator users:
@@ -7021,7 +7038,7 @@ class Item extends ItemLight
 					$ping_messages[] = sprintf( T_('Pinging %s...'), $Plugin->ping_service_name );
 					$params = array( 'Item' => & $this, 'xmlrpcresp' => NULL, 'display' => false );
 
-					$r = $r && ( $Plugin->ItemSendPing( $params ) );
+					$r = $Plugin->ItemSendPing( $params ) && $r;
 
 					if( ! empty( $params['xmlrpcresp'] ) )
 					{
@@ -7503,17 +7520,18 @@ class Item extends ItemLight
 		global $DB, $localtimenow;
 
 		$this->load_Blog();
-		$comment_inskin_statuses = explode( ',', $this->Blog->get_setting( 'comment_inskin_statuses' ) );
 
-		// Count each published comments rating grouped by active/expired status and by rating value
-		$sql = 'SELECT comment_rating, count( comment_ID ) AS cnt,
-					IF( iset_value IS NULL OR iset_value = "" OR TIMESTAMPDIFF(SECOND, comment_date, '.$DB->quote( date2mysql( $localtimenow ) ).') < iset_value, "active", "expired" ) as expiry_status
-						FROM T_comments
-						LEFT JOIN T_items__item_settings ON iset_item_ID = comment_item_ID AND iset_name = "comment_expiry_delay"
-						WHERE comment_item_ID = '.$this->ID.' AND comment_status IN ("'.implode('","', $comment_inskin_statuses) .'")
-						GROUP BY expiry_status, comment_rating
-						ORDER BY comment_rating DESC';
-		$results = $DB->get_results( $sql );
+		// Count each published comments rating grouped by active/expired status and by rating value:
+		$SQL = new SQL( 'Count each published comments rating grouped by active/expired status and by rating value' );
+		$SQL->SELECT( 'comment_rating, count( comment_ID ) AS cnt,' );
+		$SQL->SELECT_add( 'IF( iset_value IS NULL OR iset_value = "" OR TIMESTAMPDIFF(SECOND, comment_date, '.$DB->quote( date2mysql( $localtimenow ) ).') < iset_value, "active", "expired" ) as expiry_status' );
+		$SQL->FROM( 'T_comments' );
+		$SQL->FROM_add( 'LEFT JOIN T_items__item_settings ON iset_item_ID = comment_item_ID AND iset_name = "comment_expiry_delay"' );
+		$SQL->WHERE( 'comment_item_ID = '.$this->ID );
+		$SQL->WHERE_and( statuses_where_clause( get_inskin_statuses( $this->Blog->ID, 'comment' ), 'comment_', $this->Blog->ID, 'blog_comment!' ) );
+		$SQL->GROUP_BY( 'expiry_status, comment_rating' );
+		$SQL->ORDER_BY( 'comment_rating DESC' );
+		$results = $DB->get_results( $SQL->get(), OBJECT, $SQL->title );
 
 		// init rating arrays
 		$ratings = array();
@@ -7540,7 +7558,7 @@ class Item extends ItemLight
 		}
 
 		// Count active and overall rating values
-		foreach($results as $rating)
+		foreach( $results as $rating )
 		{
 			$index = ( $rating->comment_rating == 0 ) ? 'unrated' : $rating->comment_rating;
 			$ratings[$index] += $rating->cnt;
@@ -7953,7 +7971,7 @@ class Item extends ItemLight
 			return;
 		}
 
-		global $DB, $current_User, $localtimenow, $cache_items_user_data;
+		global $DB, $current_User, $localtimenow;
 
 		$timestamp = date2mysql( $localtimenow );
 
@@ -8108,13 +8126,13 @@ class Item extends ItemLight
 			$cache_items_user_data[ $this->ID ] = NULL;
 		}
 
-		if( is_null( $field ) || ! isset( $cache_items_user_data[ $this->ID ][ $field ] ) )
+		if( $field === NULL )
 		{	// Return all fields as array:
 			return $cache_items_user_data[ $this->ID ];
 		}
 		else
 		{	// Return a value of single field:
-			return $cache_items_user_data[ $this->ID ][ $field ];
+			return isset( $cache_items_user_data[ $this->ID ][ $field ] ) ? $cache_items_user_data[ $this->ID ][ $field ] : NULL;
 		}
 	}
 
@@ -8131,10 +8149,10 @@ class Item extends ItemLight
 
 		if( ! isset( $cache_items_user_data[ $this->ID ] ) || ! is_array( $cache_items_user_data[ $this->ID ] ) )
 		{	// Initialize array:
-			$cache_items_user_data[ $this->ID ][ $field ] = array();
+			$cache_items_user_data[ $this->ID ] = array();
 		}
 
-		$cache_items_user_data[ $this->ID ] = $value;
+		$cache_items_user_data[ $this->ID ][ $field ] = $value;
 	}
 
 

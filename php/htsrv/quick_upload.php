@@ -246,8 +246,11 @@ if( strpos( $root_and_path, '::' ) )
 	list( $root, $path ) = explode( '::', $root_and_path, 2 );
 	$FileRootCache = & get_FileRootCache();
 	$fm_FileRoot = $FileRootCache->get_by_ID( $root );
-	$non_canonical_list_path = $fm_FileRoot->ads_path.$path;
-	$upload_path = get_canonical_path( $non_canonical_list_path );
+	if( $fm_FileRoot )
+	{
+		$non_canonical_list_path = $fm_FileRoot->ads_path.$path;
+		$upload_path = get_canonical_path( $non_canonical_list_path );
+	}
 }
 
 if( $upload_path === false )
@@ -482,12 +485,10 @@ if( $upload )
 			$mask_row = (object) array(
 					'link_ID'       => $new_Link->ID,
 					'file_ID'       => $newFile->ID,
+					'file_type'     => $newFile->get_file_type(),
 					'link_position' => $new_Link->get( 'position' ),
 				);
-			if( count( $LinkOwner->get_positions() ) > 1 )
-			{	// Email campaign always has only one postion, so we don't need these data:
-				$message['link_position'] = display_link_position( $mask_row );
-			}
+			$message['link_position'] = display_link_position( $mask_row );
 		}
 
 		out_echo( $message, $specialchars );

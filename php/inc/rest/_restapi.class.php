@@ -670,7 +670,7 @@ class RestApi
 	private function controller_coll_posts()
 	{
 		$this->controller_coll_items( array(
-				'itemtype_usage' => NULL, // Keep content post types, Exclude pages, intros, sidebar links and ads
+				'itemtype_usage' => 'post', // Keep content post types, Exclude pages, intros, sidebar links and ads
 			) );
 	}
 
@@ -2030,6 +2030,7 @@ class RestApi
 			$mask_row = (object) array(
 					'link_ID'       => $Link->ID,
 					'file_ID'       => $current_File->ID,
+					'file_type'     => $current_File->get_file_type(),
 					'link_position' => $Link->get( 'position' ),
 				);
 			$this->add_response( 'link', array(

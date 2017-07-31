@@ -594,14 +594,14 @@ class shortlinks_plugin extends Plugin
 		//<![CDATA[
 		function shortlinks_toolbar( title, prefix )
 		{
-			var r = '<?php echo $this->get_template( 'toolbar_title_before' ); ?>' + title + '<?php echo $this->get_template( 'toolbar_title_after' ); ?>'
-				+ '<?php echo $this->get_template( 'toolbar_group_before' ); ?>'
+			var r = '<?php echo format_to_js( $this->get_template( 'toolbar_title_before' ) ); ?>' + title + '<?php echo format_to_js( $this->get_template( 'toolbar_title_after' ) ); ?>'
+				+ '<?php echo format_to_js( $this->get_template( 'toolbar_group_before' ) ); ?>'
 
 				+ '<input type="button" title="<?php echo TS_('Link to a Post') ?>"'
 				+ ' class="<?php echo $this->get_template( 'toolbar_button_class' ); ?>"'
 				+ ' data-func="shortlinks_load_window|' + prefix + '" value="<?php echo TS_('Link to a Post') ?>" />'
 
-				+ '<?php echo $this->get_template( 'toolbar_group_after' ); ?>';
+				+ '<?php echo format_to_js( $this->get_template( 'toolbar_group_after' ) ); ?>';
 
 				jQuery( '.' + prefix + '<?php echo $this->code ?>_toolbar' ).html( r );
 		}
@@ -617,7 +617,7 @@ class shortlinks_plugin extends Plugin
 				true );
 
 			// Load collections:
-			shortlinks_load_colls( '<?php echo empty( $Blog ) ? '' : $Blog->get( 'urlname' ); ?>', prefix );
+			shortlinks_load_colls( '<?php echo empty( $Blog ) ? '' : format_to_js( $Blog->get( 'urlname' ) ); ?>', prefix );
 
 			// Set max-height to keep the action buttons on screen:
 			var modal_window = jQuery( '#shortlinks_wrapper' ).parent();
@@ -1078,7 +1078,7 @@ class shortlinks_plugin extends Plugin
 						jQuery( '#shortlinks_post_content' );
 					jQuery( '#shortlinks_btn_back_to_list, #shortlinks_btn_insert, #shortlinks_btn_form' ).remove();
 					buttons_side_obj.after( '<button id="shortlinks_btn_back_to_list" class="btn btn-default">&laquo; <?php echo TS_('Back'); ?></button>'
-						+ '<button id="shortlinks_btn_insert" class="btn btn-primary"><?php echo sprintf( TS_('Insert %s'), '[[\' + post.urltitle + \']]' ); ?></button>'
+						+ '<button id="shortlinks_btn_insert" class="btn btn-primary"><?php echo sprintf( /* TRANS: %s is a shortlink preview like [[url-slug]] */ TS_('Insert %s'), '[[\' + post.urltitle + \']]' ); ?></button>'
 						+ '<button id="shortlinks_btn_form" class="btn btn-info"><?php echo TS_('Insert Complex Link'); ?></button>' );
 				} );
 			}
