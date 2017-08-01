@@ -16,8 +16,6 @@ if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.'
 siteskin_include( '_site_body_header.inc.php' );
 // ------------------------------- END OF SITE HEADER --------------------------------
 ?>
-<!-- Ralaway font include -->
-<link href='https://fonts.googleapis.com/css?family=Raleway:400,300,800,700' rel='stylesheet' type='text/css'>
 
 <div class="container-fluid">
 <div class="row">

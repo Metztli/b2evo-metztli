@@ -699,14 +699,19 @@ div.bSideItem h4 {
 }
 .disp_useritems .site_pagination li,
 .disp_usercomments .site_pagination li,
+.disp_page .site_pagination li,
+.disp_single .site_pagination li,
 .disp_useritems .pagination li,
-.disp_usercomments .pagination li {
+.disp_usercomments .pagination li,
+.disp_page .pagination li,
+.disp_single .pagination li {
   display: inline;
   float: left;
 }
 .disp_search .site_pagination li,
 .disp_search .pagination li {
-  display: inline-block;
+  display: inline;
+  float: left;
 }
 div.action_messages,
 div.log_container {

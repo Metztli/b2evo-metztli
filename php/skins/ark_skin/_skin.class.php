@@ -17,7 +17,7 @@ if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.'
  */
 class ark_Skin extends Skin
 {	
-	var $version = '1.2.2';
+	var $version = '1.3.0';
 	/**
 	 * Do we want to use style.min.css instead of style.css ?
 	 */
@@ -596,6 +596,9 @@ class ark_Skin extends Skin
 			// Skin specific initializations:			
 			// Add custom CSS:
 			$custom_css = '';
+			
+			
+			add_headline( "<link href='https://fonts.googleapis.com/css?family=Raleway:400,300,800,700' rel='stylesheet' type='text/css'>" );
 				
 				
 			// Only change post teaser image for "front" and "posts" 
@@ -1157,14 +1160,14 @@ class ark_Skin extends Skin
 	
 	
 	/**
-	 * Check if we can display a widget container
+	 * Check if we can display a widget container when access is denied to collection by current user
 	 *
-	 * @param string Widget container key: 'header', 'menu', 'sidebar', 'sidebar2', 'footer'
+	 * @param string Widget container key: 'header', 'page_top', 'menu', 'sidebar', 'sidebar2', 'footer'
 	 * @return boolean TRUE to display
 	 */
-	function is_visible_container( $container_key )
+	function show_container_when_access_denied( $container_key )
 	{
-		global $Blog;
+		global $Collection, $Blog;
 
 		if( $Blog->has_access() )
 		{	// If current user has an access to this collection then don't restrict containers:
@@ -1175,6 +1178,32 @@ class ark_Skin extends Skin
 		$access = $this->get_setting( 'access_login_containers' );
 
 		return ( ! empty( $access ) && ! empty( $access[ $container_key ] ) );
+	}
+
+
+	/**
+	 * Check if we can display a sidebar for the current layout
+	 *
+	 * @param boolean TRUE to check if at least one sidebar container is visible
+	 * @return boolean TRUE to display a sidebar
+	 */
+	function is_visible_sidebar( $check_containers = false )
+	{
+		$layout = $this->get_setting( 'layout' );
+
+		if( $layout != 'left_sidebar' && $layout != 'right_sidebar' )
+		{ // Sidebar is not displayed for selected skin layout
+			return false;
+		}
+
+		if( $check_containers )
+		{ // Check if at least one sidebar container is visible
+			return ( $this->show_container_when_access_denied( 'sidebar' ) ||  $this->show_container_when_access_denied( 'sidebar2' ) );
+		}
+		else
+		{ // We should not check the visibility of the sidebar containers for this case
+			return true;
+		}
 	}
 }
 ?>

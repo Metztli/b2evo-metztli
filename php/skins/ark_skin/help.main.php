@@ -1,22 +1,25 @@
 <?php
 /**
- * This is the main/default page template for the "Ark" skin.
+ * This is the template that displays the help screen for a collection
  *
- * This skin only uses one single template which includes most of its features.
- * It will also rely on default includes for specific dispays (like the comment form).
+ * This file is not meant to be called directly.
+ * It is meant to be called by an include in the main.page.php template.
+ * To display the archive directory, you should call a stub AND pass the right parameters
+ * For example: /blogs/index.php?disp=help
  *
- * For a quick explanation of b2evo 2.0 skins, please start here:
- * {@link http://b2evolution.net/man/skin-development-primer}
- *
- * The main page template is used to display the blog when no specific page template is available
- * to handle the request (based on $disp).
+ * b2evolution - {@link http://b2evolution.net/}
+ * Released under GNU GPL License - {@link http://b2evolution.net/about/gnu-gpl-license}
+ * @copyright (c)2003-2016 by Francois Planque - {@link http://fplanque.com/}
  *
  * @package evoskins
- * @subpackage bootstrap
+ * @subpackage bootstrap_blog_skin
  */
 if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.' );
 
-if( version_compare( $app_version, '6.4' ) < 0 )
+
+global $app_version, $disp, $Collection, $Blog;
+
+if( evo_version_compare( $app_version, '6.4' ) < 0 )
 { // Older skins (versions 2.x and above) should work on newer b2evo versions, but newer skins may not work on older b2evo versions.
 	die( 'This skin is designed for b2evolution 6.4 and above. Please <a href="http://b2evolution.net/downloads/index.html">upgrade your b2evolution</a>.' );
 }
@@ -26,15 +29,127 @@ if( version_compare( $app_version, '6.4' ) < 0 )
 skin_init( $disp );
 
 // -------------------------- HTML HEADER INCLUDED HERE --------------------------
-skin_include( '_html_header.inc.php', array() );
+skin_include( '_html_header.inc.php' );
 // -------------------------------- END OF HEADER --------------------------------
 
 
 // ---------------------------- SITE HEADER INCLUDED HERE ----------------------------
 // If site headers are enabled, they will be included here:
-skin_include( '_body_header.inc.php' );
+siteskin_include( '_site_body_header.inc.php' );
 // ------------------------------- END OF SITE HEADER --------------------------------
 ?>
+
+<div class="container-fluid">
+<div class="row">
+
+<?php
+if( $Skin->show_container_when_access_denied( 'Header' ) )
+{ // Display 'Page Top' widget container
+?>
+		
+	<div class="headpicture">
+
+		<div class="headipic_section <?php 
+										if( $Skin->get_setting( 'header_content_pos' ) == 'center_pos' ) {
+											echo 'center';
+										} elseif( $Skin->get_setting( 'header_content_pos' ) == 'left_pos' ){
+											echo 'left';
+										} elseif( $Skin->get_setting( 'header_content_pos' ) == 'right_pos' ){
+											echo 'right';
+										}
+										?>">
+			<?php
+				if( $Skin->get_setting( 'header_content_pos' ) == 'column_pos' ) {
+					echo '<div class="container">';
+				}
+				skin_container( NT_('Header'), array(
+				) );
+				if( $Skin->get_setting( 'header_content_pos' ) == 'column_pos' ) {
+					echo '</div>';
+				}
+			?>				
+			
+		</div>
+		
+	</div>
+	
+<?php } ?>
+
+<?php
+if( $Skin->show_container_when_access_denied( 'Menu' ) )
+{ // Display 'Page Top' widget container
+?>
+
+<nav class="top-menu container-fluid">
+	<div class="row">
+		<!-- Brand and toggle get grouped for better mobile display -->
+
+<?php if( $Skin->get_setting( 'top_menu_position' ) == 'menu_inline' ) {
+		echo '<div class="container menu_inline_container">';
+} ?>
+
+		<div class="navbar-header<?php if( $Skin->get_setting( 'top_menu_position' ) == 'menu_center' ) { echo ' navbar-header-center'; } ?>">
+			<button type="button" class="navbar-toggle navbar-toggle-hamb collapsed" data-toggle="collapse" data-target="#navbar-collapse-1" aria-expanded="false">
+				<span class="sr-only">Toggle navigation</span>
+				<span class="icon-bar"></span>
+				<span class="icon-bar"></span>
+				<span class="icon-bar"></span>
+			</button>
+			
+				<?php				 
+				if( $Skin->get_setting( 'top_menu_brand' ) ) {
+				// ------------------------- "Menu" Collection title --------------------------
+					skin_widget( array(
+						// CODE for the widget:
+						'widget'              => 'coll_title',
+						// Optional display params
+						'block_start'         => '<div class="navbar-brand">',
+						'block_end'           => '</div>',
+						'item_class'           => 'navbar-brand',
+					) );
+				// ------------------------- "Menu" Collection logo --------------------------
+				}
+				?>
+		</div><!-- /.navbar-header -->
+		
+		<!-- Collect the nav links, forms, and other content for toggling -->
+		<div class="collapse navbar-collapse<?php if( $Skin->get_setting( 'top_menu_position' ) == 'menu_center' ) { echo ' menu_center'; } ?>" id="navbar-collapse-1">
+			<ul class="navbar-nav evo_container evo_container__menu" id="menu">				
+				<?php
+					// ------------------------- "Menu" CONTAINER EMBEDDED HERE --------------------------
+					// Display container and contents:
+					// Note: this container is designed to be a single <ul> list
+					skin_container( NT_('Menu'), array(
+							// The following params will be used as defaults for widgets included in this container:
+							'block_start'         => '',
+							'block_end'           => '',
+							'block_display_title' => false,
+							'list_start'          => '',
+							'list_end'            => '',
+							'item_start'          => '<li class="evo_widget $wi_class$">',
+							'item_end'            => '</li>',
+							'item_selected_start' => '<li class="active evo_widget $wi_class$">',
+							'item_selected_end'   => '</li>',
+							'item_title_before'   => '',
+							'item_title_after'    => '',
+						) );
+					// ----------------------------- END OF "Menu" CONTAINER -----------------------------
+				?>
+			</ul>
+		</div><!-- .collapse -->
+		
+<?php if( $Skin->get_setting( 'top_menu_position' ) == 'menu_inline' ) {
+		echo '</div><!-- .container -->';
+} ?>
+		
+	</div><!-- .row -->
+</nav><!-- .top-menu -->
+
+<?php } ?>
+
+</div>
+</div>
+
 <div class="container">
 
 <!-- =================================== START OF MAIN AREA =================================== -->
@@ -44,165 +159,46 @@ skin_include( '_body_header.inc.php' );
 				
 		<main><!-- This is were a link like "Jump to main content" would land -->
 
-		<!-- ================================= START OF MAIN AREA ================================== -->
-
 		<?php
-		if( ! in_array( $disp, array( 'login', 'lostpassword', 'register', 'activateinfo', 'access_requires_login' ) ) )
-		{ // Don't display the messages here because they are displayed inside wrapper to have the same width as form
 			// ------------------------- MESSAGES GENERATED FROM ACTIONS -------------------------
 			messages( array(
 					'block_start' => '<div class="action_messages">',
 					'block_end'   => '</div>',
 				) );
 			// --------------------------------- END OF MESSAGES ---------------------------------
-		}
-		?>
-
-		<?php
-			// ------------------- PREV/NEXT POST LINKS (SINGLE POST MODE) -------------------
-			item_prevnext_links( array(
-					'block_start' => '<nav><ul class="pager">',
-						'prev_start'  => '<li class="previous">',
-						'prev_end'    => '</li>',
-						'next_start'  => '<li class="next">',
-						'next_end'    => '</li>',
-					'block_end'   => '</ul></nav>',
-				) );
-			// ------------------------- END OF PREV/NEXT POST LINKS -------------------------
 		?>
 
 		<?php
 			// ------------------------ TITLE FOR THE CURRENT REQUEST ------------------------
 			request_title( array(
-					'title_before'      => '<h2>',
+					'title_before'      => '<h2 class="page_title">',
 					'title_after'       => '</h2>',
 					'title_none'        => '',
 					'glue'              => ' - ',
-					'title_single_disp' => false,
-					'title_page_disp'   => false,
-					'format'            => 'htmlbody',
-					'register_text'     => '',
-					'login_text'        => '',
-					'lostpassword_text' => '',
-					'account_activation' => '',
-					'msgform_text'      => '',
-					'user_text'         => '',
-					'users_text'        => '',
-					'display_edit_links'=> false,
 				) );
 			// ----------------------------- END OF REQUEST TITLE ----------------------------
 		?>
 
 		<?php
-		// Go Grab the featured post:
-		if( ! in_array( $disp, array( 'single', 'page' ) ) && $Item = & get_featured_Item() )
-		{	// We have a featured/intro post to display:
-			$intro_item_style = '';
-			$LinkOwner = new LinkItem( $Item );
-			$LinkList = $LinkOwner->get_attachment_LinkList( 1, 'cover' );
-			if( ! empty( $LinkList ) &&
-					$Link = & $LinkList->get_next() &&
-					$File = & $Link->get_File() &&
-					$File->exists() &&
-					$File->is_image() )
-			{	// Use cover image of intro-post as background:
-				$intro_item_style = 'background-image: url("'.$File->get_url().'")';
-			}
-			// ---------------------- ITEM BLOCK INCLUDED HERE ------------------------
-			skin_include( '_item_block.inc.php', array(
-					'feature_block' => true,
-					'content_mode' => 'full', // We want regular "full" content, even in category browsing: i-e no excerpt or thumbnail
-					'intro_mode'   => 'normal',	// Intro posts will be displayed in normal mode
-					'item_class'   => ($Item->is_intro() ? 'well evo_intro_post' : 'well evo_featured_post').( empty( $intro_item_style ) ? '' : ' evo_hasbgimg' ),
-					'item_style'   => $intro_item_style
-				) );
-			// ----------------------------END ITEM BLOCK  ----------------------------
-		}
-		?>
-
-		<?php
 			// -------------- MAIN CONTENT TEMPLATE INCLUDED HERE (Based on $disp) --------------
-			skin_include( '$disp$', array(
-					'author_link_text' => 'auto',
-					// Profile tabs to switch between user edit forms
-					'profile_tabs' => array(
-						'block_start'         => '<nav><ul class="nav nav-tabs profile_tabs">',
-						'item_start'          => '<li>',
-						'item_end'            => '</li>',
-						'item_selected_start' => '<li class="active">',
-						'item_selected_end'   => '</li>',
-						'block_end'           => '</ul></nav>',
-					),
-					// Pagination
-					'pagination' => array(
-						'block_start'           => '<div class="center"><ul class="pagination">',
-						'block_end'             => '</ul></div>',
-						'page_current_template' => '<span>$page_num$</span>',
-						'page_item_before'      => '<li>',
-						'page_item_after'       => '</li>',
-						'page_item_current_before' => '<li class="active">',
-						'page_item_current_after'  => '</li>',
-						'prev_text'             => '<i class="fa fa-angle-double-left"></i>',
-						'next_text'             => '<i class="fa fa-angle-double-right"></i>',
-					),
-					// Item content:
-					'url_link_position'     => 'top',
-					// Form params for the forms below: login, register, lostpassword, activateinfo and msgform
-					'skin_form_before'      => '<div class="panel panel-default skin-form">'
-																				.'<div class="panel-heading">'
-																					.'<h3 class="panel-title">$form_title$</h3>'
-																				.'</div>'
-																				.'<div class="panel-body">',
-					'skin_form_after'       => '</div></div>',
-					// Login
-					'display_form_messages' => true,
-					'form_title_login'      => T_('Log in to your account').'$form_links$',
-					'form_title_lostpass'   => get_request_title().'$form_links$',
-					'lostpass_page_class'   => 'evo_panel__lostpass',
-					'login_form_inskin'     => false,
-					'login_page_class'      => 'evo_panel__login',
-					'login_page_before'     => '<div class="$form_class$">',
-					'login_page_after'      => '</div>',
-					'display_reg_link'      => true,
-					'abort_link_position'   => 'form_title',
-					'abort_link_text'       => '<button type="button" class="close" aria-label="Close"><span aria-hidden="true">&times;</span></button>',
-					// Register
-					'register_page_before'      => '<div class="evo_panel__register">',
-					'register_page_after'       => '</div>',
-					'register_form_title'       => T_('Register'),
-					'register_links_attrs'      => '',
-					'register_use_placeholders' => true,
-					'register_field_width'      => 252,
-					'register_disabled_page_before' => '<div class="evo_panel__register register-disabled">',
-					'register_disabled_page_after'  => '</div>',
-					// Activate form
-					'activate_form_title'  => T_('Account activation'),
-					'activate_page_before' => '<div class="evo_panel__activation">',
-					'activate_page_after'  => '</div>',
-					// Search
-					'search_input_before'  => '<div class="input-group">',
-					'search_input_after'   => '',
-					'search_submit_before' => '<span class="input-group-btn">',
-					'search_submit_after'  => '</span></div>',
-					// Front page
-					'featured_intro_before' => '<div class="jumbotron">',
-					'featured_intro_after'  => '</div>',
-					// Form "Sending a message"
-					'msgform_form_title' => T_('Sending a message'),
-				) );
+			skin_include( '$disp$' );
 			// Note: you can customize any of the sub templates included here by
 			// copying the matching php file into your skin directory.
 			// ------------------------- END OF MAIN CONTENT TEMPLATE ---------------------------
 		?>
+
 		</main>
 
 	</div><!-- .col -->
 
-<!-- =================================== START OF SIDEBAR =================================== -->
 	<?php
 	if( $Skin->get_setting( 'layout' ) != 'single_column' )
 	{
 	?>
+		<?php
+		if( $Skin->show_container_when_access_denied( 'sidebar' ) )
+		{ // Display 'Sidebar' widget container
+		?>
 	<div class="col-md-4 sidebar"<?php echo ( $Skin->get_setting( 'layout' ) == 'left_sidebar' ? ' style="float:left;"' : '' ); ?>>
 		<!-- =================================== START OF SIDEBAR =================================== -->
 		<div class="evo_container evo_container__sidebar">
@@ -212,7 +208,7 @@ skin_include( '_body_header.inc.php' );
 			skin_container( NT_('Sidebar'), array(
 					// The following (optional) params will be used as defaults for widgets included in this container:
 					// This will enclose each widget in a block:
-					'block_start' => '<div class="panel panel-default widget $wi_class$">',
+					'block_start' => '<div class="panel panel-default evo_widget $wi_class$">',
 					'block_end' => '</div>',
 					// This will enclose the title of each widget:
 					'block_title_start' => '<div class="panel-heading"><h4 class="panel-title">',
@@ -234,15 +230,20 @@ skin_include( '_body_header.inc.php' );
 					'notes_end' => '</div>',
 					// Widget 'Search form':
 					'search_class'         => 'compact_search_form',
-					'search_input_before'  => '',
+					'search_input_before'  => '<div class="input-group">',
 					'search_input_after'   => '',
-					'search_submit_before' => '',
-					'search_submit_after'  => '',
+					'search_submit_before' => '<span class="input-group-btn">',
+					'search_submit_after'  => '</span></div>',
 				) );
 			// ----------------------------- END OF "Sidebar" CONTAINER -----------------------------
 		?>
 		</div>
-		
+		<?php } ?>
+
+		<?php
+		if( $Skin->show_container_when_access_denied( 'sidebar2' ) )
+		{ // Display 'Sidebar 2' widget container
+		?>
 		<div class="evo_container evo_container__sidebar2">
 		<?php
 			// ------------------------- "Sidebar" CONTAINER EMBEDDED HERE --------------------------
@@ -280,10 +281,18 @@ skin_include( '_body_header.inc.php' );
 			// ----------------------------- END OF "Sidebar" CONTAINER -----------------------------
 		?>
 		</div>
-		</div>
+		<?php } ?>
+
+	</div><!-- .col -->
 	<?php } ?>
-	</div>
+
+</div><!-- .row -->
 </div>
+
+<?php
+if( $Skin->show_container_when_access_denied( 'footer' ) )
+{ // Display 'Footer' widget container
+?>
 
 <!-- =================================== START OF FOOTER =================================== -->
 <footer class="footer">
@@ -356,6 +365,8 @@ skin_include( '_body_header.inc.php' );
 	</div>
 </footer>
 
+<?php } ?>
+
 <?php
 // ---------------------------- SITE FOOTER INCLUDED HERE ----------------------------
 // If site footers are enabled, they will be included here:
@@ -365,7 +376,5 @@ siteskin_include( '_site_body_footer.inc.php' );
 
 // ------------------------- HTML FOOTER INCLUDED HERE --------------------------
 skin_include( '_html_footer.inc.php' );
-// Note: You can customize the default HTML footer by copying the
-// _html_footer.inc.php file into the current skin folder.
 // ------------------------------- END OF FOOTER --------------------------------
 ?>

@@ -112,7 +112,7 @@ skin_include( '_body_header.inc.php' );
 					),
 					// Pagination
 					'pagination' => array(
-						'block_start'           => '<div class="center"><ul class="site_pagination">',
+						'block_start'           => '<div class="center"><ul class="pagination">',
 						'block_end'             => '</ul></div>',
 						'page_current_template' => '<span>$page_num$</span>',
 						'page_item_before'      => '<li>',
