@@ -3,7 +3,6 @@
 <img src="images/ark_logo_dark.png" alt="Ark Skin Logo" title="Ark Skin Logo"/><br/>
 Link to skin: <a href="http://skins.b2evolution.net/ark-skin" title="Ark skin">http://skins.b2evolution.net/ark-skin</a>.<br/>
 Developed by b2evo team.<br/>
-Current (stable) version: 1.0.0
 
 ---
 
@@ -24,6 +23,10 @@ Current (stable) version: 1.0.0
 
 ### Update Log
 
+#### v1.3.1-stable
+- _skin.class.php issue fix
+- package.json uploaded
+
 #### v1.3.0 
 - pagination fix for disp=single (comments) and disp=search
 - fixed disps access_denied and access_requires_login
@@ -34,8 +37,6 @@ Current (stable) version: 1.0.0
 - Removed LESS modules for widgets
 - Pagination layout fix
 - Other visual fixes
-
-### Update Log
 
 #### v1.1.1
 - Comment status badge position fix

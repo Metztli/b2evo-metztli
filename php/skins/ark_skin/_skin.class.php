@@ -17,7 +17,7 @@ if( !defined('EVO_MAIN_INIT') ) die( 'Please, do not access this page directly.'
  */
 class ark_Skin extends Skin
 {	
-	var $version = '1.3.0';
+	var $version = '1.3.1';
 	/**
 	 * Do we want to use style.min.css instead of style.css ?
 	 */
@@ -628,7 +628,7 @@ class ark_Skin extends Skin
 			{ // Site header color:
 				$custom_css .= '.headpicture { background-color: '.$color." }\n";
 			};
-			if( !empty( $header_height = $this->get_setting( 'header_height' ) ) )
+			if( $header_height = $this->get_setting( 'header_height' ) )
 			{ // If image input
 				$custom_css .= '.headpicture { min-height:'.$header_height."px }\n";
 			}
